@@ -1,12 +1,16 @@
 {
-  "name": "foam-cad",
-  "version": "1.0.0",
-  "description": "",
+  "name": "foam24-3ds",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
   },
-  "author": "",
-  "license": "ISC",
+  "devDependencies": {
+    "vite": "^4.4.5"
+  },
   "dependencies": {
     "@jscad/modeling": "^2.11.0",
     "earcut": "^2.2.4",
