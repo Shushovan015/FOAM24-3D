@@ -9,6 +9,10 @@
     <link href="./style.css" rel="stylesheet">
   </head>
   <body>
+    <div class="x-line"></div>
+    <div class="y-line"></div>
+    <div class="x-coordinates"></div>
+    <div class="y-coordinates"></div>
     <div id="sidebar">
       <div id="header">
         <button id="back-button" class="grey" disabled data-icon="arrow_back">Back</button>
@@ -35,7 +39,7 @@
           <div class="group">
             <button class="column grow white" id="create-rectangle" data-icon="rectangle">Rectangle</button>
             <button class="column grow white" id="create-circle" data-icon="circle">Circle</button>
-            <button class="column grow white" id="create-polygon" disabled data-icon="polyline">Freehand</button>
+            <button class="column grow white" id="create-polygon" data-icon="polyline">Freehand</button>
             <button class="column grow white" id="create-photoshape" data-icon="photo_camera">Photoshape</button>
           </div>
         </div><!--panel-->
@@ -76,7 +80,15 @@
             <button class="column grow white" id="photoshape-copy-button" disabled data-icon="copy_all">Copy</button>
             <button class="column grow white" id="photoshape-delete-button"  data-icon="delete">Delete</button>
           </div>
-        </div><!--panel-->         
+        </div><!--panel-->   
+        <div class="panel" id="polygon-panel">
+          <div class="group">
+            <button class="column grow white" id="polygon-depth-button"  data-icon="height">Depth</button>
+            <button class="column grow white" id="polygon-rotate-button"  data-icon="rotate_right">Rotate</button>
+            <button class="column grow white" id="polygon-copy-button" disabled data-icon="copy_all">Copy</button>
+            <button class="column grow white" id="polygon-delete-button"  data-icon="delete">Delete</button>
+          </div>
+        </div>      
         <div class="panel" id="radius-panel">
             <div class="group">
                 <input id="radius-slider" class="column grow" type="range" min="5" max="350" value="100">
@@ -123,6 +135,18 @@
                 <input id="photoshape-rotate-input" class="column" style="width:auto;" type="number" min="0" max="360" value="0">
             </div>
         </div><!--panel-->                
+        <div class="panel" id="polygon-depth-panel">
+          <div class="group">
+              <input id="polygon-depth-slider" class="column grow" type="range" min="5" max="370" value="250">
+              <input id="polygon-depth-input" class="column" style="width:auto;" type="number" min="5" max="370" value="250">
+          </div>
+      </div><!--panel-->    
+      <div class="panel" id="polygon-rotate-panel">
+          <div class="group">
+              <input id="polygon-rotate-slider" class="column grow" type="range" min="0" max="360" value="0">
+              <input id="polygon-rotate-input" class="column" style="width:auto;" type="number" min="0" max="360" value="0">
+          </div>
+      </div><!--panel-->                
         <div class="panel" id="upload-photo-panel">
             <input id="upload-photo-input" type="file">
             <img id="upload-photo-img"></img>
@@ -182,6 +206,11 @@
         <!--panel-->
       </div>
     </div>
+    <div class="button-container">
+      <button class="button" id="buttonContainer"  style="display: none;" >Done</button>
+      <button class="button" id="saveButtonContainer" style="display: none;">Save</button>
+    </div>
+    
     <script type="module" src="./main.js"></script>
   </body>
 </html>
