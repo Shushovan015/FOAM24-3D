@@ -7,14 +7,14 @@
     
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@48,400,0,0" />    
     
-    <script type="module" crossorigin src="/assets/index-b63aab70.js"></script>
-    <link rel="stylesheet" href="/assets/index-76992cf6.css">
+    <script type="module" crossorigin src="/assets/index-8e93d9de.js"></script>
+    <link rel="stylesheet" href="/assets/index-370a75f9.css">
   </head>
   <body>
-    <div class="x-line"></div>
-    <div class="y-line"></div>
-    <div class="x-coordinates"></div>
-    <div class="y-coordinates"></div>
+    <div class="x-line" style="display: none;"  ></div>
+    <div class="y-line" style="display: none;" ></div>
+    <div class="x-coordinates" style="display: none;" ></div>
+    <div class="y-coordinates" style="display: none;" ></div>
     <div id="sidebar">
       <div id="header">
         <button id="back-button" class="grey" disabled data-icon="arrow_back">Back</button>
@@ -43,6 +43,11 @@
             <button class="column grow white" id="create-circle" data-icon="circle">Circle</button>
             <button class="column grow white" id="create-polygon" data-icon="polyline">Freehand</button>
             <button class="column grow white" id="create-photoshape" data-icon="photo_camera">Photoshape</button>
+          </div>
+          <div class="group">
+            <button class="grow white" id="my-shapes-button" data-icon="play_shapes">My Shapes</button>
+          </div>
+          <div id="my-shapes-container">
           </div>
         </div><!--panel-->
         <div class="panel" id="foam-panel">
@@ -89,6 +94,9 @@
             <button class="column grow white" id="polygon-rotate-button"  data-icon="rotate_right">Rotate</button>
             <button class="column grow white" id="polygon-copy-button" disabled data-icon="copy_all">Copy</button>
             <button class="column grow white" id="polygon-delete-button"  data-icon="delete">Delete</button>
+          </div>
+          <div class="group">
+            <button class="column grow white" id="edit-shape" data-icon="play_shapes">Edit shapes</button>
           </div>
         </div>      
         <div class="panel" id="radius-panel">
@@ -212,7 +220,28 @@
       <button class="button" id="buttonContainer"  style="display: none;" >Done</button>
       <button class="button" id="saveButtonContainer" style="display: none;">Save</button>
     </div>
-    
+    <!-- <div class="menu-container">
+      <div class="menu-bar" id="menuBar">
+        <div class="toggle-button" id="toggleButton">
+          <span class="arrow" id="arrow"></span>
+          <span class="title">Saved Shape</span>
+        </div>
+        <ul>
+          <li class="menu-item">
+            Item 1
+            <span class="delete-button" onclick="deleteItem(this)">X</span>
+          </li>
+          <li class="menu-item">
+            Item 2
+            <span class="delete-button" onclick="deleteItem(this)">X</span>
+          </li>
+          <li class="menu-item">
+            Item 3
+            <span class="delete-button" onclick="deleteItem(this)">X</span>
+          </li>
+        </ul>
+      </div>
+    </div> -->
     
   </body>
 </html>

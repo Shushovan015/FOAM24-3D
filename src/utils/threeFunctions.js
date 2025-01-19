@@ -51,21 +51,40 @@ export function shapeToGeom2(shape) {
       polygon = polygon.map(([x, y]) => [x + shape.x, y + shape.y]);
       return jscad.geometries.geom2.fromPoints(polygon);
     case "photoshape":
-      let photoshapePolygon = shape.polygon
-        .map(([x, y]) => [x, y])
-        .map((v) =>
-          jscad.maths.vec2.rotate(
-            v,
-            v,
-            [0, 0],
-            jscad.utils.degToRad(shape.rotation)
+      if (!shape.polygon || !Array.isArray(shape.polygon)) {
+        console.error("Invalid shape.polygon:", shape.polygon);
+        return [];
+      }
+      let photoshapePolygons = (shape?.polygon || [])?.map((contour, index) => {
+        if (!Array.isArray(contour)) {
+          console.error(`Contour at index ${index} is not an array:`, contour);
+          return [];
+        }
+        // Rotate and translate each point in the contour
+        let transformedContour = contour
+          ?.map((point) => {
+            if (!Array.isArray(point) || point.length !== 2) {
+              console.error("Invalid point in contour:", point);
+              return [0, 0]; // default or error handling
+            }
+            return [point[0], point[1]];
+          })
+          ?.map((v) =>
+            jscad.maths.vec2.rotate(
+              v,
+              v,
+              [0, 0],
+              jscad.utils.degToRad(shape.rotation)
+            )
           )
-        );
-      photoshapePolygon = photoshapePolygon.map(([x, y]) => [
-        x + shape.x,
-        y + shape.y,
-      ]);
-      return jscad.geometries.geom2.fromPoints(photoshapePolygon);
+          ?.map(([x, y]) => [x + shape.x, y + shape.y]); // Translate points
+        return transformedContour;
+      });
+
+      // Now, photoshapePolygons will be an array of arrays of transformed contours
+      return photoshapePolygons?.map((contour) => {
+        return jscad.geometries.geom2?.fromPoints(contour);
+      });
   }
 }
 
@@ -96,25 +115,89 @@ export function geom2ToLineSegments(geom2) {
   return new THREE.LineSegments(geo, new THREE.LineBasicMaterial());
 }
 
+// export function geom2ToMesh(geom2) {
+//   console.log(geom2, "geom2");
+//   let positions = [];
+//   for (let line of geom2.sides) {
+//     for (let vertex of line) {
+//       positions.push(vertex[0]);
+//       positions.push(vertex[1]);
+//       positions.push(0);
+//     }
+//   }
+//   let indices = earcut(positions, [], 3);
+//   let geo = new THREE.BufferGeometry();
+//   geo.setAttribute(
+//     "position",
+//     new THREE.BufferAttribute(new Float32Array(positions), 3, false)
+//   );
+//   geo.setIndex(indices);
+//   geo.computeVertexNormals();
+//   return new THREE.Mesh(geo, new THREE.MeshBasicMaterial());
+// }
+
+//New Geom 2 mesh function(updated)
 export function geom2ToMesh(geom2) {
   let positions = [];
-  for (let line of geom2.sides) {
-    for (let vertex of line) {
-      positions.push(vertex[0]);
-      positions.push(vertex[1]);
-      positions.push(0);
+  let indices = [];
+
+  if (Array.isArray(geom2)) {
+    // Handle array of geometries
+    let indexOffset = 0;
+    for (let geometry of geom2) {
+      let geoData = processGeometry(geometry);
+      positions.push(...geoData.positions);
+
+      // Adjust indices for each geometry in the array
+      let geoIndices = geoData.indices.map((idx) => idx + indexOffset);
+      indices.push(...geoIndices);
+
+      // Update index offset for the next geometry
+      indexOffset += geoData.positions.length / 3;
     }
+  } else {
+    // Handle single geometry object
+    let geoData = processGeometry(geom2);
+    positions = geoData.positions;
+    indices = geoData.indices;
   }
-  let indices = earcut(positions, [], 3);
+
   let geo = new THREE.BufferGeometry();
   geo.setAttribute(
     "position",
     new THREE.BufferAttribute(new Float32Array(positions), 3, false)
   );
-  geo.setIndex(indices);
+  geo.setIndex(new THREE.BufferAttribute(new Uint16Array(indices), 1));
   geo.computeVertexNormals();
+
   return new THREE.Mesh(geo, new THREE.MeshBasicMaterial());
 }
+
+function processGeometry(geometry) {
+  let positions = [];
+  let indices = [];
+
+  if (geometry && geometry.sides) {
+    for (let line of geometry.sides) {
+      if (Array.isArray(line)) {
+        for (let vertex of line) {
+          if (Array.isArray(vertex) && vertex.length >= 2) {
+            positions.push(vertex[0]);
+            positions.push(vertex[1]);
+            positions.push(0);
+          }
+        }
+      }
+    }
+
+    indices = earcut(positions, [], 3);
+  } else {
+    console.error("Invalid geometry:", geometry);
+  }
+
+  return { positions, indices };
+}
+// end of new Geom 2 mesh function
 
 export function geom3ToMesh(geom3) {
   geom3 = jscad.modifiers.generalize(
@@ -158,6 +241,74 @@ export function geom3ToMesh(geom3) {
   return new THREE.Mesh(geo, new THREE.MeshBasicMaterial());
 }
 
+// if in future get any error regarding array of object try this function instead
+
+// export function geom3ToMesh(geom3) {
+//   let points = [];
+//   let normals = [];
+
+//   // Check if geom3 is an array or a single object
+//   if (Array.isArray(geom3)) {
+//     // If it's an array, process each object in the array
+//     for (let geometry of geom3) {
+//       let { geoPoints, geoNormals } = processGeom3(geometry);
+//       points.push(...geoPoints);
+//       normals.push(...geoNormals);
+//     }
+//   } else {
+//     // If it's a single object, process it directly
+//     let { geoPoints, geoNormals } = processGeom3(geom3);
+//     points = geoPoints;
+//     normals = geoNormals;
+//   }
+
+//   // Flatten normals for buffer attribute
+//   let flatNormals = [];
+//   for (let normal of normals) {
+//     flatNormals.push(...normal.toArray());
+//   }
+
+//   let geo = new THREE.BufferGeometry();
+//   geo.setFromPoints(points);
+//   geo.setAttribute(
+//     "normal",
+//     new THREE.BufferAttribute(new Float32Array(flatNormals), 3, false)
+//   );
+//   return new THREE.Mesh(geo, new THREE.MeshBasicMaterial());
+// }
+
+// // Helper function to process individual geom3 object
+// function processGeom3(geometry) {
+//   let points = [];
+//   let normals = [];
+
+//   // Generalize the geometry with triangulation
+//   geometry = jscad.modifiers.generalize(
+//     {
+//       triangulate: true,
+//     },
+//     geometry
+//   );
+
+//   // Process each triangle and calculate points and normals
+//   for (let triangle of geometry.polygons) {
+//     let p0 = new THREE.Vector3(...triangle.vertices[0]);
+//     let p1 = new THREE.Vector3(...triangle.vertices[1]);
+//     let p2 = new THREE.Vector3(...triangle.vertices[2]);
+//     let normal = new THREE.Vector3().crossVectors(
+//       new THREE.Vector3().subVectors(p1, p0),
+//       new THREE.Vector3().subVectors(p2, p0)
+//     );
+//     if (normal.lengthSq() > 0.001) {
+//       normal = normal.normalize();
+//     }
+//     points.push(p0, p1, p2);
+//     normals.push(normal, normal, normal);
+//   }
+
+//   return { geoPoints: points, geoNormals: normals };
+// }
+
 export function mouseOverShape(
   shape,
   mouseRayPlaneIntersection,
@@ -184,18 +335,36 @@ export function mouseOverShape(
     }
   } else if (shape.kind == "photoshape") {
     let v = mouseRayPlaneIntersection;
-    let polygon = shape.polygon
-      .map(([x, y]) => [x, y])
-      .map((v) =>
+    // change of function for multiple shapes coming at once
+    // Assuming shape.polygon is an array of polygons, each a list of vertices
+    let polygons = shape.polygon.map((polygon) => {
+      // Rotate each vertex in the polygon
+      let rotatedPolygon = polygon.map(([x, y]) =>
         jscad.maths.vec2.rotate(
-          v,
-          v,
+          [x, y],
+          [x, y],
           [0, 0],
           jscad.utils.degToRad(shape.rotation)
         )
       );
-    polygon = polygon.map(([x, y]) => [x + shape.x, y + shape.y]);
-    return pointInsidePolygon([v.x, v.y], polygon);
+      return rotatedPolygon.map(([x, y]) => [x + shape.x, y + shape.y]);
+    });
+    let isInside = polygons.some((polygon) =>
+      pointInsidePolygon([v.x, v.y], polygon)
+    );
+    return isInside;
+    // let polygon = shape.polygon
+    //   .map(([x, y]) => [x, y])
+    //   .map((v) =>
+    //     jscad.maths.vec2.rotate(
+    //       v,
+    //       v,
+    //       [0, 0],
+    //       jscad.utils.degToRad(shape.rotation)
+    //     )
+    //   );
+    // polygon = polygon.map(([x, y]) => [x + shape.x, y + shape.y]);
+    // return pointInsidePolygon([v.x, v.y], polygon);
   } else if (shape.kind == "polygon") {
     let v = mouseRayPlaneIntersection;
     let polygon = shape.points
@@ -214,21 +383,73 @@ export function mouseOverShape(
   return false;
 }
 
+// export function drawOutline(shape, style, width, z, ctx, camera) {
+//   ctx.lineWidth = width;
+//   ctx.strokeStyle = style;
+
+//   let geom2 = shapeToGeom2(shape);
+//   console.log(geom2, "geometry");
+//   ctx.beginPath();
+//   let line = geom2?.sides[0];
+//   let p0 = project(new THREE.Vector3(line[0][0], line[0][1], z), camera, ctx);
+//   ctx.moveTo(p0.x, p0.y);
+//   for (let line of geom2?.sides) {
+//     let p1 = project(new THREE.Vector3(line[0][0], line[0][1], z), camera, ctx);
+//     ctx.lineTo(p1.x, p1.y);
+//   }
+//   ctx.lineTo(p0.x, p0.y);
+//   ctx.stroke();
+// }
+
 export function drawOutline(shape, style, width, z, ctx, camera) {
   ctx.lineWidth = width;
   ctx.strokeStyle = style;
 
   let geom2 = shapeToGeom2(shape);
-  ctx.beginPath();
-  let line = geom2?.sides[0];
-  let p0 = project(new THREE.Vector3(line[0][0], line[0][1], z), camera, ctx);
-  ctx.moveTo(p0.x, p0.y);
-  for (let line of geom2?.sides) {
-    let p1 = project(new THREE.Vector3(line[0][0], line[0][1], z), camera, ctx);
-    ctx.lineTo(p1.x, p1.y);
+
+  // Check if geom2 is an array or a single object
+  if (Array.isArray(geom2)) {
+    // Handle array of geometries
+    for (let geom of geom2) {
+      drawGeometry(geom, z, ctx, camera);
+    }
+  } else {
+    // Handle single geometry object
+    drawGeometry(geom2, z, ctx, camera);
   }
-  ctx.lineTo(p0.x, p0.y);
-  ctx.stroke();
+
+  function drawGeometry(geometry, z, ctx, camera) {
+    ctx.beginPath();
+    let line = geometry?.sides[0];
+    if (line) {
+      let p0 = project(
+        new THREE.Vector3(line[0][0], line[0][1], z),
+        camera,
+        ctx
+      );
+      ctx.moveTo(p0.x, p0.y);
+
+      for (let line of geometry.sides) {
+        let p1 = project(
+          new THREE.Vector3(line[1][0], line[1][1], z),
+          camera,
+          ctx
+        );
+        ctx.lineTo(p1.x, p1.y);
+      }
+
+      // Close the path by connecting to the first point
+      let firstLine = geometry.sides[0];
+      let p0x = project(
+        new THREE.Vector3(firstLine[0][0], firstLine[0][1], z),
+        camera,
+        ctx
+      );
+      ctx.lineTo(p0x.x, p0x.y);
+
+      ctx.stroke();
+    }
+  }
 }
 
 export function drawMeasurementsPhotoshape(
@@ -240,45 +461,49 @@ export function drawMeasurementsPhotoshape(
 ) {
   ctx.fillStyle = "orange";
 
-  function transform(v, camera) {
-    return project(
-      v
-        .sub(new THREE.Vector3(shape?.x, shape?.y, 0))
-        .applyAxisAngle(
-          new THREE.Vector3(0, 0, 1),
-          jscad.utils.degToRad(shape?.rotation)
-        )
-        .add(new THREE.Vector3(shape?.x, shape?.y, 0)),
-      camera,
-      ctx
-    );
+  // Calculate canvas center
+  const canvasCenterX = ctx.canvas.width / 2;
+  const canvasCenterY = ctx.canvas.height / 2;
+
+  // Calculate the shape's bounding box center
+  const shapeCenterX = shape.sizeX / 2;
+  const shapeCenterY = shape.sizeY / 2;
+
+  // Offset to move the shape's center to the canvas center
+  const offsetX = canvasCenterX - shapeCenterX;
+  const offsetY = canvasCenterY - shapeCenterY;
+
+  // Modify the transformation function to include centering offset
+  function transform(v) {
+    // Center the shape by subtracting half of sizeX and sizeY
+    const centeredV = v
+      .sub(new THREE.Vector3(shape.sizeX / 2, shape.sizeY / 2, 0)) // Move shape center to (0,0)
+      .applyAxisAngle(
+        new THREE.Vector3(0, 0, 1),
+        jscad.utils.degToRad(shape?.rotation)
+      )
+      .add(new THREE.Vector3(offsetX, offsetY, 0)); // Center on canvas
+
+    return project(centeredV, camera, ctx);
   }
 
-  // depth line
+  // Draw depth line if it's a depth panel
   if (currPanel.id.endsWith("-depth-panel")) {
     ctx.beginPath();
-    let p0 = transform(
-      new THREE.Vector3(shape.x, shape.y, 37 * centimeters),
-      camera
-    );
+    let p0 = transform(new THREE.Vector3(shape.x, shape.y, 37 * centimeters));
     let p1 = transform(
-      new THREE.Vector3(shape.x, shape.y, 37 * centimeters - shape.sizeZ),
-      camera
+      new THREE.Vector3(shape.x, shape.y, 37 * centimeters - shape.sizeZ)
     );
     ctx.moveTo(p0.x, p0.y);
     ctx.lineTo(p1.x, p1.y);
     ctx.stroke();
   }
 
-  // depth text
+  // Draw depth text if it's a depth panel
   if (currPanel.id.endsWith("-depth-panel")) {
-    let p0 = transform(
-      new THREE.Vector3(shape.x, shape.y, 37 * centimeters),
-      camera
-    );
+    let p0 = transform(new THREE.Vector3(shape.x, shape.y, 37 * centimeters));
     let p1 = transform(
-      new THREE.Vector3(shape.x, shape.y, 37 * centimeters - shape.sizeZ),
-      camera
+      new THREE.Vector3(shape.x, shape.y, 37 * centimeters - shape.sizeZ)
     );
     let pMid = new THREE.Vector3().addVectors(p0, p1).divideScalar(2);
     ctx.font = "bold " + 20 * window.devicePixelRatio + "px sans-serif";

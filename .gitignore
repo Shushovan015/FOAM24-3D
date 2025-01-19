@@ -1,24 +1,36 @@
+# Node.js modules
+node_modules/
+
 # Logs
-logs
-*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
-
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
+# System files
 .DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+Thumbs.db
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Vite build output
+.vite/
+.vitepress/
+*.cache/
+
+# Editor settings
+*.sublime-project
+*.sublime-workspace
+.vscode/
+.idea/
+
+# Ignore compiled files
+*.lock
+*.log
+
+# Others
+coverage/
+*.bak
+*.tmp

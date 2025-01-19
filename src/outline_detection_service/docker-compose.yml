@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  nodejs:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    volumes:
+      - ./frontend/main.js:/src/app/main.js
+      - ./frontend/index.html:/src/app/index.html 
+    ports:
+      - "5173:5173"
+
+  flask:
+    build:
+      context: ./outline_detection_service
+      dockerfile: Dockerfile
+    volumes:
+      - ./outline_detection_service:/app
+    ports:
+      - "5000:5000"

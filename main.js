@@ -37,6 +37,7 @@ import { createPdf } from "./src/components/createPdf";
 import { createShapeCircle } from "./src/components/shapes/createShapeCircle";
 import { createShapeFreehand } from "./src/components/shapes/createShapeFreehand";
 import { createShapeRectangle } from "./src/components/shapes/createShapeRectangle";
+import { createShapePhotoShape } from "./src/components/shapes/createShapePhotoshape";
 import { FoamMaterial, LambertMaterial } from "./src/components/Material";
 
 // Assets
@@ -139,37 +140,51 @@ function initUI() {
     }
   );
 
-  document.querySelector("#upload-photo-input").onchange = (e) => {
-    let file = e.target.files[0];
-    let reader = new FileReader();
-    reader.onload = (e) => {
-      document.querySelector("#upload-photo-img").onload = (e) => {
-        let polygon = getImageOutline(e.target).map(({ x, y }) => [x, y]);
-        let box = new THREE.Box2();
-        polygon.forEach(([x, y]) => {
-          box.expandByPoint(new THREE.Vector2(x, y));
-        });
-        let center = box.getCenter(new THREE.Vector2());
-        polygon = polygon.map(([x, y]) => [center.x - x, y - center.y]);
-        polygon.reverse();
-        let shape = {
-          kind: "photoshape",
-          x: 0, // mouseRayPlaneIntersection.x,
-          y: 0, //mouseRayPlaneIntersection.y,
-          sizeZ: 250 * millimeters,
-          polygon,
-          rotation: 0,
-        };
-        shapesArray.push(shape);
-        commit();
-        doCsg();
-        selected = shape;
-        showPanelFromRight(selected.kind + "-panel");
-      };
-      document.querySelector("#upload-photo-img").src = e.target.result;
-    };
-    reader.readAsDataURL(file);
-  };
+  // document.querySelector("#upload-photo-input").onchange = (e) => {
+  //   let file = e.target.files[0];
+  //   let reader = new FileReader();
+  //   reader.onload = (e) => {
+  //     document.querySelector("#upload-photo-img").onload = (e) => {
+  //       let polygon = getImageOutline(e.target).map(({ x, y }) => [x, y]);
+  //       let box = new THREE.Box2();
+  //       polygon.forEach(([x, y]) => {
+  //         box.expandByPoint(new THREE.Vector2(x, y));
+  //       });
+  //       let center = box.getCenter(new THREE.Vector2());
+  //       polygon = polygon.map(([x, y]) => [center.x - x, y - center.y]);
+  //       polygon.reverse();
+  //       let shape = {
+  //         kind: "photoshape",
+  //         x: 0, // mouseRayPlaneIntersection.x,
+  //         y: 0, //mouseRayPlaneIntersection.y,
+  //         sizeZ: 250 * millimeters,
+  //         polygon,
+  //         rotation: 0,
+  //       };
+  //       shapesArray.push(shape);
+  //       commit();
+  //       doCsg();
+  //       selected = shape;
+  //       showPanelFromRight(selected.kind + "-panel");
+  //     };
+  //     document.querySelector("#upload-photo-img").src = e.target.result;
+  //   };
+  //   reader.readAsDataURL(file);
+  // };
+
+  createShapePhotoShape(
+    millimeters,
+    selected,
+    shapesArray,
+    commit,
+    showPanelFromLeft,
+    showPanelFromRight,
+    doCsg,
+    (modifiedSelected) => {
+      // Use modifiedSelected here, which contains the updated value of selected
+      selected = modifiedSelected;
+    }
+  );
 
   createShapeRectangle(
     millimeters,
@@ -912,16 +927,25 @@ function drawMeasurements(shape) {
 }
 
 function onFrame() {
-  camera1 = new THREE.OrthographicCamera(
-    -window.innerWidth / 2.9,
-    window.innerWidth / 2.9,
-    window.innerHeight / 2.9,
-    -window.innerHeight / 2.9,
-    1,
-    1000
+  camera1 = new THREE.PerspectiveCamera(
+    50,
+    window.innerWidth / window.innerHeight,
+    1 * millimeters,
+    100 * meters
   );
-  camera1.position.set(0, 0, 1000);
-  camera1.up.set(0, 0, 20);
+  camera1.position.set(0, 0, 1.10 * meters); // Adjust height as needed
+  camera1.up.set(0, 1, 0); // Orient the camera upwards
+  camera1.lookAt(0, 0, 0); // Look at the center of the scene
+  // camera1 = new THREE.OrthographicCamera(
+  //   -window.innerWidth / 2.9,
+  //   window.innerWidth / 2.9,
+  //   window.innerHeight / 2.9,
+  //   -window.innerHeight / 2.9,
+  //   1,
+  //   1000
+  // );
+  // camera1.position.set(0, 0, 1000);
+  // camera1.up.set(0, 0, 20);
   ctx.canvas.width = ctx.canvas.width;
   ctx.canvas.height = ctx.canvas.height;
   ctx.strokeStyle = "orange";
@@ -1007,3 +1031,49 @@ if (typeof window === "object") {
 }
 
 export {};
+
+document.addEventListener("DOMContentLoaded", function () {
+  const myShapesButton = document.getElementById("my-shapes-button");
+  const myShapesContainer = document.getElementById("my-shapes-container");
+  let appendedDiv;
+  let isOpen = false;
+
+  myShapesButton.addEventListener("click", function () {
+    if (isOpen) {
+      myShapesContainer.style.display = "none";
+      if (appendedDiv) appendedDiv.remove();
+    } else {
+      // Create a new div element
+      appendedDiv = document.createElement("div");
+      appendedDiv.style.backgroundColor =
+        getComputedStyle(myShapesButton).backgroundColor;
+
+      // Set position and width styles for the new div
+      const buttonRect = myShapesButton.getBoundingClientRect();
+      appendedDiv.style.position = "fixed";
+      appendedDiv.style.top = buttonRect.bottom - 38 + "px";
+      appendedDiv.style.left = "0";
+      appendedDiv.style.width = "100%";
+      appendedDiv.style.borderRadius = "3px";
+
+      // Append the new div to the container
+      myShapesContainer.appendChild(appendedDiv);
+
+      // Show the container
+      myShapesContainer.style.display = "block";
+
+      // Update the height initially and listen for window resize
+      updateAppendedDivHeight();
+      window.addEventListener("resize", updateAppendedDivHeight);
+    }
+    isOpen = !isOpen;
+  });
+
+  function updateAppendedDivHeight() {
+    if (appendedDiv) {
+      const buttonRect = myShapesButton.getBoundingClientRect();
+      const remainingHeight = window.innerHeight - buttonRect.bottom;
+      appendedDiv.style.height = remainingHeight + "px";
+    }
+  }
+});

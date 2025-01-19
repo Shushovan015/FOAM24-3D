@@ -148,6 +148,15 @@ export function removeAllObjectsFromScene(scene) {
   });
 }
 
+export function getBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result.split(",")[1]); // Get only the base64 string
+    reader.onerror = (error) => reject(error);
+    reader.readAsDataURL(file);
+  });
+}
+
 /* between 786 and 790
 function draw3dLine(p0, p1, camera) {
     let p0_ = p0.project(camera).multiply(new THREE.Vector3(1,-1,1)).addScalar(1.0).multiplyScalar(0.5).multiply(new THREE.Vector3(ctx.canvas.width, ctx.canvas.height, 1))
