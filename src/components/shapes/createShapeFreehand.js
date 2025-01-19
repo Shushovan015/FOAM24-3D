@@ -51,7 +51,6 @@ export const createShapeFreehand = (
       circles.map((circle) => sceneCopy.remove(circle));
       lines.map((line) => sceneCopy.remove(line));
       newPoints = finalPoints?.map((point) => [point.x, point.y]);
-      console.log(newPoints, "points");
       let shape = {
         kind: "polygon",
         x: 0, // mouseRayPlaneIntersection.x,
