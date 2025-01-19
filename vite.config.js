@@ -14,5 +14,10 @@ export default defineConfig({
   build: {
     minify: false,
     sourcemap: true, // Enable source maps for debugging
+    rollupOptions: {
+      treeshake: {
+        moduleSideEffects: ["earcut"], // Preserve earcut during tree-shaking
+      },
+    },
   },
 });
