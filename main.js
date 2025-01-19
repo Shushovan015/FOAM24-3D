@@ -42,7 +42,7 @@ import { FoamMaterial, LambertMaterial } from "./src/components/Material";
 
 // Assets
 // import case1Url from "url:./models/case1.obj";
-const case1Url = "./models/case1.obj";
+const case1Url = "/models/case1.obj";
 
 /* UI */
 let panels;
@@ -933,7 +933,7 @@ function onFrame() {
     1 * millimeters,
     100 * meters
   );
-  camera1.position.set(0, 0, 1.10 * meters); // Adjust height as needed
+  camera1.position.set(0, 0, 1.1 * meters); // Adjust height as needed
   camera1.up.set(0, 1, 0); // Orient the camera upwards
   camera1.lookAt(0, 0, 0); // Look at the center of the scene
   // camera1 = new THREE.OrthographicCamera(
