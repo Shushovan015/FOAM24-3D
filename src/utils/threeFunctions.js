@@ -1,6 +1,6 @@
 import * as jscad from "@jscad/modeling";
 import * as THREE from "three";
-import * as earcut from "earcut";
+import earcut from "earcut";
 
 export function project(p0, camera, ctx) {
   return p0
