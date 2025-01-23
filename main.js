@@ -42,7 +42,7 @@ import { FoamMaterial, LambertMaterial } from "./src/components/Material";
 
 // Assets
 // import case1Url from "url:./models/case1.obj";
-const case1Url = "/models/case1.obj";
+const case1Url = "./models/case1.obj";
 
 /* UI */
 let panels;

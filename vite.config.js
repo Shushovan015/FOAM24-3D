@@ -1,7 +1,16 @@
 import { defineConfig } from "vite";
+import copy from "rollup-plugin-copy";
 
 export default defineConfig({
   // plugins: [react()],
+  plugins: [
+    copy({
+      targets: [
+        { src: "models", dest: "dist" }, // Copy 'models' to 'dist/models'
+      ],
+      hook: "writeBundle",
+    }),
+  ],
   server: {
     host: true,
     port: 5173, // This is the port which we will use in docker

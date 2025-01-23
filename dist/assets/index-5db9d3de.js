@@ -53482,7 +53482,7 @@ class LambertMaterial extends ShaderMaterial {
     });
   }
 }
-const case1Url = "/models/case1.obj";
+const case1Url = "./models/case1.obj";
 let panels;
 let currPanel;
 let orthoCamera;
@@ -54357,4 +54357,4 @@ document.addEventListener("DOMContentLoaded", function() {
     }
   }
 });
-//# sourceMappingURL=index-aeece155.js.map
+//# sourceMappingURL=index-5db9d3de.js.map
