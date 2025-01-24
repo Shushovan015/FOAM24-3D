@@ -60,7 +60,7 @@ export const createShapePhotoShape = (
           formData.append("image", blob, "image.png");
 
           // return fetch("http://localhost:5000/detect_contours", {
-            return fetch("http://fm24api.com/detect_contours", {
+            return fetch("https://fm24api.com/detect_contours", {
 
             method: "POST",
             body: formData,
