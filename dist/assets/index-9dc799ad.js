@@ -53343,7 +53343,7 @@ const createShapePhotoShape = (millimeters2, selected2, shapesArray2, commit2, s
       }).then((blob) => {
         const formData = new FormData();
         formData.append("image", blob, "image.png");
-        return fetch("http://fm24api.com/detect_contours", {
+        return fetch("https://fm24api.com/detect_contours", {
           method: "POST",
           body: formData
         });
@@ -54357,4 +54357,4 @@ document.addEventListener("DOMContentLoaded", function() {
     }
   }
 });
-//# sourceMappingURL=index-b1042791.js.map
+//# sourceMappingURL=index-9dc799ad.js.map
