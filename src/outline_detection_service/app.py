@@ -52,7 +52,7 @@ import numpy as np
 from flask_cors import CORS
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/*": {"origins": ["http://localhost:5173", "https://fm24api.com"]}})
 
 
 @app.route('/detect_contours', methods=['POST'])
@@ -114,4 +114,4 @@ def detect_contours():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+     app.run(host='0.0.0.0', port=5000, debug=True)
