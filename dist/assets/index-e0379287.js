@@ -27308,7 +27308,7 @@ const zOrder$1 = (x, y, minX, minY, invSize) => {
   y = (y | y << 1) & 1431655765;
   return x | y << 1;
 };
-var earcut$4 = triangulate;
+var earcut$3 = triangulate;
 const { area: area$4 } = utils$8;
 const { toOutlines } = geom2$K;
 const { arePointsInside } = poly2$1;
@@ -27412,7 +27412,7 @@ let PolygonHierarchy$1 = class PolygonHierarchy {
 };
 var polygonHierarchy = PolygonHierarchy$1;
 const poly3$g = poly3$A;
-const earcut$3 = earcut$4;
+const earcut$2 = earcut$3;
 const PolygonHierarchy2 = polygonHierarchy;
 const toPolygons = (slice2) => {
   const hierarchy = new PolygonHierarchy2(slice2);
@@ -27427,7 +27427,7 @@ const toPolygons = (slice2) => {
     const vertices = [solid, ...holes].flat();
     const data = vertices.flat();
     const getVertex = (i) => hierarchy.to3D(vertices[i]);
-    const indices = earcut$3(data, holesIndex);
+    const indices = earcut$2(data, holesIndex);
     for (let i = 0; i < indices.length; i += 3) {
       const tri = indices.slice(i, i + 3).map(getVertex);
       polygons.push(poly3$g.fromPointsAndPlane(tri, hierarchy.plane));
@@ -32378,9 +32378,9 @@ var src = {
   modifiers,
   transforms
 };
-var earcut$2 = { exports: {} };
-earcut$2.exports = earcut;
-earcut$2.exports.default = earcut;
+var earcut$1 = { exports: {} };
+earcut$1.exports = earcut;
+earcut$1.exports.default = earcut;
 function earcut(data, holeIndices, dim) {
   dim = dim || 2;
   var hasHoles = holeIndices && holeIndices.length, outerLen = hasHoles ? holeIndices[0] * dim : data.length, outerNode = linkedList(data, 0, outerLen, dim, true), triangles = [];
@@ -32838,8 +32838,6 @@ earcut.flatten = function(data) {
   }
   return result;
 };
-var earcutExports = earcut$2.exports;
-const earcut$1 = /* @__PURE__ */ getDefaultExportFromCjs(earcutExports);
 function project(p0, camera2, ctx2) {
   return p0.project(camera2).multiply(new Vector3(1, -1, 1)).addScalar(1).multiplyScalar(0.5).multiply(new Vector3(ctx2.canvas.width, ctx2.canvas.height, 1));
 }
@@ -32913,62 +32911,6 @@ function shapeToGeom2(shape) {
         return (_a2 = src.geometries.geom2) == null ? void 0 : _a2.fromPoints(contour);
       });
   }
-}
-function shapeToGeom3(shape) {
-  let geom22 = shapeToGeom2(shape);
-  return src.extrusions.extrudeLinear(
-    {
-      height: shape == null ? void 0 : shape.sizeZ
-    },
-    geom22
-  );
-}
-function geom2ToMesh(geom22) {
-  let positions = [];
-  let indices = [];
-  if (Array.isArray(geom22)) {
-    let indexOffset = 0;
-    for (let geometry of geom22) {
-      let geoData = processGeometry(geometry);
-      positions.push(...geoData.positions);
-      let geoIndices = geoData.indices.map((idx) => idx + indexOffset);
-      indices.push(...geoIndices);
-      indexOffset += geoData.positions.length / 3;
-    }
-  } else {
-    let geoData = processGeometry(geom22);
-    positions = geoData.positions;
-    indices = geoData.indices;
-  }
-  let geo = new BufferGeometry();
-  geo.setAttribute(
-    "position",
-    new BufferAttribute(new Float32Array(positions), 3, false)
-  );
-  geo.setIndex(new BufferAttribute(new Uint16Array(indices), 1));
-  geo.computeVertexNormals();
-  return new Mesh(geo, new MeshBasicMaterial());
-}
-function processGeometry(geometry) {
-  let positions = [];
-  let indices = [];
-  if (geometry && geometry.sides) {
-    for (let line4 of geometry.sides) {
-      if (Array.isArray(line4)) {
-        for (let vertex2 of line4) {
-          if (Array.isArray(vertex2) && vertex2.length >= 2) {
-            positions.push(vertex2[0]);
-            positions.push(vertex2[1]);
-            positions.push(0);
-          }
-        }
-      }
-    }
-    indices = earcut$1(positions, [], 3);
-  } else {
-    console.error("Invalid geometry:", geometry);
-  }
-  return { positions, indices };
 }
 function geom3ToMesh(geom32) {
   geom32 = src.modifiers.generalize(
@@ -33057,45 +32999,35 @@ function mouseOverShape(shape, mouseRayPlaneIntersection2, pointInsidePolygon2) 
   }
   return false;
 }
-function drawOutline(shape, style2, width, z, ctx2, camera2) {
+function drawOutline(shape, style2, width, z, ctx2, camera2, display2D2, renderer2) {
   ctx2.lineWidth = width;
   ctx2.strokeStyle = style2;
-  let geom22 = shapeToGeom2(shape);
-  if (Array.isArray(geom22)) {
-    for (let geom of geom22) {
-      drawGeometry(geom, z, ctx2, camera2);
-    }
-  } else {
-    drawGeometry(geom22, z, ctx2, camera2);
-  }
-  function drawGeometry(geometry, z2, ctx3, camera3) {
-    ctx3.beginPath();
-    let line4 = geometry == null ? void 0 : geometry.sides[0];
-    if (line4) {
-      let p0 = project(
-        new Vector3(line4[0][0], line4[0][1], z2),
-        camera3,
-        ctx3
-      );
-      ctx3.moveTo(p0.x, p0.y);
-      for (let line5 of geometry.sides) {
-        let p1 = project(
-          new Vector3(line5[1][0], line5[1][1], z2),
-          camera3,
-          ctx3
-        );
-        ctx3.lineTo(p1.x, p1.y);
-      }
-      let firstLine = geometry.sides[0];
-      let p0x = project(
-        new Vector3(firstLine[0][0], firstLine[0][1], z2),
-        camera3,
-        ctx3
-      );
-      ctx3.lineTo(p0x.x, p0x.y);
-      ctx3.stroke();
-    }
-  }
+  const geom22 = shapeToGeom2(shape);
+  const geometries2 = Array.isArray(geom22) ? geom22 : [geom22];
+  geometries2.forEach((geometry) => {
+    var _a;
+    if (!((_a = geometry == null ? void 0 : geometry.sides) == null ? void 0 : _a.length))
+      return;
+    ctx2.beginPath();
+    const firstPoint = geometry.sides[0][0];
+    let p0 = projectPoint(firstPoint[0], firstPoint[1], z, camera2, renderer2);
+    ctx2.moveTo(p0.x, p0.y);
+    geometry.sides.forEach((line4) => {
+      const point = line4[1];
+      const p1 = projectPoint(point[0], point[1], z, camera2, renderer2);
+      ctx2.lineTo(p1.x, p1.y);
+    });
+    ctx2.lineTo(p0.x, p0.y);
+    ctx2.stroke();
+  });
+}
+function projectPoint(x, y, z, camera2, renderer2) {
+  const vector = new Vector3(x, y, z);
+  vector.project(camera2);
+  return {
+    x: (vector.x + 1) * renderer2.domElement.width / 2,
+    y: (1 - vector.y) * renderer2.domElement.height / 2
+  };
 }
 function drawMeasurementsPhotoshape(shape, ctx2, camera2, currPanel2, centimeters2) {
   ctx2.fillStyle = "orange";
@@ -33105,12 +33037,17 @@ function drawMeasurementsPhotoshape(shape, ctx2, camera2, currPanel2, centimeter
   const shapeCenterY = shape.sizeY / 2;
   const offsetX = canvasCenterX - shapeCenterX;
   const offsetY = canvasCenterY - shapeCenterY;
-  function transform2(v) {
-    const centeredV = v.sub(new Vector3(shape.sizeX / 2, shape.sizeY / 2, 0)).applyAxisAngle(
-      new Vector3(0, 0, 1),
-      src.utils.degToRad(shape == null ? void 0 : shape.rotation)
-    ).add(new Vector3(offsetX, offsetY, 0));
-    return project(centeredV, camera2, ctx2);
+  function transform2(v, is2DMode, object, shape2) {
+    const clonedV = v.clone();
+    if (is2DMode) {
+      clonedV.sub(new Vector3(shape2.sizeX / 2, shape2.sizeY / 2, 0)).applyAxisAngle(
+        new Vector3(0, 0, 1),
+        src.utils.degToRad((shape2 == null ? void 0 : shape2.rotation) || 0)
+      ).add(new Vector3(offsetX, offsetY, 0));
+    } else {
+      clonedV.applyMatrix4(object.matrixWorld);
+    }
+    return project(clonedV, camera2, ctx2);
   }
   if (currPanel2.id.endsWith("-depth-panel")) {
     ctx2.beginPath();
@@ -33462,6 +33399,49 @@ function drawCircle(shape, ctx2, camera2, centimeters2) {
   ctx2.beginPath();
   ctx2.arc(center.x, center.y, shape.radius, 0, 2 * Math.PI);
   ctx2.fill();
+}
+let panels$1 = null;
+let currPanel$1 = null;
+function initPanels() {
+  panels$1 = document.querySelectorAll(".panel");
+  panels$1.forEach((panel) => {
+    panel.style.opacity = 0;
+    panel.style.pointerEvents = "none";
+  });
+  currPanel$1 = panels$1[0];
+  currPanel$1.style.opacity = 1;
+  currPanel$1.style.pointerEvents = "auto";
+}
+function showPanelFromRight(id) {
+  const nextPanel = document.querySelector(`#${id}`);
+  if (nextPanel === currPanel$1)
+    return;
+  currPanel$1.style.animationName = "disappear-left";
+  currPanel$1.style.animationDuration = "0.25s";
+  currPanel$1.style.animationFillMode = "forwards";
+  currPanel$1.style.pointerEvents = "none";
+  nextPanel.style.animationName = "appear-right";
+  nextPanel.style.animationDuration = "0.25s";
+  nextPanel.style.animationFillMode = "forwards";
+  nextPanel.style.pointerEvents = "auto";
+  currPanel$1 = nextPanel;
+}
+function showPanelFromLeft(id) {
+  const nextPanel = document.querySelector(`#${id}`);
+  if (nextPanel === currPanel$1)
+    return;
+  currPanel$1.style.animationName = "disappear-right";
+  currPanel$1.style.animationDuration = "0.25s";
+  currPanel$1.style.animationFillMode = "forwards";
+  currPanel$1.style.pointerEvents = "none";
+  nextPanel.style.animationName = "appear-left";
+  nextPanel.style.animationDuration = "0.25s";
+  nextPanel.style.animationFillMode = "forwards";
+  nextPanel.style.pointerEvents = "auto";
+  currPanel$1 = nextPanel;
+}
+function getCurrentPanel() {
+  return currPanel$1;
 }
 /*! *****************************************************************************
 Copyright (c) Microsoft Corporation.
@@ -53305,13 +53285,17 @@ const createShapeRectangle = (millimeters2, selected2, shapesArray2, commit2, sh
     callback(selected2);
   };
 };
-const createShapePhotoShape = (millimeters2, selected2, shapesArray2, commit2, showPanelFromLeft2, showPanelFromRight2, doCsg2, callback) => {
+const createShapePhotoShape = (millimeters2, selected2, shapesArray2, commit2, showPanelFromLeft2, showPanelFromRight2, doCsg2, display2D2, callback, callback1) => {
   document.querySelector("#upload-photo-input").onchange = (e) => {
     document.querySelector("#back-button").removeAttribute("disabled");
     document.querySelector("#back-button").onclick = () => {
       document.querySelector("#back-button").setAttribute("disabled", "");
       showPanelFromLeft2("main-panel");
+      callback1(false);
       selected2 = null;
+    };
+    document.querySelector("#edit-shape").onclick = () => {
+      callback1(true);
     };
     const file = e.target.files[0];
     if (file) {
@@ -53343,7 +53327,8 @@ const createShapePhotoShape = (millimeters2, selected2, shapesArray2, commit2, s
       }).then((blob) => {
         const formData = new FormData();
         formData.append("image", blob, "image.png");
-        return fetch("https://fm24api.com/detect_contours", {
+        return fetch("http://localhost:5000/detect_contours", {
+          // return fetch("https://fm24api.com/detect_contours", {
           method: "POST",
           body: formData
         });
@@ -53489,35 +53474,9 @@ let orthoCamera;
 let sceneCopy;
 let rendererCopy;
 let display2D = false;
-function showPanelFromRight(id) {
-  let nextPanel = document.querySelector("#" + id);
-  if (nextPanel == currPanel)
-    return;
-  currPanel.style.animationName = "disappear-left";
-  currPanel.style.animationDuration = "0.25s";
-  currPanel.style.animationFillMode = "forwards";
-  currPanel.style.pointerEvents = "none";
-  nextPanel.style.animationName = "appear-right";
-  nextPanel.style.animationDuration = "0.25s";
-  nextPanel.style.animationFillMode = "forwards";
-  nextPanel.style.pointerEvents = "auto";
-  currPanel = nextPanel;
-}
-function showPanelFromLeft(id) {
-  let nextPanel = document.querySelector("#" + id);
-  if (nextPanel == currPanel)
-    return;
-  currPanel.style.animationName = "disappear-right";
-  currPanel.style.animationDuration = "0.25s";
-  currPanel.style.animationFillMode = "forwards";
-  currPanel.style.pointerEvents = "none";
-  nextPanel.style.animationName = "appear-left";
-  nextPanel.style.animationDuration = "0.25s";
-  nextPanel.style.animationFillMode = "forwards";
-  nextPanel.style.pointerEvents = "auto";
-  currPanel = nextPanel;
-}
 function initUI() {
+  initPanels();
+  currPanel = getCurrentPanel();
   document.querySelectorAll("button").forEach((button) => {
     let { icon } = button.dataset;
     if (icon) {
@@ -53579,8 +53538,12 @@ function initUI() {
     showPanelFromLeft,
     showPanelFromRight,
     doCsg,
+    display2D,
     (modifiedSelected) => {
       selected = modifiedSelected;
+    },
+    (modifiedDisplay) => {
+      display2D = modifiedDisplay;
     }
   );
   createShapeRectangle(
@@ -54009,6 +53972,15 @@ function init3D() {
     ONE: TOUCH.ROTATE,
     TWO: TOUCH.DOLLY_PAN
   };
+  camera1 = new PerspectiveCamera(
+    50,
+    window.innerWidth / window.innerHeight,
+    1 * millimeters,
+    100 * meters
+  );
+  camera1.position.set(0, 0, 1.1 * meters);
+  camera1.up.set(0, 1, 0);
+  camera1.lookAt(0, 0, 0);
   window.addEventListener("resize", onResize);
   onResize();
   renderer.domElement.style.position = "fixed";
@@ -54208,6 +54180,9 @@ function doCsg() {
   worker.onmessage = (e) => {
     let csgModel = scene.getObjectByName("csgModel");
     if (csgModel) {
+      if (csgModel.material) {
+        csgModel.material.dispose();
+      }
       if (csgModel instanceof Mesh) {
         csgModel.geometry.dispose();
       }
@@ -54248,15 +54223,6 @@ function drawMeasurements(shape) {
   }
 }
 function onFrame() {
-  camera1 = new PerspectiveCamera(
-    50,
-    window.innerWidth / window.innerHeight,
-    1 * millimeters,
-    100 * meters
-  );
-  camera1.position.set(0, 0, 1.1 * meters);
-  camera1.up.set(0, 1, 0);
-  camera1.lookAt(0, 0, 0);
   ctx.canvas.width = ctx.canvas.width;
   ctx.canvas.height = ctx.canvas.height;
   ctx.strokeStyle = "orange";
@@ -54264,52 +54230,59 @@ function onFrame() {
   display2D ? renderer.render(scene, camera1) : renderer.render(scene, camera);
   renderer.clearDepth();
   display2D ? renderer.render(topScene, camera1) : renderer.render(topScene, camera);
+  const baseZ = 37 * centimeters;
+  const currentCamera = display2D ? camera1 : camera;
   for (let shape of shapesArray) {
-    let geom22 = shapeToGeom2(shape);
-    let geom32 = shapeToGeom3(shape);
     if (display2D) {
-      drawOutline(shape, "black", 1, 37 * centimeters, ctx, camera);
+      drawOutline(
+        shape,
+        "black",
+        1,
+        baseZ,
+        ctx,
+        currentCamera,
+        display2D,
+        renderer
+      );
     }
     if (selected === shape) {
-      drawOutline(shape, "orange", 3, 37 * centimeters, ctx, camera);
-      if (currPanel.id.endsWith("depth-panel")) {
+      drawOutline(
+        shape,
+        "orange",
+        3,
+        baseZ,
+        ctx,
+        currentCamera,
+        display2D,
+        renderer
+      );
+      if (currPanel.id.endsWith("depth-panel") && !display2D) {
         ctx.setLineDash([5, 5]);
         drawOutline(
           shape,
           "orange",
           1,
-          37 * centimeters - shape.sizeZ,
+          baseZ - shape.sizeZ,
           ctx,
-          camera
+          currentCamera,
+          display2D,
+          renderer
         );
         ctx.setLineDash([]);
       }
       drawMeasurements(shape);
-      let panel = geom2ToMesh(geom22);
-      panel.position.set(0, 0, 37 * centimeters);
-      panel.material = new MeshBasicMaterial({
-        color: "orange",
-        opacity: 0.2,
-        transparent: true,
-        depthTest: false
-      });
-      renderer.render(panel, camera);
-      panel.geometry.dispose();
-      if (currPanel.id.endsWith("depth-panel")) {
-        let body = geom3ToMesh(geom32);
-        body.position.set(0, 0, 37 * centimeters - shape.sizeZ);
-        body.material = new MeshBasicMaterial({
-          color: "orange",
-          opacity: 0.1,
-          transparent: true,
-          depthTest: false
-        });
-        renderer.render(body, camera);
-        body.geometry.dispose();
-      }
     } else {
       ctx.setLineDash([5, 5]);
-      drawOutline(shape, "gray", 1, 37 * centimeters, ctx, camera);
+      drawOutline(
+        shape,
+        "gray",
+        1,
+        baseZ,
+        ctx,
+        currentCamera,
+        display2D,
+        renderer
+      );
       ctx.setLineDash([]);
     }
   }
@@ -54333,6 +54306,7 @@ document.addEventListener("DOMContentLoaded", function() {
       myShapesContainer.style.display = "none";
       if (appendedDiv)
         appendedDiv.remove();
+      window.removeEventListener("resize", resizeHandler);
     } else {
       appendedDiv = document.createElement("div");
       appendedDiv.style.backgroundColor = getComputedStyle(myShapesButton).backgroundColor;
@@ -54344,8 +54318,8 @@ document.addEventListener("DOMContentLoaded", function() {
       appendedDiv.style.borderRadius = "3px";
       myShapesContainer.appendChild(appendedDiv);
       myShapesContainer.style.display = "block";
-      updateAppendedDivHeight();
-      window.addEventListener("resize", updateAppendedDivHeight);
+      resizeHandler = updateAppendedDivHeight;
+      window.addEventListener("resize", resizeHandler);
     }
     isOpen = !isOpen;
   });
@@ -54357,4 +54331,4 @@ document.addEventListener("DOMContentLoaded", function() {
     }
   }
 });
-//# sourceMappingURL=index-9dc799ad.js.map
+//# sourceMappingURL=index-e0379287.js.map
