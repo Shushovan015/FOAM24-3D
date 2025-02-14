@@ -401,57 +401,106 @@ export function mouseOverShape(
 //   ctx.stroke();
 // }
 
-export function drawOutline(shape, style, width, z, ctx, camera) {
+// draw outline function before converting to 2d
+// export function drawOutline(shape, style, width, z, ctx, camera, display2D) {
+//   ctx.lineWidth = width;
+//   ctx.strokeStyle = style;
+
+//   let geom2 = shapeToGeom2(shape);
+
+//   // Check if geom2 is an array or a single object
+//   if (Array.isArray(geom2)) {
+//     // Handle array of geometries
+//     for (let geom of geom2) {
+//       drawGeometry(geom, z, ctx, camera);
+//     }
+//   } else {
+//     // Handle single geometry object
+//     drawGeometry(geom2, z, ctx, camera);
+//   }
+
+//   function drawGeometry(geometry, z, ctx, camera) {
+//     ctx.beginPath();
+//     let line = geometry?.sides[0];
+//     if (line) {
+//       let p0 = project(
+//         new THREE.Vector3(line[0][0], line[0][1], z),
+//         camera,
+//         ctx
+//       );
+//       ctx.moveTo(p0.x, p0.y);
+
+//       for (let line of geometry.sides) {
+//         let p1 = project(
+//           new THREE.Vector3(line[1][0], line[1][1], z),
+//           camera,
+//           ctx
+//         );
+//         ctx.lineTo(p1.x, p1.y);
+//       }
+
+//       // Close the path by connecting to the first point
+//       let firstLine = geometry.sides[0];
+//       let p0x = project(
+//         new THREE.Vector3(firstLine[0][0], firstLine[0][1], z),
+//         camera,
+//         ctx
+//       );
+//       ctx.lineTo(p0x.x, p0x.y);
+
+//       ctx.stroke();
+//     }
+//   }
+// }
+export function drawOutline(
+  shape,
+  style,
+  width,
+  z,
+  ctx,
+  camera,
+  display2D,
+  renderer
+) {
   ctx.lineWidth = width;
   ctx.strokeStyle = style;
 
-  let geom2 = shapeToGeom2(shape);
+  const geom2 = shapeToGeom2(shape);
+  const geometries = Array.isArray(geom2) ? geom2 : [geom2];
 
-  // Check if geom2 is an array or a single object
-  if (Array.isArray(geom2)) {
-    // Handle array of geometries
-    for (let geom of geom2) {
-      drawGeometry(geom, z, ctx, camera);
-    }
-  } else {
-    // Handle single geometry object
-    drawGeometry(geom2, z, ctx, camera);
-  }
+  geometries.forEach((geometry) => {
+    if (!geometry?.sides?.length) return;
 
-  function drawGeometry(geometry, z, ctx, camera) {
     ctx.beginPath();
-    let line = geometry?.sides[0];
-    if (line) {
-      let p0 = project(
-        new THREE.Vector3(line[0][0], line[0][1], z),
-        camera,
-        ctx
-      );
-      ctx.moveTo(p0.x, p0.y);
 
-      for (let line of geometry.sides) {
-        let p1 = project(
-          new THREE.Vector3(line[1][0], line[1][1], z),
-          camera,
-          ctx
-        );
-        ctx.lineTo(p1.x, p1.y);
-      }
+    // Get first point
+    const firstPoint = geometry.sides[0][0];
+    let p0 = projectPoint(firstPoint[0], firstPoint[1], z, camera, renderer);
+    ctx.moveTo(p0.x, p0.y);
 
-      // Close the path by connecting to the first point
-      let firstLine = geometry.sides[0];
-      let p0x = project(
-        new THREE.Vector3(firstLine[0][0], firstLine[0][1], z),
-        camera,
-        ctx
-      );
-      ctx.lineTo(p0x.x, p0x.y);
+    // Draw subsequent points
+    geometry.sides.forEach((line) => {
+      const point = line[1];
+      const p1 = projectPoint(point[0], point[1], z, camera, renderer);
+      ctx.lineTo(p1.x, p1.y);
+    });
 
-      ctx.stroke();
-    }
-  }
+    // Close path
+    ctx.lineTo(p0.x, p0.y);
+    ctx.stroke();
+  });
 }
 
+// Unified projection function
+function projectPoint(x, y, z, camera, renderer) {
+  const vector = new THREE.Vector3(x, y, z);
+  vector.project(camera);
+
+  return {
+    x: ((vector.x + 1) * renderer.domElement.width) / 2,
+    y: ((1 - vector.y) * renderer.domElement.height) / 2,
+  };
+}
 export function drawMeasurementsPhotoshape(
   shape,
   ctx,
@@ -474,17 +523,36 @@ export function drawMeasurementsPhotoshape(
   const offsetY = canvasCenterY - shapeCenterY;
 
   // Modify the transformation function to include centering offset
-  function transform(v) {
-    // Center the shape by subtracting half of sizeX and sizeY
-    const centeredV = v
-      .sub(new THREE.Vector3(shape.sizeX / 2, shape.sizeY / 2, 0)) // Move shape center to (0,0)
-      .applyAxisAngle(
-        new THREE.Vector3(0, 0, 1),
-        jscad.utils.degToRad(shape?.rotation)
-      )
-      .add(new THREE.Vector3(offsetX, offsetY, 0)); // Center on canvas
+  // function transform(v) {
+  //   // Center the shape by subtracting half of sizeX and sizeY
+  //   const centeredV = v
+  //     .sub(new THREE.Vector3(shape.sizeX / 2, shape.sizeY / 2, 0)) // Move shape center to (0,0)
+  //     .applyAxisAngle(
+  //       new THREE.Vector3(0, 0, 1),
+  //       jscad.utils.degToRad(shape?.rotation)
+  //     )
+  //     .add(new THREE.Vector3(offsetX, offsetY, 0)); // Center on canvas
 
-    return project(centeredV, camera, ctx);
+  //   return project(centeredV, camera, ctx);
+  // }
+
+  function transform(v, is2DMode, object, shape) {
+    const clonedV = v.clone();
+
+    if (is2DMode) {
+      // Use offsetX/Y directly from the outer scope
+      clonedV
+        .sub(new THREE.Vector3(shape.sizeX / 2, shape.sizeY / 2, 0))
+        .applyAxisAngle(
+          new THREE.Vector3(0, 0, 1),
+          jscad.utils.degToRad(shape?.rotation || 0)
+        )
+        .add(new THREE.Vector3(offsetX, offsetY, 0)); // Direct access
+    } else {
+      clonedV.applyMatrix4(object.matrixWorld);
+    }
+
+    return project(clonedV, camera, ctx);
   }
 
   // Draw depth line if it's a depth panel

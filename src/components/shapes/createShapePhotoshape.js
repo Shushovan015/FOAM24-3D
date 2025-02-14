@@ -10,14 +10,20 @@ export const createShapePhotoShape = (
   showPanelFromLeft,
   showPanelFromRight,
   doCsg,
-  callback
+  display2D,
+  callback,
+  callback1
 ) => {
   document.querySelector("#upload-photo-input").onchange = (e) => {
     document.querySelector("#back-button").removeAttribute("disabled");
     document.querySelector("#back-button").onclick = () => {
       document.querySelector("#back-button").setAttribute("disabled", "");
       showPanelFromLeft("main-panel");
+      callback1(false);
       selected = null;
+    };
+    document.querySelector("#edit-shape").onclick = () => {
+      callback1(true);
     };
     const file = e.target.files[0];
     if (file) {
@@ -59,8 +65,8 @@ export const createShapePhotoShape = (
           const formData = new FormData();
           formData.append("image", blob, "image.png");
 
-          // return fetch("http://localhost:5000/detect_contours", {
-            return fetch("https://fm24api.com/detect_contours", {
+          return fetch("http://localhost:5000/detect_contours", {
+            // return fetch("https://fm24api.com/detect_contours", {
 
             method: "POST",
             body: formData,
@@ -116,7 +122,6 @@ export const createShapePhotoShape = (
           };
 
           shapesArray.push(shape);
-
           // Set the first shape as selected
           if (index === 0) {
             selected = shape;
@@ -127,7 +132,6 @@ export const createShapePhotoShape = (
         });
         commit();
       };
-
       // Set the image source to trigger the onload event
       imgElement.src = imageSrc;
     }

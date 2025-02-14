@@ -33,6 +33,12 @@ import {
   drawMeasurementsLine,
   drawCircle,
 } from "./src/utils/threeFunctions";
+import {
+  initPanels,
+  showPanelFromRight,
+  showPanelFromLeft,
+  getCurrentPanel,
+} from "./src/UI/panels";
 import { createPdf } from "./src/components/createPdf";
 import { createShapeCircle } from "./src/components/shapes/createShapeCircle";
 import { createShapeFreehand } from "./src/components/shapes/createShapeFreehand";
@@ -53,39 +59,12 @@ let sceneCopy;
 let rendererCopy;
 let display2D = false;
 
-function showPanelFromRight(id) {
-  let nextPanel = document.querySelector("#" + id);
-  if (nextPanel == currPanel) return;
-  currPanel.style.animationName = "disappear-left";
-  currPanel.style.animationDuration = "0.25s";
-  currPanel.style.animationFillMode = "forwards";
-  currPanel.style.pointerEvents = "none";
-  nextPanel.style.animationName = "appear-right";
-  nextPanel.style.animationDuration = "0.25s";
-  nextPanel.style.animationFillMode = "forwards";
-  nextPanel.style.pointerEvents = "auto";
-
-  currPanel = nextPanel;
-}
-
-function showPanelFromLeft(id) {
-  let nextPanel = document.querySelector("#" + id);
-  if (nextPanel == currPanel) return;
-  currPanel.style.animationName = "disappear-right";
-  currPanel.style.animationDuration = "0.25s";
-  currPanel.style.animationFillMode = "forwards";
-  currPanel.style.pointerEvents = "none";
-  nextPanel.style.animationName = "appear-left";
-  nextPanel.style.animationDuration = "0.25s";
-  nextPanel.style.animationFillMode = "forwards";
-  nextPanel.style.pointerEvents = "auto";
-
-  currPanel = nextPanel;
-}
-
 let sidebar;
 
 function initUI() {
+  initPanels();
+  // Get current panel state
+  currPanel = getCurrentPanel();
   document.querySelectorAll("button").forEach((button) => {
     let { icon } = button.dataset;
     if (icon) {
@@ -180,9 +159,13 @@ function initUI() {
     showPanelFromLeft,
     showPanelFromRight,
     doCsg,
+    display2D,
     (modifiedSelected) => {
       // Use modifiedSelected here, which contains the updated value of selected
       selected = modifiedSelected;
+    },
+    (modifiedDisplay) => {
+      display2D = modifiedDisplay;
     }
   );
 
@@ -655,6 +638,15 @@ function init3D() {
     ONE: THREE.TOUCH.ROTATE,
     TWO: THREE.TOUCH.DOLLY_PAN,
   };
+  camera1 = new THREE.PerspectiveCamera(
+    50,
+    window.innerWidth / window.innerHeight,
+    1 * millimeters,
+    100 * meters
+  );
+  camera1.position.set(0, 0, 1.1 * meters); // Adjust height as needed
+  camera1.up.set(0, 1, 0); // Orient the camera upwards
+  camera1.lookAt(0, 0, 0); // Look at the center of the scene
   window.addEventListener("resize", onResize);
   onResize();
 
@@ -885,6 +877,9 @@ function doCsg() {
   worker.onmessage = (e) => {
     let csgModel = scene.getObjectByName("csgModel");
     if (csgModel) {
+      if (csgModel.material) {
+        csgModel.material.dispose();
+      }
       if (csgModel instanceof THREE.Mesh) {
         csgModel.geometry.dispose();
       }
@@ -926,26 +921,75 @@ function drawMeasurements(shape) {
   }
 }
 
+// on frame function before the 2d implementation
+// function onFrame() {
+//   ctx.canvas.width = ctx.canvas.width;
+//   ctx.canvas.height = ctx.canvas.height;
+//   ctx.strokeStyle = "orange";
+//   //renderer.setRenderTarget(ssaaRenderTarget);
+//   renderer.clear(true);
+//   display2D ? renderer.render(scene, camera1) : renderer.render(scene, camera);
+//   renderer.clearDepth();
+//   display2D
+//     ? renderer.render(topScene, camera1)
+//     : renderer.render(topScene, camera);
+//   for (let shape of shapesArray) {
+//     let geom2 = shapeToGeom2(shape);
+//     let geom3 = shapeToGeom3(shape);
+//     if (display2D) {
+//       drawOutline(shape, "black", 1, 37 * centimeters, ctx, camera, display2D);
+//     }
+//     if (selected === shape) {
+//       drawOutline(shape, "orange", 3, 37 * centimeters, ctx, camera, display2D);
+//       if (currPanel.id.endsWith("depth-panel")) {
+//         ctx.setLineDash([5, 5]);
+//         drawOutline(
+//           shape,
+//           "orange",
+//           1,
+//           37 * centimeters - shape.sizeZ,
+//           ctx,
+//           camera,
+//           display2D
+//         );
+//         ctx.setLineDash([]);
+//       }
+//       drawMeasurements(shape);
+//       let panel = geom2ToMesh(geom2);
+//       panel.position.set(0, 0, 37 * centimeters);
+//       panel.material = new THREE.MeshBasicMaterial({
+//         color: "orange",
+//         opacity: 0.2,
+//         transparent: true,
+//         depthTest: false,
+//       });
+//       renderer.render(panel, camera);
+//       panel.geometry.dispose();
+//       if (currPanel.id.endsWith("depth-panel")) {
+//         let body = geom3ToMesh(geom3);
+//         body.position.set(0, 0, 37 * centimeters - shape.sizeZ);
+//         body.material = new THREE.MeshBasicMaterial({
+//           color: "orange",
+//           opacity: 0.1,
+//           transparent: true,
+//           depthTest: false,
+//         });
+//         renderer.render(body, camera);
+//         body.geometry.dispose();
+//       }
+//     } else {
+//       ctx.setLineDash([5, 5]);
+//       drawOutline(shape, "gray", 1, 37 * centimeters, ctx, camera, display2D);
+//       ctx.setLineDash([]);
+//     }
+//   }
+//   getCameraValue(camera1, (camera1) => {
+//     orthoCamera = camera1;
+//   });
+//   window.requestAnimationFrame(onFrame);
+// }
+
 function onFrame() {
-  camera1 = new THREE.PerspectiveCamera(
-    50,
-    window.innerWidth / window.innerHeight,
-    1 * millimeters,
-    100 * meters
-  );
-  camera1.position.set(0, 0, 1.1 * meters); // Adjust height as needed
-  camera1.up.set(0, 1, 0); // Orient the camera upwards
-  camera1.lookAt(0, 0, 0); // Look at the center of the scene
-  // camera1 = new THREE.OrthographicCamera(
-  //   -window.innerWidth / 2.9,
-  //   window.innerWidth / 2.9,
-  //   window.innerHeight / 2.9,
-  //   -window.innerHeight / 2.9,
-  //   1,
-  //   1000
-  // );
-  // camera1.position.set(0, 0, 1000);
-  // camera1.up.set(0, 0, 20);
   ctx.canvas.width = ctx.canvas.width;
   ctx.canvas.height = ctx.canvas.height;
   ctx.strokeStyle = "orange";
@@ -956,71 +1000,68 @@ function onFrame() {
   display2D
     ? renderer.render(topScene, camera1)
     : renderer.render(topScene, camera);
+  const baseZ = 37 * centimeters;
+  const currentCamera = display2D ? camera1 : camera;
   for (let shape of shapesArray) {
-    let geom2 = shapeToGeom2(shape);
-    let geom3 = shapeToGeom3(shape);
     if (display2D) {
-      drawOutline(shape, "black", 1, 37 * centimeters, ctx, camera);
+      drawOutline(
+        shape,
+        "black",
+        1,
+        baseZ,
+        ctx,
+        currentCamera,
+        display2D,
+        renderer
+      );
     }
     if (selected === shape) {
-      drawOutline(shape, "orange", 3, 37 * centimeters, ctx, camera);
-      if (currPanel.id.endsWith("depth-panel")) {
+      drawOutline(
+        shape,
+        "orange",
+        3,
+        baseZ,
+        ctx,
+        currentCamera,
+        display2D,
+        renderer
+      );
+
+      // Only show depth outline in 3D mode
+      if (currPanel.id.endsWith("depth-panel") && !display2D) {
         ctx.setLineDash([5, 5]);
         drawOutline(
           shape,
           "orange",
           1,
-          37 * centimeters - shape.sizeZ,
+          baseZ - shape.sizeZ,
           ctx,
-          camera
+          currentCamera,
+          display2D,
+          renderer
         );
         ctx.setLineDash([]);
       }
       drawMeasurements(shape);
-      let panel = geom2ToMesh(geom2);
-      panel.position.set(0, 0, 37 * centimeters);
-      panel.material = new THREE.MeshBasicMaterial({
-        color: "orange",
-        opacity: 0.2,
-        transparent: true,
-        depthTest: false,
-      });
-      renderer.render(panel, camera);
-      panel.geometry.dispose();
-      if (currPanel.id.endsWith("depth-panel")) {
-        let body = geom3ToMesh(geom3);
-        body.position.set(0, 0, 37 * centimeters - shape.sizeZ);
-        body.material = new THREE.MeshBasicMaterial({
-          color: "orange",
-          opacity: 0.1,
-          transparent: true,
-          depthTest: false,
-        });
-        renderer.render(body, camera);
-        body.geometry.dispose();
-      }
+      // ... rest of selected shape rendering ...
     } else {
       ctx.setLineDash([5, 5]);
-      drawOutline(shape, "gray", 1, 37 * centimeters, ctx, camera);
+      drawOutline(
+        shape,
+        "gray",
+        1,
+        baseZ,
+        ctx,
+        currentCamera,
+        display2D,
+        renderer
+      );
       ctx.setLineDash([]);
     }
   }
   getCameraValue(camera1, (camera1) => {
     orthoCamera = camera1;
   });
-  /*
-  if (selected === null) {
-  for (let shape of shapesArray) {
-    let geom2 = shapeToGeom2(shape)
-    let geom3 = shapeToGeom3(shape)
-    ctx.setLineDash([5, 5]);        
-    drawOutline(shape, "gray", 1, 37*centimeters);
-    ctx.setLineDash([]);  
-  }
-  }
-  */
-  //renderer.setRenderTarget(null);
-  //renderer.render(postScene, postCamera)
   window.requestAnimationFrame(onFrame);
 }
 
@@ -1042,6 +1083,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (isOpen) {
       myShapesContainer.style.display = "none";
       if (appendedDiv) appendedDiv.remove();
+      window.removeEventListener("resize", resizeHandler);
     } else {
       // Create a new div element
       appendedDiv = document.createElement("div");
@@ -1063,8 +1105,10 @@ document.addEventListener("DOMContentLoaded", function () {
       myShapesContainer.style.display = "block";
 
       // Update the height initially and listen for window resize
-      updateAppendedDivHeight();
-      window.addEventListener("resize", updateAppendedDivHeight);
+      resizeHandler = updateAppendedDivHeight;
+      window.addEventListener("resize", resizeHandler);
+      // updateAppendedDivHeight();
+      // window.addEventListener("resize", updateAppendedDivHeight);
     }
     isOpen = !isOpen;
   });
