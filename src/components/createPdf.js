@@ -1,4 +1,6 @@
 import * as PDF from "pdf-lib";
+import templateUrl from "../assets/pdf-template.pdf";
+import { drawResponsiveText } from "../utils/common";
 
 export const createPdf = (
   foam,
@@ -10,13 +12,19 @@ export const createPdf = (
   lowestPoint
 ) => {
   document.querySelector("#pdf-button").onclick = async () => {
+    const templateBytes = await fetch(templateUrl).then((res) =>
+      res.arrayBuffer()
+    );
+    const templatePdf = await PDF.PDFDocument.load(templateBytes);
     let pdf = await PDF.PDFDocument.create();
     let font = await pdf.embedFont(PDF.StandardFonts.Helvetica);
 
     //PDF.PDFDocument.create().then((pdf) => {
-    let w = PDF.PageSizes.A3[1];
-    let h = PDF.PageSizes.A3[0];
-    let page = pdf.addPage([w, h]);
+    const [templatePage] = await pdf.copyPages(templatePdf, [0]);
+    pdf.addPage(templatePage);
+    const page = templatePage;
+    const w = page.getWidth();
+    const h = page.getHeight();
 
     //page.drawText("Hello, world!")
 
@@ -140,86 +148,55 @@ export const createPdf = (
 
     // Calculate all the measurements we want for each of the shapes
     shapesArray.forEach((shape) => {
-      // Points
-      let l = leftestPoint(shape, shapeToGeom2);
-      let r = rightestPoint(shape, shapeToGeom2);
-      let t = highestPoint(shape, shapeToGeom2);
-      let b = lowestPoint(shape, shapeToGeom2);
-      let c = [(l[0] + r[0]) / 2, (t[1] + b[1]) / 2];
-      // Width measurements
-      {
-        let m = {};
-        (m.points = [l, r]), (m.values = [l[0], r[0]]);
-        m.magnitude = r[0] - l[0];
-        m.overlaps = [];
-        m.type = "width";
-        if (c[1] < 0) {
-          measurements.bottom.push(m);
-          //debugger
-        } else {
-          measurements.top.push(m);
-          //debugger
-        }
-      }
-      // Height measurements
-      {
-        let m = {};
-        (m.points = [b, t]), (m.values = [b[1], t[1]]);
-        m.magnitude = t[1] - b[1];
-        m.overlaps = [];
-        m.type = "height";
-        if (c[0] < 0) {
-          measurements.left.push(m);
-          //debugger
-        } else {
-          measurements.right.push(m);
-          //debugger
-        }
-      }
+      const l = leftestPoint(shape, shapeToGeom2);
+      const r = rightestPoint(shape, shapeToGeom2);
+      const t = highestPoint(shape, shapeToGeom2);
+      const b = lowestPoint(shape, shapeToGeom2);
+      const c = [(l[0] + r[0]) / 2, (t[1] + b[1]) / 2];
+
+      // width
+      const wm = { points: [l, r], values: [l[0], r[0]] };
+      wm.magnitude = r[0] - l[0];
+      wm.overlaps = [];
+      (c[1] < 0 ? measurements.bottom : measurements.top).push(wm);
+
+      // height
+      const hm = { points: [b, t], values: [b[1], t[1]] };
+      hm.magnitude = t[1] - b[1];
+      hm.overlaps = [];
+      (c[0] < 0 ? measurements.left : measurements.right).push(hm);
     });
 
-    // Calculate overlaps for each group of measurments
     ["left", "right", "top", "bottom"].forEach((dir) => {
-      for (let m of measurements[dir]) {
-        for (let other of measurements[dir]) {
-          if (m === other) {
-            continue;
-          }
-          if (m.values[0] < other.values[1] && m.values[1] > other.values[0]) {
-            m.overlaps.push(other);
+      for (const m of measurements[dir]) {
+        for (const o of measurements[dir]) {
+          if (
+            m !== o &&
+            m.values[0] < o.values[1] &&
+            m.values[1] > o.values[0]
+          ) {
+            m.overlaps.push(o);
           }
         }
       }
-    });
 
-    // Split each group of measurements into non-overlapping sets using DFS
-    ["left", "right", "top", "bottom"].forEach((dir) => {
-      let currentSet = [];
-      let sets = [];
-      let visited = new Set();
+      const sets = [],
+        visited = new Set();
       function dfs(m) {
-        if (visited.has(m)) return;
+        if (visited.has(m)) return [];
         visited.add(m);
-        currentSet.push(m);
-        for (let next of m.overlaps) {
-          dfs(next);
-        }
+        return [m, ...m.overlaps.flatMap(dfs)];
       }
-      for (let m of measurements[dir]) {
-        dfs(m);
-
-        // Also sort the set by measurement magnitude (smaller first)
-        currentSet.sort((a, b) => a.magnitude < b.magnitude);
-
-        if (currentSet.length > 0) {
-          sets.push(currentSet);
+      for (const m of measurements[dir]) {
+        if (!visited.has(m)) {
+          const group = dfs(m).sort((a, b) => a.magnitude - b.magnitude);
+          sets.push(group);
         }
-        currentSet = [];
       }
       measurements[dir] = sets;
     });
 
-    drawShape(foam);
+    // drawShape(foam);
     shapesArray.forEach((shape) => drawShape(shape));
     shapesArray.forEach((shape) => drawDepthMeasurement(shape));
     // shapesArray.forEach((shape) => drawHeightMeasurement(shape))
@@ -227,143 +204,144 @@ export const createPdf = (
 
     // Draw each set of measurements
 
-    measurements.left.forEach((ms) => {
-      let margin = -foam.sizeX / 2 - 15;
-      for (let m of ms) {
-        // Helper lines
-        for (let p of m.points) {
-          page.drawLine({
-            start: { x: p[0] + w / 2, y: p[1] + h / 2 },
-            end: { x: margin + w / 2, y: p[1] + h / 2 },
-            opacity: 0.5,
+    const drawMeasurements = (
+      sets,
+      getMargin,
+      setMargin,
+      drawOffset,
+      rotate = false
+    ) => {
+      sets.forEach((group) => {
+        let margin = getMargin();
+        group.forEach((m) => {
+          m.points.forEach((p) => {
+            const px = p[0] + w / 2;
+            const py = p[1] + h / 2;
+            const mx = rotate ? margin + w / 2 : px;
+            const my = rotate ? py : margin + h / 2;
+            page.drawLine({
+              start: { x: px, y: py },
+              end: { x: mx, y: my },
+              opacity: 0.5,
+            });
           });
-        }
-        page.drawLine({
-          start: { x: margin + 5 + w / 2, y: m.points[0][1] + h / 2 },
-          end: { x: margin + 5 + w / 2, y: m.points[1][1] + h / 2 },
-          opacity: 0.5,
+
+          const mid = rotate
+            ? (m.points[0][1] + m.points[1][1]) / 2
+            : (m.points[0][0] + m.points[1][0]) / 2;
+
+          const fontSize = 16;
+          const text = m.magnitude.toFixed(2);
+          const textW = font.widthOfTextAtSize(text, fontSize);
+          const textH = font.heightAtSize(fontSize);
+
+          if (rotate) {
+            page.drawLine({
+              start: { x: margin + 5 + w / 2, y: m.points[0][1] + h / 2 },
+              end: { x: margin + 5 + w / 2, y: m.points[1][1] + h / 2 },
+              opacity: 0.5,
+            });
+            page.drawText(text, {
+              x: margin + w / 2 - textH / 2,
+              y: mid + h / 2 - textW / 2,
+              size: fontSize,
+              rotate: { angle: 90, type: "degrees" },
+              font,
+            });
+          } else {
+            page.drawLine({
+              start: { x: m.points[0][0] + w / 2, y: margin + 5 + h / 2 },
+              end: { x: m.points[1][0] + w / 2, y: margin + 5 + h / 2 },
+              opacity: 0.5,
+            });
+            page.drawText(text, {
+              x: mid + w / 2 - textW / 2,
+              y: margin + h / 2 + textH / 2 - 2,
+              size: fontSize,
+              font,
+            });
+          }
+          setMargin(textH * 2);
         });
-        let mid = (m.points[0][1] + m.points[1][1]) / 2;
-        let fontSize = 16;
-        let text = m.magnitude.toFixed(2);
-        let textw = font.widthOfTextAtSize(text, fontSize);
-        let texth = font.heightAtSize(fontSize);
-        page.drawText(text, {
-          x: margin + w / 2 - texth / 2,
-          y: mid + h / 2 - textw / 2,
-          size: fontSize,
-          rotate: { angle: 90, type: "degrees" },
-        });
-        margin -= texth * 2;
-      }
-    });
+      });
+    };
+    const SAFE_MARGIN = 20;
+    // let lMargin = -w / 2 - 15;
+    let lMargin = -w / 2 + SAFE_MARGIN;
+    drawMeasurements(
+      measurements.left,
+      () => lMargin,
+      (d) => (lMargin -= d),
+      5,
+      true
+    );
 
-    measurements.right.forEach((ms) => {
-      let margin = foam.sizeX / 2 + 15;
-      for (let m of ms) {
-        // Helper lines
-        for (let p of m.points) {
-          page.drawLine({
-            start: { x: p[0] + w / 2, y: p[1] + h / 2 },
-            end: { x: margin + w / 2, y: p[1] + h / 2 },
-            opacity: 0.5,
-          });
-        }
-        page.drawLine({
-          start: { x: margin - 5 + w / 2, y: m.points[0][1] + h / 2 },
-          end: { x: margin - 5 + w / 2, y: m.points[1][1] + h / 2 },
-          opacity: 0.5,
-        });
-        let mid = (m.points[0][1] + m.points[1][1]) / 2;
-        let fontSize = 16;
-        let text = m.magnitude.toFixed(2);
-        let textw = font.widthOfTextAtSize(text, fontSize);
-        let texth = font.heightAtSize(fontSize);
-        page.drawText(text, {
-          x: margin + w / 2 + texth / 2,
-          y: mid + h / 2 - textw / 2,
-          size: fontSize,
-          rotate: { angle: 90, type: "degrees" },
-        });
-        margin += texth * 2;
-      }
-    });
+    // let rMargin = w / 2 + 15;
+    let rMargin = w / 2 - SAFE_MARGIN;
+    drawMeasurements(
+      measurements.right,
+      () => rMargin,
+      (d) => (rMargin += d),
+      -5,
+      true
+    );
 
-    measurements.top.forEach((ms) => {
-      let margin = foam.sizeY / 2 + 15;
-      for (let m of ms) {
-        // Helper lines
-        for (let p of m.points) {
-          page.drawLine({
-            start: { x: p[0] + w / 2, y: p[1] + h / 2 },
-            end: { x: p[0] + w / 2, y: margin + h / 2 },
-            opacity: 0.5,
-          });
-        }
-        page.drawLine({
-          start: { x: m.points[0][0] + w / 2, y: margin - 5 + h / 2 },
-          end: { x: m.points[1][0] + w / 2, y: margin - 5 + h / 2 },
-          opacity: 0.5,
-        });
-        let mid = (m.points[0][0] + m.points[1][0]) / 2;
-        let fontSize = 16;
-        let text = m.magnitude.toFixed(2);
+    // let tMargin = h / 2 + 15;
+    let tMargin = h / 2 - SAFE_MARGIN;
+    drawMeasurements(
+      measurements.top,
+      () => tMargin,
+      (d) => (tMargin += d),
+      -5,
+      false
+    );
 
-        let textw = font.widthOfTextAtSize(text, fontSize);
-        let texth = font.heightAtSize(fontSize);
+    // let bMargin = -h / 2 - 15;
+    let bMargin = -h / 2 + SAFE_MARGIN;
+    drawMeasurements(
+      measurements.bottom,
+      () => bMargin,
+      (d) => (bMargin -= d),
+      5,
+      false
+    );
+    const OFFSET_Y = 8;
+    const formData = {
+      kunde: "Müller GmbH",
+      zeichnung: "123-456",
+      beschreibung: "Abdeckplatte für Elektronikgehäuse",
+      projekt: "Projekt Phoenix",
+      material: "PA66 GF30",
+      gewicht: "245g",
+    };
 
-        page.drawText(text, {
-          x: mid + w / 2 - textw / 2,
-          y: margin + h / 2 + texth / 2 - 2,
-          size: fontSize,
-        });
-        margin += texth * 2;
-      }
-    });
+    // Adjusted Y positions (shifted up slightly)
+    drawResponsiveText(page, font, formData.kunde, 920, 115 + OFFSET_Y, 200);
+    drawResponsiveText(
+      page,
+      font,
+      formData.zeichnung,
+      1050,
+      115 + OFFSET_Y,
+      120
+    );
+    drawResponsiveText(
+      page,
+      font,
+      formData.beschreibung,
+      920,
+      95 + OFFSET_Y,
+      250
+    );
+    drawResponsiveText(page, font, formData.projekt, 920, 75 + OFFSET_Y, 200);
+    drawResponsiveText(page, font, formData.material, 1050, 55 + OFFSET_Y, 120);
+    drawResponsiveText(page, font, formData.gewicht, 1050, 135 + OFFSET_Y, 80);
 
-    measurements.bottom.forEach((ms) => {
-      let margin = -foam.sizeY / 2 - 15;
-      for (let m of ms) {
-        // Helper lines
-        for (let p of m.points) {
-          page.drawLine({
-            start: { x: p[0] + w / 2, y: p[1] + h / 2 },
-            end: { x: p[0] + w / 2, y: margin + h / 2 },
-            opacity: 0.5,
-          });
-        }
-        page.drawLine({
-          start: { x: m.points[0][0] + w / 2, y: margin + 5 + h / 2 },
-          end: { x: m.points[1][0] + w / 2, y: margin + 5 + h / 2 },
-          opacity: 0.5,
-        });
-        let mid = (m.points[0][0] + m.points[1][0]) / 2;
-        let fontSize = 16;
-        let text = m.magnitude.toFixed(2);
-
-        let textw = font.widthOfTextAtSize(text, fontSize);
-        let texth = font.heightAtSize(fontSize);
-
-        page.drawText(text, {
-          x: mid + w / 2 - textw / 2,
-          y: margin + h / 2 - texth / 2,
-          size: fontSize,
-        });
-        margin -= texth * 2;
-      }
-    });
-
-    //return pdf.save()
-    //}).then((bytes) => {
-
-    let bytes = await pdf.save();
-
-    let link = document.createElement("a");
-    let blob = new Blob([bytes], { type: "application/pdf" });
-    let url = URL.createObjectURL(blob);
-    link.href = url;
-    link.setAttribute("download", "test.pdf");
+    const bytes = await pdf.save();
+    const blob = new Blob([bytes], { type: "application/pdf" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "custom_drawing.pdf";
     link.click();
-    //})
   };
 };

@@ -233,3 +233,25 @@ function draw3dLine(p0, p1, camera) {
     ctx.arc(p0.x, p0.y, 4, 0, 2*Math.PI);
     ctx.fill();      
     */
+
+export function drawResponsiveText(
+  page,
+  font,
+  text,
+  x,
+  y,
+  maxWidth,
+  maxFontSize = 10
+) {
+  let fontSize = maxFontSize;
+  while (font.widthOfTextAtSize(text, fontSize) > maxWidth && fontSize > 4) {
+    fontSize -= 0.5;
+  }
+
+  page.drawText(text, {
+    x,
+    y,
+    size: fontSize,
+    font,
+  });
+}
