@@ -31,9 +31,25 @@
             <button class="column grow blue" id="checkout-button" disabled data-icon="shopping_cart">Checkout</button>
             <!-- <button class="column grow blue" id="save-button" data-icon="cloud_upload">Save</button> -->
           </div>
-          <div class="group">
-            <button class="grow white" id="pdf-button"  data-icon="picture_as_pdf">Export to PDF</button>
+          <div class="group" style="position: relative; display: inline-block;">
+            <button class="grow white" id="export-dropdown-button" data-icon="description">
+              Export as Document
+            </button>
+          
+            <div id="export-dropdown" style="display: none; z-index: 1000;">
+              <button class="column grow white" data-icon="precision_manufacturing" id="dfx-button">
+                Export CNC-compatible file
+              </button>
+              <button class="column grow white" data-icon="picture_as_pdf" id="pdf-button">
+                Export PDF technical drawing
+              </button>
+              <button class="column grow white" data-icon="image" id="export-image">
+                Export rendered image of the shape
+              </button>
+            </div>
           </div>
+          
+          
         </div><!--panel-->
         <div class="panel" id="shapes-panel">
           <div class="group">
@@ -95,6 +111,25 @@
           </div>
           <div class="group">
             <button class="column grow white" id="edit-shape" data-icon="play_shapes">Edit shapes</button>
+          </div>
+          <div class="group">
+            <label for="pointsCount" style="color: white; padding-right: 5px;">Points:</label>
+            <input 
+              type="range"
+              class="column grow" 
+              id="pointsCount" 
+              name="pointsCount" 
+              value="1" 
+              min="1" 
+              max="5" 
+            />
+                <!-- <input id="points-input" class="column" style="width:auto;" type="number" min="1" max="5" value="1"> -->
+          </div>
+          <div class="group">
+            <div id="navButtons" class="column grow white" style="display: flex; gap: 10px; margin-top: 10px;">
+              <button id="prevBtn">Previous</button>
+              <button id="nextBtn">Next</button>
+            </div>            
           </div>
         </div>      
         <div class="panel" id="radius-panel">

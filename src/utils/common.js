@@ -157,6 +157,10 @@ export function getBase64(file) {
   });
 }
 
+export function generateId() {
+  return `shape-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+}
+
 /* between 786 and 790
 function draw3dLine(p0, p1, camera) {
     let p0_ = p0.project(camera).multiply(new THREE.Vector3(1,-1,1)).addScalar(1.0).multiplyScalar(0.5).multiply(new THREE.Vector3(ctx.canvas.width, ctx.canvas.height, 1))

@@ -1,3 +1,4 @@
+import { generateId } from "../../utils/common";
 export const createShapeCircle = (
   millimeters,
   selected,
@@ -17,6 +18,7 @@ export const createShapeCircle = (
     };
 
     let shape = {
+      id: generateId(),
       kind: "circle",
       x: 0, // mouseRayPlaneIntersection.x,
       y: 0, // mouseRayPlaneIntersection.y,

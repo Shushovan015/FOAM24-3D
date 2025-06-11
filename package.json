@@ -15,6 +15,7 @@
   "dependencies": {
     "@jscad/modeling": "^2.11.0",
     "axios": "^1.7.5",
+    "dxf-writer": "^1.18.4",
     "earcut": "^2.2.4",
     "image-outline": "^0.1.0",
     "opencv.js": "^1.2.1",

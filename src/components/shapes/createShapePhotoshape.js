@@ -1,6 +1,6 @@
 import axios from "axios";
 import * as getImageOutline from "image-outline";
-import { getBase64 } from "../../utils/common";
+import { getBase64, generateId } from "../../utils/common";
 
 export const createShapePhotoShape = (
   millimeters,
@@ -12,7 +12,11 @@ export const createShapePhotoShape = (
   doCsg,
   display2D,
   callback,
-  callback1
+  callback1,
+  camera,
+  renderer,
+  scene
+  // createEditor
 ) => {
   document.querySelector("#upload-photo-input").onchange = (e) => {
     document.querySelector("#back-button").removeAttribute("disabled");
@@ -47,7 +51,8 @@ export const createShapePhotoShape = (
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              "X-API-Key": "ivUjq457ecL51sn2vzD2umUw",
+              // "X-API-Key": "ivUjq457ecL51sn2vzD2umUw",
+              "X-API-Key": "y7X524wbiR3cUWL9AinkUAqq",
             },
             body: JSON.stringify({
               image_file_b64: base64Image,
@@ -111,6 +116,7 @@ export const createShapePhotoShape = (
 
         contoursData.forEach((contour, index) => {
           let shape = {
+            id: generateId(),
             kind: "polygon",
             x: -225, // Update x based on requirements
             y: -225, // Update y based on requirements
