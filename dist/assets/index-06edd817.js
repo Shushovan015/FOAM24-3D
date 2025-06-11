@@ -1,3 +1,10 @@
+var __defProp = Object.defineProperty;
+var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField = (obj, key, value) => {
+  __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
+  return value;
+};
+var _a;
 (function polyfill() {
   const relList = document.createElement("link").relList;
   if (relList && relList.supports && relList.supports("modulepreload")) {
@@ -223,6 +230,7 @@ class EventDispatcher {
   }
 }
 const _lut = ["00", "01", "02", "03", "04", "05", "06", "07", "08", "09", "0a", "0b", "0c", "0d", "0e", "0f", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "1a", "1b", "1c", "1d", "1e", "1f", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "2a", "2b", "2c", "2d", "2e", "2f", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "3a", "3b", "3c", "3d", "3e", "3f", "40", "41", "42", "43", "44", "45", "46", "47", "48", "49", "4a", "4b", "4c", "4d", "4e", "4f", "50", "51", "52", "53", "54", "55", "56", "57", "58", "59", "5a", "5b", "5c", "5d", "5e", "5f", "60", "61", "62", "63", "64", "65", "66", "67", "68", "69", "6a", "6b", "6c", "6d", "6e", "6f", "70", "71", "72", "73", "74", "75", "76", "77", "78", "79", "7a", "7b", "7c", "7d", "7e", "7f", "80", "81", "82", "83", "84", "85", "86", "87", "88", "89", "8a", "8b", "8c", "8d", "8e", "8f", "90", "91", "92", "93", "94", "95", "96", "97", "98", "99", "9a", "9b", "9c", "9d", "9e", "9f", "a0", "a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8", "a9", "aa", "ab", "ac", "ad", "ae", "af", "b0", "b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8", "b9", "ba", "bb", "bc", "bd", "be", "bf", "c0", "c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8", "c9", "ca", "cb", "cc", "cd", "ce", "cf", "d0", "d1", "d2", "d3", "d4", "d5", "d6", "d7", "d8", "d9", "da", "db", "dc", "dd", "de", "df", "e0", "e1", "e2", "e3", "e4", "e5", "e6", "e7", "e8", "e9", "ea", "eb", "ec", "ed", "ee", "ef", "f0", "f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8", "f9", "fa", "fb", "fc", "fd", "fe", "ff"];
+let _seed = 1234567;
 const DEG2RAD = Math.PI / 180;
 const RAD2DEG = 180 / Math.PI;
 function generateUUID() {
@@ -239,14 +247,106 @@ function clamp(value, min2, max2) {
 function euclideanModulo(n, m) {
   return (n % m + m) % m;
 }
+function mapLinear(x, a1, a2, b1, b2) {
+  return b1 + (x - a1) * (b2 - b1) / (a2 - a1);
+}
+function inverseLerp(x, y, value) {
+  if (x !== y) {
+    return (value - x) / (y - x);
+  } else {
+    return 0;
+  }
+}
 function lerp$2(x, y, t) {
   return (1 - t) * x + t * y;
+}
+function damp(x, y, lambda, dt) {
+  return lerp$2(x, y, 1 - Math.exp(-lambda * dt));
+}
+function pingpong(x, length2 = 1) {
+  return length2 - Math.abs(euclideanModulo(x, length2 * 2) - length2);
+}
+function smoothstep(x, min2, max2) {
+  if (x <= min2)
+    return 0;
+  if (x >= max2)
+    return 1;
+  x = (x - min2) / (max2 - min2);
+  return x * x * (3 - 2 * x);
+}
+function smootherstep(x, min2, max2) {
+  if (x <= min2)
+    return 0;
+  if (x >= max2)
+    return 1;
+  x = (x - min2) / (max2 - min2);
+  return x * x * x * (x * (x * 6 - 15) + 10);
+}
+function randInt(low, high) {
+  return low + Math.floor(Math.random() * (high - low + 1));
+}
+function randFloat(low, high) {
+  return low + Math.random() * (high - low);
+}
+function randFloatSpread(range2) {
+  return range2 * (0.5 - Math.random());
+}
+function seededRandom(s) {
+  if (s !== void 0)
+    _seed = s;
+  let t = _seed += 1831565813;
+  t = Math.imul(t ^ t >>> 15, t | 1);
+  t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+  return ((t ^ t >>> 14) >>> 0) / 4294967296;
+}
+function degToRad$1(degrees2) {
+  return degrees2 * DEG2RAD;
+}
+function radToDeg$1(radians) {
+  return radians * RAD2DEG;
 }
 function isPowerOfTwo(value) {
   return (value & value - 1) === 0 && value !== 0;
 }
+function ceilPowerOfTwo(value) {
+  return Math.pow(2, Math.ceil(Math.log(value) / Math.LN2));
+}
 function floorPowerOfTwo(value) {
   return Math.pow(2, Math.floor(Math.log(value) / Math.LN2));
+}
+function setQuaternionFromProperEuler(q, a, b, c2, order) {
+  const cos2 = Math.cos;
+  const sin2 = Math.sin;
+  const c22 = cos2(b / 2);
+  const s2 = sin2(b / 2);
+  const c13 = cos2((a + c2) / 2);
+  const s13 = sin2((a + c2) / 2);
+  const c1_3 = cos2((a - c2) / 2);
+  const s1_3 = sin2((a - c2) / 2);
+  const c3_1 = cos2((c2 - a) / 2);
+  const s3_1 = sin2((c2 - a) / 2);
+  switch (order) {
+    case "XYX":
+      q.set(c22 * s13, s2 * c1_3, s2 * s1_3, c22 * c13);
+      break;
+    case "YZY":
+      q.set(s2 * s1_3, c22 * s13, s2 * c1_3, c22 * c13);
+      break;
+    case "ZXZ":
+      q.set(s2 * c1_3, s2 * s1_3, c22 * s13, c22 * c13);
+      break;
+    case "XZX":
+      q.set(c22 * s13, s2 * s3_1, s2 * c3_1, c22 * c13);
+      break;
+    case "YXY":
+      q.set(s2 * c3_1, c22 * s13, s2 * s3_1, c22 * c13);
+      break;
+    case "ZYZ":
+      q.set(s2 * s3_1, s2 * c3_1, c22 * s13, c22 * c13);
+      break;
+    default:
+      console.warn("THREE.MathUtils: .setQuaternionFromProperEuler() encountered an unknown order: " + order);
+  }
 }
 function denormalize(value, array) {
   switch (array.constructor) {
@@ -280,6 +380,33 @@ function normalize$4(value, array) {
       throw new Error("Invalid component type.");
   }
 }
+var MathUtils = /* @__PURE__ */ Object.freeze({
+  __proto__: null,
+  DEG2RAD,
+  RAD2DEG,
+  ceilPowerOfTwo,
+  clamp,
+  damp,
+  degToRad: degToRad$1,
+  denormalize,
+  euclideanModulo,
+  floorPowerOfTwo,
+  generateUUID,
+  inverseLerp,
+  isPowerOfTwo,
+  lerp: lerp$2,
+  mapLinear,
+  normalize: normalize$4,
+  pingpong,
+  radToDeg: radToDeg$1,
+  randFloat,
+  randFloatSpread,
+  randInt,
+  seededRandom,
+  setQuaternionFromProperEuler,
+  smootherstep,
+  smoothstep
+});
 class Vector2 {
   constructor(x = 0, y = 0) {
     Vector2.prototype.isVector2 = true;
@@ -17238,7 +17365,7 @@ const _end$1 = /* @__PURE__ */ new Vector3();
 const _inverseMatrix$1 = /* @__PURE__ */ new Matrix4();
 const _ray$1 = /* @__PURE__ */ new Ray();
 const _sphere$1 = /* @__PURE__ */ new Sphere();
-class Line extends Object3D {
+let Line$2 = class Line extends Object3D {
   constructor(geometry = new BufferGeometry(), material = new LineBasicMaterial()) {
     super();
     this.isLine = true;
@@ -17363,10 +17490,10 @@ class Line extends Object3D {
       }
     }
   }
-}
+};
 const _start = /* @__PURE__ */ new Vector3();
 const _end = /* @__PURE__ */ new Vector3();
-class LineSegments extends Line {
+class LineSegments extends Line$2 {
   constructor(geometry, material) {
     super(geometry, material);
     this.isLineSegments = true;
@@ -21342,6 +21469,21 @@ function getBase64(file) {
     reader.onloadend = () => resolve(reader.result.split(",")[1]);
     reader.onerror = (error2) => reject(error2);
     reader.readAsDataURL(file);
+  });
+}
+function generateId() {
+  return `shape-${Date.now()}-${Math.floor(Math.random() * 1e4)}`;
+}
+function drawResponsiveText(page, font, text2, x, y, maxWidth, maxFontSize = 10) {
+  let fontSize = maxFontSize;
+  while (font.widthOfTextAtSize(text2, fontSize) > maxWidth && fontSize > 4) {
+    fontSize -= 0.5;
+  }
+  page.drawText(text2, {
+    x,
+    y,
+    size: fontSize,
+    font
   });
 }
 const buttonClick = (buttonName, panelLeft, panelRight, selected2, showPanelFromLeft2, showPanelFromRight2, additionalCallback = () => {
@@ -30727,7 +30869,7 @@ let VertexList$1 = class VertexList {
   }
 };
 var VertexList_1 = VertexList$1;
-let Vertex$1 = class Vertex {
+let Vertex$3 = class Vertex {
   constructor(point, index) {
     this.point = point;
     this.index = index;
@@ -30736,7 +30878,7 @@ let Vertex$1 = class Vertex {
     this.face = null;
   }
 };
-var Vertex_1 = Vertex$1;
+var Vertex_1$1 = Vertex$3;
 const distance = distance_1$1;
 const squaredDistance = squaredDistance_1$1;
 let HalfEdge$1 = class HalfEdge {
@@ -30789,7 +30931,7 @@ const HalfEdge2 = HalfEdge_1;
 const VISIBLE$1 = 0;
 const NON_CONVEX$1 = 1;
 const DELETED$1 = 2;
-let Face$1 = class Face {
+let Face$3 = class Face {
   constructor() {
     this.normal = [];
     this.centroid = [];
@@ -30973,18 +31115,18 @@ let Face$1 = class Face {
     return face;
   }
 };
-var Face_1 = {
+var Face_1$1 = {
   VISIBLE: VISIBLE$1,
   NON_CONVEX: NON_CONVEX$1,
   DELETED: DELETED$1,
-  Face: Face$1
+  Face: Face$3
 };
 const dot = dot_1$2;
 const pointLineDistance = pointLineDistance_1;
 const getPlaneNormal = getPlaneNormal$1;
 const VertexList2 = VertexList_1;
-const Vertex2 = Vertex_1;
-const { Face: Face2, VISIBLE, NON_CONVEX, DELETED } = Face_1;
+const Vertex$2 = Vertex_1$1;
+const { Face: Face$2, VISIBLE, NON_CONVEX, DELETED } = Face_1$1;
 const MERGE_NON_CONVEX_WRT_LARGER_FACE = 1;
 const MERGE_NON_CONVEX = 2;
 let QuickHull$1 = class QuickHull {
@@ -31004,7 +31146,7 @@ let QuickHull$1 = class QuickHull {
     this.unclaimed = new VertexList2();
     this.vertices = [];
     for (let i = 0; i < points.length; i += 1) {
-      this.vertices.push(new Vertex2(points[i], i));
+      this.vertices.push(new Vertex$2(points[i], i));
     }
     this.discardedFaces = [];
     this.vertexPointIndices = [];
@@ -31205,10 +31347,10 @@ let QuickHull$1 = class QuickHull {
     const faces = [];
     if (dot(v3.point, normal2) - distPO < 0) {
       faces.push(
-        Face2.createTriangle(v0, v12, v22),
-        Face2.createTriangle(v3, v12, v0),
-        Face2.createTriangle(v3, v22, v12),
-        Face2.createTriangle(v3, v0, v22)
+        Face$2.createTriangle(v0, v12, v22),
+        Face$2.createTriangle(v3, v12, v0),
+        Face$2.createTriangle(v3, v22, v12),
+        Face$2.createTriangle(v3, v0, v22)
       );
       for (i = 0; i < 3; i += 1) {
         const j2 = (i + 1) % 3;
@@ -31217,10 +31359,10 @@ let QuickHull$1 = class QuickHull {
       }
     } else {
       faces.push(
-        Face2.createTriangle(v0, v22, v12),
-        Face2.createTriangle(v3, v0, v12),
-        Face2.createTriangle(v3, v12, v22),
-        Face2.createTriangle(v3, v22, v0)
+        Face$2.createTriangle(v0, v22, v12),
+        Face$2.createTriangle(v3, v0, v12),
+        Face$2.createTriangle(v3, v12, v22),
+        Face$2.createTriangle(v3, v22, v0)
       );
       for (i = 0; i < 3; i += 1) {
         const j2 = (i + 1) % 3;
@@ -31346,7 +31488,7 @@ let QuickHull$1 = class QuickHull {
    * @return {HalfEdge} The half edge whose vertex is the eyeVertex
    */
   addAdjoiningFace(eyeVertex, horizonEdge) {
-    const face = Face2.createTriangle(
+    const face = Face$2.createTriangle(
       eyeVertex,
       horizonEdge.tail(),
       horizonEdge.head()
@@ -32842,7 +32984,7 @@ function project(p0, camera2, ctx2) {
   return p0.project(camera2).multiply(new Vector3(1, -1, 1)).addScalar(1).multiplyScalar(0.5).multiply(new Vector3(ctx2.canvas.width, ctx2.canvas.height, 1));
 }
 function shapeToGeom2(shape) {
-  var _a;
+  var _a2;
   switch (shape == null ? void 0 : shape.kind) {
     case "circle":
       return src.primitives.circle({
@@ -32884,19 +33026,19 @@ function shapeToGeom2(shape) {
         console.error("Invalid shape.polygon:", shape.polygon);
         return [];
       }
-      let photoshapePolygons = (_a = (shape == null ? void 0 : shape.polygon) || []) == null ? void 0 : _a.map((contour, index) => {
-        var _a2, _b;
+      let photoshapePolygons = (_a2 = (shape == null ? void 0 : shape.polygon) || []) == null ? void 0 : _a2.map((contour, index) => {
+        var _a3, _b;
         if (!Array.isArray(contour)) {
           console.error(`Contour at index ${index} is not an array:`, contour);
           return [];
         }
-        let transformedContour = (_b = (_a2 = contour == null ? void 0 : contour.map((point) => {
+        let transformedContour = (_b = (_a3 = contour == null ? void 0 : contour.map((point) => {
           if (!Array.isArray(point) || point.length !== 2) {
             console.error("Invalid point in contour:", point);
             return [0, 0];
           }
           return [point[0], point[1]];
-        })) == null ? void 0 : _a2.map(
+        })) == null ? void 0 : _a3.map(
           (v) => src.maths.vec2.rotate(
             v,
             v,
@@ -32907,8 +33049,8 @@ function shapeToGeom2(shape) {
         return transformedContour;
       });
       return photoshapePolygons == null ? void 0 : photoshapePolygons.map((contour) => {
-        var _a2;
-        return (_a2 = src.geometries.geom2) == null ? void 0 : _a2.fromPoints(contour);
+        var _a3;
+        return (_a3 = src.geometries.geom2) == null ? void 0 : _a3.fromPoints(contour);
       });
   }
 }
@@ -32999,14 +33141,15 @@ function mouseOverShape(shape, mouseRayPlaneIntersection2, pointInsidePolygon2) 
   }
   return false;
 }
-function drawOutline(shape, style2, width, z, ctx2, camera2, display2D2, renderer2) {
+function drawOutline(shape, style2, width, z, ctx2, camera2, display2D2, renderer2, selected2, scene2, displayDot, numSamples) {
   ctx2.lineWidth = width;
   ctx2.strokeStyle = style2;
   const geom22 = shapeToGeom2(shape);
   const geometries2 = Array.isArray(geom22) ? geom22 : [geom22];
+  const showControlPoints = display2D2 && displayDot;
   geometries2.forEach((geometry) => {
-    var _a;
-    if (!((_a = geometry == null ? void 0 : geometry.sides) == null ? void 0 : _a.length))
+    var _a2;
+    if (!((_a2 = geometry == null ? void 0 : geometry.sides) == null ? void 0 : _a2.length))
       return;
     ctx2.beginPath();
     const firstPoint = geometry.sides[0][0];
@@ -33019,7 +33162,220 @@ function drawOutline(shape, style2, width, z, ctx2, camera2, display2D2, rendere
     });
     ctx2.lineTo(p0.x, p0.y);
     ctx2.stroke();
+    if (showControlPoints) {
+      if (shape.controlPoints) {
+        shape.controlPoints.forEach((pointObj) => {
+          scene2.remove(pointObj);
+        });
+      }
+      shape.controlPoints = [];
+      const positions = [];
+      geometry.sides.forEach((side) => {
+        const p1 = side[0];
+        const p2 = side[1];
+        for (let i = 0; i <= numSamples; i++) {
+          const t = i / numSamples;
+          const x = p1[0] + (p2[0] - p1[0]) * t;
+          const y = p1[1] + (p2[1] - p1[1]) * t;
+          positions.push(x, y, z);
+        }
+      });
+      const pointsGeometry = new BufferGeometry();
+      pointsGeometry.setAttribute(
+        "position",
+        new Float32BufferAttribute(positions, 3)
+      );
+      const pointsMaterial = new PointsMaterial({
+        // color: 0xff0000, // change the color of the dot to red
+        color: 65535,
+        size: 7,
+        sizeAttenuation: false
+      });
+      const points = new Points(pointsGeometry, pointsMaterial);
+      scene2.add(points);
+      shape.controlPoints.push(points);
+      setupControlPointInteractions(
+        shape,
+        scene2,
+        camera2,
+        renderer2
+      );
+    } else {
+      if (shape.controlPoints) {
+        shape.controlPoints.forEach((pointObj) => {
+          scene2.remove(pointObj);
+        });
+        shape.controlPoints = [];
+      }
+    }
   });
+}
+function setupControlPointInteractions(shape, scene2, camera2, renderer2) {
+  const state = {
+    isDragging: false,
+    selectedPoint: null,
+    raycaster: new Raycaster(),
+    mouse: new Vector2(),
+    originalPoints: [...shape.points]
+    // Store initial points
+  };
+  const controlPointOverlay = document.createElement("div");
+  Object.assign(controlPointOverlay.style, {
+    position: "fixed",
+    top: "0",
+    left: "0",
+    width: "100%",
+    height: "100%",
+    zIndex: "10000",
+    pointerEvents: "none",
+    opacity: "0",
+    cursor: "default"
+  });
+  document.body.appendChild(controlPointOverlay);
+  function getMouseCoordinates(event) {
+    const rect = renderer2.domElement.getBoundingClientRect();
+    return {
+      x: (event.clientX - rect.left) / rect.width * 2 - 1,
+      y: -((event.clientY - rect.top) / rect.height) * 2 + 1
+    };
+  }
+  shape.controlPoints.forEach((point, index) => {
+    const indicator = document.createElement("div");
+    Object.assign(indicator.style, {
+      position: "absolute",
+      width: "20px",
+      height: "20px",
+      background: "rgba(255,0,0,0.3)",
+      borderRadius: "50%",
+      transform: "translate(-50%, -50%)",
+      pointerEvents: "none"
+    });
+    controlPointOverlay.appendChild(indicator);
+    point.userData = {
+      indicator,
+      pointIndex: index,
+      // Maps to shape.points array
+      updatePosition: () => {
+        const vector = point.position.clone().project(camera2);
+        const x = (vector.x * 0.5 + 0.5) * window.innerWidth;
+        const y = (-(vector.y * 0.5) + 0.5) * window.innerHeight;
+        indicator.style.left = `${x}px`;
+        indicator.style.top = `${y}px`;
+      }
+    };
+  });
+  function onMouseDown(event) {
+    const coords = getMouseCoordinates(event);
+    state.mouse.set(coords.x, coords.y);
+    state.raycaster.setFromCamera(state.mouse, camera2);
+    const intersects2 = state.raycaster.intersectObjects(shape.controlPoints);
+    if (intersects2.length > 0) {
+      event.preventDefault();
+      state.isDragging = true;
+      state.selectedPoint = intersects2[0].object;
+      console.group("Initial Points");
+      console.log("Before editing:", JSON.parse(JSON.stringify(shape.points)));
+      console.groupEnd();
+      window.addEventListener("mousemove", onMouseMove);
+      window.addEventListener("mouseup", onMouseUp);
+    }
+  }
+  function onMouseMove(event) {
+    if (!state.isDragging || !state.selectedPoint)
+      return;
+    const coords = getMouseCoordinates(event);
+    state.mouse.set(coords.x, coords.y);
+    state.raycaster.setFromCamera(state.mouse, camera2);
+    const plane2 = new Plane$1(new Vector3(0, 0, 1), 0);
+    const newPosition = new Vector3();
+    state.raycaster.ray.intersectPlane(plane2, newPosition);
+    state.selectedPoint.position.copy(newPosition);
+    const pointIndex = state.selectedPoint.userData.pointIndex;
+    shape.points[pointIndex] = [newPosition.x, newPosition.y];
+    if (state.selectedPoint.userData.updatePosition) {
+      state.selectedPoint.userData.updatePosition();
+    }
+    updateShapeGeometry(shape, state.selectedPoint, newPosition);
+  }
+  function updateShapeGeometry(shape2, controlPoint, newPosition) {
+    var _a2, _b;
+    const pointIndex = controlPoint.userData.pointIndex;
+    if ((_b = (_a2 = shape2.geometry) == null ? void 0 : _a2.attributes) == null ? void 0 : _b.position) {
+      const positions = shape2.geometry.attributes.position.array;
+      positions[pointIndex * 3] = newPosition.x;
+      positions[pointIndex * 3 + 1] = newPosition.y;
+      positions[pointIndex * 3 + 2] = newPosition.z;
+      shape2.geometry.attributes.position.needsUpdate = true;
+      if (shape2.geometry.index)
+        shape2.geometry.computeVertexNormals();
+    }
+  }
+  function onMouseUp() {
+    if (state.isDragging) {
+      console.group("Final Points");
+      console.log("After editing:", JSON.parse(JSON.stringify(shape.points)));
+      console.log(
+        "Changes:",
+        getChangedPoints(state.originalPoints, shape.points)
+      );
+      console.groupEnd();
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+      state.isDragging = false;
+      state.selectedPoint = null;
+    }
+  }
+  function getChangedPoints(original, updated) {
+    return original.map((point, index) => {
+      const [origX, origY] = point;
+      const [updatedX, updatedY] = updated[index];
+      return {
+        point: index,
+        original: [origX, origY],
+        updated: [updatedX, updatedY],
+        changed: origX !== updatedX || origY !== updatedY
+      };
+    }).filter((p) => p.changed);
+  }
+  function onDocumentMouseMove(event) {
+    const coords = getMouseCoordinates(event);
+    state.mouse.set(coords.x, coords.y);
+    state.raycaster.setFromCamera(state.mouse, camera2);
+    const intersects2 = state.raycaster.intersectObjects(shape.controlPoints);
+    if (intersects2.length > 0) {
+      controlPointOverlay.style.pointerEvents = "auto";
+      controlPointOverlay.style.cursor = "move";
+    } else {
+      controlPointOverlay.style.pointerEvents = "none";
+      controlPointOverlay.style.cursor = "default";
+    }
+  }
+  window.addEventListener("mousemove", onDocumentMouseMove);
+  function updateIndicators() {
+    shape.controlPoints.forEach((point) => {
+      if (point.userData.updatePosition) {
+        point.userData.updatePosition();
+      }
+    });
+    requestAnimationFrame(updateIndicators);
+  }
+  updateIndicators();
+  controlPointOverlay.addEventListener("mousedown", onMouseDown);
+  controlPointOverlay.addEventListener(
+    "touchstart",
+    (e) => {
+      onMouseDown(e.touches[0]);
+    },
+    { passive: false }
+  );
+  shape.cleanup = () => {
+    cancelAnimationFrame(updateIndicators);
+    controlPointOverlay.removeEventListener("mousedown", onMouseDown);
+    controlPointOverlay.removeEventListener("touchstart", onMouseDown);
+    window.removeEventListener("mousemove", onMouseMove);
+    window.removeEventListener("mouseup", onMouseUp);
+    document.body.removeChild(controlPointOverlay);
+  };
 }
 function projectPoint(x, y, z, camera2, renderer2) {
   const vector = new Vector3(x, y, z);
@@ -33735,7 +34091,7 @@ var charAtIndex = function(text2, index) {
 var charSplit = function(text2) {
   var chars2 = [];
   for (var idx = 0, len = text2.length; idx < len; ) {
-    var _a = charAtIndex(text2, idx), c2 = _a[0], cLen = _a[1];
+    var _a2 = charAtIndex(text2, idx), c2 = _a2[0], cLen = _a2[1];
     chars2.push(c2);
     idx += cLen;
   }
@@ -33786,13 +34142,13 @@ var parseDate = function(dateStr) {
   var match = dateStr.match(dateRegex);
   if (!match)
     return void 0;
-  var year = match[1], _a = match[2], month = _a === void 0 ? "01" : _a, _b = match[3], day = _b === void 0 ? "01" : _b, _c = match[4], hours = _c === void 0 ? "00" : _c, _d = match[5], mins = _d === void 0 ? "00" : _d, _e = match[6], secs = _e === void 0 ? "00" : _e, _f = match[7], offsetSign = _f === void 0 ? "Z" : _f, _g = match[8], offsetHours = _g === void 0 ? "00" : _g, _h = match[9], offsetMins = _h === void 0 ? "00" : _h;
+  var year = match[1], _a2 = match[2], month = _a2 === void 0 ? "01" : _a2, _b = match[3], day = _b === void 0 ? "01" : _b, _c = match[4], hours = _c === void 0 ? "00" : _c, _d = match[5], mins = _d === void 0 ? "00" : _d, _e = match[6], secs = _e === void 0 ? "00" : _e, _f = match[7], offsetSign = _f === void 0 ? "Z" : _f, _g = match[8], offsetHours = _g === void 0 ? "00" : _g, _h = match[9], offsetMins = _h === void 0 ? "00" : _h;
   var tzOffset = offsetSign === "Z" ? "Z" : "" + offsetSign + offsetHours + ":" + offsetMins;
   var date = /* @__PURE__ */ new Date(year + "-" + month + "-" + day + "T" + hours + ":" + mins + ":" + secs + tzOffset);
   return date;
 };
 var findLastMatch = function(value, regex) {
-  var _a;
+  var _a2;
   var position = 0;
   var lastMatch;
   while (position < value.length) {
@@ -33800,7 +34156,7 @@ var findLastMatch = function(value, regex) {
     if (!match)
       return { match: lastMatch, pos: position };
     lastMatch = match;
-    position += ((_a = match.index) !== null && _a !== void 0 ? _a : 0) + match[0].length;
+    position += ((_a2 = match.index) !== null && _a2 !== void 0 ? _a2 : 0) + match[0].length;
   }
   return { match: lastMatch, pos: position };
 };
@@ -38277,8 +38633,8 @@ var Font = (
         acc[metric.N] = metric.WX;
         return acc;
       }, {});
-      font.KernPairXAmounts = font.KernPairs.reduce(function(acc, _a) {
-        var name1 = _a[0], name2 = _a[1], width = _a[2];
+      font.KernPairXAmounts = font.KernPairs.reduce(function(acc, _a2) {
+        var name1 = _a2[0], name2 = _a2[1], width = _a2[2];
         if (!acc[name1])
           acc[name1] = {};
         acc[name1][name2] = width;
@@ -38624,8 +38980,8 @@ var UnexpectedObjectTypeError = (
     function UnexpectedObjectTypeError2(expected, actual) {
       var _this = this;
       var name = function(t) {
-        var _a, _b;
-        return (_a = t === null || t === void 0 ? void 0 : t.name) !== null && _a !== void 0 ? _a : (_b = t === null || t === void 0 ? void 0 : t.constructor) === null || _b === void 0 ? void 0 : _b.name;
+        var _a2, _b;
+        return (_a2 = t === null || t === void 0 ? void 0 : t.name) !== null && _a2 !== void 0 ? _a2 : (_b = t === null || t === void 0 ? void 0 : t.constructor) === null || _b === void 0 ? void 0 : _b.name;
       };
       var expectedTypes = Array.isArray(expected) ? expected.map(name) : [name(expected)];
       var msg2 = "Expected instance of " + expectedTypes.join(" or ") + ", " + ("but got instance of " + (actual ? name(actual) : actual));
@@ -38689,9 +39045,9 @@ var UnrecognizedStreamTypeError = (
   function(_super) {
     __extends(UnrecognizedStreamTypeError2, _super);
     function UnrecognizedStreamTypeError2(stream2) {
-      var _a, _b, _c;
+      var _a2, _b, _c;
       var _this = this;
-      var streamType = (_c = (_b = (_a = stream2 === null || stream2 === void 0 ? void 0 : stream2.contructor) === null || _a === void 0 ? void 0 : _a.name) !== null && _b !== void 0 ? _b : stream2 === null || stream2 === void 0 ? void 0 : stream2.name) !== null && _c !== void 0 ? _c : stream2;
+      var streamType = (_c = (_b = (_a2 = stream2 === null || stream2 === void 0 ? void 0 : stream2.contructor) === null || _a2 === void 0 ? void 0 : _a2.name) !== null && _b !== void 0 ? _b : stream2 === null || stream2 === void 0 ? void 0 : stream2.name) !== null && _c !== void 0 ? _c : stream2;
       var msg2 = "Unrecognized stream type: " + streamType;
       _this = _super.call(this, msg2) || this;
       return _this;
@@ -39147,20 +39503,20 @@ var PDFArray = (
       return this.array[index];
     };
     PDFArray2.prototype.lookupMaybe = function(index) {
-      var _a;
+      var _a2;
       var types = [];
       for (var _i = 1; _i < arguments.length; _i++) {
         types[_i - 1] = arguments[_i];
       }
-      return (_a = this.context).lookupMaybe.apply(_a, __spreadArrays([this.get(index)], types));
+      return (_a2 = this.context).lookupMaybe.apply(_a2, __spreadArrays([this.get(index)], types));
     };
     PDFArray2.prototype.lookup = function(index) {
-      var _a;
+      var _a2;
       var types = [];
       for (var _i = 1; _i < arguments.length; _i++) {
         types[_i - 1] = arguments[_i];
       }
-      return (_a = this.context).lookup.apply(_a, __spreadArrays([this.get(index)], types));
+      return (_a2 = this.context).lookup.apply(_a2, __spreadArrays([this.get(index)], types));
     };
     PDFArray2.prototype.asRectangle = function() {
       if (this.size() !== 4)
@@ -39482,25 +39838,25 @@ var PDFDict = (
       return value !== void 0 && value !== PDFNull$1;
     };
     PDFDict2.prototype.lookupMaybe = function(key) {
-      var _a;
+      var _a2;
       var types = [];
       for (var _i = 1; _i < arguments.length; _i++) {
         types[_i - 1] = arguments[_i];
       }
       var preservePDFNull = types.includes(PDFNull$1);
-      var value = (_a = this.context).lookupMaybe.apply(_a, __spreadArrays([this.get(key, preservePDFNull)], types));
+      var value = (_a2 = this.context).lookupMaybe.apply(_a2, __spreadArrays([this.get(key, preservePDFNull)], types));
       if (value === PDFNull$1 && !preservePDFNull)
         return void 0;
       return value;
     };
     PDFDict2.prototype.lookup = function(key) {
-      var _a;
+      var _a2;
       var types = [];
       for (var _i = 1; _i < arguments.length; _i++) {
         types[_i - 1] = arguments[_i];
       }
       var preservePDFNull = types.includes(PDFNull$1);
-      var value = (_a = this.context).lookup.apply(_a, __spreadArrays([this.get(key, preservePDFNull)], types));
+      var value = (_a2 = this.context).lookup.apply(_a2, __spreadArrays([this.get(key, preservePDFNull)], types));
       if (value === PDFNull$1 && !preservePDFNull)
         return void 0;
       return value;
@@ -39526,7 +39882,7 @@ var PDFDict = (
       var clone2 = PDFDict2.withContext(context || this.context);
       var entries = this.entries();
       for (var idx = 0, len = entries.length; idx < len; idx++) {
-        var _a = entries[idx], key = _a[0], value = _a[1];
+        var _a2 = entries[idx], key = _a2[0], value = _a2[1];
         clone2.set(key, value);
       }
       return clone2;
@@ -39535,7 +39891,7 @@ var PDFDict = (
       var dictString = "<<\n";
       var entries = this.entries();
       for (var idx = 0, len = entries.length; idx < len; idx++) {
-        var _a = entries[idx], key = _a[0], value = _a[1];
+        var _a2 = entries[idx], key = _a2[0], value = _a2[1];
         dictString += key.toString() + " " + value.toString() + "\n";
       }
       dictString += ">>";
@@ -39545,7 +39901,7 @@ var PDFDict = (
       var size = 5;
       var entries = this.entries();
       for (var idx = 0, len = entries.length; idx < len; idx++) {
-        var _a = entries[idx], key = _a[0], value = _a[1];
+        var _a2 = entries[idx], key = _a2[0], value = _a2[1];
         size += key.sizeInBytes() + value.sizeInBytes() + 2;
       }
       return size;
@@ -39557,7 +39913,7 @@ var PDFDict = (
       buffer[offset2++] = CharCodes$1.Newline;
       var entries = this.entries();
       for (var idx = 0, len = entries.length; idx < len; idx++) {
-        var _a = entries[idx], key = _a[0], value = _a[1];
+        var _a2 = entries[idx], key = _a2[0], value = _a2[1];
         offset2 += key.copyBytesInto(buffer, offset2);
         buffer[offset2++] = CharCodes$1.Space;
         offset2 += value.copyBytesInto(buffer, offset2);
@@ -39888,19 +40244,19 @@ var PDFContentStream = (
       return _this;
     }
     PDFContentStream2.prototype.push = function() {
-      var _a;
+      var _a2;
       var operators = [];
       for (var _i = 0; _i < arguments.length; _i++) {
         operators[_i] = arguments[_i];
       }
-      (_a = this.operators).push.apply(_a, operators);
+      (_a2 = this.operators).push.apply(_a2, operators);
     };
     PDFContentStream2.prototype.clone = function(context) {
       var operators = new Array(this.operators.length);
       for (var idx = 0, len = this.operators.length; idx < len; idx++) {
         operators[idx] = this.operators[idx].clone(context);
       }
-      var _a = this, dict = _a.dict, encode = _a.encode;
+      var _a2 = this, dict = _a2.dict, encode = _a2.encode;
       return PDFContentStream2.of(dict.clone(context), operators, encode);
     };
     PDFContentStream2.prototype.getContentsString = function() {
@@ -39951,8 +40307,8 @@ var SimpleRNG = (
     return SimpleRNG2;
   }()
 );
-var byAscendingObjectNumber = function(_a, _b) {
-  var a = _a[0];
+var byAscendingObjectNumber = function(_a2, _b) {
+  var a = _a2[0];
   var b = _b[0];
   return a.objectNumber - b.objectNumber;
 };
@@ -40028,7 +40384,7 @@ var PDFContext = (
     PDFContext2.prototype.getObjectRef = function(pdfObject) {
       var entries = Array.from(this.indirectObjects.entries());
       for (var idx = 0, len = entries.length; idx < len; idx++) {
-        var _a = entries[idx], ref = _a[0], object = _a[1];
+        var _a2 = entries[idx], ref = _a2[0], object = _a2[1];
         if (object === pdfObject) {
           return ref;
         }
@@ -40140,7 +40496,7 @@ var PDFPageLeaf = (
       var clone2 = PDFPageLeaf2.fromMapWithContext(/* @__PURE__ */ new Map(), context || this.context, this.autoNormalizeCTM);
       var entries = this.entries();
       for (var idx = 0, len = entries.length; idx < len; idx++) {
-        var _a = entries[idx], key = _a[0], value = _a[1];
+        var _a2 = entries[idx], key = _a2[0], value = _a2[1];
         clone2.set(key, value);
       }
       return clone2;
@@ -40351,7 +40707,7 @@ var PDFObjectCopier = (
         _this.traversedObjects.set(originalDict, clonedDict);
         var entries = originalDict.entries();
         for (var idx = 0, len = entries.length; idx < len; idx++) {
-          var _a = entries[idx], key = _a[0], value = _a[1];
+          var _a2 = entries[idx], key = _a2[0], value = _a2[1];
           clonedDict.set(key, _this.copy(value));
         }
         return clonedDict;
@@ -40376,7 +40732,7 @@ var PDFObjectCopier = (
         _this.traversedObjects.set(originalStream, clonedStream);
         var entries = originalStream.dict.entries();
         for (var idx = 0, len = entries.length; idx < len; idx++) {
-          var _a = entries[idx], key = _a[0], value = _a[1];
+          var _a2 = entries[idx], key = _a2[0], value = _a2[1];
           clonedStream.dict.set(key, _this.copy(value));
         }
         return clonedStream;
@@ -40615,7 +40971,7 @@ var PDFObjectStream = (
     PDFObjectStream2.prototype.getContentsString = function() {
       var value = this.offsetsString;
       for (var idx = 0, len = this.objects.length; idx < len; idx++) {
-        var _a = this.objects[idx], object = _a[1];
+        var _a2 = this.objects[idx], object = _a2[1];
         value += object + "\n";
       }
       return value;
@@ -40624,7 +40980,7 @@ var PDFObjectStream = (
       var buffer = new Uint8Array(this.getUnencodedContentsSize());
       var offset2 = copyStringIntoBuffer(this.offsetsString, buffer, 0);
       for (var idx = 0, len = this.objects.length; idx < len; idx++) {
-        var _a = this.objects[idx], object = _a[1];
+        var _a2 = this.objects[idx], object = _a2[1];
         offset2 += object.copyBytesInto(buffer, offset2);
         buffer[offset2++] = CharCodes$1.Newline;
       }
@@ -40636,7 +40992,7 @@ var PDFObjectStream = (
     PDFObjectStream2.prototype.computeOffsetsString = function() {
       var offsetsString = "";
       for (var idx = 0, len = this.offsets.length; idx < len; idx++) {
-        var _a = this.offsets[idx], objectNumber = _a[0], offset2 = _a[1];
+        var _a2 = this.offsets[idx], objectNumber = _a2[0], offset2 = _a2[1];
         offsetsString += objectNumber + " " + offset2 + " ";
       }
       return offsetsString;
@@ -40645,7 +41001,7 @@ var PDFObjectStream = (
       var offset2 = 0;
       var offsets = new Array(this.objects.length);
       for (var idx = 0, len = this.objects.length; idx < len; idx++) {
-        var _a = this.objects[idx], ref = _a[0], object = _a[1];
+        var _a2 = this.objects[idx], ref = _a2[0], object = _a2[1];
         offsets[idx] = [ref.objectNumber, offset2];
         offset2 += object.sizeInBytes() + 1;
       }
@@ -40675,13 +41031,13 @@ var PDFWriter = (
     }
     PDFWriter2.prototype.serializeToBuffer = function() {
       return __awaiter(this, void 0, void 0, function() {
-        var _a, size, header, indirectObjects, xref, trailerDict, trailer, offset2, buffer, idx, len, _b, ref, object, objectNumber, generationNumber, n;
+        var _a2, size, header, indirectObjects, xref, trailerDict, trailer, offset2, buffer, idx, len, _b, ref, object, objectNumber, generationNumber, n;
         return __generator(this, function(_c) {
           switch (_c.label) {
             case 0:
               return [4, this.computeBufferSize()];
             case 1:
-              _a = _c.sent(), size = _a.size, header = _a.header, indirectObjects = _a.indirectObjects, xref = _a.xref, trailerDict = _a.trailerDict, trailer = _a.trailer;
+              _a2 = _c.sent(), size = _a2.size, header = _a2.header, indirectObjects = _a2.indirectObjects, xref = _a2.xref, trailerDict = _a2.trailerDict, trailer = _a2.trailer;
               offset2 = 0;
               buffer = new Uint8Array(size);
               offset2 += header.copyBytesInto(buffer, offset2);
@@ -40739,8 +41095,8 @@ var PDFWriter = (
         });
       });
     };
-    PDFWriter2.prototype.computeIndirectObjectSize = function(_a) {
-      var ref = _a[0], object = _a[1];
+    PDFWriter2.prototype.computeIndirectObjectSize = function(_a2) {
+      var ref = _a2[0], object = _a2[1];
       var refSize = ref.sizeInBytes() + 3;
       var objectSize = object.sizeInBytes() + 9;
       return refSize + objectSize;
@@ -40757,15 +41113,15 @@ var PDFWriter = (
     PDFWriter2.prototype.computeBufferSize = function() {
       return __awaiter(this, void 0, void 0, function() {
         var header, size, xref, indirectObjects, idx, len, indirectObject, ref, xrefOffset, trailerDict, trailer;
-        return __generator(this, function(_a) {
-          switch (_a.label) {
+        return __generator(this, function(_a2) {
+          switch (_a2.label) {
             case 0:
               header = PDFHeader.forVersion(1, 7);
               size = header.sizeInBytes() + 2;
               xref = PDFCrossRefSection.create();
               indirectObjects = this.context.enumerateIndirectObjects();
               idx = 0, len = indirectObjects.length;
-              _a.label = 1;
+              _a2.label = 1;
             case 1:
               if (!(idx < len))
                 return [3, 4];
@@ -40777,8 +41133,8 @@ var PDFWriter = (
                 return [3, 3];
               return [4, waitForTick()];
             case 2:
-              _a.sent();
-              _a.label = 3;
+              _a2.sent();
+              _a2.label = 3;
             case 3:
               idx++;
               return [3, 1];
@@ -40887,7 +41243,7 @@ var PDFCrossRefStream = (
         var entryTuples = _this.entryTuplesCache.access();
         var widths = [0, 0, 0];
         for (var idx = 0, len = entryTuples.length; idx < len; idx++) {
-          var _a = entryTuples[idx], first = _a[0], second = _a[1], third = _a[2];
+          var _a2 = entryTuples[idx], first = _a2[0], second = _a2[1], third = _a2[2];
           var firstSize = sizeInBytes(first);
           var secondSize = sizeInBytes(second);
           var thirdSize = sizeInBytes(third);
@@ -40932,7 +41288,7 @@ var PDFCrossRefStream = (
       this.contentsCache.invalidate();
     };
     PDFCrossRefStream2.prototype.clone = function(context) {
-      var _a = this, dict = _a.dict, entries = _a.entries, encode = _a.encode;
+      var _a2 = this, dict = _a2.dict, entries = _a2.entries, encode = _a2.encode;
       return PDFCrossRefStream2.of(dict.clone(context), entries.slice(), encode);
     };
     PDFCrossRefStream2.prototype.getContentsString = function() {
@@ -40940,7 +41296,7 @@ var PDFCrossRefStream = (
       var byteWidths = this.maxByteWidthsCache.access();
       var value = "";
       for (var entryIdx = 0, entriesLen = entryTuples.length; entryIdx < entriesLen; entryIdx++) {
-        var _a = entryTuples[entryIdx], first = _a[0], second = _a[1], third = _a[2];
+        var _a2 = entryTuples[entryIdx], first = _a2[0], second = _a2[1], third = _a2[2];
         var firstBytes = reverseArray(bytesFor(first));
         var secondBytes = reverseArray(bytesFor(second));
         var thirdBytes = reverseArray(bytesFor(third));
@@ -40962,7 +41318,7 @@ var PDFCrossRefStream = (
       var buffer = new Uint8Array(this.getUnencodedContentsSize());
       var offset2 = 0;
       for (var entryIdx = 0, entriesLen = entryTuples.length; entryIdx < entriesLen; entryIdx++) {
-        var _a = entryTuples[entryIdx], first = _a[0], second = _a[1], third = _a[2];
+        var _a2 = entryTuples[entryIdx], first = _a2[0], second = _a2[1], third = _a2[2];
         var firstBytes = reverseArray(bytesFor(first));
         var secondBytes = reverseArray(bytesFor(second));
         var thirdBytes = reverseArray(bytesFor(third));
@@ -41021,8 +41377,8 @@ var PDFStreamWriter = (
     PDFStreamWriter2.prototype.computeBufferSize = function() {
       return __awaiter(this, void 0, void 0, function() {
         var objectNumber, header, size, xrefStream, uncompressedObjects, compressedObjects, objectStreamRefs, indirectObjects, idx, len, indirectObject, ref, object, shouldNotCompress, chunk, objectStreamRef, idx, len, chunk, ref, objectStream, xrefStreamRef, xrefOffset, trailer;
-        return __generator(this, function(_a) {
-          switch (_a.label) {
+        return __generator(this, function(_a2) {
+          switch (_a2.label) {
             case 0:
               objectNumber = this.context.largestObjectNumber + 1;
               header = PDFHeader.forVersion(1, 7);
@@ -41033,7 +41389,7 @@ var PDFStreamWriter = (
               objectStreamRefs = [];
               indirectObjects = this.context.enumerateIndirectObjects();
               idx = 0, len = indirectObjects.length;
-              _a.label = 1;
+              _a2.label = 1;
             case 1:
               if (!(idx < len))
                 return [3, 6];
@@ -41049,8 +41405,8 @@ var PDFStreamWriter = (
                 return [3, 3];
               return [4, waitForTick()];
             case 2:
-              _a.sent();
-              _a.label = 3;
+              _a2.sent();
+              _a2.label = 3;
             case 3:
               return [3, 5];
             case 4:
@@ -41064,13 +41420,13 @@ var PDFStreamWriter = (
               }
               xrefStream.addCompressedEntry(ref, objectStreamRef, chunk.length);
               chunk.push(indirectObject);
-              _a.label = 5;
+              _a2.label = 5;
             case 5:
               idx++;
               return [3, 1];
             case 6:
               idx = 0, len = compressedObjects.length;
-              _a.label = 7;
+              _a2.label = 7;
             case 7:
               if (!(idx < len))
                 return [3, 10];
@@ -41084,8 +41440,8 @@ var PDFStreamWriter = (
                 return [3, 9];
               return [4, waitForTick()];
             case 8:
-              _a.sent();
-              _a.label = 9;
+              _a2.sent();
+              _a2.label = 9;
             case 9:
               idx++;
               return [3, 7];
@@ -41216,7 +41572,7 @@ var StandardFontEmbedder = (
       if (options === void 0) {
         options = {};
       }
-      var _a = options.descender, descender = _a === void 0 ? true : _a;
+      var _a2 = options.descender, descender = _a2 === void 0 ? true : _a2;
       var _b = this.font, Ascender = _b.Ascender, Descender = _b.Descender, FontBBox = _b.FontBBox;
       var yTop = Ascender || FontBBox[3];
       var yBottom = Descender || FontBBox[1];
@@ -41226,7 +41582,7 @@ var StandardFontEmbedder = (
       return height / 1e3 * size;
     };
     StandardFontEmbedder2.prototype.sizeOfFontAtHeight = function(height) {
-      var _a = this.font, Ascender = _a.Ascender, Descender = _a.Descender, FontBBox = _a.FontBBox;
+      var _a2 = this.font, Ascender = _a2.Ascender, Descender = _a2.Descender, FontBBox = _a2.FontBBox;
       var yTop = Ascender || FontBBox[3];
       var yBottom = Descender || FontBBox[1];
       return 1e3 * height / (yTop - yBottom);
@@ -41274,8 +41630,8 @@ var createCmap = function(glyphs, glyphId) {
   return fillCmapTemplate(bfChars);
 };
 var fillCmapTemplate = function(bfChars) {
-  return "/CIDInit /ProcSet findresource begin\n12 dict begin\nbegincmap\n/CIDSystemInfo <<\n  /Registry (Adobe)\n  /Ordering (UCS)\n  /Supplement 0\n>> def\n/CMapName /Adobe-Identity-UCS def\n/CMapType 2 def\n1 begincodespacerange\n<0000><ffff>\nendcodespacerange\n" + bfChars.length + " beginbfchar\n" + bfChars.map(function(_a) {
-    var glyphId = _a[0], codePoint = _a[1];
+  return "/CIDInit /ProcSet findresource begin\n12 dict begin\nbegincmap\n/CIDSystemInfo <<\n  /Registry (Adobe)\n  /Ordering (UCS)\n  /Supplement 0\n>> def\n/CMapName /Adobe-Identity-UCS def\n/CMapType 2 def\n1 begincodespacerange\n<0000><ffff>\nendcodespacerange\n" + bfChars.length + " beginbfchar\n" + bfChars.map(function(_a2) {
+    var glyphId = _a2[0], codePoint = _a2[1];
     return glyphId + " " + codePoint;
   }).join("\n") + "\nendbfchar\nendcmap\nCMapName currentdict /CMap defineresource pop\nend\nend";
 };
@@ -41471,12 +41827,12 @@ var CustomFontEmbedder = (
     CustomFontEmbedder2.for = function(fontkit, fontData, customName, fontFeatures) {
       return __awaiter(this, void 0, void 0, function() {
         var font;
-        return __generator(this, function(_a) {
-          switch (_a.label) {
+        return __generator(this, function(_a2) {
+          switch (_a2.label) {
             case 0:
               return [4, fontkit.create(fontData)];
             case 1:
-              font = _a.sent();
+              font = _a2.sent();
               return [2, new CustomFontEmbedder2(font, fontData, customName, fontFeatures)];
           }
         });
@@ -41503,7 +41859,7 @@ var CustomFontEmbedder = (
       if (options === void 0) {
         options = {};
       }
-      var _a = options.descender, descender = _a === void 0 ? true : _a;
+      var _a2 = options.descender, descender = _a2 === void 0 ? true : _a2;
       var _b = this.font, ascent = _b.ascent, descent = _b.descent, bbox = _b.bbox;
       var yTop = (ascent || bbox.maxY) * this.scale;
       var yBottom = (descent || bbox.minY) * this.scale;
@@ -41513,7 +41869,7 @@ var CustomFontEmbedder = (
       return height / 1e3 * size;
     };
     CustomFontEmbedder2.prototype.sizeOfFontAtHeight = function(height) {
-      var _a = this.font, ascent = _a.ascent, descent = _a.descent, bbox = _a.bbox;
+      var _a2 = this.font, ascent = _a2.ascent, descent = _a2.descent, bbox = _a2.bbox;
       var yTop = (ascent || bbox.maxY) * this.scale;
       var yBottom = (descent || bbox.minY) * this.scale;
       return 1e3 * height / (yTop - yBottom);
@@ -41525,12 +41881,12 @@ var CustomFontEmbedder = (
     CustomFontEmbedder2.prototype.embedFontDict = function(context, ref) {
       return __awaiter(this, void 0, void 0, function() {
         var cidFontDictRef, unicodeCMapRef, fontDict;
-        return __generator(this, function(_a) {
-          switch (_a.label) {
+        return __generator(this, function(_a2) {
+          switch (_a2.label) {
             case 0:
               return [4, this.embedCIDFontDict(context)];
             case 1:
-              cidFontDictRef = _a.sent();
+              cidFontDictRef = _a2.sent();
               unicodeCMapRef = this.embedUnicodeCmap(context);
               fontDict = context.obj({
                 Type: "Font",
@@ -41556,12 +41912,12 @@ var CustomFontEmbedder = (
     CustomFontEmbedder2.prototype.embedCIDFontDict = function(context) {
       return __awaiter(this, void 0, void 0, function() {
         var fontDescriptorRef, cidFontDict;
-        return __generator(this, function(_a) {
-          switch (_a.label) {
+        return __generator(this, function(_a2) {
+          switch (_a2.label) {
             case 0:
               return [4, this.embedFontDescriptor(context)];
             case 1:
-              fontDescriptorRef = _a.sent();
+              fontDescriptorRef = _a2.sent();
               cidFontDict = context.obj({
                 Type: "Font",
                 Subtype: this.isCFF() ? "CIDFontType0" : "CIDFontType2",
@@ -41582,7 +41938,7 @@ var CustomFontEmbedder = (
     };
     CustomFontEmbedder2.prototype.embedFontDescriptor = function(context) {
       return __awaiter(this, void 0, void 0, function() {
-        var fontStreamRef, scale2, _a, italicAngle, ascent, descent, capHeight, xHeight, _b, minX, minY, maxX, maxY, fontDescriptor;
+        var fontStreamRef, scale2, _a2, italicAngle, ascent, descent, capHeight, xHeight, _b, minX, minY, maxX, maxY, fontDescriptor;
         var _c;
         return __generator(this, function(_d) {
           switch (_d.label) {
@@ -41591,7 +41947,7 @@ var CustomFontEmbedder = (
             case 1:
               fontStreamRef = _d.sent();
               scale2 = this.scale;
-              _a = this.font, italicAngle = _a.italicAngle, ascent = _a.ascent, descent = _a.descent, capHeight = _a.capHeight, xHeight = _a.xHeight;
+              _a2 = this.font, italicAngle = _a2.italicAngle, ascent = _a2.ascent, descent = _a2.descent, capHeight = _a2.capHeight, xHeight = _a2.xHeight;
               _b = this.font.bbox, minX = _b.minX, minY = _b.minY, maxX = _b.maxX, maxY = _b.maxY;
               fontDescriptor = context.obj((_c = {
                 Type: "FontDescriptor",
@@ -41614,21 +41970,21 @@ var CustomFontEmbedder = (
     };
     CustomFontEmbedder2.prototype.serializeFont = function() {
       return __awaiter(this, void 0, void 0, function() {
-        return __generator(this, function(_a) {
+        return __generator(this, function(_a2) {
           return [2, this.fontData];
         });
       });
     };
     CustomFontEmbedder2.prototype.embedFontStream = function(context) {
       return __awaiter(this, void 0, void 0, function() {
-        var fontStream, _a, _b;
+        var fontStream, _a2, _b;
         return __generator(this, function(_c) {
           switch (_c.label) {
             case 0:
-              _b = (_a = context).flateStream;
+              _b = (_a2 = context).flateStream;
               return [4, this.serializeFont()];
             case 1:
-              fontStream = _b.apply(_a, [_c.sent(), {
+              fontStream = _b.apply(_a2, [_c.sent(), {
                 Subtype: this.isCFF() ? "CIDFontType0C" : void 0
               }]);
               return [2, context.register(fontStream)];
@@ -41685,12 +42041,12 @@ var CustomFontSubsetEmbedder = (
     CustomFontSubsetEmbedder2.for = function(fontkit, fontData, customFontName, fontFeatures) {
       return __awaiter(this, void 0, void 0, function() {
         var font;
-        return __generator(this, function(_a) {
-          switch (_a.label) {
+        return __generator(this, function(_a2) {
+          switch (_a2.label) {
             case 0:
               return [4, fontkit.create(fontData)];
             case 1:
-              font = _a.sent();
+              font = _a2.sent();
               return [2, new CustomFontSubsetEmbedder2(font, fontData, customFontName, fontFeatures)];
           }
         });
@@ -41761,9 +42117,9 @@ var FileEmbedder = (
     };
     FileEmbedder2.prototype.embedIntoContext = function(context, ref) {
       return __awaiter(this, void 0, void 0, function() {
-        var _a, mimeType, description, creationDate, modificationDate, afRelationship, embeddedFileStream, embeddedFileStreamRef, fileSpecDict;
+        var _a2, mimeType, description, creationDate, modificationDate, afRelationship, embeddedFileStream, embeddedFileStreamRef, fileSpecDict;
         return __generator(this, function(_b) {
-          _a = this.options, mimeType = _a.mimeType, description = _a.description, creationDate = _a.creationDate, modificationDate = _a.modificationDate, afRelationship = _a.afRelationship;
+          _a2 = this.options, mimeType = _a2.mimeType, description = _a2.description, creationDate = _a2.creationDate, modificationDate = _a2.modificationDate, afRelationship = _a2.afRelationship;
           embeddedFileStream = context.flateStream(this.fileData, {
             Type: "EmbeddedFile",
             Subtype: mimeType !== null && mimeType !== void 0 ? mimeType : void 0,
@@ -41835,7 +42191,7 @@ var JpegEmbedder = (
     JpegEmbedder2.for = function(imageData) {
       return __awaiter(this, void 0, void 0, function() {
         var dataView, soi, pos, marker, bitsPerComponent, height, width, channelByte, channelName, colorSpace;
-        return __generator(this, function(_a) {
+        return __generator(this, function(_a2) {
           dataView = new DataView(imageData.buffer);
           soi = dataView.getUint16(0);
           if (soi !== 65496)
@@ -41868,7 +42224,7 @@ var JpegEmbedder = (
     JpegEmbedder2.prototype.embedIntoContext = function(context, ref) {
       return __awaiter(this, void 0, void 0, function() {
         var xObject;
-        return __generator(this, function(_a) {
+        return __generator(this, function(_a2) {
           xObject = context.stream(this.imageData, {
             Type: "XObject",
             Subtype: "Image",
@@ -43472,7 +43828,7 @@ var PNG = (
       if (frames.length > 1)
         throw new Error("Animated PNGs are not supported");
       var frame = new Uint8Array(frames[0]);
-      var _a = splitAlphaChannel(frame), rgbChannel = _a.rgbChannel, alphaChannel = _a.alphaChannel;
+      var _a2 = splitAlphaChannel(frame), rgbChannel = _a2.rgbChannel, alphaChannel = _a2.alphaChannel;
       this.rgbChannel = rgbChannel;
       var hasAlphaValues = alphaChannel.some(function(a) {
         return a < 255;
@@ -43503,7 +43859,7 @@ var PngEmbedder = (
     PngEmbedder2.for = function(imageData) {
       return __awaiter(this, void 0, void 0, function() {
         var png;
-        return __generator(this, function(_a) {
+        return __generator(this, function(_a2) {
           png = PNG.load(imageData);
           return [2, new PngEmbedder2(png)];
         });
@@ -43512,7 +43868,7 @@ var PngEmbedder = (
     PngEmbedder2.prototype.embedIntoContext = function(context, ref) {
       return __awaiter(this, void 0, void 0, function() {
         var SMask, xObject;
-        return __generator(this, function(_a) {
+        return __generator(this, function(_a2) {
           SMask = this.embedAlphaChannel(context);
           xObject = context.flateStream(this.image.rgbChannel, {
             Type: "XObject",
@@ -44968,8 +45324,8 @@ var decodeStream = function(stream2, encoding, params) {
   }
   throw new UnsupportedEncodingError(encoding.asString());
 };
-var decodePDFRawStream = function(_a) {
-  var dict = _a.dict, contents = _a.contents;
+var decodePDFRawStream = function(_a2) {
+  var dict = _a2.dict, contents = _a2.contents;
   var stream2 = new Stream(contents);
   var Filter = dict.lookup(PDFName.of("Filter"));
   var DecodeParms = dict.lookup(PDFName.of("DecodeParms"));
@@ -45006,16 +45362,16 @@ var PDFPageEmbedder = (
     }
     PDFPageEmbedder2.for = function(page, boundingBox, transformationMatrix) {
       return __awaiter(this, void 0, void 0, function() {
-        return __generator(this, function(_a) {
+        return __generator(this, function(_a2) {
           return [2, new PDFPageEmbedder2(page, boundingBox, transformationMatrix)];
         });
       });
     };
     PDFPageEmbedder2.prototype.embedIntoContext = function(context, ref) {
       return __awaiter(this, void 0, void 0, function() {
-        var _a, Contents, Resources, decodedContents, _b, left, bottom, right, top, xObject;
+        var _a2, Contents, Resources, decodedContents, _b, left, bottom, right, top, xObject;
         return __generator(this, function(_c) {
-          _a = this.page.normalizedEntries(), Contents = _a.Contents, Resources = _a.Resources;
+          _a2 = this.page.normalizedEntries(), Contents = _a2.Contents, Resources = _a2.Resources;
           if (!Contents)
             throw new MissingPageContentsEmbeddingError();
           decodedContents = this.decodeContents(Contents);
@@ -45149,52 +45505,52 @@ var ViewerPreferences = (
       return void 0;
     };
     ViewerPreferences2.prototype.getHideToolbar = function() {
-      var _a, _b;
-      return (_b = (_a = this.HideToolbar()) === null || _a === void 0 ? void 0 : _a.asBoolean()) !== null && _b !== void 0 ? _b : false;
+      var _a2, _b;
+      return (_b = (_a2 = this.HideToolbar()) === null || _a2 === void 0 ? void 0 : _a2.asBoolean()) !== null && _b !== void 0 ? _b : false;
     };
     ViewerPreferences2.prototype.getHideMenubar = function() {
-      var _a, _b;
-      return (_b = (_a = this.HideMenubar()) === null || _a === void 0 ? void 0 : _a.asBoolean()) !== null && _b !== void 0 ? _b : false;
+      var _a2, _b;
+      return (_b = (_a2 = this.HideMenubar()) === null || _a2 === void 0 ? void 0 : _a2.asBoolean()) !== null && _b !== void 0 ? _b : false;
     };
     ViewerPreferences2.prototype.getHideWindowUI = function() {
-      var _a, _b;
-      return (_b = (_a = this.HideWindowUI()) === null || _a === void 0 ? void 0 : _a.asBoolean()) !== null && _b !== void 0 ? _b : false;
+      var _a2, _b;
+      return (_b = (_a2 = this.HideWindowUI()) === null || _a2 === void 0 ? void 0 : _a2.asBoolean()) !== null && _b !== void 0 ? _b : false;
     };
     ViewerPreferences2.prototype.getFitWindow = function() {
-      var _a, _b;
-      return (_b = (_a = this.FitWindow()) === null || _a === void 0 ? void 0 : _a.asBoolean()) !== null && _b !== void 0 ? _b : false;
+      var _a2, _b;
+      return (_b = (_a2 = this.FitWindow()) === null || _a2 === void 0 ? void 0 : _a2.asBoolean()) !== null && _b !== void 0 ? _b : false;
     };
     ViewerPreferences2.prototype.getCenterWindow = function() {
-      var _a, _b;
-      return (_b = (_a = this.CenterWindow()) === null || _a === void 0 ? void 0 : _a.asBoolean()) !== null && _b !== void 0 ? _b : false;
+      var _a2, _b;
+      return (_b = (_a2 = this.CenterWindow()) === null || _a2 === void 0 ? void 0 : _a2.asBoolean()) !== null && _b !== void 0 ? _b : false;
     };
     ViewerPreferences2.prototype.getDisplayDocTitle = function() {
-      var _a, _b;
-      return (_b = (_a = this.DisplayDocTitle()) === null || _a === void 0 ? void 0 : _a.asBoolean()) !== null && _b !== void 0 ? _b : false;
+      var _a2, _b;
+      return (_b = (_a2 = this.DisplayDocTitle()) === null || _a2 === void 0 ? void 0 : _a2.asBoolean()) !== null && _b !== void 0 ? _b : false;
     };
     ViewerPreferences2.prototype.getNonFullScreenPageMode = function() {
-      var _a, _b;
-      var mode = (_a = this.NonFullScreenPageMode()) === null || _a === void 0 ? void 0 : _a.decodeText();
+      var _a2, _b;
+      var mode = (_a2 = this.NonFullScreenPageMode()) === null || _a2 === void 0 ? void 0 : _a2.decodeText();
       return (_b = asEnum(mode, NonFullScreenPageMode)) !== null && _b !== void 0 ? _b : NonFullScreenPageMode.UseNone;
     };
     ViewerPreferences2.prototype.getReadingDirection = function() {
-      var _a, _b;
-      var direction2 = (_a = this.Direction()) === null || _a === void 0 ? void 0 : _a.decodeText();
+      var _a2, _b;
+      var direction2 = (_a2 = this.Direction()) === null || _a2 === void 0 ? void 0 : _a2.decodeText();
       return (_b = asEnum(direction2, ReadingDirection)) !== null && _b !== void 0 ? _b : ReadingDirection.L2R;
     };
     ViewerPreferences2.prototype.getPrintScaling = function() {
-      var _a, _b;
-      var scaling = (_a = this.PrintScaling()) === null || _a === void 0 ? void 0 : _a.decodeText();
+      var _a2, _b;
+      var scaling = (_a2 = this.PrintScaling()) === null || _a2 === void 0 ? void 0 : _a2.decodeText();
       return (_b = asEnum(scaling, PrintScaling)) !== null && _b !== void 0 ? _b : PrintScaling.AppDefault;
     };
     ViewerPreferences2.prototype.getDuplex = function() {
-      var _a;
-      var duplex = (_a = this.Duplex()) === null || _a === void 0 ? void 0 : _a.decodeText();
+      var _a2;
+      var duplex = (_a2 = this.Duplex()) === null || _a2 === void 0 ? void 0 : _a2.decodeText();
       return asEnum(duplex, Duplex);
     };
     ViewerPreferences2.prototype.getPickTrayByPDFSize = function() {
-      var _a;
-      return (_a = this.PickTrayByPDFSize()) === null || _a === void 0 ? void 0 : _a.asBoolean();
+      var _a2;
+      return (_a2 = this.PickTrayByPDFSize()) === null || _a2 === void 0 ? void 0 : _a2.asBoolean();
     };
     ViewerPreferences2.prototype.getPrintPageRange = function() {
       var rng = this.PrintPageRange();
@@ -45209,8 +45565,8 @@ var ViewerPreferences = (
       return pageRanges;
     };
     ViewerPreferences2.prototype.getNumCopies = function() {
-      var _a, _b;
-      return (_b = (_a = this.NumCopies()) === null || _a === void 0 ? void 0 : _a.asNumber()) !== null && _b !== void 0 ? _b : 1;
+      var _a2, _b;
+      return (_b = (_a2 = this.NumCopies()) === null || _a2 === void 0 ? void 0 : _a2.asNumber()) !== null && _b !== void 0 ? _b : 1;
     };
     ViewerPreferences2.prototype.setHideToolbar = function(hideToolbar) {
       var HideToolbar = this.dict.context.obj(hideToolbar);
@@ -45340,8 +45696,8 @@ var PDFAcroField = (
       return parent.getFullyQualifiedName() + "." + this.getPartialName();
     };
     PDFAcroField2.prototype.getPartialName = function() {
-      var _a;
-      return (_a = this.T()) === null || _a === void 0 ? void 0 : _a.decodeText();
+      var _a2;
+      return (_a2 = this.T()) === null || _a2 === void 0 ? void 0 : _a2.decodeText();
     };
     PDFAcroField2.prototype.setPartialName = function(partialName) {
       if (!partialName)
@@ -45360,8 +45716,8 @@ var PDFAcroField = (
       return DA === null || DA === void 0 ? void 0 : DA.asString();
     };
     PDFAcroField2.prototype.setFontSize = function(fontSize) {
-      var _a;
-      var name = (_a = this.getFullyQualifiedName()) !== null && _a !== void 0 ? _a : "";
+      var _a2;
+      var name = (_a2 = this.getFullyQualifiedName()) !== null && _a2 !== void 0 ? _a2 : "";
       var da = this.getDefaultAppearance();
       if (!da)
         throw new MissingDAEntryError(name);
@@ -45375,8 +45731,8 @@ var PDFAcroField = (
       this.setDefaultAppearance(modifiedDa);
     };
     PDFAcroField2.prototype.getFlags = function() {
-      var _a, _b;
-      return (_b = (_a = this.Ff()) === null || _a === void 0 ? void 0 : _a.asNumber()) !== null && _b !== void 0 ? _b : 0;
+      var _a2, _b;
+      return (_b = (_a2 = this.Ff()) === null || _a2 === void 0 ? void 0 : _a2.asNumber()) !== null && _b !== void 0 ? _b : 0;
     };
     PDFAcroField2.prototype.setFlags = function(flags) {
       this.dict.set(PDFName.of("Ff"), PDFNumber.of(flags));
@@ -45429,8 +45785,8 @@ var BorderStyle = (
       return void 0;
     };
     BorderStyle2.prototype.getWidth = function() {
-      var _a, _b;
-      return (_b = (_a = this.W()) === null || _a === void 0 ? void 0 : _a.asNumber()) !== null && _b !== void 0 ? _b : 1;
+      var _a2, _b;
+      return (_b = (_a2 = this.W()) === null || _a2 === void 0 ? void 0 : _a2.asNumber()) !== null && _b !== void 0 ? _b : 1;
     };
     BorderStyle2.prototype.setWidth = function(width) {
       var W = this.dict.context.obj(width);
@@ -45459,9 +45815,9 @@ var PDFAnnotation = (
       return this.dict.context.lookupMaybe(numberOrRef, PDFNumber);
     };
     PDFAnnotation2.prototype.getRectangle = function() {
-      var _a;
+      var _a2;
       var Rect = this.Rect();
-      return (_a = Rect === null || Rect === void 0 ? void 0 : Rect.asRectangle()) !== null && _a !== void 0 ? _a : { x: 0, y: 0, width: 0, height: 0 };
+      return (_a2 = Rect === null || Rect === void 0 ? void 0 : Rect.asRectangle()) !== null && _a2 !== void 0 ? _a2 : { x: 0, y: 0, width: 0, height: 0 };
     };
     PDFAnnotation2.prototype.setRectangle = function(rect) {
       var x = rect.x, y = rect.y, width = rect.width, height = rect.height;
@@ -45525,8 +45881,8 @@ var PDFAnnotation = (
       return { normal: N, rollover: R, down: D };
     };
     PDFAnnotation2.prototype.getFlags = function() {
-      var _a, _b;
-      return (_b = (_a = this.F()) === null || _a === void 0 ? void 0 : _a.asNumber()) !== null && _b !== void 0 ? _b : 0;
+      var _a2, _b;
+      return (_b = (_a2 = this.F()) === null || _a2 === void 0 ? void 0 : _a2.asNumber()) !== null && _b !== void 0 ? _b : 0;
     };
     PDFAnnotation2.prototype.setFlags = function(flags) {
       this.dict.set(PDFName.of("F"), PDFNumber.of(flags));
@@ -45598,8 +45954,8 @@ var AppearanceCharacteristics = (
       return void 0;
     };
     AppearanceCharacteristics2.prototype.getRotation = function() {
-      var _a;
-      return (_a = this.R()) === null || _a === void 0 ? void 0 : _a.asNumber();
+      var _a2;
+      return (_a2 = this.R()) === null || _a2 === void 0 ? void 0 : _a2.asNumber();
     };
     AppearanceCharacteristics2.prototype.getBorderColor = function() {
       var BC = this.BC();
@@ -45742,8 +46098,8 @@ var PDFWidgetAnnotation = (
       return bs;
     };
     PDFWidgetAnnotation2.prototype.getOnValue = function() {
-      var _a;
-      var normal2 = (_a = this.getAppearances()) === null || _a === void 0 ? void 0 : _a.normal;
+      var _a2;
+      var normal2 = (_a2 = this.getAppearances()) === null || _a2 === void 0 ? void 0 : _a2.normal;
       if (normal2 instanceof PDFDict) {
         var keys = normal2.keys();
         for (var idx = 0, len = keys.length; idx < len; idx++) {
@@ -45867,8 +46223,8 @@ var PDFAcroButton = (
       }
     };
     PDFAcroButton2.prototype.normalizeExportValues = function() {
-      var _a, _b, _c, _d;
-      var exportValues = (_a = this.getExportValues()) !== null && _a !== void 0 ? _a : [];
+      var _a2, _b, _c, _d;
+      var exportValues = (_a2 = this.getExportValues()) !== null && _a2 !== void 0 ? _a2 : [];
       var Opt = [];
       var widgets = this.getWidgets();
       for (var idx = 0, len = widgets.length; idx < len; idx++) {
@@ -45879,12 +46235,12 @@ var PDFAcroButton = (
       this.setOpt(Opt);
     };
     PDFAcroButton2.prototype.addOpt = function(opt, useExistingOptIdx) {
-      var _a;
+      var _a2;
       this.normalizeExportValues();
       var optText = opt.decodeText();
       var existingIdx;
       if (useExistingOptIdx) {
-        var exportValues = (_a = this.getExportValues()) !== null && _a !== void 0 ? _a : [];
+        var exportValues = (_a2 = this.getExportValues()) !== null && _a2 !== void 0 ? _a2 : [];
         for (var idx = 0, len = exportValues.length; idx < len; idx++) {
           var exportVal = exportValues[idx];
           if (exportVal.decodeText() === optText)
@@ -45912,8 +46268,8 @@ var PDFAcroCheckBox = (
       return _super !== null && _super.apply(this, arguments) || this;
     }
     PDFAcroCheckBox2.prototype.setValue = function(value) {
-      var _a;
-      var onValue = (_a = this.getOnValue()) !== null && _a !== void 0 ? _a : PDFName.of("Yes");
+      var _a2;
+      var onValue = (_a2 = this.getOnValue()) !== null && _a2 !== void 0 ? _a2 : PDFName.of("Yes");
       if (value !== onValue && value !== PDFName.of("Off")) {
         throw new InvalidAcroFieldValueError();
       }
@@ -46066,7 +46422,7 @@ var PDFAcroChoice = (
     PDFAcroChoice2.prototype.setOptions = function(options) {
       var newOpt = new Array(options.length);
       for (var idx = 0, len = options.length; idx < len; idx++) {
-        var _a = options[idx], value = _a.value, display = _a.display;
+        var _a2 = options[idx], value = _a2.value, display = _a2.display;
         newOpt[idx] = this.dict.context.obj([value, display || value]);
       }
       this.dict.set(PDFName.of("Opt"), this.dict.context.obj(newOpt));
@@ -46189,15 +46545,15 @@ var PDFAcroText = (
       this.dict.delete(PDFName.of("MaxLen"));
     };
     PDFAcroText2.prototype.getMaxLength = function() {
-      var _a;
-      return (_a = this.MaxLen()) === null || _a === void 0 ? void 0 : _a.asNumber();
+      var _a2;
+      return (_a2 = this.MaxLen()) === null || _a2 === void 0 ? void 0 : _a2.asNumber();
     };
     PDFAcroText2.prototype.setQuadding = function(quadding) {
       this.dict.set(PDFName.of("Q"), PDFNumber.of(quadding));
     };
     PDFAcroText2.prototype.getQuadding = function() {
-      var _a;
-      return (_a = this.Q()) === null || _a === void 0 ? void 0 : _a.asNumber();
+      var _a2;
+      return (_a2 = this.Q()) === null || _a2 === void 0 ? void 0 : _a2.asNumber();
     };
     PDFAcroText2.prototype.setValue = function(value) {
       this.dict.set(PDFName.of("V"), value);
@@ -46364,10 +46720,10 @@ var createPDFAcroTerminal = function(dict, ref) {
   return PDFAcroTerminal.fromDict(dict, ref);
 };
 var createPDFAcroButton = function(dict, ref) {
-  var _a;
+  var _a2;
   var ffNumberOrRef = getInheritableAttribute(dict, PDFName.of("Ff"));
   var ffNumber = dict.context.lookupMaybe(ffNumberOrRef, PDFNumber);
-  var flags = (_a = ffNumber === null || ffNumber === void 0 ? void 0 : ffNumber.asNumber()) !== null && _a !== void 0 ? _a : 0;
+  var flags = (_a2 = ffNumber === null || ffNumber === void 0 ? void 0 : ffNumber.asNumber()) !== null && _a2 !== void 0 ? _a2 : 0;
   if (flagIsSet(flags, AcroButtonFlags.PushButton)) {
     return PDFAcroPushButton.fromDict(dict, ref);
   } else if (flagIsSet(flags, AcroButtonFlags.Radio)) {
@@ -46377,10 +46733,10 @@ var createPDFAcroButton = function(dict, ref) {
   }
 };
 var createPDFAcroChoice = function(dict, ref) {
-  var _a;
+  var _a2;
   var ffNumberOrRef = getInheritableAttribute(dict, PDFName.of("Ff"));
   var ffNumber = dict.context.lookupMaybe(ffNumberOrRef, PDFNumber);
-  var flags = (_a = ffNumber === null || ffNumber === void 0 ? void 0 : ffNumber.asNumber()) !== null && _a !== void 0 ? _a : 0;
+  var flags = (_a2 = ffNumber === null || ffNumber === void 0 ? void 0 : ffNumber.asNumber()) !== null && _a2 !== void 0 ? _a2 : 0;
   if (flagIsSet(flags, AcroChoiceFlags.Combo)) {
     return PDFAcroComboBox.fromDict(dict, ref);
   } else {
@@ -47142,7 +47498,7 @@ var PDFObjectStreamParser = (
     }
     PDFObjectStreamParser2.prototype.parseIntoContext = function() {
       return __awaiter(this, void 0, void 0, function() {
-        var offsetsAndObjectNumbers, idx, len, _a, objectNumber, offset2, object, ref;
+        var offsetsAndObjectNumbers, idx, len, _a2, objectNumber, offset2, object, ref;
         return __generator(this, function(_b) {
           switch (_b.label) {
             case 0:
@@ -47156,7 +47512,7 @@ var PDFObjectStreamParser = (
             case 1:
               if (!(idx < len))
                 return [3, 4];
-              _a = offsetsAndObjectNumbers[idx], objectNumber = _a.objectNumber, offset2 = _a.offset;
+              _a2 = offsetsAndObjectNumbers[idx], objectNumber = _a2.objectNumber, offset2 = _a2.offset;
               this.bytes.moveTo(this.firstOffset + offset2);
               object = this.parseObject();
               ref = PDFRef.of(objectNumber, 0);
@@ -47238,7 +47594,7 @@ var PDFXRefStreamParser = (
     };
     PDFXRefStreamParser2.prototype.parseEntries = function() {
       var entries = [];
-      var _a = this.byteWidths, typeFieldWidth = _a[0], offsetFieldWidth = _a[1], genFieldWidth = _a[2];
+      var _a2 = this.byteWidths, typeFieldWidth = _a2[0], offsetFieldWidth = _a2[1], genFieldWidth = _a2[2];
       for (var subsectionIdx = 0, subsectionLen = this.subsections.length; subsectionIdx < subsectionLen; subsectionIdx++) {
         var _b = this.subsections[subsectionIdx], firstObjectNumber = _b.firstObjectNumber, length_2 = _b.length;
         for (var objIdx = 0; objIdx < length_2; objIdx++) {
@@ -47302,21 +47658,21 @@ var PDFParser = (
     PDFParser2.prototype.parseDocument = function() {
       return __awaiter(this, void 0, void 0, function() {
         var prevOffset, offset2;
-        return __generator(this, function(_a) {
-          switch (_a.label) {
+        return __generator(this, function(_a2) {
+          switch (_a2.label) {
             case 0:
               if (this.alreadyParsed) {
                 throw new ReparseError("PDFParser", "parseDocument");
               }
               this.alreadyParsed = true;
               this.context.header = this.parseHeader();
-              _a.label = 1;
+              _a2.label = 1;
             case 1:
               if (!!this.bytes.done())
                 return [3, 3];
               return [4, this.parseDocumentSection()];
             case 2:
-              _a.sent();
+              _a2.sent();
               offset2 = this.bytes.offset();
               if (offset2 === prevOffset) {
                 throw new StalledParserError(this.bytes.position());
@@ -47342,7 +47698,7 @@ var PDFParser = (
       if (!isValidCatalog(catalog)) {
         var indirectObjects = this.context.enumerateIndirectObjects();
         for (var idx = 0, len = indirectObjects.length; idx < len; idx++) {
-          var _a = indirectObjects[idx], ref = _a[0], object = _a[1];
+          var _a2 = indirectObjects[idx], ref = _a2[0], object = _a2[1];
           if (isValidCatalog(object)) {
             this.context.trailerInfo.Root = ref;
           }
@@ -47387,8 +47743,8 @@ var PDFParser = (
     PDFParser2.prototype.parseIndirectObject = function() {
       return __awaiter(this, void 0, void 0, function() {
         var ref, object;
-        return __generator(this, function(_a) {
-          switch (_a.label) {
+        return __generator(this, function(_a2) {
+          switch (_a2.label) {
             case 0:
               ref = this.parseIndirectObjectHeader();
               this.skipWhitespaceAndComments();
@@ -47399,7 +47755,7 @@ var PDFParser = (
                 return [3, 2];
               return [4, PDFObjectStreamParser.forStream(object, this.shouldWaitForTick).parseIntoContext()];
             case 1:
-              _a.sent();
+              _a2.sent();
               return [3, 3];
             case 2:
               if (object instanceof PDFRawStream && object.dict.lookup(PDFName.of("Type")) === PDFName.of("XRef")) {
@@ -47407,7 +47763,7 @@ var PDFParser = (
               } else {
                 this.context.assign(ref, object);
               }
-              _a.label = 3;
+              _a2.label = 3;
             case 3:
               return [2, ref];
           }
@@ -47443,24 +47799,24 @@ var PDFParser = (
     PDFParser2.prototype.parseIndirectObjects = function() {
       return __awaiter(this, void 0, void 0, function() {
         var initialOffset;
-        return __generator(this, function(_a) {
-          switch (_a.label) {
+        return __generator(this, function(_a2) {
+          switch (_a2.label) {
             case 0:
               this.skipWhitespaceAndComments();
-              _a.label = 1;
+              _a2.label = 1;
             case 1:
               if (!(!this.bytes.done() && IsDigit[this.bytes.peek()]))
                 return [3, 8];
               initialOffset = this.bytes.offset();
-              _a.label = 2;
+              _a2.label = 2;
             case 2:
-              _a.trys.push([2, 4, , 5]);
+              _a2.trys.push([2, 4, , 5]);
               return [4, this.parseIndirectObject()];
             case 3:
-              _a.sent();
+              _a2.sent();
               return [3, 5];
             case 4:
-              _a.sent();
+              _a2.sent();
               this.bytes.moveTo(initialOffset);
               this.tryToParseInvalidIndirectObject();
               return [3, 5];
@@ -47471,8 +47827,8 @@ var PDFParser = (
                 return [3, 7];
               return [4, waitForTick()];
             case 6:
-              _a.sent();
-              _a.label = 7;
+              _a2.sent();
+              _a2.label = 7;
             case 7:
               return [3, 1];
             case 8:
@@ -47541,12 +47897,12 @@ var PDFParser = (
     };
     PDFParser2.prototype.parseDocumentSection = function() {
       return __awaiter(this, void 0, void 0, function() {
-        return __generator(this, function(_a) {
-          switch (_a.label) {
+        return __generator(this, function(_a2) {
+          switch (_a2.label) {
             case 0:
               return [4, this.parseIndirectObjects()];
             case 1:
-              _a.sent();
+              _a2.sent();
               this.maybeParseCrossRefSection();
               this.maybeParseTrailerDict();
               this.maybeParseTrailer();
@@ -48301,13 +48657,13 @@ var drawPage = function(name, options) {
   ].filter(Boolean);
 };
 var drawLine = function(options) {
-  var _a, _b;
+  var _a2, _b;
   return [
     pushGraphicsState(),
     options.graphicsState && setGraphicsState(options.graphicsState),
     options.color && setStrokingColor(options.color),
     setLineWidth(options.thickness),
-    setDashPattern((_a = options.dashArray) !== null && _a !== void 0 ? _a : [], (_b = options.dashPhase) !== null && _b !== void 0 ? _b : 0),
+    setDashPattern((_a2 = options.dashArray) !== null && _a2 !== void 0 ? _a2 : [], (_b = options.dashPhase) !== null && _b !== void 0 ? _b : 0),
     moveTo(options.start.x, options.start.y),
     options.lineCap && setLineCap(options.lineCap),
     moveTo(options.start.x, options.start.y),
@@ -48317,7 +48673,7 @@ var drawLine = function(options) {
   ].filter(Boolean);
 };
 var drawRectangle = function(options) {
-  var _a, _b;
+  var _a2, _b;
   return [
     pushGraphicsState(),
     options.graphicsState && setGraphicsState(options.graphicsState),
@@ -48325,7 +48681,7 @@ var drawRectangle = function(options) {
     options.borderColor && setStrokingColor(options.borderColor),
     setLineWidth(options.borderWidth),
     options.borderLineCap && setLineCap(options.borderLineCap),
-    setDashPattern((_a = options.borderDashArray) !== null && _a !== void 0 ? _a : [], (_b = options.borderDashPhase) !== null && _b !== void 0 ? _b : 0),
+    setDashPattern((_a2 = options.borderDashArray) !== null && _a2 !== void 0 ? _a2 : [], (_b = options.borderDashPhase) !== null && _b !== void 0 ? _b : 0),
     translate(options.x, options.y),
     rotateRadians(toRadians(options.rotate)),
     skewRadians(toRadians(options.xSkew), toRadians(options.ySkew)),
@@ -48387,7 +48743,7 @@ var drawEllipseCurves = function(config) {
   ];
 };
 var drawEllipse = function(options) {
-  var _a, _b, _c;
+  var _a2, _b, _c;
   return __spreadArrays([
     pushGraphicsState(),
     options.graphicsState && setGraphicsState(options.graphicsState),
@@ -48395,7 +48751,7 @@ var drawEllipse = function(options) {
     options.borderColor && setStrokingColor(options.borderColor),
     setLineWidth(options.borderWidth),
     options.borderLineCap && setLineCap(options.borderLineCap),
-    setDashPattern((_a = options.borderDashArray) !== null && _a !== void 0 ? _a : [], (_b = options.borderDashPhase) !== null && _b !== void 0 ? _b : 0)
+    setDashPattern((_a2 = options.borderDashArray) !== null && _a2 !== void 0 ? _a2 : [], (_b = options.borderDashPhase) !== null && _b !== void 0 ? _b : 0)
   ], options.rotate === void 0 ? drawEllipsePath({
     x: options.x,
     y: options.y,
@@ -48414,12 +48770,12 @@ var drawEllipse = function(options) {
   ]).filter(Boolean);
 };
 var drawSvgPath = function(path, options) {
-  var _a, _b, _c;
+  var _a2, _b, _c;
   return __spreadArrays([
     pushGraphicsState(),
     options.graphicsState && setGraphicsState(options.graphicsState),
     translate(options.x, options.y),
-    rotateRadians(toRadians((_a = options.rotate) !== null && _a !== void 0 ? _a : degrees(0))),
+    rotateRadians(toRadians((_a2 = options.rotate) !== null && _a2 !== void 0 ? _a2 : degrees(0))),
     // SVG path Y axis is opposite pdf-lib's
     options.scale ? scale(options.scale, -options.scale) : scale(1, -1),
     options.color && setFillingColor(options.color),
@@ -48555,7 +48911,7 @@ var drawTextLines = function(lines, options) {
     setFontAndSize(options.font, options.size)
   ];
   for (var idx = 0, len = lines.length; idx < len; idx++) {
-    var _a = lines[idx], encoded = _a.encoded, x = _a.x, y = _a.y;
+    var _a2 = lines[idx], encoded = _a2.encoded, x = _a2.x, y = _a2.y;
     operators.push(rotateAndSkewTextRadiansAndTranslate(toRadians(options.rotate), toRadians(options.xSkew), toRadians(options.ySkew), x, y), showText(encoded));
   }
   operators.push(endText());
@@ -48754,10 +49110,10 @@ var UnexpectedFieldTypeError = (
   function(_super) {
     __extends(UnexpectedFieldTypeError2, _super);
     function UnexpectedFieldTypeError2(name, expected, actual) {
-      var _a, _b;
+      var _a2, _b;
       var _this = this;
       var expectedType = expected === null || expected === void 0 ? void 0 : expected.name;
-      var actualType = (_b = (_a = actual === null || actual === void 0 ? void 0 : actual.constructor) === null || _a === void 0 ? void 0 : _a.name) !== null && _b !== void 0 ? _b : actual;
+      var actualType = (_b = (_a2 = actual === null || actual === void 0 ? void 0 : actual.constructor) === null || _a2 === void 0 ? void 0 : _a2.name) !== null && _b !== void 0 ? _b : actual;
       var msg2 = 'Expected field "' + name + '" to be of type ' + expectedType + ", " + ("but it is actually of type " + actualType);
       _this = _super.call(this, msg2) || this;
       return _this;
@@ -48932,7 +49288,7 @@ var lastIndexOfWhitespace = function(line4) {
   return void 0;
 };
 var splitOutLines = function(input, maxWidth, font, fontSize) {
-  var _a;
+  var _a2;
   var lastWhitespaceIdx = input.length;
   while (lastWhitespaceIdx > 0) {
     var line4 = input.substring(0, lastWhitespaceIdx);
@@ -48942,7 +49298,7 @@ var splitOutLines = function(input, maxWidth, font, fontSize) {
       var remainder = input.substring(lastWhitespaceIdx) || void 0;
       return { line: line4, encoded, width, remainder };
     }
-    lastWhitespaceIdx = (_a = lastIndexOfWhitespace(line4)) !== null && _a !== void 0 ? _a : 0;
+    lastWhitespaceIdx = (_a2 = lastIndexOfWhitespace(line4)) !== null && _a2 !== void 0 ? _a2 : 0;
   }
   return {
     line: input,
@@ -48951,8 +49307,8 @@ var splitOutLines = function(input, maxWidth, font, fontSize) {
     remainder: void 0
   };
 };
-var layoutMultilineText = function(text2, _a) {
-  var alignment = _a.alignment, fontSize = _a.fontSize, font = _a.font, bounds = _a.bounds;
+var layoutMultilineText = function(text2, _a2) {
+  var alignment = _a2.alignment, fontSize = _a2.fontSize, font = _a2.font, bounds = _a2.bounds;
   var lines = lineSplit(cleanText(text2));
   if (fontSize === void 0 || fontSize === 0) {
     fontSize = computeFontSize(lines, font, bounds, true);
@@ -48995,8 +49351,8 @@ var layoutMultilineText = function(text2, _a) {
     }
   };
 };
-var layoutCombedText = function(text2, _a) {
-  var fontSize = _a.fontSize, font = _a.font, bounds = _a.bounds, cellCount = _a.cellCount;
+var layoutCombedText = function(text2, _a2) {
+  var fontSize = _a2.fontSize, font = _a2.font, bounds = _a2.bounds, cellCount = _a2.cellCount;
   var line4 = mergeLines(cleanText(text2));
   if (line4.length > cellCount) {
     throw new CombedTextLayoutError(line4.length, cellCount);
@@ -49043,8 +49399,8 @@ var layoutCombedText = function(text2, _a) {
     }
   };
 };
-var layoutSinglelineText = function(text2, _a) {
-  var alignment = _a.alignment, fontSize = _a.fontSize, font = _a.font, bounds = _a.bounds;
+var layoutSinglelineText = function(text2, _a2) {
+  var alignment = _a2.alignment, fontSize = _a2.fontSize, font = _a2.font, bounds = _a2.bounds;
   var line4 = mergeLines(cleanText(text2));
   if (fontSize === void 0 || fontSize === 0) {
     fontSize = computeFontSize([line4], font, bounds);
@@ -49067,16 +49423,16 @@ var normalizeAppearance = function(appearance) {
 };
 var tfRegex = /\/([^\0\t\n\f\r\ ]+)[\0\t\n\f\r\ ]+(\d*\.\d+|\d+)[\0\t\n\f\r\ ]+Tf/;
 var getDefaultFontSize = function(field) {
-  var _a, _b;
-  var da = (_a = field.getDefaultAppearance()) !== null && _a !== void 0 ? _a : "";
+  var _a2, _b;
+  var da = (_a2 = field.getDefaultAppearance()) !== null && _a2 !== void 0 ? _a2 : "";
   var daMatch = (_b = findLastMatch(da, tfRegex).match) !== null && _b !== void 0 ? _b : [];
   var defaultFontSize = Number(daMatch[2]);
   return isFinite(defaultFontSize) ? defaultFontSize : void 0;
 };
 var colorRegex = /(\d*\.\d+|\d+)[\0\t\n\f\r\ ]*(\d*\.\d+|\d+)?[\0\t\n\f\r\ ]*(\d*\.\d+|\d+)?[\0\t\n\f\r\ ]*(\d*\.\d+|\d+)?[\0\t\n\f\r\ ]+(g|rg|k)/;
 var getDefaultColor = function(field) {
-  var _a;
-  var da = (_a = field.getDefaultAppearance()) !== null && _a !== void 0 ? _a : "";
+  var _a2;
+  var da = (_a2 = field.getDefaultAppearance()) !== null && _a2 !== void 0 ? _a2 : "";
   var daMatch = findLastMatch(da, colorRegex).match;
   var _b = daMatch !== null && daMatch !== void 0 ? daMatch : [], c1 = _b[1], c2 = _b[2], c3 = _b[3], c4 = _b[4], colorSpace = _b[5];
   if (colorSpace === "g" && c1) {
@@ -49091,24 +49447,24 @@ var getDefaultColor = function(field) {
   return void 0;
 };
 var updateDefaultAppearance = function(field, color, font, fontSize) {
-  var _a;
+  var _a2;
   if (fontSize === void 0) {
     fontSize = 0;
   }
   var da = [
     setFillingColor(color).toString(),
-    setFontAndSize((_a = font === null || font === void 0 ? void 0 : font.name) !== null && _a !== void 0 ? _a : "dummy__noop", fontSize).toString()
+    setFontAndSize((_a2 = font === null || font === void 0 ? void 0 : font.name) !== null && _a2 !== void 0 ? _a2 : "dummy__noop", fontSize).toString()
   ].join("\n");
   field.setDefaultAppearance(da);
 };
 var defaultCheckBoxAppearanceProvider = function(checkBox, widget) {
-  var _a, _b, _c;
+  var _a2, _b, _c;
   var widgetColor = getDefaultColor(widget);
   var fieldColor = getDefaultColor(checkBox.acroField);
   var rectangle2 = widget.getRectangle();
   var ap = widget.getAppearanceCharacteristics();
   var bs = widget.getBorderStyle();
-  var borderWidth = (_a = bs === null || bs === void 0 ? void 0 : bs.getWidth()) !== null && _a !== void 0 ? _a : 0;
+  var borderWidth = (_a2 = bs === null || bs === void 0 ? void 0 : bs.getWidth()) !== null && _a2 !== void 0 ? _a2 : 0;
   var rotation = reduceRotation(ap === null || ap === void 0 ? void 0 : ap.getRotation());
   var _d = adjustDimsForRotation(rectangle2, rotation), width = _d.width, height = _d.height;
   var rotate2 = rotateInPlace(__assign(__assign({}, rectangle2), { rotation }));
@@ -49144,13 +49500,13 @@ var defaultCheckBoxAppearanceProvider = function(checkBox, widget) {
   };
 };
 var defaultRadioGroupAppearanceProvider = function(radioGroup, widget) {
-  var _a, _b, _c;
+  var _a2, _b, _c;
   var widgetColor = getDefaultColor(widget);
   var fieldColor = getDefaultColor(radioGroup.acroField);
   var rectangle2 = widget.getRectangle();
   var ap = widget.getAppearanceCharacteristics();
   var bs = widget.getBorderStyle();
-  var borderWidth = (_a = bs === null || bs === void 0 ? void 0 : bs.getWidth()) !== null && _a !== void 0 ? _a : 0;
+  var borderWidth = (_a2 = bs === null || bs === void 0 ? void 0 : bs.getWidth()) !== null && _a2 !== void 0 ? _a2 : 0;
   var rotation = reduceRotation(ap === null || ap === void 0 ? void 0 : ap.getRotation());
   var _d = adjustDimsForRotation(rectangle2, rotation), width = _d.width, height = _d.height;
   var rotate2 = rotateInPlace(__assign(__assign({}, rectangle2), { rotation }));
@@ -49185,7 +49541,7 @@ var defaultRadioGroupAppearanceProvider = function(radioGroup, widget) {
   };
 };
 var defaultButtonAppearanceProvider = function(button, widget, font) {
-  var _a, _b, _c, _d, _e;
+  var _a2, _b, _c, _d, _e;
   var widgetColor = getDefaultColor(widget);
   var fieldColor = getDefaultColor(button.acroField);
   var widgetFontSize = getDefaultFontSize(widget);
@@ -49194,7 +49550,7 @@ var defaultButtonAppearanceProvider = function(button, widget, font) {
   var ap = widget.getAppearanceCharacteristics();
   var bs = widget.getBorderStyle();
   var captions = ap === null || ap === void 0 ? void 0 : ap.getCaptions();
-  var normalText = (_a = captions === null || captions === void 0 ? void 0 : captions.normal) !== null && _a !== void 0 ? _a : "";
+  var normalText = (_a2 = captions === null || captions === void 0 ? void 0 : captions.normal) !== null && _a2 !== void 0 ? _a2 : "";
   var downText = (_c = (_b = captions === null || captions === void 0 ? void 0 : captions.down) !== null && _b !== void 0 ? _b : normalText) !== null && _c !== void 0 ? _c : "";
   var borderWidth = (_d = bs === null || bs === void 0 ? void 0 : bs.getWidth()) !== null && _d !== void 0 ? _d : 0;
   var rotation = reduceRotation(ap === null || ap === void 0 ? void 0 : ap.getRotation());
@@ -49246,7 +49602,7 @@ var defaultButtonAppearanceProvider = function(button, widget, font) {
   };
 };
 var defaultTextFieldAppearanceProvider = function(textField, widget, font) {
-  var _a, _b, _c, _d;
+  var _a2, _b, _c, _d;
   var widgetColor = getDefaultColor(widget);
   var fieldColor = getDefaultColor(textField.acroField);
   var widgetFontSize = getDefaultFontSize(widget);
@@ -49254,7 +49610,7 @@ var defaultTextFieldAppearanceProvider = function(textField, widget, font) {
   var rectangle2 = widget.getRectangle();
   var ap = widget.getAppearanceCharacteristics();
   var bs = widget.getBorderStyle();
-  var text2 = (_a = textField.getText()) !== null && _a !== void 0 ? _a : "";
+  var text2 = (_a2 = textField.getText()) !== null && _a2 !== void 0 ? _a2 : "";
   var borderWidth = (_b = bs === null || bs === void 0 ? void 0 : bs.getWidth()) !== null && _b !== void 0 ? _b : 0;
   var rotation = reduceRotation(ap === null || ap === void 0 ? void 0 : ap.getRotation());
   var _e = adjustDimsForRotation(rectangle2, rotation), width = _e.width, height = _e.height;
@@ -49322,7 +49678,7 @@ var defaultTextFieldAppearanceProvider = function(textField, widget, font) {
   return __spreadArrays(rotate2, drawTextField(options));
 };
 var defaultDropdownAppearanceProvider = function(dropdown, widget, font) {
-  var _a, _b, _c;
+  var _a2, _b, _c;
   var widgetColor = getDefaultColor(widget);
   var fieldColor = getDefaultColor(dropdown.acroField);
   var widgetFontSize = getDefaultFontSize(widget);
@@ -49330,7 +49686,7 @@ var defaultDropdownAppearanceProvider = function(dropdown, widget, font) {
   var rectangle2 = widget.getRectangle();
   var ap = widget.getAppearanceCharacteristics();
   var bs = widget.getBorderStyle();
-  var text2 = (_a = dropdown.getSelected()[0]) !== null && _a !== void 0 ? _a : "";
+  var text2 = (_a2 = dropdown.getSelected()[0]) !== null && _a2 !== void 0 ? _a2 : "";
   var borderWidth = (_b = bs === null || bs === void 0 ? void 0 : bs.getWidth()) !== null && _b !== void 0 ? _b : 0;
   var rotation = reduceRotation(ap === null || ap === void 0 ? void 0 : ap.getRotation());
   var _d = adjustDimsForRotation(rectangle2, rotation), width = _d.width, height = _d.height;
@@ -49374,7 +49730,7 @@ var defaultDropdownAppearanceProvider = function(dropdown, widget, font) {
   return __spreadArrays(rotate2, drawTextField(options));
 };
 var defaultOptionListAppearanceProvider = function(optionList, widget, font) {
-  var _a, _b;
+  var _a2, _b;
   var widgetColor = getDefaultColor(widget);
   var fieldColor = getDefaultColor(optionList.acroField);
   var widgetFontSize = getDefaultFontSize(widget);
@@ -49382,7 +49738,7 @@ var defaultOptionListAppearanceProvider = function(optionList, widget, font) {
   var rectangle2 = widget.getRectangle();
   var ap = widget.getAppearanceCharacteristics();
   var bs = widget.getBorderStyle();
-  var borderWidth = (_a = bs === null || bs === void 0 ? void 0 : bs.getWidth()) !== null && _a !== void 0 ? _a : 0;
+  var borderWidth = (_a2 = bs === null || bs === void 0 ? void 0 : bs.getWidth()) !== null && _a2 !== void 0 ? _a2 : 0;
   var rotation = reduceRotation(ap === null || ap === void 0 ? void 0 : ap.getRotation());
   var _c = adjustDimsForRotation(rectangle2, rotation), width = _c.width, height = _c.height;
   var rotate2 = rotateInPlace(__assign(__assign({}, rectangle2), { rotation }));
@@ -49466,16 +49822,16 @@ var PDFEmbeddedPage = (
     };
     PDFEmbeddedPage2.prototype.embed = function() {
       return __awaiter(this, void 0, void 0, function() {
-        return __generator(this, function(_a) {
-          switch (_a.label) {
+        return __generator(this, function(_a2) {
+          switch (_a2.label) {
             case 0:
               if (!!this.alreadyEmbedded)
                 return [3, 2];
               return [4, this.embedder.embedIntoContext(this.doc.context, this.ref)];
             case 1:
-              _a.sent();
+              _a2.sent();
               this.alreadyEmbedded = true;
-              _a.label = 2;
+              _a2.label = 2;
             case 2:
               return [
                 2
@@ -49518,11 +49874,11 @@ var PDFFont = (
       return this.embedder.widthOfTextAtSize(text2, size);
     };
     PDFFont2.prototype.heightAtSize = function(size, options) {
-      var _a;
+      var _a2;
       assertIs(size, "size", ["number"]);
       assertOrUndefined(options === null || options === void 0 ? void 0 : options.descender, "options.descender", ["boolean"]);
       return this.embedder.heightOfFontAtSize(size, {
-        descender: (_a = options === null || options === void 0 ? void 0 : options.descender) !== null && _a !== void 0 ? _a : true
+        descender: (_a2 = options === null || options === void 0 ? void 0 : options.descender) !== null && _a2 !== void 0 ? _a2 : true
       });
     };
     PDFFont2.prototype.sizeAtHeight = function(height) {
@@ -49538,16 +49894,16 @@ var PDFFont = (
     };
     PDFFont2.prototype.embed = function() {
       return __awaiter(this, void 0, void 0, function() {
-        return __generator(this, function(_a) {
-          switch (_a.label) {
+        return __generator(this, function(_a2) {
+          switch (_a2.label) {
             case 0:
               if (!this.modified)
                 return [3, 2];
               return [4, this.embedder.embedIntoContext(this.doc.context, this.ref)];
             case 1:
-              _a.sent();
+              _a2.sent();
               this.modified = false;
-              _a.label = 2;
+              _a2.label = 2;
             case 2:
               return [
                 2
@@ -49596,7 +49952,7 @@ var PDFImage = (
     };
     PDFImage2.prototype.embed = function() {
       return __awaiter(this, void 0, void 0, function() {
-        var _a, doc, ref;
+        var _a2, doc, ref;
         return __generator(this, function(_b) {
           switch (_b.label) {
             case 0:
@@ -49606,7 +49962,7 @@ var PDFImage = (
                   /*return*/
                 ];
               if (!this.embedTask) {
-                _a = this, doc = _a.doc, ref = _a.ref;
+                _a2 = this, doc = _a2.doc, ref = _a2.ref;
                 this.embedTask = this.embedder.embedIntoContext(doc.context, ref);
               }
               return [4, this.embedTask];
@@ -49662,8 +50018,8 @@ var PDFField = (
       this.doc = doc;
     }
     PDFField2.prototype.getName = function() {
-      var _a;
-      return (_a = this.acroField.getFullyQualifiedName()) !== null && _a !== void 0 ? _a : "";
+      var _a2;
+      return (_a2 = this.acroField.getFullyQualifiedName()) !== null && _a2 !== void 0 ? _a2 : "";
     };
     PDFField2.prototype.isReadOnly = function() {
       return this.acroField.hasFlag(AcroFieldFlags.ReadOnly);
@@ -49708,7 +50064,7 @@ var PDFField = (
       return this.doc.getForm().fieldIsDirty(this.ref);
     };
     PDFField2.prototype.createWidget = function(options) {
-      var _a;
+      var _a2;
       var textColor = options.textColor;
       var backgroundColor = options.backgroundColor;
       var borderColor = options.borderColor;
@@ -49743,30 +50099,30 @@ var PDFField = (
       widget.setFlagTo(AnnotationFlags.Hidden, hidden);
       widget.setFlagTo(AnnotationFlags.Invisible, false);
       if (textColor) {
-        var da = (_a = this.acroField.getDefaultAppearance()) !== null && _a !== void 0 ? _a : "";
+        var da = (_a2 = this.acroField.getDefaultAppearance()) !== null && _a2 !== void 0 ? _a2 : "";
         var newDa = da + "\n" + setFillingColor(textColor).toString();
         this.acroField.setDefaultAppearance(newDa);
       }
       return widget;
     };
-    PDFField2.prototype.updateWidgetAppearanceWithFont = function(widget, font, _a) {
-      var normal2 = _a.normal, rollover = _a.rollover, down = _a.down;
+    PDFField2.prototype.updateWidgetAppearanceWithFont = function(widget, font, _a2) {
+      var normal2 = _a2.normal, rollover = _a2.rollover, down = _a2.down;
       this.updateWidgetAppearances(widget, {
         normal: this.createAppearanceStream(widget, normal2, font),
         rollover: rollover && this.createAppearanceStream(widget, rollover, font),
         down: down && this.createAppearanceStream(widget, down, font)
       });
     };
-    PDFField2.prototype.updateOnOffWidgetAppearance = function(widget, onValue, _a) {
-      var normal2 = _a.normal, rollover = _a.rollover, down = _a.down;
+    PDFField2.prototype.updateOnOffWidgetAppearance = function(widget, onValue, _a2) {
+      var normal2 = _a2.normal, rollover = _a2.rollover, down = _a2.down;
       this.updateWidgetAppearances(widget, {
         normal: this.createAppearanceDict(widget, normal2, onValue),
         rollover: rollover && this.createAppearanceDict(widget, rollover, onValue),
         down: down && this.createAppearanceDict(widget, down, onValue)
       });
     };
-    PDFField2.prototype.updateWidgetAppearances = function(widget, _a) {
-      var normal2 = _a.normal, rollover = _a.rollover, down = _a.down;
+    PDFField2.prototype.updateWidgetAppearances = function(widget, _a2) {
+      var normal2 = _a2.normal, rollover = _a2.rollover, down = _a2.down;
       widget.setNormalAppearance(normal2);
       if (rollover) {
         widget.setRolloverAppearance(rollover);
@@ -49780,10 +50136,10 @@ var PDFField = (
       }
     };
     PDFField2.prototype.createAppearanceStream = function(widget, appearance, font) {
-      var _a;
+      var _a2;
       var context = this.acroField.dict.context;
       var _b = widget.getRectangle(), width = _b.width, height = _b.height;
-      var Resources = font && { Font: (_a = {}, _a[font.name] = font.ref, _a) };
+      var Resources = font && { Font: (_a2 = {}, _a2[font.name] = font.ref, _a2) };
       var stream2 = context.formXObject(appearance, {
         Resources,
         BBox: context.obj([0, 0, width, height]),
@@ -49793,7 +50149,7 @@ var PDFField = (
       return streamRef;
     };
     PDFField2.prototype.createImageAppearanceStream = function(widget, image, alignment) {
-      var _a;
+      var _a2;
       var _b;
       var context = this.acroField.dict.context;
       var rectangle2 = widget.getRectangle();
@@ -49823,7 +50179,7 @@ var PDFField = (
       }
       var imageName = this.doc.context.addRandomSuffix("Image", 10);
       var appearance = __spreadArrays(rotate2, drawImage(imageName, options));
-      var Resources = { XObject: (_a = {}, _a[imageName] = image.ref, _a) };
+      var Resources = { XObject: (_a2 = {}, _a2[imageName] = image.ref, _a2) };
       var stream2 = context.formXObject(appearance, {
         Resources,
         BBox: context.obj([0, 0, rectangle2.width, rectangle2.height]),
@@ -49856,8 +50212,8 @@ var PDFCheckBox = (
       return _this;
     }
     PDFCheckBox2.prototype.check = function() {
-      var _a;
-      var onValue = (_a = this.acroField.getOnValue()) !== null && _a !== void 0 ? _a : PDFName.of("Yes");
+      var _a2;
+      var onValue = (_a2 = this.acroField.getOnValue()) !== null && _a2 !== void 0 ? _a2 : PDFName.of("Yes");
       this.markAsDirty();
       this.acroField.setValue(onValue);
     };
@@ -49870,7 +50226,7 @@ var PDFCheckBox = (
       return !!onValue && onValue === this.acroField.getValue();
     };
     PDFCheckBox2.prototype.addToPage = function(page, options) {
-      var _a, _b, _c, _d, _e, _f;
+      var _a2, _b, _c, _d, _e, _f;
       assertIs(page, "page", [[PDFPage, "PDFPage"]]);
       assertFieldAppearanceOptions(options);
       if (!options)
@@ -49884,7 +50240,7 @@ var PDFCheckBox = (
       if (!("borderWidth" in options))
         options.borderWidth = 1;
       var widget = this.createWidget({
-        x: (_a = options.x) !== null && _a !== void 0 ? _a : 0,
+        x: (_a2 = options.x) !== null && _a2 !== void 0 ? _a2 : 0,
         y: (_b = options.y) !== null && _b !== void 0 ? _b : 0,
         width: (_c = options.width) !== null && _c !== void 0 ? _c : 50,
         height: (_d = options.height) !== null && _d !== void 0 ? _d : 50,
@@ -49903,12 +50259,12 @@ var PDFCheckBox = (
       page.node.addAnnot(widgetRef);
     };
     PDFCheckBox2.prototype.needsAppearancesUpdate = function() {
-      var _a;
+      var _a2;
       var widgets = this.acroField.getWidgets();
       for (var idx = 0, len = widgets.length; idx < len; idx++) {
         var widget = widgets[idx];
         var state = widget.getAppearanceState();
-        var normal2 = (_a = widget.getAppearances()) === null || _a === void 0 ? void 0 : _a.normal;
+        var normal2 = (_a2 = widget.getAppearances()) === null || _a2 === void 0 ? void 0 : _a2.normal;
         if (!(normal2 instanceof PDFDict))
           return true;
         if (state && !normal2.has(state))
@@ -49920,12 +50276,12 @@ var PDFCheckBox = (
       this.updateAppearances();
     };
     PDFCheckBox2.prototype.updateAppearances = function(provider) {
-      var _a;
+      var _a2;
       assertOrUndefined(provider, "provider", [Function]);
       var widgets = this.acroField.getWidgets();
       for (var idx = 0, len = widgets.length; idx < len; idx++) {
         var widget = widgets[idx];
-        var onValue = (_a = widget.getOnValue()) !== null && _a !== void 0 ? _a : PDFName.of("Yes");
+        var onValue = (_a2 = widget.getOnValue()) !== null && _a2 !== void 0 ? _a2 : PDFName.of("Yes");
         if (!onValue)
           continue;
         this.updateWidgetAppearance(widget, onValue, provider);
@@ -49959,7 +50315,7 @@ var PDFDropdown = (
       var rawOptions = this.acroField.getOptions();
       var options = new Array(rawOptions.length);
       for (var idx = 0, len = options.length; idx < len; idx++) {
-        var _a = rawOptions[idx], display = _a.display, value = _a.value;
+        var _a2 = rawOptions[idx], display = _a2.display, value = _a2.value;
         options[idx] = (display !== null && display !== void 0 ? display : value).decodeText();
       }
       return options;
@@ -50073,7 +50429,7 @@ var PDFDropdown = (
       this.acroField.setFlagTo(AcroChoiceFlags.CommitOnSelChange, false);
     };
     PDFDropdown2.prototype.addToPage = function(page, options) {
-      var _a, _b, _c, _d, _e, _f, _g;
+      var _a2, _b, _c, _d, _e, _f, _g;
       assertIs(page, "page", [[PDFPage, "PDFPage"]]);
       assertFieldAppearanceOptions(options);
       if (!options)
@@ -50087,7 +50443,7 @@ var PDFDropdown = (
       if (!("borderWidth" in options))
         options.borderWidth = 1;
       var widget = this.createWidget({
-        x: (_a = options.x) !== null && _a !== void 0 ? _a : 0,
+        x: (_a2 = options.x) !== null && _a2 !== void 0 ? _a2 : 0,
         y: (_b = options.y) !== null && _b !== void 0 ? _b : 0,
         width: (_c = options.width) !== null && _c !== void 0 ? _c : 200,
         height: (_d = options.height) !== null && _d !== void 0 ? _d : 50,
@@ -50106,13 +50462,13 @@ var PDFDropdown = (
       page.node.addAnnot(widgetRef);
     };
     PDFDropdown2.prototype.needsAppearancesUpdate = function() {
-      var _a;
+      var _a2;
       if (this.isDirty())
         return true;
       var widgets = this.acroField.getWidgets();
       for (var idx = 0, len = widgets.length; idx < len; idx++) {
         var widget = widgets[idx];
-        var hasAppearances = ((_a = widget.getAppearances()) === null || _a === void 0 ? void 0 : _a.normal) instanceof PDFStream;
+        var hasAppearances = ((_a2 = widget.getAppearances()) === null || _a2 === void 0 ? void 0 : _a2.normal) instanceof PDFStream;
         if (!hasAppearances)
           return true;
       }
@@ -50157,7 +50513,7 @@ var PDFOptionList = (
       var rawOptions = this.acroField.getOptions();
       var options = new Array(rawOptions.length);
       for (var idx = 0, len = options.length; idx < len; idx++) {
-        var _a = rawOptions[idx], display = _a.display, value = _a.value;
+        var _a2 = rawOptions[idx], display = _a2.display, value = _a2.value;
         options[idx] = (display !== null && display !== void 0 ? display : value).decodeText();
       }
       return options;
@@ -50251,7 +50607,7 @@ var PDFOptionList = (
       this.acroField.setFlagTo(AcroChoiceFlags.CommitOnSelChange, false);
     };
     PDFOptionList2.prototype.addToPage = function(page, options) {
-      var _a, _b, _c, _d, _e, _f, _g;
+      var _a2, _b, _c, _d, _e, _f, _g;
       assertIs(page, "page", [[PDFPage, "PDFPage"]]);
       assertFieldAppearanceOptions(options);
       if (!options)
@@ -50265,7 +50621,7 @@ var PDFOptionList = (
       if (!("borderWidth" in options))
         options.borderWidth = 1;
       var widget = this.createWidget({
-        x: (_a = options.x) !== null && _a !== void 0 ? _a : 0,
+        x: (_a2 = options.x) !== null && _a2 !== void 0 ? _a2 : 0,
         y: (_b = options.y) !== null && _b !== void 0 ? _b : 0,
         width: (_c = options.width) !== null && _c !== void 0 ? _c : 200,
         height: (_d = options.height) !== null && _d !== void 0 ? _d : 100,
@@ -50284,13 +50640,13 @@ var PDFOptionList = (
       page.node.addAnnot(widgetRef);
     };
     PDFOptionList2.prototype.needsAppearancesUpdate = function() {
-      var _a;
+      var _a2;
       if (this.isDirty())
         return true;
       var widgets = this.acroField.getWidgets();
       for (var idx = 0, len = widgets.length; idx < len; idx++) {
         var widget = widgets[idx];
-        var hasAppearances = ((_a = widget.getAppearances()) === null || _a === void 0 ? void 0 : _a.normal) instanceof PDFStream;
+        var hasAppearances = ((_a2 = widget.getAppearances()) === null || _a2 === void 0 ? void 0 : _a2.normal) instanceof PDFStream;
         if (!hasAppearances)
           return true;
       }
@@ -50407,12 +50763,12 @@ var PDFRadioGroup = (
       this.acroField.setFlagTo(AcroButtonFlags.RadiosInUnison, true);
     };
     PDFRadioGroup2.prototype.addOptionToPage = function(option, page, options) {
-      var _a, _b, _c, _d, _e, _f, _g, _h, _j;
+      var _a2, _b, _c, _d, _e, _f, _g, _h, _j;
       assertIs(option, "option", ["string"]);
       assertIs(page, "page", [[PDFPage, "PDFPage"]]);
       assertFieldAppearanceOptions(options);
       var widget = this.createWidget({
-        x: (_a = options === null || options === void 0 ? void 0 : options.x) !== null && _a !== void 0 ? _a : 0,
+        x: (_a2 = options === null || options === void 0 ? void 0 : options.x) !== null && _a2 !== void 0 ? _a2 : 0,
         y: (_b = options === null || options === void 0 ? void 0 : options.y) !== null && _b !== void 0 ? _b : 0,
         width: (_c = options === null || options === void 0 ? void 0 : options.width) !== null && _c !== void 0 ? _c : 50,
         height: (_d = options === null || options === void 0 ? void 0 : options.height) !== null && _d !== void 0 ? _d : 50,
@@ -50431,12 +50787,12 @@ var PDFRadioGroup = (
       page.node.addAnnot(widgetRef);
     };
     PDFRadioGroup2.prototype.needsAppearancesUpdate = function() {
-      var _a;
+      var _a2;
       var widgets = this.acroField.getWidgets();
       for (var idx = 0, len = widgets.length; idx < len; idx++) {
         var widget = widgets[idx];
         var state = widget.getAppearanceState();
-        var normal2 = (_a = widget.getAppearances()) === null || _a === void 0 ? void 0 : _a.normal;
+        var normal2 = (_a2 = widget.getAppearances()) === null || _a2 === void 0 ? void 0 : _a2.normal;
         if (!(normal2 instanceof PDFDict))
           return true;
         if (state && !normal2.has(state))
@@ -50641,7 +50997,7 @@ var PDFTextField = (
       this.acroField.setFlagTo(AcroTextFlags.RichText, false);
     };
     PDFTextField2.prototype.addToPage = function(page, options) {
-      var _a, _b, _c, _d, _e, _f, _g;
+      var _a2, _b, _c, _d, _e, _f, _g;
       assertIs(page, "page", [[PDFPage, "PDFPage"]]);
       assertFieldAppearanceOptions(options);
       if (!options)
@@ -50655,7 +51011,7 @@ var PDFTextField = (
       if (!("borderWidth" in options))
         options.borderWidth = 1;
       var widget = this.createWidget({
-        x: (_a = options.x) !== null && _a !== void 0 ? _a : 0,
+        x: (_a2 = options.x) !== null && _a2 !== void 0 ? _a2 : 0,
         y: (_b = options.y) !== null && _b !== void 0 ? _b : 0,
         width: (_c = options.width) !== null && _c !== void 0 ? _c : 200,
         height: (_d = options.height) !== null && _d !== void 0 ? _d : 50,
@@ -50674,13 +51030,13 @@ var PDFTextField = (
       page.node.addAnnot(widgetRef);
     };
     PDFTextField2.prototype.needsAppearancesUpdate = function() {
-      var _a;
+      var _a2;
       if (this.isDirty())
         return true;
       var widgets = this.acroField.getWidgets();
       for (var idx = 0, len = widgets.length; idx < len; idx++) {
         var widget = widgets[idx];
-        var hasAppearances = ((_a = widget.getAppearances()) === null || _a === void 0 ? void 0 : _a.normal) instanceof PDFStream;
+        var hasAppearances = ((_a2 = widget.getAppearances()) === null || _a2 === void 0 ? void 0 : _a2.normal) instanceof PDFStream;
         if (!hasAppearances)
           return true;
       }
@@ -50753,7 +51109,7 @@ var PDFForm = (
       var allFields = this.acroForm.getAllFields();
       var fields = [];
       for (var idx = 0, len = allFields.length; idx < len; idx++) {
-        var _a = allFields[idx], acroField = _a[0], ref = _a[1];
+        var _a2 = allFields[idx], acroField = _a2[0], ref = _a2[1];
         var field = convertToPDFField(acroField, ref, this.doc);
         if (field)
           fields.push(field);
@@ -50977,11 +51333,11 @@ var PDFForm = (
       return page;
     };
     PDFForm2.prototype.findWidgetAppearanceRef = function(field, widget) {
-      var _a;
+      var _a2;
       var refOrDict = widget.getNormalAppearance();
       if (refOrDict instanceof PDFDict && (field instanceof PDFCheckBox || field instanceof PDFRadioGroup)) {
         var value = field.acroField.getValue();
-        var ref = (_a = refOrDict.get(value)) !== null && _a !== void 0 ? _a : refOrDict.get(PDFName.of("Off"));
+        var ref = (_a2 = refOrDict.get(value)) !== null && _a2 !== void 0 ? _a2 : refOrDict.get(PDFName.of("Off"));
         if (ref instanceof PDFRef) {
           refOrDict = ref;
         }
@@ -51018,7 +51374,7 @@ var PDFForm = (
     PDFForm2.prototype.findNonTerminal = function(partialName, parent) {
       var fields = parent instanceof PDFAcroForm ? this.acroForm.getFields() : createPDFAcroFields(parent.Kids());
       for (var idx = 0, len = fields.length; idx < len; idx++) {
-        var _a = fields[idx], field = _a[0], ref = _a[1];
+        var _a2 = fields[idx], field = _a2[0], ref = _a2[1];
         if (field.getPartialName() === partialName) {
           if (field instanceof PDFAcroNonTerminal)
             return [field, ref];
@@ -51069,8 +51425,8 @@ var splitFieldName = function(fullyQualifiedName) {
     terminal: parts[parts.length - 1]
   };
 };
-var addFieldToParent = function(_a, _b, partialName) {
-  var parent = _a[0], parentRef = _a[1];
+var addFieldToParent = function(_a2, _b, partialName) {
+  var parent = _a2[0], parentRef = _a2[1];
   var field = _b[0], fieldRef = _b[1];
   var entries = parent.normalizedEntries();
   var fields = createPDFAcroFields("Kids" in entries ? entries.Kids : entries.Fields);
@@ -51153,14 +51509,14 @@ var PDFEmbeddedFile = (
     PDFEmbeddedFile2.prototype.embed = function() {
       return __awaiter(this, void 0, void 0, function() {
         var ref, Names, EmbeddedFiles, EFNames, AF;
-        return __generator(this, function(_a) {
-          switch (_a.label) {
+        return __generator(this, function(_a2) {
+          switch (_a2.label) {
             case 0:
               if (!!this.alreadyEmbedded)
                 return [3, 2];
               return [4, this.embedder.embedIntoContext(this.doc.context, this.ref)];
             case 1:
-              ref = _a.sent();
+              ref = _a2.sent();
               if (!this.doc.catalog.has(PDFName.of("Names"))) {
                 this.doc.catalog.set(PDFName.of("Names"), this.doc.context.obj({}));
               }
@@ -51181,7 +51537,7 @@ var PDFEmbeddedFile = (
               AF = this.doc.catalog.lookup(PDFName.of("AF"), PDFArray);
               AF.push(ref);
               this.alreadyEmbedded = true;
-              _a.label = 2;
+              _a2.label = 2;
             case 2:
               return [
                 2
@@ -51208,13 +51564,13 @@ var PDFJavaScript = (
     }
     PDFJavaScript2.prototype.embed = function() {
       return __awaiter(this, void 0, void 0, function() {
-        var _a, catalog, context, ref, Names, Javascript, JSNames;
+        var _a2, catalog, context, ref, Names, Javascript, JSNames;
         return __generator(this, function(_b) {
           switch (_b.label) {
             case 0:
               if (!!this.alreadyEmbedded)
                 return [3, 2];
-              _a = this.doc, catalog = _a.catalog, context = _a.context;
+              _a2 = this.doc, catalog = _a2.catalog, context = _a2.context;
               return [4, this.embedder.embedIntoContext(this.doc.context, this.ref)];
             case 1:
               ref = _b.sent();
@@ -51262,7 +51618,7 @@ var JavaScriptEmbedder = (
     JavaScriptEmbedder2.prototype.embedIntoContext = function(context, ref) {
       return __awaiter(this, void 0, void 0, function() {
         var jsActionDict;
-        return __generator(this, function(_a) {
+        return __generator(this, function(_a2) {
           jsActionDict = context.obj({
             Type: "Action",
             S: "JavaScript",
@@ -51327,11 +51683,11 @@ var PDFDocument = (
         options = {};
       }
       return __awaiter(this, void 0, void 0, function() {
-        var _a, ignoreEncryption, _b, parseSpeed, _c, throwOnInvalidObject, _d, updateMetadata, _e, capNumbers, bytes, context;
+        var _a2, ignoreEncryption, _b, parseSpeed, _c, throwOnInvalidObject, _d, updateMetadata, _e, capNumbers, bytes, context;
         return __generator(this, function(_f) {
           switch (_f.label) {
             case 0:
-              _a = options.ignoreEncryption, ignoreEncryption = _a === void 0 ? false : _a, _b = options.parseSpeed, parseSpeed = _b === void 0 ? ParseSpeeds.Slow : _b, _c = options.throwOnInvalidObject, throwOnInvalidObject = _c === void 0 ? false : _c, _d = options.updateMetadata, updateMetadata = _d === void 0 ? true : _d, _e = options.capNumbers, capNumbers = _e === void 0 ? false : _e;
+              _a2 = options.ignoreEncryption, ignoreEncryption = _a2 === void 0 ? false : _a2, _b = options.parseSpeed, parseSpeed = _b === void 0 ? ParseSpeeds.Slow : _b, _c = options.throwOnInvalidObject, throwOnInvalidObject = _c === void 0 ? false : _c, _d = options.updateMetadata, updateMetadata = _d === void 0 ? true : _d, _e = options.capNumbers, capNumbers = _e === void 0 ? false : _e;
               assertIs(pdf, "pdf", ["string", Uint8Array, ArrayBuffer]);
               assertIs(ignoreEncryption, "ignoreEncryption", ["boolean"]);
               assertIs(parseSpeed, "parseSpeed", ["number"]);
@@ -51350,9 +51706,9 @@ var PDFDocument = (
         options = {};
       }
       return __awaiter(this, void 0, void 0, function() {
-        var _a, updateMetadata, context, pageTree, pageTreeRef, catalog;
+        var _a2, updateMetadata, context, pageTree, pageTreeRef, catalog;
         return __generator(this, function(_b) {
-          _a = options.updateMetadata, updateMetadata = _a === void 0 ? true : _a;
+          _a2 = options.updateMetadata, updateMetadata = _a2 === void 0 ? true : _a2;
           context = PDFContext.create();
           pageTree = PDFPageTree.withContext(context);
           pageTreeRef = context.register(pageTree);
@@ -51527,14 +51883,14 @@ var PDFDocument = (
     PDFDocument2.prototype.copyPages = function(srcDoc, indices) {
       return __awaiter(this, void 0, void 0, function() {
         var copier, srcPages, copiedPages, idx, len, srcPage, copiedPage, ref;
-        return __generator(this, function(_a) {
-          switch (_a.label) {
+        return __generator(this, function(_a2) {
+          switch (_a2.label) {
             case 0:
               assertIs(srcDoc, "srcDoc", [[PDFDocument2, "PDFDocument"]]);
               assertIs(indices, "indices", [Array]);
               return [4, srcDoc.flush()];
             case 1:
-              _a.sent();
+              _a2.sent();
               copier = PDFObjectCopier.for(srcDoc.context, this.context);
               srcPages = srcDoc.getPages();
               copiedPages = new Array(indices.length);
@@ -51552,15 +51908,15 @@ var PDFDocument = (
     PDFDocument2.prototype.copy = function() {
       return __awaiter(this, void 0, void 0, function() {
         var pdfCopy, contentPages, idx, len;
-        return __generator(this, function(_a) {
-          switch (_a.label) {
+        return __generator(this, function(_a2) {
+          switch (_a2.label) {
             case 0:
               return [4, PDFDocument2.create()];
             case 1:
-              pdfCopy = _a.sent();
+              pdfCopy = _a2.sent();
               return [4, pdfCopy.copyPages(this, this.getPageIndices())];
             case 2:
-              contentPages = _a.sent();
+              contentPages = _a2.sent();
               for (idx = 0, len = contentPages.length; idx < len; idx++) {
                 pdfCopy.addPage(contentPages[idx]);
               }
@@ -51605,7 +51961,7 @@ var PDFDocument = (
       }
       return __awaiter(this, void 0, void 0, function() {
         var bytes, embedder, ref, embeddedFile;
-        return __generator(this, function(_a) {
+        return __generator(this, function(_a2) {
           assertIs(attachment, "attachment", ["string", Uint8Array, ArrayBuffer]);
           assertIs(name, "name", ["string"]);
           assertOrUndefined(options.mimeType, "mimeType", ["string"]);
@@ -51632,11 +51988,11 @@ var PDFDocument = (
         options = {};
       }
       return __awaiter(this, void 0, void 0, function() {
-        var _a, subset, customName, features, embedder, bytes, fontkit, _b, ref, pdfFont;
+        var _a2, subset, customName, features, embedder, bytes, fontkit, _b, ref, pdfFont;
         return __generator(this, function(_c) {
           switch (_c.label) {
             case 0:
-              _a = options.subset, subset = _a === void 0 ? false : _a, customName = options.customName, features = options.features;
+              _a2 = options.subset, subset = _a2 === void 0 ? false : _a2, customName = options.customName, features = options.features;
               assertIs(font, "font", ["string", Uint8Array, ArrayBuffer]);
               assertIs(subset, "subset", ["boolean"]);
               if (!isStandardFont(font))
@@ -51687,14 +52043,14 @@ var PDFDocument = (
     PDFDocument2.prototype.embedJpg = function(jpg) {
       return __awaiter(this, void 0, void 0, function() {
         var bytes, embedder, ref, pdfImage;
-        return __generator(this, function(_a) {
-          switch (_a.label) {
+        return __generator(this, function(_a2) {
+          switch (_a2.label) {
             case 0:
               assertIs(jpg, "jpg", ["string", Uint8Array, ArrayBuffer]);
               bytes = toUint8Array(jpg);
               return [4, JpegEmbedder.for(bytes)];
             case 1:
-              embedder = _a.sent();
+              embedder = _a2.sent();
               ref = this.context.nextRef();
               pdfImage = PDFImage.of(ref, this, embedder);
               this.images.push(pdfImage);
@@ -51706,14 +52062,14 @@ var PDFDocument = (
     PDFDocument2.prototype.embedPng = function(png) {
       return __awaiter(this, void 0, void 0, function() {
         var bytes, embedder, ref, pdfImage;
-        return __generator(this, function(_a) {
-          switch (_a.label) {
+        return __generator(this, function(_a2) {
+          switch (_a2.label) {
             case 0:
               assertIs(png, "png", ["string", Uint8Array, ArrayBuffer]);
               bytes = toUint8Array(png);
               return [4, PngEmbedder.for(bytes)];
             case 1:
-              embedder = _a.sent();
+              embedder = _a2.sent();
               ref = this.context.nextRef();
               pdfImage = PDFImage.of(ref, this, embedder);
               this.images.push(pdfImage);
@@ -51727,7 +52083,7 @@ var PDFDocument = (
         indices = [0];
       }
       return __awaiter(this, void 0, void 0, function() {
-        var srcDoc, _a, srcPages;
+        var srcDoc, _a2, srcPages;
         return __generator(this, function(_b) {
           switch (_b.label) {
             case 0:
@@ -51740,15 +52096,15 @@ var PDFDocument = (
               assertIs(indices, "indices", [Array]);
               if (!(pdf instanceof PDFDocument2))
                 return [3, 1];
-              _a = pdf;
+              _a2 = pdf;
               return [3, 3];
             case 1:
               return [4, PDFDocument2.load(pdf)];
             case 2:
-              _a = _b.sent();
+              _a2 = _b.sent();
               _b.label = 3;
             case 3:
-              srcDoc = _a;
+              srcDoc = _a2;
               srcPages = pluckIndices(srcDoc.getPages(), indices);
               return [2, this.embedPages(srcPages)];
           }
@@ -51758,13 +52114,13 @@ var PDFDocument = (
     PDFDocument2.prototype.embedPage = function(page, boundingBox, transformationMatrix) {
       return __awaiter(this, void 0, void 0, function() {
         var embeddedPage;
-        return __generator(this, function(_a) {
-          switch (_a.label) {
+        return __generator(this, function(_a2) {
+          switch (_a2.label) {
             case 0:
               assertIs(page, "page", [[PDFPage, "PDFPage"]]);
               return [4, this.embedPages([page], [boundingBox], [transformationMatrix])];
             case 1:
-              embeddedPage = _a.sent()[0];
+              embeddedPage = _a2.sent()[0];
               return [2, embeddedPage];
           }
         });
@@ -51779,7 +52135,7 @@ var PDFDocument = (
       }
       return __awaiter(this, void 0, void 0, function() {
         var idx, len, currPage, nextPage, context, maybeCopyPage, embeddedPages, idx, len, page, box, matrix, embedder, ref;
-        var _a;
+        var _a2;
         return __generator(this, function(_b) {
           switch (_b.label) {
             case 0:
@@ -51815,7 +52171,7 @@ var PDFDocument = (
               idx++;
               return [3, 1];
             case 4:
-              (_a = this.embeddedPages).push.apply(_a, embeddedPages);
+              (_a2 = this.embeddedPages).push.apply(_a2, embeddedPages);
               return [2, embeddedPages];
           }
         });
@@ -51823,24 +52179,24 @@ var PDFDocument = (
     };
     PDFDocument2.prototype.flush = function() {
       return __awaiter(this, void 0, void 0, function() {
-        return __generator(this, function(_a) {
-          switch (_a.label) {
+        return __generator(this, function(_a2) {
+          switch (_a2.label) {
             case 0:
               return [4, this.embedAll(this.fonts)];
             case 1:
-              _a.sent();
+              _a2.sent();
               return [4, this.embedAll(this.images)];
             case 2:
-              _a.sent();
+              _a2.sent();
               return [4, this.embedAll(this.embeddedPages)];
             case 3:
-              _a.sent();
+              _a2.sent();
               return [4, this.embedAll(this.embeddedFiles)];
             case 4:
-              _a.sent();
+              _a2.sent();
               return [4, this.embedAll(this.javaScripts)];
             case 5:
-              _a.sent();
+              _a2.sent();
               return [
                 2
                 /*return*/
@@ -51854,11 +52210,11 @@ var PDFDocument = (
         options = {};
       }
       return __awaiter(this, void 0, void 0, function() {
-        var _a, useObjectStreams, _b, addDefaultPage, _c, objectsPerTick, _d, updateFieldAppearances, form, Writer;
+        var _a2, useObjectStreams, _b, addDefaultPage, _c, objectsPerTick, _d, updateFieldAppearances, form, Writer;
         return __generator(this, function(_e) {
           switch (_e.label) {
             case 0:
-              _a = options.useObjectStreams, useObjectStreams = _a === void 0 ? true : _a, _b = options.addDefaultPage, addDefaultPage = _b === void 0 ? true : _b, _c = options.objectsPerTick, objectsPerTick = _c === void 0 ? 50 : _c, _d = options.updateFieldAppearances, updateFieldAppearances = _d === void 0 ? true : _d;
+              _a2 = options.useObjectStreams, useObjectStreams = _a2 === void 0 ? true : _a2, _b = options.addDefaultPage, addDefaultPage = _b === void 0 ? true : _b, _c = options.objectsPerTick, objectsPerTick = _c === void 0 ? 50 : _c, _d = options.updateFieldAppearances, updateFieldAppearances = _d === void 0 ? true : _d;
               assertIs(useObjectStreams, "useObjectStreams", ["boolean"]);
               assertIs(addDefaultPage, "addDefaultPage", ["boolean"]);
               assertIs(objectsPerTick, "objectsPerTick", ["number"]);
@@ -51884,11 +52240,11 @@ var PDFDocument = (
         options = {};
       }
       return __awaiter(this, void 0, void 0, function() {
-        var _a, dataUri, otherOptions, bytes, base64;
+        var _a2, dataUri, otherOptions, bytes, base64;
         return __generator(this, function(_b) {
           switch (_b.label) {
             case 0:
-              _a = options.dataUri, dataUri = _a === void 0 ? false : _a, otherOptions = __rest(options, ["dataUri"]);
+              _a2 = options.dataUri, dataUri = _a2 === void 0 ? false : _a2, otherOptions = __rest(options, ["dataUri"]);
               assertIs(dataUri, "dataUri", ["boolean"]);
               return [4, this.save(otherOptions)];
             case 1:
@@ -51913,18 +52269,18 @@ var PDFDocument = (
     PDFDocument2.prototype.embedAll = function(embeddables) {
       return __awaiter(this, void 0, void 0, function() {
         var idx, len;
-        return __generator(this, function(_a) {
-          switch (_a.label) {
+        return __generator(this, function(_a2) {
+          switch (_a2.label) {
             case 0:
               idx = 0, len = embeddables.length;
-              _a.label = 1;
+              _a2.label = 1;
             case 1:
               if (!(idx < len))
                 return [3, 4];
               return [4, embeddables[idx].embed()];
             case 2:
-              _a.sent();
-              _a.label = 3;
+              _a2.sent();
+              _a2.label = 3;
             case 3:
               idx++;
               return [3, 1];
@@ -52084,7 +52440,7 @@ var PDFPage = (
       this.node.set(PDFName.ArtBox, artBox);
     };
     PDFPage2.prototype.getSize = function() {
-      var _a = this.getMediaBox(), width = _a.width, height = _a.height;
+      var _a2 = this.getMediaBox(), width = _a2.width, height = _a2.height;
       return { width, height };
     };
     PDFPage2.prototype.getWidth = function() {
@@ -52098,24 +52454,24 @@ var PDFPage = (
       return mediaBox.asRectangle();
     };
     PDFPage2.prototype.getCropBox = function() {
-      var _a;
+      var _a2;
       var cropBox = this.node.CropBox();
-      return (_a = cropBox === null || cropBox === void 0 ? void 0 : cropBox.asRectangle()) !== null && _a !== void 0 ? _a : this.getMediaBox();
+      return (_a2 = cropBox === null || cropBox === void 0 ? void 0 : cropBox.asRectangle()) !== null && _a2 !== void 0 ? _a2 : this.getMediaBox();
     };
     PDFPage2.prototype.getBleedBox = function() {
-      var _a;
+      var _a2;
       var bleedBox = this.node.BleedBox();
-      return (_a = bleedBox === null || bleedBox === void 0 ? void 0 : bleedBox.asRectangle()) !== null && _a !== void 0 ? _a : this.getCropBox();
+      return (_a2 = bleedBox === null || bleedBox === void 0 ? void 0 : bleedBox.asRectangle()) !== null && _a2 !== void 0 ? _a2 : this.getCropBox();
     };
     PDFPage2.prototype.getTrimBox = function() {
-      var _a;
+      var _a2;
       var trimBox = this.node.TrimBox();
-      return (_a = trimBox === null || trimBox === void 0 ? void 0 : trimBox.asRectangle()) !== null && _a !== void 0 ? _a : this.getCropBox();
+      return (_a2 = trimBox === null || trimBox === void 0 ? void 0 : trimBox.asRectangle()) !== null && _a2 !== void 0 ? _a2 : this.getCropBox();
     };
     PDFPage2.prototype.getArtBox = function() {
-      var _a;
+      var _a2;
       var artBox = this.node.ArtBox();
-      return (_a = artBox === null || artBox === void 0 ? void 0 : artBox.asRectangle()) !== null && _a !== void 0 ? _a : this.getCropBox();
+      return (_a2 = artBox === null || artBox === void 0 ? void 0 : artBox.asRectangle()) !== null && _a2 !== void 0 ? _a2 : this.getCropBox();
     };
     PDFPage2.prototype.translateContent = function(x, y) {
       assertIs(x, "x", ["number"]);
@@ -52221,7 +52577,7 @@ var PDFPage = (
       contentStream.push.apply(contentStream, operator);
     };
     PDFPage2.prototype.drawText = function(text2, options) {
-      var _a, _b, _c, _d, _e, _f, _g;
+      var _a2, _b, _c, _d, _e, _f, _g;
       if (options === void 0) {
         options = {};
       }
@@ -52256,7 +52612,7 @@ var PDFPage = (
       });
       var contentStream = this.getContentStream();
       contentStream.push.apply(contentStream, drawLinesOfText(encodedLines, {
-        color: (_a = options.color) !== null && _a !== void 0 ? _a : this.fontColor,
+        color: (_a2 = options.color) !== null && _a2 !== void 0 ? _a2 : this.fontColor,
         font: newFontKey,
         size: fontSize,
         rotate: (_b = options.rotate) !== null && _b !== void 0 ? _b : degrees(0),
@@ -52275,7 +52631,7 @@ var PDFPage = (
       }
     };
     PDFPage2.prototype.drawImage = function(image, options) {
-      var _a, _b, _c, _d, _e, _f, _g;
+      var _a2, _b, _c, _d, _e, _f, _g;
       if (options === void 0) {
         options = {};
       }
@@ -52296,7 +52652,7 @@ var PDFPage = (
       });
       var contentStream = this.getContentStream();
       contentStream.push.apply(contentStream, drawImage(xObjectKey, {
-        x: (_a = options.x) !== null && _a !== void 0 ? _a : this.x,
+        x: (_a2 = options.x) !== null && _a2 !== void 0 ? _a2 : this.x,
         y: (_b = options.y) !== null && _b !== void 0 ? _b : this.y,
         width: (_c = options.width) !== null && _c !== void 0 ? _c : image.size().width,
         height: (_d = options.height) !== null && _d !== void 0 ? _d : image.size().height,
@@ -52307,7 +52663,7 @@ var PDFPage = (
       }));
     };
     PDFPage2.prototype.drawPage = function(embeddedPage, options) {
-      var _a, _b, _c, _d, _e;
+      var _a2, _b, _c, _d, _e;
       if (options === void 0) {
         options = {};
       }
@@ -52334,7 +52690,7 @@ var PDFPage = (
       var yScale = options.height !== void 0 ? options.height / embeddedPage.height : options.yScale !== void 0 ? options.yScale : 1;
       var contentStream = this.getContentStream();
       contentStream.push.apply(contentStream, drawPage(xObjectKey, {
-        x: (_a = options.x) !== null && _a !== void 0 ? _a : this.x,
+        x: (_a2 = options.x) !== null && _a2 !== void 0 ? _a2 : this.x,
         y: (_b = options.y) !== null && _b !== void 0 ? _b : this.y,
         xScale,
         yScale,
@@ -52345,7 +52701,7 @@ var PDFPage = (
       }));
     };
     PDFPage2.prototype.drawSvgPath = function(path, options) {
-      var _a, _b, _c, _d, _e, _f, _g, _h, _j;
+      var _a2, _b, _c, _d, _e, _f, _g, _h, _j;
       if (options === void 0) {
         options = {};
       }
@@ -52379,7 +52735,7 @@ var PDFPage = (
       }
       var contentStream = this.getContentStream();
       contentStream.push.apply(contentStream, drawSvgPath(path, {
-        x: (_a = options.x) !== null && _a !== void 0 ? _a : this.x,
+        x: (_a2 = options.x) !== null && _a2 !== void 0 ? _a2 : this.x,
         y: (_b = options.y) !== null && _b !== void 0 ? _b : this.y,
         scale: options.scale,
         rotate: (_c = options.rotate) !== null && _c !== void 0 ? _c : degrees(0),
@@ -52393,7 +52749,7 @@ var PDFPage = (
       }));
     };
     PDFPage2.prototype.drawLine = function(options) {
-      var _a, _b, _c, _d, _e;
+      var _a2, _b, _c, _d, _e;
       assertIs(options.start, "options.start", [
         [Object, "{ x: number, y: number }"]
       ]);
@@ -52422,7 +52778,7 @@ var PDFPage = (
       contentStream.push.apply(contentStream, drawLine({
         start: options.start,
         end: options.end,
-        thickness: (_a = options.thickness) !== null && _a !== void 0 ? _a : 1,
+        thickness: (_a2 = options.thickness) !== null && _a2 !== void 0 ? _a2 : 1,
         color: (_b = options.color) !== null && _b !== void 0 ? _b : void 0,
         dashArray: (_c = options.dashArray) !== null && _c !== void 0 ? _c : void 0,
         dashPhase: (_d = options.dashPhase) !== null && _d !== void 0 ? _d : void 0,
@@ -52431,7 +52787,7 @@ var PDFPage = (
       }));
     };
     PDFPage2.prototype.drawRectangle = function(options) {
-      var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o;
+      var _a2, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o;
       if (options === void 0) {
         options = {};
       }
@@ -52467,7 +52823,7 @@ var PDFPage = (
       }
       var contentStream = this.getContentStream();
       contentStream.push.apply(contentStream, drawRectangle({
-        x: (_a = options.x) !== null && _a !== void 0 ? _a : this.x,
+        x: (_a2 = options.x) !== null && _a2 !== void 0 ? _a2 : this.x,
         y: (_b = options.y) !== null && _b !== void 0 ? _b : this.y,
         width: (_c = options.width) !== null && _c !== void 0 ? _c : 150,
         height: (_d = options.height) !== null && _d !== void 0 ? _d : 100,
@@ -52492,7 +52848,7 @@ var PDFPage = (
       this.drawRectangle(__assign(__assign({}, options), { width: size, height: size }));
     };
     PDFPage2.prototype.drawEllipse = function(options) {
-      var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
+      var _a2, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
       if (options === void 0) {
         options = {};
       }
@@ -52526,7 +52882,7 @@ var PDFPage = (
       }
       var contentStream = this.getContentStream();
       contentStream.push.apply(contentStream, drawEllipse({
-        x: (_a = options.x) !== null && _a !== void 0 ? _a : this.x,
+        x: (_a2 = options.x) !== null && _a2 !== void 0 ? _a2 : this.x,
         y: (_b = options.y) !== null && _b !== void 0 ? _b : this.y,
         xScale: (_c = options.xScale) !== null && _c !== void 0 ? _c : 100,
         yScale: (_d = options.yScale) !== null && _d !== void 0 ? _d : 100,
@@ -52544,7 +52900,7 @@ var PDFPage = (
       if (options === void 0) {
         options = {};
       }
-      var _a = options.size, size = _a === void 0 ? 100 : _a;
+      var _a2 = options.size, size = _a2 === void 0 ? 100 : _a2;
       assertOrUndefined(size, "size", ["number"]);
       this.drawEllipse(__assign(__assign({}, options), { xScale: size, yScale: size }));
     };
@@ -52663,12 +53019,12 @@ var PDFButton = (
       this.markAsDirty();
     };
     PDFButton2.prototype.addToPage = function(text2, page, options) {
-      var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
+      var _a2, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
       assertOrUndefined(text2, "text", ["string"]);
       assertOrUndefined(page, "page", [[PDFPage, "PDFPage"]]);
       assertFieldAppearanceOptions(options);
       var widget = this.createWidget({
-        x: ((_a = options === null || options === void 0 ? void 0 : options.x) !== null && _a !== void 0 ? _a : 0) - ((_b = options === null || options === void 0 ? void 0 : options.borderWidth) !== null && _b !== void 0 ? _b : 0) / 2,
+        x: ((_a2 = options === null || options === void 0 ? void 0 : options.x) !== null && _a2 !== void 0 ? _a2 : 0) - ((_b = options === null || options === void 0 ? void 0 : options.borderWidth) !== null && _b !== void 0 ? _b : 0) / 2,
         y: ((_c = options === null || options === void 0 ? void 0 : options.y) !== null && _c !== void 0 ? _c : 0) - ((_d = options === null || options === void 0 ? void 0 : options.borderWidth) !== null && _d !== void 0 ? _d : 0) / 2,
         width: (_e = options === null || options === void 0 ? void 0 : options.width) !== null && _e !== void 0 ? _e : 100,
         height: (_f = options === null || options === void 0 ? void 0 : options.height) !== null && _f !== void 0 ? _f : 50,
@@ -52688,13 +53044,13 @@ var PDFButton = (
       page.node.addAnnot(widgetRef);
     };
     PDFButton2.prototype.needsAppearancesUpdate = function() {
-      var _a;
+      var _a2;
       if (this.isDirty())
         return true;
       var widgets = this.acroField.getWidgets();
       for (var idx = 0, len = widgets.length; idx < len; idx++) {
         var widget = widgets[idx];
-        var hasAppearances = ((_a = widget.getAppearances()) === null || _a === void 0 ? void 0 : _a.normal) instanceof PDFStream;
+        var hasAppearances = ((_a2 = widget.getAppearances()) === null || _a2 === void 0 ? void 0 : _a2.normal) instanceof PDFStream;
         if (!hasAppearances)
           return true;
       }
@@ -52725,13 +53081,20 @@ var PDFButton = (
   }(PDFField)
 );
 const PDFButton$1 = PDFButton;
+const templateUrl = "/assets/pdf-template-ca673507.pdf";
 const createPdf = (foam2, shapesArray2, shapeToGeom22, rightestPoint2, leftestPoint2, highestPoint2, lowestPoint2) => {
   document.querySelector("#pdf-button").onclick = async () => {
+    const templateBytes = await fetch(templateUrl).then(
+      (res) => res.arrayBuffer()
+    );
+    const templatePdf = await PDFDocument.load(templateBytes);
     let pdf = await PDFDocument.create();
     let font = await pdf.embedFont(StandardFonts.Helvetica);
-    let w = PageSizes.A3[1];
-    let h = PageSizes.A3[0];
-    let page = pdf.addPage([w, h]);
+    const [templatePage] = await pdf.copyPages(templatePdf, [0]);
+    pdf.addPage(templatePage);
+    const page = templatePage;
+    const w = page.getWidth();
+    const h = page.getHeight();
     function drawShape(shape) {
       let geom22 = shapeToGeom22(shape);
       geom22.sides.forEach((side) => {
@@ -52769,194 +53132,162 @@ const createPdf = (foam2, shapesArray2, shapeToGeom22, rightestPoint2, leftestPo
       bottom: []
     };
     shapesArray2.forEach((shape) => {
-      let l = leftestPoint2(shape, shapeToGeom22);
-      let r = rightestPoint2(shape, shapeToGeom22);
-      let t = highestPoint2(shape, shapeToGeom22);
-      let b = lowestPoint2(shape, shapeToGeom22);
-      let c2 = [(l[0] + r[0]) / 2, (t[1] + b[1]) / 2];
-      {
-        let m = {};
-        m.points = [l, r], m.values = [l[0], r[0]];
-        m.magnitude = r[0] - l[0];
-        m.overlaps = [];
-        m.type = "width";
-        if (c2[1] < 0) {
-          measurements2.bottom.push(m);
-        } else {
-          measurements2.top.push(m);
-        }
-      }
-      {
-        let m = {};
-        m.points = [b, t], m.values = [b[1], t[1]];
-        m.magnitude = t[1] - b[1];
-        m.overlaps = [];
-        m.type = "height";
-        if (c2[0] < 0) {
-          measurements2.left.push(m);
-        } else {
-          measurements2.right.push(m);
-        }
-      }
+      const l = leftestPoint2(shape, shapeToGeom22);
+      const r = rightestPoint2(shape, shapeToGeom22);
+      const t = highestPoint2(shape, shapeToGeom22);
+      const b = lowestPoint2(shape, shapeToGeom22);
+      const c2 = [(l[0] + r[0]) / 2, (t[1] + b[1]) / 2];
+      const wm = { points: [l, r], values: [l[0], r[0]] };
+      wm.magnitude = r[0] - l[0];
+      wm.overlaps = [];
+      (c2[1] < 0 ? measurements2.bottom : measurements2.top).push(wm);
+      const hm = { points: [b, t], values: [b[1], t[1]] };
+      hm.magnitude = t[1] - b[1];
+      hm.overlaps = [];
+      (c2[0] < 0 ? measurements2.left : measurements2.right).push(hm);
     });
     ["left", "right", "top", "bottom"].forEach((dir) => {
-      for (let m of measurements2[dir]) {
-        for (let other of measurements2[dir]) {
-          if (m === other) {
-            continue;
-          }
-          if (m.values[0] < other.values[1] && m.values[1] > other.values[0]) {
-            m.overlaps.push(other);
+      for (const m of measurements2[dir]) {
+        for (const o of measurements2[dir]) {
+          if (m !== o && m.values[0] < o.values[1] && m.values[1] > o.values[0]) {
+            m.overlaps.push(o);
           }
         }
       }
-    });
-    ["left", "right", "top", "bottom"].forEach((dir) => {
-      let currentSet = [];
-      let sets = [];
-      let visited = /* @__PURE__ */ new Set();
+      const sets = [], visited = /* @__PURE__ */ new Set();
       function dfs(m) {
         if (visited.has(m))
-          return;
+          return [];
         visited.add(m);
-        currentSet.push(m);
-        for (let next of m.overlaps) {
-          dfs(next);
-        }
+        return [m, ...m.overlaps.flatMap(dfs)];
       }
-      for (let m of measurements2[dir]) {
-        dfs(m);
-        currentSet.sort((a, b) => a.magnitude < b.magnitude);
-        if (currentSet.length > 0) {
-          sets.push(currentSet);
+      for (const m of measurements2[dir]) {
+        if (!visited.has(m)) {
+          const group = dfs(m).sort((a, b) => a.magnitude - b.magnitude);
+          sets.push(group);
         }
-        currentSet = [];
       }
       measurements2[dir] = sets;
     });
-    drawShape(foam2);
     shapesArray2.forEach((shape) => drawShape(shape));
     shapesArray2.forEach((shape) => drawDepthMeasurement(shape));
-    measurements2.left.forEach((ms) => {
-      let margin = -foam2.sizeX / 2 - 15;
-      for (let m of ms) {
-        for (let p of m.points) {
-          page.drawLine({
-            start: { x: p[0] + w / 2, y: p[1] + h / 2 },
-            end: { x: margin + w / 2, y: p[1] + h / 2 },
-            opacity: 0.5
+    const drawMeasurements2 = (sets, getMargin, setMargin, drawOffset, rotate2 = false) => {
+      sets.forEach((group) => {
+        let margin = getMargin();
+        group.forEach((m) => {
+          m.points.forEach((p) => {
+            const px2 = p[0] + w / 2;
+            const py2 = p[1] + h / 2;
+            const mx = rotate2 ? margin + w / 2 : px2;
+            const my = rotate2 ? py2 : margin + h / 2;
+            page.drawLine({
+              start: { x: px2, y: py2 },
+              end: { x: mx, y: my },
+              opacity: 0.5
+            });
           });
-        }
-        page.drawLine({
-          start: { x: margin + 5 + w / 2, y: m.points[0][1] + h / 2 },
-          end: { x: margin + 5 + w / 2, y: m.points[1][1] + h / 2 },
-          opacity: 0.5
+          const mid = rotate2 ? (m.points[0][1] + m.points[1][1]) / 2 : (m.points[0][0] + m.points[1][0]) / 2;
+          const fontSize = 16;
+          const text2 = m.magnitude.toFixed(2);
+          const textW = font.widthOfTextAtSize(text2, fontSize);
+          const textH = font.heightAtSize(fontSize);
+          if (rotate2) {
+            page.drawLine({
+              start: { x: margin + 5 + w / 2, y: m.points[0][1] + h / 2 },
+              end: { x: margin + 5 + w / 2, y: m.points[1][1] + h / 2 },
+              opacity: 0.5
+            });
+            page.drawText(text2, {
+              x: margin + w / 2 - textH / 2,
+              y: mid + h / 2 - textW / 2,
+              size: fontSize,
+              rotate: { angle: 90, type: "degrees" },
+              font
+            });
+          } else {
+            page.drawLine({
+              start: { x: m.points[0][0] + w / 2, y: margin + 5 + h / 2 },
+              end: { x: m.points[1][0] + w / 2, y: margin + 5 + h / 2 },
+              opacity: 0.5
+            });
+            page.drawText(text2, {
+              x: mid + w / 2 - textW / 2,
+              y: margin + h / 2 + textH / 2 - 2,
+              size: fontSize,
+              font
+            });
+          }
+          setMargin(textH * 2);
         });
-        let mid = (m.points[0][1] + m.points[1][1]) / 2;
-        let fontSize = 16;
-        let text2 = m.magnitude.toFixed(2);
-        let textw = font.widthOfTextAtSize(text2, fontSize);
-        let texth = font.heightAtSize(fontSize);
-        page.drawText(text2, {
-          x: margin + w / 2 - texth / 2,
-          y: mid + h / 2 - textw / 2,
-          size: fontSize,
-          rotate: { angle: 90, type: "degrees" }
-        });
-        margin -= texth * 2;
-      }
-    });
-    measurements2.right.forEach((ms) => {
-      let margin = foam2.sizeX / 2 + 15;
-      for (let m of ms) {
-        for (let p of m.points) {
-          page.drawLine({
-            start: { x: p[0] + w / 2, y: p[1] + h / 2 },
-            end: { x: margin + w / 2, y: p[1] + h / 2 },
-            opacity: 0.5
-          });
-        }
-        page.drawLine({
-          start: { x: margin - 5 + w / 2, y: m.points[0][1] + h / 2 },
-          end: { x: margin - 5 + w / 2, y: m.points[1][1] + h / 2 },
-          opacity: 0.5
-        });
-        let mid = (m.points[0][1] + m.points[1][1]) / 2;
-        let fontSize = 16;
-        let text2 = m.magnitude.toFixed(2);
-        let textw = font.widthOfTextAtSize(text2, fontSize);
-        let texth = font.heightAtSize(fontSize);
-        page.drawText(text2, {
-          x: margin + w / 2 + texth / 2,
-          y: mid + h / 2 - textw / 2,
-          size: fontSize,
-          rotate: { angle: 90, type: "degrees" }
-        });
-        margin += texth * 2;
-      }
-    });
-    measurements2.top.forEach((ms) => {
-      let margin = foam2.sizeY / 2 + 15;
-      for (let m of ms) {
-        for (let p of m.points) {
-          page.drawLine({
-            start: { x: p[0] + w / 2, y: p[1] + h / 2 },
-            end: { x: p[0] + w / 2, y: margin + h / 2 },
-            opacity: 0.5
-          });
-        }
-        page.drawLine({
-          start: { x: m.points[0][0] + w / 2, y: margin - 5 + h / 2 },
-          end: { x: m.points[1][0] + w / 2, y: margin - 5 + h / 2 },
-          opacity: 0.5
-        });
-        let mid = (m.points[0][0] + m.points[1][0]) / 2;
-        let fontSize = 16;
-        let text2 = m.magnitude.toFixed(2);
-        let textw = font.widthOfTextAtSize(text2, fontSize);
-        let texth = font.heightAtSize(fontSize);
-        page.drawText(text2, {
-          x: mid + w / 2 - textw / 2,
-          y: margin + h / 2 + texth / 2 - 2,
-          size: fontSize
-        });
-        margin += texth * 2;
-      }
-    });
-    measurements2.bottom.forEach((ms) => {
-      let margin = -foam2.sizeY / 2 - 15;
-      for (let m of ms) {
-        for (let p of m.points) {
-          page.drawLine({
-            start: { x: p[0] + w / 2, y: p[1] + h / 2 },
-            end: { x: p[0] + w / 2, y: margin + h / 2 },
-            opacity: 0.5
-          });
-        }
-        page.drawLine({
-          start: { x: m.points[0][0] + w / 2, y: margin + 5 + h / 2 },
-          end: { x: m.points[1][0] + w / 2, y: margin + 5 + h / 2 },
-          opacity: 0.5
-        });
-        let mid = (m.points[0][0] + m.points[1][0]) / 2;
-        let fontSize = 16;
-        let text2 = m.magnitude.toFixed(2);
-        let textw = font.widthOfTextAtSize(text2, fontSize);
-        let texth = font.heightAtSize(fontSize);
-        page.drawText(text2, {
-          x: mid + w / 2 - textw / 2,
-          y: margin + h / 2 - texth / 2,
-          size: fontSize
-        });
-        margin -= texth * 2;
-      }
-    });
-    let bytes = await pdf.save();
-    let link = document.createElement("a");
-    let blob = new Blob([bytes], { type: "application/pdf" });
-    let url = URL.createObjectURL(blob);
-    link.href = url;
-    link.setAttribute("download", "test.pdf");
+      });
+    };
+    const SAFE_MARGIN = 20;
+    let lMargin = -w / 2 + SAFE_MARGIN;
+    drawMeasurements2(
+      measurements2.left,
+      () => lMargin,
+      (d) => lMargin -= d,
+      5,
+      true
+    );
+    let rMargin = w / 2 - SAFE_MARGIN;
+    drawMeasurements2(
+      measurements2.right,
+      () => rMargin,
+      (d) => rMargin += d,
+      -5,
+      true
+    );
+    let tMargin = h / 2 - SAFE_MARGIN;
+    drawMeasurements2(
+      measurements2.top,
+      () => tMargin,
+      (d) => tMargin += d,
+      -5,
+      false
+    );
+    let bMargin = -h / 2 + SAFE_MARGIN;
+    drawMeasurements2(
+      measurements2.bottom,
+      () => bMargin,
+      (d) => bMargin -= d,
+      5,
+      false
+    );
+    const OFFSET_Y = 8;
+    const formData = {
+      kunde: "Müller GmbH",
+      zeichnung: "123-456",
+      beschreibung: "Abdeckplatte für Elektronikgehäuse",
+      projekt: "Projekt Phoenix",
+      material: "PA66 GF30",
+      gewicht: "245g"
+    };
+    drawResponsiveText(page, font, formData.kunde, 920, 115 + OFFSET_Y, 200);
+    drawResponsiveText(
+      page,
+      font,
+      formData.zeichnung,
+      1050,
+      115 + OFFSET_Y,
+      120
+    );
+    drawResponsiveText(
+      page,
+      font,
+      formData.beschreibung,
+      920,
+      95 + OFFSET_Y,
+      250
+    );
+    drawResponsiveText(page, font, formData.projekt, 920, 75 + OFFSET_Y, 200);
+    drawResponsiveText(page, font, formData.material, 1050, 55 + OFFSET_Y, 120);
+    drawResponsiveText(page, font, formData.gewicht, 1050, 135 + OFFSET_Y, 80);
+    const bytes = await pdf.save();
+    const blob = new Blob([bytes], { type: "application/pdf" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "custom_drawing.pdf";
     link.click();
   };
 };
@@ -52969,6 +53300,7 @@ const createShapeCircle = (millimeters2, selected2, shapesArray2, commit2, showP
       selected2 = null;
     };
     let shape = {
+      id: generateId(),
       kind: "circle",
       x: 0,
       // mouseRayPlaneIntersection.x,
@@ -53045,6 +53377,7 @@ const createShapeFreehand = (millimeters2, selected2, shapesArray2, commit2, sho
       lines.map((line5) => sceneCopy2.remove(line5));
       newPoints = finalPoints == null ? void 0 : finalPoints.map((point2) => [point2.x, point2.y]);
       let shape = {
+        id: generateId(),
         kind: "polygon",
         x: 0,
         // mouseRayPlaneIntersection.x,
@@ -53084,6 +53417,7 @@ const createShapeFreehand = (millimeters2, selected2, shapesArray2, commit2, sho
     saveButton.onclick = () => {
       newPoints = finalPoints == null ? void 0 : finalPoints.map((point2) => [point2.x, point2.y]);
       var shape = {
+        id: generateId(),
         kind: "polygon",
         x: 0,
         // mouseRayPlaneIntersection.x,
@@ -53125,7 +53459,7 @@ const createShapeFreehand = (millimeters2, selected2, shapesArray2, commit2, sho
       "position",
       new BufferAttribute(new Float32Array(6), 3)
     );
-    const line4 = new Line(lineGeometry, lineMaterial);
+    const line4 = new Line$2(lineGeometry, lineMaterial);
     line4.renderOrder = 1;
     let point, registering = false;
     const mouse = new Vector2();
@@ -53230,7 +53564,7 @@ const createShapeFreehand = (millimeters2, selected2, shapesArray2, commit2, sho
               color: 16753920,
               linewidth: 15
             });
-            const line5 = new Line(lineGeometry2, lineMaterial2);
+            const line5 = new Line$2(lineGeometry2, lineMaterial2);
             sceneCopy2.add(line5);
             lines.push(line5);
           }
@@ -53267,6 +53601,7 @@ const createShapeRectangle = (millimeters2, selected2, shapesArray2, commit2, sh
       selected2 = null;
     };
     let shape = {
+      id: generateId(),
       kind: "rectangle",
       x: 0,
       // mouseRayPlaneIntersection.x,
@@ -53285,7 +53620,7 @@ const createShapeRectangle = (millimeters2, selected2, shapesArray2, commit2, sh
     callback(selected2);
   };
 };
-const createShapePhotoShape = (millimeters2, selected2, shapesArray2, commit2, showPanelFromLeft2, showPanelFromRight2, doCsg2, display2D2, callback, callback1) => {
+const createShapePhotoShape = (millimeters2, selected2, shapesArray2, commit2, showPanelFromLeft2, showPanelFromRight2, doCsg2, display2D2, callback, callback1, camera2, renderer2, scene2) => {
   document.querySelector("#upload-photo-input").onchange = (e) => {
     document.querySelector("#back-button").removeAttribute("disabled");
     document.querySelector("#back-button").onclick = () => {
@@ -53313,7 +53648,8 @@ const createShapePhotoShape = (millimeters2, selected2, shapesArray2, commit2, s
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "X-API-Key": "ivUjq457ecL51sn2vzD2umUw"
+            // "X-API-Key": "ivUjq457ecL51sn2vzD2umUw",
+            "X-API-Key": "y7X524wbiR3cUWL9AinkUAqq"
           },
           body: JSON.stringify({
             image_file_b64: base64Image
@@ -53348,6 +53684,7 @@ const createShapePhotoShape = (millimeters2, selected2, shapesArray2, commit2, s
       imgElement.onload = () => {
         contoursData.forEach((contour, index) => {
           let shape = {
+            id: generateId(),
             kind: "polygon",
             x: -225,
             // Update x based on requirements
@@ -53467,6 +53804,1262 @@ class LambertMaterial extends ShaderMaterial {
     });
   }
 }
+let Handle$3 = (_a = class {
+  static next() {
+    return (++_a.seed).toString(16).toUpperCase();
+  }
+  static peek() {
+    return (_a.seed + 1).toString(16).toUpperCase();
+  }
+}, __publicField(_a, "seed", 0), _a);
+var Handle_1 = Handle$3;
+const Handle$2 = Handle_1;
+let DatabaseObject$n = class DatabaseObject {
+  constructor(subclass = null) {
+    this.handle = Handle$2.next();
+    this.ownerObjectHandle = "0";
+    this.subclassMarkers = [];
+    if (subclass) {
+      if (Array.isArray(subclass)) {
+        this.subclassMarkers.push(...subclass);
+      } else {
+        this.subclassMarkers.push(subclass);
+      }
+    }
+  }
+  /**
+   *
+   * @param {TagsManager} manager
+   */
+  tags(manager) {
+    manager.push(5, this.handle);
+    manager.push(330, this.ownerObjectHandle);
+    for (const s of this.subclassMarkers) {
+      manager.push(100, s);
+    }
+  }
+};
+var DatabaseObject_1 = DatabaseObject$n;
+const DatabaseObject$m = DatabaseObject_1;
+let LineType$1 = class LineType extends DatabaseObject$m {
+  /**
+   * @param {string} name
+   * @param {string} description
+   * @param {array} elements - if elem > 0 it is a line, if elem < 0 it is gap, if elem == 0.0 it is a
+   */
+  constructor(name, description, elements) {
+    super(["AcDbSymbolTableRecord", "AcDbLinetypeTableRecord"]);
+    this.name = name;
+    this.description = description;
+    this.elements = elements;
+  }
+  tags(manager) {
+    manager.push(0, "LTYPE");
+    super.tags(manager);
+    manager.push(2, this.name);
+    manager.push(3, this.description);
+    manager.push(70, 0);
+    manager.push(72, 65);
+    manager.push(73, this.elements.length);
+    manager.push(40, this.getElementsSum());
+    this.elements.forEach((element) => {
+      manager.push(49, element);
+      manager.push(74, 0);
+    });
+  }
+  getElementsSum() {
+    return this.elements.reduce((sum2, element) => {
+      return sum2 + Math.abs(element);
+    }, 0);
+  }
+};
+var LineType_1 = LineType$1;
+const DatabaseObject$l = DatabaseObject_1;
+let Layer$1 = class Layer extends DatabaseObject$l {
+  constructor(name, colorNumber, lineTypeName = null) {
+    super(["AcDbSymbolTableRecord", "AcDbLayerTableRecord"]);
+    this.name = name;
+    this.colorNumber = colorNumber;
+    this.lineTypeName = lineTypeName;
+    this.shapes = [];
+    this.trueColor = -1;
+  }
+  tags(manager) {
+    manager.push(0, "LAYER");
+    super.tags(manager);
+    manager.push(2, this.name);
+    if (this.trueColor !== -1)
+      manager.push(420, this.trueColor);
+    else
+      manager.push(62, this.colorNumber);
+    manager.push(70, 0);
+    if (this.lineTypeName)
+      manager.push(6, this.lineTypeName);
+    manager.push(390, 1);
+  }
+  setTrueColor(color) {
+    this.trueColor = color;
+  }
+  addShape(shape) {
+    this.shapes.push(shape);
+    shape.layer = this;
+  }
+  getShapes() {
+    return this.shapes;
+  }
+  shapesTags(space, manager) {
+    for (const shape of this.shapes) {
+      shape.ownerObjectHandle = space.handle;
+      shape.tags(manager);
+    }
+  }
+};
+var Layer_1 = Layer$1;
+const DatabaseObject$k = DatabaseObject_1;
+let Table$2 = class Table extends DatabaseObject$k {
+  constructor(name) {
+    super("AcDbSymbolTable");
+    this.name = name;
+    this.elements = [];
+  }
+  add(element) {
+    element.ownerObjectHandle = this.handle;
+    this.elements.push(element);
+  }
+  tags(manager) {
+    manager.push(0, "TABLE");
+    manager.push(2, this.name);
+    super.tags(manager);
+    manager.push(70, this.elements.length);
+    this.elements.forEach((element) => {
+      element.tags(manager);
+    });
+    manager.push(0, "ENDTAB");
+  }
+};
+var Table_1 = Table$2;
+const DatabaseObject$j = DatabaseObject_1;
+const Table$1 = Table_1;
+let DimStyleTable$1 = class DimStyleTable extends Table$1 {
+  constructor(name) {
+    super(name);
+    this.subclassMarkers.push("AcDbDimStyleTable");
+  }
+  tags(manager) {
+    manager.push(0, "TABLE");
+    manager.push(2, this.name);
+    DatabaseObject$j.prototype.tags.call(this, manager);
+    manager.push(70, this.elements.length);
+    manager.push(71, 1);
+    for (const e of this.elements) {
+      e.tags(manager);
+    }
+    manager.push(0, "ENDTAB");
+  }
+};
+var DimStyleTable_1 = DimStyleTable$1;
+const DatabaseObject$i = DatabaseObject_1;
+let TextStyle$1 = class TextStyle extends DatabaseObject$i {
+  constructor(name) {
+    super(["AcDbSymbolTableRecord", "AcDbTextStyleTableRecord"]);
+    __publicField(this, "fontFileName", "txt");
+    this.name = name;
+  }
+  tags(manager) {
+    manager.push(0, "STYLE");
+    super.tags(manager);
+    manager.push(2, this.name);
+    manager.push(70, 0);
+    manager.push(40, 0);
+    manager.push(41, 1);
+    manager.push(50, 0);
+    manager.push(71, 0);
+    manager.push(42, 1);
+    manager.push(3, this.fontFileName);
+    manager.push(4, "");
+  }
+};
+var TextStyle_1 = TextStyle$1;
+const DatabaseObject$h = DatabaseObject_1;
+let Viewport$1 = class Viewport extends DatabaseObject$h {
+  constructor(name, height) {
+    super(["AcDbSymbolTableRecord", "AcDbViewportTableRecord"]);
+    this.name = name;
+    this.height = height;
+  }
+  tags(manager) {
+    manager.push(0, "VPORT");
+    super.tags(manager);
+    manager.push(2, this.name);
+    manager.push(40, this.height);
+    manager.push(70, 0);
+  }
+};
+var Viewport_1 = Viewport$1;
+const DatabaseObject$g = DatabaseObject_1;
+let AppId$1 = class AppId extends DatabaseObject$g {
+  constructor(name) {
+    super(["AcDbSymbolTableRecord", "AcDbRegAppTableRecord"]);
+    this.name = name;
+  }
+  tags(manager) {
+    manager.push(0, "APPID");
+    super.tags(manager);
+    manager.push(2, this.name);
+    manager.push(70, 0);
+  }
+};
+var AppId_1 = AppId$1;
+const DatabaseObject$f = DatabaseObject_1;
+let Block$1 = class Block extends DatabaseObject$f {
+  constructor(name) {
+    super(["AcDbEntity", "AcDbBlockBegin"]);
+    this.name = name;
+    this.end = new DatabaseObject$f(["AcDbEntity", "AcDbBlockEnd"]);
+    this.recordHandle = null;
+  }
+  tags(manager) {
+    manager.push(0, "BLOCK");
+    super.tags(manager);
+    manager.push(2, this.name);
+    manager.push(70, 0);
+    manager.point(0, 0);
+    manager.push(3, this.name);
+    manager.push(1, "");
+    manager.push(0, "ENDBLK");
+    this.end.tags(manager);
+  }
+};
+var Block_1 = Block$1;
+const DatabaseObject$e = DatabaseObject_1;
+let BlockRecord$1 = class BlockRecord extends DatabaseObject$e {
+  constructor(name) {
+    super(["AcDbSymbolTableRecord", "AcDbBlockTableRecord"]);
+    this.name = name;
+  }
+  tags(manager) {
+    manager.push(0, "BLOCK_RECORD");
+    super.tags(manager);
+    manager.push(2, this.name);
+    manager.push(70, 0);
+    manager.push(280, 0);
+    manager.push(281, 1);
+  }
+};
+var BlockRecord_1 = BlockRecord$1;
+const DatabaseObject$d = DatabaseObject_1;
+let Dictionary$1 = class Dictionary extends DatabaseObject$d {
+  constructor() {
+    super("AcDbDictionary");
+    this.children = {};
+  }
+  /**
+   *
+   * @param {*} name
+   * @param {DatabaseObject} dictionary
+   */
+  addChildDictionary(name, dictionary) {
+    dictionary.ownerObjectHandle = this.handle;
+    this.children[name] = dictionary;
+  }
+  tags(manager) {
+    manager.push(0, "DICTIONARY");
+    super.tags(manager);
+    manager.push(281, 1);
+    const entries = Object.entries(this.children);
+    for (const entry of entries) {
+      const [name, dic] = entry;
+      manager.push(3, name);
+      manager.push(350, dic.handle);
+    }
+    const children = Object.values(this.children);
+    for (const c2 of children) {
+      c2.tags(manager);
+    }
+  }
+};
+var Dictionary_1 = Dictionary$1;
+const DatabaseObject$c = DatabaseObject_1;
+let Line$1 = class Line2 extends DatabaseObject$c {
+  constructor(x1, y1, x2, y2) {
+    super(["AcDbEntity", "AcDbLine"]);
+    this.x1 = x1;
+    this.y1 = y1;
+    this.x2 = x2;
+    this.y2 = y2;
+  }
+  tags(manager) {
+    manager.push(0, "LINE");
+    super.tags(manager);
+    manager.push(8, this.layer.name);
+    manager.point(this.x1, this.y1);
+    manager.push(11, this.x2);
+    manager.push(21, this.y2);
+    manager.push(31, 0);
+  }
+};
+var Line_1 = Line$1;
+const DatabaseObject$b = DatabaseObject_1;
+let Line3d$1 = class Line3d extends DatabaseObject$b {
+  constructor(x1, y1, z1, x2, y2, z2) {
+    super(["AcDbEntity", "AcDbLine"]);
+    this.x1 = x1;
+    this.y1 = y1;
+    this.z1 = z1;
+    this.x2 = x2;
+    this.y2 = y2;
+    this.z2 = z2;
+  }
+  tags(manager) {
+    manager.push(0, "LINE");
+    super.tags(manager);
+    manager.push(8, this.layer.name);
+    manager.point(this.x1, this.y1, this.z1);
+    manager.push(11, this.x2);
+    manager.push(21, this.y2);
+    manager.push(31, this.z2);
+  }
+};
+var Line3d_1 = Line3d$1;
+const DatabaseObject$a = DatabaseObject_1;
+let Arc$1 = class Arc extends DatabaseObject$a {
+  /**
+   * @param {number} x - Center x
+   * @param {number} y - Center y
+   * @param {number} r - radius
+   * @param {number} startAngle - degree
+   * @param {number} endAngle - degree
+   */
+  constructor(x, y, r, startAngle, endAngle) {
+    super(["AcDbEntity", "AcDbCircle"]);
+    this.x = x;
+    this.y = y;
+    this.r = r;
+    this.startAngle = startAngle;
+    this.endAngle = endAngle;
+  }
+  tags(manager) {
+    manager.push(0, "ARC");
+    super.tags(manager);
+    manager.push(8, this.layer.name);
+    manager.point(this.x, this.y);
+    manager.push(40, this.r);
+    manager.push(100, "AcDbArc");
+    manager.push(50, this.startAngle);
+    manager.push(51, this.endAngle);
+  }
+};
+var Arc_1 = Arc$1;
+const DatabaseObject$9 = DatabaseObject_1;
+let Circle$1 = class Circle extends DatabaseObject$9 {
+  /**
+   * @param {number} x - Center x
+   * @param {number} y - Center y
+   * @param {number} r - radius
+   */
+  constructor(x, y, r) {
+    super(["AcDbEntity", "AcDbCircle"]);
+    this.x = x;
+    this.y = y;
+    this.r = r;
+  }
+  tags(manager) {
+    manager.push(0, "CIRCLE");
+    super.tags(manager);
+    manager.push(8, this.layer.name);
+    manager.point(this.x, this.y);
+    manager.push(40, this.r);
+  }
+};
+var Circle_1 = Circle$1;
+const DatabaseObject$8 = DatabaseObject_1;
+let Cylinder$1 = class Cylinder extends DatabaseObject$8 {
+  /**
+   * @param {number} x - Center x
+   * @param {number} y - Center y
+   * @param {number} z - Center z
+   * @param {number} r - radius
+   * @param {number} thickness - thickness
+   * @param {number} extrusionDirectionX - Extrusion Direction x
+   * @param {number} extrusionDirectionY - Extrusion Direction y
+   * @param {number} extrusionDirectionZ - Extrusion Direction z
+   */
+  constructor(x, y, z, r, thickness, extrusionDirectionX, extrusionDirectionY, extrusionDirectionZ) {
+    super(["AcDbEntity", "AcDbCircle"]);
+    this.x = x;
+    this.y = y;
+    this.z = z;
+    this.r = r;
+    this.thickness = thickness;
+    this.extrusionDirectionX = extrusionDirectionX, this.extrusionDirectionY = extrusionDirectionY, this.extrusionDirectionZ = extrusionDirectionZ;
+  }
+  tags(manager) {
+    manager.push(0, "CIRCLE");
+    super.tags(manager);
+    manager.push(8, this.layer.name);
+    manager.point(this.x, this.y, this.z);
+    manager.push(40, this.r);
+    manager.push(39, this.thickness);
+    manager.push(210, this.extrusionDirectionX);
+    manager.push(220, this.extrusionDirectionY);
+    manager.push(230, this.extrusionDirectionZ);
+  }
+};
+var Cylinder_1 = Cylinder$1;
+const DatabaseObject$7 = DatabaseObject_1;
+const H_ALIGN_CODES = ["left", "center", "right"];
+const V_ALIGN_CODES = ["baseline", "bottom", "middle", "top"];
+let Text$1 = class Text extends DatabaseObject$7 {
+  /**
+   * @param {number} x - x
+   * @param {number} y - y
+   * @param {number} height - Text height
+   * @param {number} rotation - Text rotation
+   * @param {string} value - the string itself
+   * @param {string} [horizontalAlignment="left"] left | center | right
+   * @param {string} [verticalAlignment="baseline"] baseline | bottom | middle | top
+   */
+  constructor(x, y, height, rotation, value, horizontalAlignment = "left", verticalAlignment = "baseline") {
+    super(["AcDbEntity", "AcDbText"]);
+    this.x = x;
+    this.y = y;
+    this.height = height;
+    this.rotation = rotation;
+    this.value = value;
+    this.hAlign = horizontalAlignment;
+    this.vAlign = verticalAlignment;
+  }
+  tags(manager) {
+    manager.push(0, "TEXT");
+    super.tags(manager);
+    manager.push(8, this.layer.name);
+    manager.point(this.x, this.y);
+    manager.push(40, this.height);
+    manager.push(1, this.value);
+    manager.push(50, this.rotation);
+    if (H_ALIGN_CODES.includes(this.hAlign, 1) || V_ALIGN_CODES.includes(this.vAlign, 1)) {
+      manager.push(72, Math.max(H_ALIGN_CODES.indexOf(this.hAlign), 0));
+      manager.push(11, this.x);
+      manager.push(21, this.y);
+      manager.push(31, 0);
+      manager.push(100, "AcDbText");
+      manager.push(73, Math.max(V_ALIGN_CODES.indexOf(this.vAlign), 0));
+    } else {
+      manager.push(100, "AcDbText");
+    }
+  }
+};
+var Text_1 = Text$1;
+const DatabaseObject$6 = DatabaseObject_1;
+let Polyline$1 = class Polyline extends DatabaseObject$6 {
+  /**
+   * @param {array} points - Array of points like [ [x1, y1], [x2, y2, bulge]... ]
+   * @param {boolean} closed
+   * @param {number} startWidth
+   * @param {number} endWidth
+   */
+  constructor(points, closed = false, startWidth = 0, endWidth = 0) {
+    super(["AcDbEntity", "AcDbPolyline"]);
+    this.points = points;
+    this.closed = closed;
+    this.startWidth = startWidth;
+    this.endWidth = endWidth;
+  }
+  tags(manager) {
+    manager.push(0, "LWPOLYLINE");
+    super.tags(manager);
+    manager.push(8, this.layer.name);
+    manager.push(6, "ByLayer");
+    manager.push(62, 256);
+    manager.push(370, -1);
+    manager.push(90, this.points.length);
+    manager.push(70, this.closed ? 1 : 0);
+    this.points.forEach((point) => {
+      const [x, y, z] = point;
+      manager.push(10, x);
+      manager.push(20, y);
+      if (this.startWidth !== 0 || this.endWidth !== 0) {
+        manager.push(40, this.startWidth);
+        manager.push(41, this.endWidth);
+      }
+      if (z !== void 0)
+        manager.push(42, z);
+    });
+  }
+};
+var Polyline_1 = Polyline$1;
+const DatabaseObject$5 = DatabaseObject_1;
+let Vertex$1 = class Vertex2 extends DatabaseObject$5 {
+  /**
+   *
+   * @param {number} x The X coordinate
+   * @param {number} y The Y coordinate
+   * @param {number} z The Z coordinate
+   */
+  constructor(x, y, z) {
+    super(["AcDbEntity", "AcDbVertex", "AcDb3dPolylineVertex"]);
+    this.x = x;
+    this.y = y;
+    this.z = z;
+  }
+  tags(manager) {
+    manager.push(0, "VERTEX");
+    super.tags(manager);
+    manager.push(8, this.layer.name);
+    manager.point(this.x, this.y, this.z);
+    manager.push(70, 32);
+  }
+};
+var Vertex_1 = Vertex$1;
+const DatabaseObject$4 = DatabaseObject_1;
+const Handle$1 = Handle_1;
+const Vertex3 = Vertex_1;
+let Polyline3d$1 = class Polyline3d extends DatabaseObject$4 {
+  /**
+   * @param {[number, number, number][]} points - Array of points like [ [x1, y1, z1], [x2, y2, z2]... ]
+   */
+  constructor(points) {
+    super(["AcDbEntity", "AcDb3dPolyline"]);
+    this.verticies = points.map((point) => {
+      const [x, y, z] = point;
+      const vertex2 = new Vertex3(x, y, z);
+      vertex2.ownerObjectHandle = this.handle;
+      return vertex2;
+    });
+    this.seqendHandle = Handle$1.next();
+  }
+  tags(manager) {
+    manager.push(0, "POLYLINE");
+    super.tags(manager);
+    manager.push(8, this.layer.name);
+    manager.push(66, 1);
+    manager.push(70, 0);
+    manager.point(0, 0);
+    this.verticies.forEach((vertex2) => {
+      vertex2.layer = this.layer;
+      vertex2.tags(manager);
+    });
+    manager.push(0, "SEQEND");
+    manager.push(5, this.seqendHandle);
+    manager.push(100, "AcDbEntity");
+    manager.push(8, this.layer.name);
+  }
+};
+var Polyline3d_1 = Polyline3d$1;
+const DatabaseObject$3 = DatabaseObject_1;
+let Face$1 = class Face2 extends DatabaseObject$3 {
+  constructor(x1, y1, z1, x2, y2, z2, x3, y3, z3, x4, y4, z4) {
+    super(["AcDbEntity", "AcDbFace"]);
+    this.x1 = x1;
+    this.y1 = y1;
+    this.z1 = z1;
+    this.x2 = x2;
+    this.y2 = y2;
+    this.z2 = z2;
+    this.x3 = x3;
+    this.y3 = y3;
+    this.z3 = z3;
+    this.x4 = x4;
+    this.y4 = y4;
+    this.z4 = z4;
+  }
+  tags(manager) {
+    manager.push(0, "3DFACE");
+    super.tags(manager);
+    manager.push(8, this.layer.name);
+    manager.point(this.x1, this.y1, this.z1);
+    manager.push(11, this.x2);
+    manager.push(21, this.y2);
+    manager.push(31, this.z2);
+    manager.push(12, this.x3);
+    manager.push(22, this.y3);
+    manager.push(32, this.z3);
+    manager.push(13, this.x4);
+    manager.push(23, this.y4);
+    manager.push(33, this.z4);
+  }
+};
+var Face_1 = Face$1;
+const DatabaseObject$2 = DatabaseObject_1;
+let Point$1 = class Point extends DatabaseObject$2 {
+  constructor(x, y) {
+    super(["AcDbEntity", "AcDbPoint"]);
+    this.x = x;
+    this.y = y;
+  }
+  tags(manager) {
+    manager.push(0, "POINT");
+    super.tags(manager);
+    manager.push(8, this.layer.name);
+    manager.point(this.x, this.y);
+  }
+};
+var Point_1 = Point$1;
+const DatabaseObject$1 = DatabaseObject_1;
+let Spline$1 = class Spline extends DatabaseObject$1 {
+  /**
+   * Creates a spline. See https://www.autodesk.com/techpubs/autocad/acad2000/dxf/spline_dxf_06.htm
+   * @param {[Array]} controlPoints - Array of control points like [ [x1, y1], [x2, y2]... ]
+   * @param {number} degree - Degree of spline: 2 for quadratic, 3 for cubic. Default is 3
+   * @param {[number]} knots - Knot vector array. If null, will use a uniform knot vector. Default is null
+   * @param {[number]} weights - Control point weights. If provided, must be one weight for each control point. Default is null
+   * @param {[Array]} fitPoints - Array of fit points like [ [x1, y1], [x2, y2]... ]
+   */
+  constructor(controlPoints, degree = 3, knots = null, weights = null, fitPoints = []) {
+    super(["AcDbEntity", "AcDbSpline"]);
+    if (controlPoints.length < degree + 1) {
+      throw new Error(
+        `For degree ${degree} spline, expected at least ${degree + 1} control points, but received only ${controlPoints.length}`
+      );
+    }
+    if (knots == null) {
+      knots = [];
+      for (let i = 0; i < degree + 1; i++) {
+        knots.push(0);
+      }
+      for (let i = 1; i < controlPoints.length - degree; i++) {
+        knots.push(i);
+      }
+      for (let i = 0; i < degree + 1; i++) {
+        knots.push(controlPoints.length - degree);
+      }
+    }
+    if (knots.length !== controlPoints.length + degree + 1) {
+      throw new Error(
+        `Invalid knot vector length. Expected ${controlPoints.length + degree + 1} but received ${knots.length}.`
+      );
+    }
+    this.controlPoints = controlPoints;
+    this.knots = knots;
+    this.fitPoints = fitPoints;
+    this.degree = degree;
+    this.weights = weights;
+    const closed = 0;
+    const periodic = 0;
+    const rational = this.weights ? 1 : 0;
+    const planar = 1;
+    const linear = 0;
+    this.type = closed * 1 + periodic * 2 + rational * 4 + planar * 8 + linear * 16;
+  }
+  tags(manager) {
+    manager.push(0, "SPLINE");
+    super.tags(manager);
+    manager.push(8, this.layer.name);
+    manager.push(210, 0);
+    manager.push(220, 0);
+    manager.push(230, 1);
+    manager.push(70, this.type);
+    manager.push(71, this.degree);
+    manager.push(72, this.knots.length);
+    manager.push(73, this.controlPoints.length);
+    manager.push(74, this.fitPoints.length);
+    manager.push(42, 1e-7);
+    manager.push(43, 1e-7);
+    manager.push(44, 1e-10);
+    this.knots.forEach((knot) => {
+      manager.push(40, knot);
+    });
+    if (this.weights) {
+      this.weights.forEach((weight) => {
+        manager.push(41, weight);
+      });
+    }
+    this.controlPoints.forEach((point) => {
+      manager.point(point[0], point[1]);
+    });
+  }
+};
+var Spline_1 = Spline$1;
+const DatabaseObject2 = DatabaseObject_1;
+let Ellipse$1 = class Ellipse extends DatabaseObject2 {
+  /**
+   * Creates an ellipse.
+   * @param {number} x - Center x
+   * @param {number} y - Center y
+   * @param {number} majorAxisX - Endpoint x of major axis, relative to center
+   * @param {number} majorAxisY - Endpoint y of major axis, relative to center
+   * @param {number} axisRatio - Ratio of minor axis to major axis
+   * @param {number} startAngle - Start angle
+   * @param {number} endAngle - End angle
+   */
+  constructor(x, y, majorAxisX, majorAxisY, axisRatio, startAngle, endAngle) {
+    super(["AcDbEntity", "AcDbEllipse"]);
+    this.x = x;
+    this.y = y;
+    this.majorAxisX = majorAxisX;
+    this.majorAxisY = majorAxisY;
+    this.axisRatio = axisRatio;
+    this.startAngle = startAngle;
+    this.endAngle = endAngle;
+  }
+  tags(manager) {
+    manager.push(0, "ELLIPSE");
+    super.tags(manager);
+    manager.push(8, this.layer.name);
+    manager.point(this.x, this.y);
+    manager.push(11, this.majorAxisX);
+    manager.push(21, this.majorAxisY);
+    manager.push(31, 0);
+    manager.push(40, this.axisRatio);
+    manager.push(41, this.startAngle);
+    manager.push(42, this.endAngle);
+  }
+};
+var Ellipse_1 = Ellipse$1;
+let TagsManager$1 = class TagsManager {
+  constructor() {
+    this.lines = [];
+  }
+  /**
+   *
+   * @param {number} x
+   * @param {number} y
+   * @param {number} z
+   */
+  point(x, y, z = 0) {
+    this.push(10, x);
+    this.push(20, y);
+    this.push(30, z);
+  }
+  /**
+   *
+   * @param {string} name The name of the section
+   */
+  start(name) {
+    this.push(0, "SECTION");
+    this.push(2, name);
+  }
+  end() {
+    this.push(0, "ENDSEC");
+  }
+  addHeaderVariable(name, tagsElements) {
+    this.push(9, `$${name}`);
+    tagsElements.forEach((tagElement) => {
+      this.push(tagElement[0], tagElement[1]);
+    });
+  }
+  push(code, value) {
+    this.lines.push(code, value);
+  }
+  toDxfString() {
+    return this.lines.join("\n");
+  }
+};
+var TagsManager_1 = TagsManager$1;
+const LineType2 = LineType_1;
+const Layer2 = Layer_1;
+const Table2 = Table_1;
+const DimStyleTable2 = DimStyleTable_1;
+const TextStyle2 = TextStyle_1;
+const Viewport2 = Viewport_1;
+const AppId2 = AppId_1;
+const Block2 = Block_1;
+const BlockRecord2 = BlockRecord_1;
+const Dictionary2 = Dictionary_1;
+const Line3 = Line_1;
+const Line3d2 = Line3d_1;
+const Arc2 = Arc_1;
+const Circle2 = Circle_1;
+const Cylinder2 = Cylinder_1;
+const Text2 = Text_1;
+const Polyline2 = Polyline_1;
+const Polyline3d2 = Polyline3d_1;
+const Face3 = Face_1;
+const Point2 = Point_1;
+const Spline2 = Spline_1;
+const Ellipse2 = Ellipse_1;
+const TagsManager2 = TagsManager_1;
+const Handle = Handle_1;
+class Drawing {
+  constructor() {
+    this.layers = {};
+    this.activeLayer = null;
+    this.lineTypes = {};
+    this.headers = {};
+    this.tables = {};
+    this.blocks = {};
+    this.dictionary = new Dictionary2();
+    this.setUnits("Unitless");
+    for (const ltype of Drawing.LINE_TYPES) {
+      this.addLineType(ltype.name, ltype.description, ltype.elements);
+    }
+    for (const l of Drawing.LAYERS) {
+      this.addLayer(l.name, l.colorNumber, l.lineTypeName);
+    }
+    this.setActiveLayer("0");
+    this.generateAutocadExtras();
+  }
+  /**
+   * @param {string} name
+   * @param {string} description
+   * @param {array} elements - if elem > 0 it is a line, if elem < 0 it is gap, if elem == 0.0 it is a
+   */
+  addLineType(name, description, elements) {
+    this.lineTypes[name] = new LineType2(name, description, elements);
+    return this;
+  }
+  addLayer(name, colorNumber, lineTypeName) {
+    this.layers[name] = new Layer2(name, colorNumber, lineTypeName);
+    return this;
+  }
+  setActiveLayer(name) {
+    this.activeLayer = this.layers[name];
+    return this;
+  }
+  addTable(name) {
+    const table = new Table2(name);
+    this.tables[name] = table;
+    return table;
+  }
+  /**
+   *
+   * @param {string} name The name of the block.
+   * @returns {Block}
+   */
+  addBlock(name) {
+    const block = new Block2(name);
+    this.blocks[name] = block;
+    return block;
+  }
+  drawLine(x1, y1, x2, y2) {
+    this.activeLayer.addShape(new Line3(x1, y1, x2, y2));
+    return this;
+  }
+  drawLine3d(x1, y1, z1, x2, y2, z2) {
+    this.activeLayer.addShape(new Line3d2(x1, y1, z1, x2, y2, z2));
+    return this;
+  }
+  drawPoint(x, y) {
+    this.activeLayer.addShape(new Point2(x, y));
+    return this;
+  }
+  drawRect(x1, y1, x2, y2, cornerLength, cornerBulge) {
+    const w = x2 - x1;
+    const h = y2 - y1;
+    cornerBulge = cornerBulge || 0;
+    let p = null;
+    if (!cornerLength) {
+      p = new Polyline2(
+        [
+          [x1, y1],
+          [x1, y1 + h],
+          [x1 + w, y1 + h],
+          [x1 + w, y1]
+        ],
+        true
+      );
+    } else {
+      p = new Polyline2(
+        [
+          [x1 + w - cornerLength, y1, cornerBulge],
+          // 1
+          [x1 + w, y1 + cornerLength],
+          // 2
+          [x1 + w, y1 + h - cornerLength, cornerBulge],
+          // 3
+          [x1 + w - cornerLength, y1 + h],
+          // 4
+          [x1 + cornerLength, y1 + h, cornerBulge],
+          // 5
+          [x1, y1 + h - cornerLength],
+          // 6
+          [x1, y1 + cornerLength, cornerBulge],
+          // 7
+          [x1 + cornerLength, y1]
+          // 8
+        ],
+        true
+      );
+    }
+    this.activeLayer.addShape(p);
+    return this;
+  }
+  /**
+   * Draw a regular convex polygon as a polyline entity.
+   *
+   * @see [Regular polygon | Wikipedia](https://en.wikipedia.org/wiki/Regular_polygon)
+   *
+   * @param {number} x - The X coordinate of the center of the polygon.
+   * @param {number} y - The Y coordinate of the center of the polygon.
+   * @param {number} numberOfSides - The number of sides.
+   * @param {number} radius - The radius.
+   * @param {number} rotation - The  rotation angle (in Degrees) of the polygon. By default 0.
+   * @param {boolean} circumscribed - If `true` is a polygon in which each side is a tangent to a circle.
+   * If `false` is a polygon in which all vertices lie on a circle. By default `false`.
+   *
+   * @returns {Drawing} - The current object of {@link Drawing}.
+   */
+  drawPolygon(x, y, numberOfSides, radius, rotation = 0, circumscribed = false) {
+    const angle2 = 2 * Math.PI / numberOfSides;
+    const vertices = [];
+    let d = radius;
+    const rotationRad = rotation * Math.PI / 180;
+    if (circumscribed)
+      d = radius / Math.cos(Math.PI / numberOfSides);
+    for (let i = 0; i < numberOfSides; i++) {
+      vertices.push([
+        x + d * Math.sin(rotationRad + i * angle2),
+        y + d * Math.cos(rotationRad + i * angle2)
+      ]);
+    }
+    this.activeLayer.addShape(new Polyline2(vertices, true));
+    return this;
+  }
+  /**
+   * @param {number} x1 - Center x
+   * @param {number} y1 - Center y
+   * @param {number} r - radius
+   * @param {number} startAngle - degree
+   * @param {number} endAngle - degree
+   */
+  drawArc(x1, y1, r, startAngle, endAngle) {
+    this.activeLayer.addShape(new Arc2(x1, y1, r, startAngle, endAngle));
+    return this;
+  }
+  /**
+   * @param {number} x1 - Center x
+   * @param {number} y1 - Center y
+   * @param {number} r - radius
+   */
+  drawCircle(x1, y1, r) {
+    this.activeLayer.addShape(new Circle2(x1, y1, r));
+    return this;
+  }
+  /**
+   * @param {number} x1 - Center x
+   * @param {number} y1 - Center y
+   * @param {number} z1 - Center z
+   * @param {number} r - radius
+   * @param {number} thickness - thickness
+   * @param {number} extrusionDirectionX - Extrusion Direction x
+   * @param {number} extrusionDirectionY - Extrusion Direction y
+   * @param {number} extrusionDirectionZ - Extrusion Direction z
+   */
+  drawCylinder(x1, y1, z1, r, thickness, extrusionDirectionX, extrusionDirectionY, extrusionDirectionZ) {
+    this.activeLayer.addShape(
+      new Cylinder2(
+        x1,
+        y1,
+        z1,
+        r,
+        thickness,
+        extrusionDirectionX,
+        extrusionDirectionY,
+        extrusionDirectionZ
+      )
+    );
+    return this;
+  }
+  /**
+   * @param {number} x1 - x
+   * @param {number} y1 - y
+   * @param {number} height - Text height
+   * @param {number} rotation - Text rotation
+   * @param {string} value - the string itself
+   * @param {string} [horizontalAlignment="left"] left | center | right
+   * @param {string} [verticalAlignment="baseline"] baseline | bottom | middle | top
+   */
+  drawText(x1, y1, height, rotation, value, horizontalAlignment = "left", verticalAlignment = "baseline") {
+    this.activeLayer.addShape(
+      new Text2(
+        x1,
+        y1,
+        height,
+        rotation,
+        value,
+        horizontalAlignment,
+        verticalAlignment
+      )
+    );
+    return this;
+  }
+  /**
+   * @param {[number, number][]} points - Array of points like [ [x1, y1], [x2, y2]... ]
+   * @param {boolean} closed - Closed polyline flag
+   * @param {number} startWidth - Default start width
+   * @param {number} endWidth - Default end width
+   */
+  drawPolyline(points, closed = false, startWidth = 0, endWidth = 0) {
+    this.activeLayer.addShape(
+      new Polyline2(points, closed, startWidth, endWidth)
+    );
+    return this;
+  }
+  /**
+   * @param {[number, number, number][]} points - Array of points like [ [x1, y1, z1], [x2, y2, z1]... ]
+   */
+  drawPolyline3d(points) {
+    points.forEach((point) => {
+      if (point.length !== 3) {
+        throw "Require 3D coordinates";
+      }
+    });
+    this.activeLayer.addShape(new Polyline3d2(points));
+    return this;
+  }
+  /**
+   *
+   * @param {number} trueColor - Integer representing the true color, can be passed as an hexadecimal value of the form 0xRRGGBB
+   */
+  setTrueColor(trueColor) {
+    this.activeLayer.setTrueColor(trueColor);
+    return this;
+  }
+  /**
+   * Draw a spline.
+   * @param {[Array]} controlPoints - Array of control points like [ [x1, y1], [x2, y2]... ]
+   * @param {number} degree - Degree of spline: 2 for quadratic, 3 for cubic. Default is 3
+   * @param {[number]} knots - Knot vector array. If null, will use a uniform knot vector. Default is null
+   * @param {[number]} weights - Control point weights. If provided, must be one weight for each control point. Default is null
+   * @param {[Array]} fitPoints - Array of fit points like [ [x1, y1], [x2, y2]... ]
+   */
+  drawSpline(controlPoints, degree = 3, knots = null, weights = null, fitPoints = []) {
+    this.activeLayer.addShape(
+      new Spline2(controlPoints, degree, knots, weights, fitPoints)
+    );
+    return this;
+  }
+  /**
+   * Draw an ellipse.
+   * @param {number} x1 - Center x
+   * @param {number} y1 - Center y
+   * @param {number} majorAxisX - Endpoint x of major axis, relative to center
+   * @param {number} majorAxisY - Endpoint y of major axis, relative to center
+   * @param {number} axisRatio - Ratio of minor axis to major axis
+   * @param {number} startAngle - Start angle
+   * @param {number} endAngle - End angle
+   */
+  drawEllipse(x1, y1, majorAxisX, majorAxisY, axisRatio, startAngle = 0, endAngle = 2 * Math.PI) {
+    this.activeLayer.addShape(
+      new Ellipse2(
+        x1,
+        y1,
+        majorAxisX,
+        majorAxisY,
+        axisRatio,
+        startAngle,
+        endAngle
+      )
+    );
+    return this;
+  }
+  /**
+   * @param {number} x1 - x
+   * @param {number} y1 - y
+   * @param {number} z1 - z
+   * @param {number} x2 - x
+   * @param {number} y2 - y
+   * @param {number} z2 - z
+   * @param {number} x3 - x
+   * @param {number} y3 - y
+   * @param {number} z3 - z
+   * @param {number} x4 - x
+   * @param {number} y4 - y
+   * @param {number} z4 - z
+   */
+  drawFace(x1, y1, z1, x2, y2, z2, x3, y3, z3, x4, y4, z4) {
+    this.activeLayer.addShape(
+      new Face3(x1, y1, z1, x2, y2, z2, x3, y3, z3, x4, y4, z4)
+    );
+    return this;
+  }
+  _ltypeTable() {
+    const t = new Table2("LTYPE");
+    const ltypes = Object.values(this.lineTypes);
+    for (const lt of ltypes)
+      t.add(lt);
+    return t;
+  }
+  _layerTable(manager) {
+    const t = new Table2("LAYER");
+    const layers = Object.values(this.layers);
+    for (const l of layers)
+      t.add(l);
+    return t;
+  }
+  /**
+   * @see https://www.autodesk.com/techpubs/autocad/acadr14/dxf/header_section_al_u05_c.htm
+   * @see https://www.autodesk.com/techpubs/autocad/acad2000/dxf/header_section_group_codes_dxf_02.htm
+   *
+   * @param {string} variable
+   * @param {array} values Array of "two elements arrays". [  [value1_GroupCode, value1_value], [value2_GroupCode, value2_value]  ]
+   */
+  header(variable, values2) {
+    this.headers[variable] = values2;
+    return this;
+  }
+  /**
+   *
+   * @param {string} unit see Drawing.UNITS
+   */
+  setUnits(unit) {
+    typeof Drawing.UNITS[unit] != "undefined" ? Drawing.UNITS[unit] : Drawing.UNITS["Unitless"];
+    this.header("INSUNITS", [[70, Drawing.UNITS[unit]]]);
+    return this;
+  }
+  /** Generate additional DXF metadata which are required to successfully open resulted document
+   * in AutoDesk products. Call this method before serializing the drawing to get the most
+   * compatible result.
+   */
+  generateAutocadExtras() {
+    if (!this.headers["ACADVER"]) {
+      this.header("ACADVER", [[1, "AC1021"]]);
+    }
+    if (!this.lineTypes["ByBlock"]) {
+      this.addLineType("ByBlock", "", []);
+    }
+    if (!this.lineTypes["ByLayer"]) {
+      this.addLineType("ByLayer", "", []);
+    }
+    let vpTable = this.tables["VPORT"];
+    if (!vpTable) {
+      vpTable = this.addTable("VPORT");
+    }
+    let styleTable = this.tables["STYLE"];
+    if (!styleTable) {
+      styleTable = this.addTable("STYLE");
+    }
+    if (!this.tables["VIEW"]) {
+      this.addTable("VIEW");
+    }
+    if (!this.tables["UCS"]) {
+      this.addTable("UCS");
+    }
+    let appIdTable = this.tables["APPID"];
+    if (!appIdTable) {
+      appIdTable = this.addTable("APPID");
+    }
+    if (!this.tables["DIMSTYLE"]) {
+      const t = new DimStyleTable2("DIMSTYLE");
+      this.tables["DIMSTYLE"] = t;
+    }
+    vpTable.add(new Viewport2("*ACTIVE", 1e3));
+    styleTable.add(new TextStyle2("standard"));
+    appIdTable.add(new AppId2("ACAD"));
+    this.modelSpace = this.addBlock("*Model_Space");
+    this.addBlock("*Paper_Space");
+    const d = new Dictionary2();
+    this.dictionary.addChildDictionary("ACAD_GROUP", d);
+  }
+  _tagsManager() {
+    const manager = new TagsManager2();
+    const blockRecordTable = new Table2("BLOCK_RECORD");
+    const blocks = Object.values(this.blocks);
+    for (const b of blocks) {
+      const r = new BlockRecord2(b.name);
+      blockRecordTable.add(r);
+    }
+    const ltypeTable = this._ltypeTable();
+    const layerTable = this._layerTable();
+    manager.start("HEADER");
+    manager.addHeaderVariable("HANDSEED", [[5, Handle.peek()]]);
+    const variables = Object.entries(this.headers);
+    for (const v of variables) {
+      const [name, values2] = v;
+      manager.addHeaderVariable(name, values2);
+    }
+    manager.end();
+    manager.start("CLASSES");
+    manager.end();
+    manager.start("TABLES");
+    ltypeTable.tags(manager);
+    layerTable.tags(manager);
+    const tables = Object.values(this.tables);
+    for (const t of tables) {
+      t.tags(manager);
+    }
+    blockRecordTable.tags(manager);
+    manager.end();
+    manager.start("BLOCKS");
+    for (const b of blocks) {
+      b.tags(manager);
+    }
+    manager.end();
+    manager.start("ENTITIES");
+    const layers = Object.values(this.layers);
+    for (const l of layers) {
+      l.shapesTags(this.modelSpace, manager);
+    }
+    manager.end();
+    manager.start("OBJECTS");
+    this.dictionary.tags(manager);
+    manager.end();
+    manager.push(0, "EOF");
+    return manager;
+  }
+  toDxfString() {
+    return this._tagsManager().toDxfString();
+  }
+}
+Drawing.ACI = {
+  LAYER: 0,
+  RED: 1,
+  YELLOW: 2,
+  GREEN: 3,
+  CYAN: 4,
+  BLUE: 5,
+  MAGENTA: 6,
+  WHITE: 7
+};
+Drawing.LINE_TYPES = [
+  { name: "CONTINUOUS", description: "______", elements: [] },
+  { name: "DASHED", description: "_ _ _ ", elements: [5, -5] },
+  { name: "DOTTED", description: ". . . ", elements: [0, -5] }
+];
+Drawing.LAYERS = [
+  { name: "0", colorNumber: Drawing.ACI.WHITE, lineTypeName: "CONTINUOUS" }
+];
+Drawing.UNITS = {
+  Unitless: 0,
+  Inches: 1,
+  Feet: 2,
+  Miles: 3,
+  Millimeters: 4,
+  Centimeters: 5,
+  Meters: 6,
+  Kilometers: 7,
+  Microinches: 8,
+  Mils: 9,
+  Yards: 10,
+  Angstroms: 11,
+  Nanometers: 12,
+  Microns: 13,
+  Decimeters: 14,
+  Decameters: 15,
+  Hectometers: 16,
+  Gigameters: 17,
+  "Astronomical units": 18,
+  "Light years": 19,
+  Parsecs: 20
+};
+var Drawing_1 = Drawing;
+var dxfWriter = Drawing_1;
+const DxfWriter = /* @__PURE__ */ getDefaultExportFromCjs(dxfWriter);
+function createDFX(foamShapes, filename = "foam_shapes.dxf") {
+  const button = document.getElementById("dfx-button");
+  if (!button) {
+    console.error('Button with id "dfx-button" not found.');
+    return;
+  }
+  button.addEventListener("click", () => {
+    const dxf = new DxfWriter();
+    dxf.setUnits("Millimeters");
+    dxf.addLayer("Shapes", DxfWriter.ACI.RED, "CONTINUOUS");
+    foamShapes.forEach((shape) => {
+      if (!shape.polygon || !Array.isArray(shape.polygon) || shape.polygon.length < 3)
+        return;
+      dxf.addPolyline(shape.polygon, true);
+    });
+    const dxfString = dxf.toDxfString();
+    const blob = new Blob([dxfString], { type: "application/dxf" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+}
 const case1Url = "./models/case1.obj";
 let panels;
 let currPanel;
@@ -53530,22 +55123,24 @@ function initUI() {
       document.querySelector("#upload-photo-input").value = null;
     }
   );
-  createShapePhotoShape(
-    millimeters,
-    selected,
-    shapesArray,
-    commit,
-    showPanelFromLeft,
-    showPanelFromRight,
-    doCsg,
-    display2D,
-    (modifiedSelected) => {
-      selected = modifiedSelected;
-    },
-    (modifiedDisplay) => {
-      display2D = modifiedDisplay;
-    }
-  );
+  setTimeout(() => {
+    createShapePhotoShape(
+      millimeters,
+      selected,
+      shapesArray,
+      commit,
+      showPanelFromLeft,
+      showPanelFromRight,
+      doCsg,
+      display2D,
+      (modifiedSelected) => {
+        selected = modifiedSelected;
+      },
+      (modifiedDisplay) => {
+        display2D = modifiedDisplay;
+      }
+    );
+  }, 100);
   createShapeRectangle(
     millimeters,
     selected,
@@ -53907,6 +55502,15 @@ function initUI() {
     highestPoint,
     lowestPoint
   );
+  createDFX(shapesArray, "my_foam_shapes.dxf");
+  document.getElementById("nextBtn").addEventListener("click", () => {
+    currentIndex = (currentIndex + 1) % shapesArray.length;
+    updateSelectedShape(currentIndex);
+  });
+  document.getElementById("prevBtn").addEventListener("click", () => {
+    currentIndex = (currentIndex - 1 + shapesArray.length) % shapesArray.length;
+    updateSelectedShape(currentIndex);
+  });
 }
 let renderer;
 let overlayCanvas;
@@ -53932,6 +55536,7 @@ let dragged = false;
 let postScene;
 let postQuad;
 let topScene;
+let currentIndex = 0;
 function shapeUnderMouse() {
   if (mouseRayPlaneIntersection) {
     for (let shape of shapesArray.slice().reverse()) {
@@ -53948,6 +55553,7 @@ function init3D() {
     precision: "highp"
   });
   renderer.setPixelRatio(window.devicePixelRatio || 1);
+  renderer.domElement.id = "foam-canvas";
   renderer.autoClear = false;
   overlayCanvas = document.createElement("canvas");
   ctx = overlayCanvas.getContext("2d");
@@ -53972,13 +55578,22 @@ function init3D() {
     ONE: TOUCH.ROTATE,
     TWO: TOUCH.DOLLY_PAN
   };
-  camera1 = new PerspectiveCamera(
-    50,
-    window.innerWidth / window.innerHeight,
-    1 * millimeters,
+  const aspect2 = window.innerWidth / window.innerHeight;
+  const distance2 = 1 * meters;
+  const frustumHeight = 1.7 * distance2 * Math.tan(MathUtils.degToRad(50) / 2);
+  const frustumWidth = frustumHeight * aspect2;
+  camera1 = new OrthographicCamera(
+    -frustumWidth / 2,
+    frustumWidth / 2,
+    // left, right
+    frustumHeight / 2,
+    -frustumHeight / 2,
+    // top, bottom
+    0.1 * meters,
     100 * meters
+    // near, far (adjusted near plane)
   );
-  camera1.position.set(0, 0, 1.1 * meters);
+  camera1.position.set(0, 0, distance2);
   camera1.up.set(0, 1, 0);
   camera1.lookAt(0, 0, 0);
   window.addEventListener("resize", onResize);
@@ -54111,7 +55726,7 @@ function init3D() {
     new MeshBasicMaterial({ map: ssaaRenderTarget.texture })
   );
   postScene.add(postQuad);
-  getValues(camera, topScene, renderer, (camera2, topScene2, renderer2) => {
+  getValues(camera1, topScene, renderer, (camera12, topScene2, renderer2) => {
     sceneCopy = topScene2;
     rendererCopy = renderer2;
   });
@@ -54222,7 +55837,18 @@ function drawMeasurements(shape) {
       break;
   }
 }
+function updateSelectedShape(index) {
+  selected = shapesArray[index];
+  currentIndex = index;
+}
 function onFrame() {
+  let numSamples = parseInt(document.getElementById("pointsCount").value, 10);
+  document.getElementById("pointsCount").addEventListener("input", (e) => {
+    const value = parseInt(e.target.value, 10);
+    if (!isNaN(value) && value > 0 && value <= 5) {
+      numSamples = value;
+    }
+  });
   ctx.canvas.width = ctx.canvas.width;
   ctx.canvas.height = ctx.canvas.height;
   ctx.strokeStyle = "orange";
@@ -54242,7 +55868,11 @@ function onFrame() {
         ctx,
         currentCamera,
         display2D,
-        renderer
+        renderer,
+        selected,
+        sceneCopy,
+        false,
+        numSamples
       );
     }
     if (selected === shape) {
@@ -54254,7 +55884,11 @@ function onFrame() {
         ctx,
         currentCamera,
         display2D,
-        renderer
+        renderer,
+        selected,
+        sceneCopy,
+        true,
+        numSamples
       );
       if (currPanel.id.endsWith("depth-panel") && !display2D) {
         ctx.setLineDash([5, 5]);
@@ -54266,7 +55900,11 @@ function onFrame() {
           ctx,
           currentCamera,
           display2D,
-          renderer
+          renderer,
+          selected,
+          sceneCopy,
+          false,
+          numSamples
         );
         ctx.setLineDash([]);
       }
@@ -54281,7 +55919,11 @@ function onFrame() {
         ctx,
         currentCamera,
         display2D,
-        renderer
+        renderer,
+        selected,
+        sceneCopy,
+        false,
+        numSamples
       );
       ctx.setLineDash([]);
     }
@@ -54323,6 +55965,16 @@ document.addEventListener("DOMContentLoaded", function() {
     }
     isOpen = !isOpen;
   });
+  const dropdownButton = document.getElementById("export-dropdown-button");
+  const dropdown = document.getElementById("export-dropdown");
+  dropdownButton.addEventListener("click", () => {
+    dropdown.style.display = dropdown.style.display === "none" ? "block" : "none";
+  });
+  document.addEventListener("click", (e) => {
+    if (!dropdownButton.contains(e.target) && !dropdown.contains(e.target)) {
+      dropdown.style.display = "none";
+    }
+  });
   function updateAppendedDivHeight() {
     if (appendedDiv) {
       const buttonRect = myShapesButton.getBoundingClientRect();
@@ -54331,4 +55983,4 @@ document.addEventListener("DOMContentLoaded", function() {
     }
   }
 });
-//# sourceMappingURL=index-e0379287.js.map
+//# sourceMappingURL=index-06edd817.js.map
