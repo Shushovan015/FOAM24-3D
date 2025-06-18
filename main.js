@@ -539,8 +539,7 @@ function initUI() {
     lowestPoint
   );
 
-  createDFX(shapesArray, "my_foam_shapes.dxf");
-
+  createDFX(foam, shapesArray, shapeToGeom2, "my_foam_shapes.dxf");
 
   document.getElementById("nextBtn").addEventListener("click", () => {
     currentIndex = (currentIndex + 1) % shapesArray.length; // circular navigation
@@ -1025,7 +1024,7 @@ function onFrame() {
       ctx.setLineDash([]);
     }
   }
-  
+
   getCameraValue(camera1, (camera1) => {
     orthoCamera = camera1;
   });
