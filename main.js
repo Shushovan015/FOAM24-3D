@@ -598,6 +598,7 @@ function init3D() {
   renderer = new THREE.WebGL1Renderer({
     antialias: true,
     precision: "highp",
+    preserveDrawingBuffer: true,
   });
   renderer.setPixelRatio(window.devicePixelRatio || 1);
   renderer.domElement.id = "foam-canvas";
@@ -654,7 +655,11 @@ function init3D() {
   camera1.lookAt(0, 0, 0);
   window.addEventListener("resize", onResize);
   onResize();
-
+  createImage(renderer, scene, camera1, {
+    buttonId: "export-image",
+    scaleFactor: 4,
+    filename: "foam-hd.png",
+  });
   renderer.domElement.style.position = "fixed";
 
   renderer.domElement.style.width = window.innerWidth + "px";
