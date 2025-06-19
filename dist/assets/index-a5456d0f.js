@@ -53952,6 +53952,75 @@ const createDFX = (foam2, shapesArray2, shapeToGeom22, filename = "foam_shapes.d
     URL.revokeObjectURL(url);
   };
 };
+function createImage(renderer2, scene2, camera2, { buttonId = "export-image", scaleFactor = 4, filename = "foam-hd.png" } = {}) {
+  const btn = document.getElementById(buttonId);
+  if (!btn) {
+    console.error(`createImage: no button found with id="${buttonId}"`);
+    return;
+  }
+  btn.addEventListener("click", () => {
+    const origSize = renderer2.getSize(new Vector2());
+    const origDPR = renderer2.getPixelRatio();
+    const width = origSize.x * scaleFactor;
+    const height = origSize.y * scaleFactor;
+    const rt = new WebGLRenderTarget(width, height, {
+      minFilter: LinearFilter,
+      magFilter: LinearFilter,
+      format: RGBAFormat,
+      encoding: renderer2.outputEncoding,
+      samples: 0
+    });
+    renderer2.setRenderTarget(rt);
+    renderer2.setPixelRatio(origDPR);
+    renderer2.setSize(width, height, false);
+    if (camera2.isPerspectiveCamera) {
+      camera2.aspect = width / height;
+      camera2.updateProjectionMatrix();
+    }
+    renderer2.render(scene2, camera2);
+    const buffer = new Uint8Array(width * height * 4);
+    renderer2.readRenderTargetPixels(rt, 0, 0, width, height, buffer);
+    const rowBytes = width * 4;
+    for (let y = 0; y < height / 2; y++) {
+      const topRowOffset = y * rowBytes;
+      const botRowOffset = (height - y - 1) * rowBytes;
+      for (let i = 0; i < rowBytes; i++) {
+        const tmp2 = buffer[topRowOffset + i];
+        buffer[topRowOffset + i] = buffer[botRowOffset + i];
+        buffer[botRowOffset + i] = tmp2;
+      }
+    }
+    renderer2.setRenderTarget(null);
+    rt.dispose();
+    const canvas2d = document.createElement("canvas");
+    canvas2d.width = width;
+    canvas2d.height = height;
+    const ctx2 = canvas2d.getContext("2d");
+    const imageData = new ImageData(new Uint8ClampedArray(buffer), width, height);
+    ctx2.putImageData(imageData, 0, 0);
+    canvas2d.toBlob((blob) => {
+      if (!blob) {
+        console.error("createImage: toBlob returned null");
+        return;
+      }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      renderer2.setPixelRatio(origDPR);
+      renderer2.setSize(origSize.x, origSize.y, false);
+      if (camera2.isPerspectiveCamera) {
+        camera2.aspect = origSize.x / origSize.y;
+        camera2.updateProjectionMatrix();
+      }
+      renderer2.render(scene2, camera2);
+    }, "image/png");
+  });
+}
 const case1Url = "./models/case1.obj";
 let panels;
 let currPanel;
@@ -54442,7 +54511,8 @@ function shapeUnderMouse() {
 function init3D() {
   renderer = new WebGL1Renderer({
     antialias: true,
-    precision: "highp"
+    precision: "highp",
+    preserveDrawingBuffer: true
   });
   renderer.setPixelRatio(window.devicePixelRatio || 1);
   renderer.domElement.id = "foam-canvas";
@@ -54490,6 +54560,11 @@ function init3D() {
   camera1.lookAt(0, 0, 0);
   window.addEventListener("resize", onResize);
   onResize();
+  createImage(renderer, scene, camera1, {
+    buttonId: "export-image",
+    scaleFactor: 4,
+    filename: "foam-hd.png"
+  });
   renderer.domElement.style.position = "fixed";
   renderer.domElement.style.width = window.innerWidth + "px";
   renderer.domElement.style.height = window.innerHeight + "px";
@@ -54875,4 +54950,4 @@ document.addEventListener("DOMContentLoaded", function() {
     }
   }
 });
-//# sourceMappingURL=index-2528a5b5.js.map
+//# sourceMappingURL=index-a5456d0f.js.map
