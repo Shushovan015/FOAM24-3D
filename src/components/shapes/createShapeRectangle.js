@@ -1,3 +1,4 @@
+import { generateId } from "../../utils/common";
 export const createShapeRectangle = (
   millimeters,
   selected,
@@ -16,6 +17,7 @@ export const createShapeRectangle = (
       selected = null;
     };
     let shape = {
+      id: generateId(),
       kind: "rectangle",
       x: 0, // mouseRayPlaneIntersection.x,
       y: 0, //mouseRayPlaneIntersection.y,

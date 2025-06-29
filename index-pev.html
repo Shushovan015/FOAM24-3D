@@ -9,10 +9,10 @@
     <link href="./style.css" rel="stylesheet">
   </head>
   <body>
-    <div class="x-line" style="display: none;"  ></div>
-    <div class="y-line" style="display: none;" ></div>
-    <div class="x-coordinates" style="display: none;" ></div>
-    <div class="y-coordinates" style="display: none;" ></div>
+    <div class="x-line"></div>
+    <div class="y-line"></div>
+    <div class="x-coordinates"></div>
+    <div class="y-coordinates"></div>
     <div id="sidebar">
       <div id="header">
         <button id="back-button" class="grey" disabled data-icon="arrow_back">Back</button>
@@ -31,25 +31,9 @@
             <button class="column grow blue" id="checkout-button" disabled data-icon="shopping_cart">Checkout</button>
             <!-- <button class="column grow blue" id="save-button" data-icon="cloud_upload">Save</button> -->
           </div>
-          <div class="group" style="position: relative; display: inline-block;">
-            <button class="grow white" id="export-dropdown-button" data-icon="description">
-              Export as Document
-            </button>
-          
-            <div id="export-dropdown" style="display: none; z-index: 1000;">
-              <button class="column grow white" data-icon="precision_manufacturing" id="dfx-button">
-                Export CNC-compatible file
-              </button>
-              <button class="column grow white" data-icon="picture_as_pdf" id="pdf-button">
-                Export PDF technical drawing
-              </button>
-              <button class="column grow white" data-icon="image" id="export-image">
-                Export rendered image of the shape
-              </button>
-            </div>
+          <div class="group">
+            <button class="grow white" id="pdf-button"  data-icon="picture_as_pdf">Export to PDF</button>
           </div>
-          
-          
         </div><!--panel-->
         <div class="panel" id="shapes-panel">
           <div class="group">
@@ -61,8 +45,7 @@
           <div class="group">
             <button class="grow white" id="my-shapes-button" data-icon="play_shapes">My Shapes</button>
           </div>
-          <div id="my-shapes-container">
-          </div>
+          <div id="my-shapes-container"></div>
         </div><!--panel-->
         <div class="panel" id="foam-panel">
           <div class="group">
@@ -108,28 +91,6 @@
             <button class="column grow white" id="polygon-rotate-button"  data-icon="rotate_right">Rotate</button>
             <button class="column grow white" id="polygon-copy-button" disabled data-icon="copy_all">Copy</button>
             <button class="column grow white" id="polygon-delete-button"  data-icon="delete">Delete</button>
-          </div>
-          <div class="group">
-            <button class="column grow white" id="edit-shape" data-icon="play_shapes">Edit shapes</button>
-          </div>
-          <div class="group">
-            <label for="pointsCount" style="color: white; padding-right: 5px;">Points:</label>
-            <input 
-              type="range"
-              class="column grow" 
-              id="pointsCount" 
-              name="pointsCount" 
-              value="1" 
-              min="1" 
-              max="5" 
-            />
-                <!-- <input id="points-input" class="column" style="width:auto;" type="number" min="1" max="5" value="1"> -->
-          </div>
-          <div class="group">
-            <div id="navButtons" class="column grow white" style="display: flex; gap: 10px; margin-top: 10px;">
-              <button id="prevBtn">Previous</button>
-              <button id="nextBtn">Next</button>
-            </div>            
           </div>
         </div>      
         <div class="panel" id="radius-panel">

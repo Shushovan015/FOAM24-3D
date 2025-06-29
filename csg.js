@@ -27,41 +27,59 @@ function shapeToGeom2(shape) {
       }
       return rect;
     case "photoshape":
-      let polygon = shape.polygon
-        .map(([x, y]) => [x, y])
-        .map((v) =>
-          jscad.maths.vec2.rotate(
-            v,
-            v,
-            [0, 0],
-            jscad.utils.degToRad(shape.rotation)
-          )
-        );
-      polygon = polygon.map(([x, y]) => [x + shape.x, y + shape.y]);
-      return jscad.geometries.geom2.fromPoints(polygon);
-    case "polygon":
-      // const poin = [
-      //   [100, 0],
-      //   [50, 87],
-      //   [-50, 87],
-      //   [-100, 0],
-      //   [-50, -87],
-      //   [50, -87],
-      // ];
+      if (Array.isArray(shape.polygon) && Array.isArray(shape.polygon[0])) {
+        // Process each contour (polygon) individually
+        let polygons = shape.polygon
+          .map((contour, index) => {
+            if (!Array.isArray(contour)) {
+              console.error(
+                `Contour at index ${index} is not an array:`,
+                contour
+              );
+              return null;
+            }
 
-      // console.log(shape.points, poin, "here");
-      // let poly = poin
-      //   .map(([x, y]) => [x, y])
-      //   .map((v) =>
-      //     jscad.maths.vec2.rotate(
-      //       v,
-      //       v,
-      //       [0, 0],
-      //       jscad.utils.degToRad(shape.rotation)
-      //     )
-      //   );
-      // poly = poly.map(([x, y]) => [x + shape.x, y + shape.y]);
-      // return jscad.geometries.geom2.fromPoints(poly);
+            let polygon = contour
+              .reverse()
+              .map(([x, y]) => [x, y])
+              .map((v) =>
+                jscad.maths.vec2.rotate(
+                  v,
+                  v,
+                  [0, 0],
+                  jscad.utils.degToRad(shape.rotation)
+                )
+              )
+              .map(([x, y]) => [x + shape.x, y + shape.y]);
+
+            return jscad.geometries.geom2.fromPoints(polygon);
+          })
+          .filter(Boolean); // Remove any null values from error handling
+
+        return polygons;
+      } else {
+        console.error(
+          "Expected an array of arrays for shape.polygon, but got:",
+          shape.polygon
+        );
+        return []; // Return an empty array if the format is incorrect
+      }
+
+    // case "photoshape":
+    //   let polygon = shape.polygon
+    //     .reverse()
+    //     .map(([x, y]) => [x, y])
+    //     .map((v) =>
+    //       jscad.maths.vec2.rotate(
+    //         v,
+    //         v,
+    //         [0, 0],
+    //         jscad.utils.degToRad(shape.rotation)
+    //       )
+    //     );
+    //   polygon = polygon.map(([x, y]) => [x + shape.x, y + shape.y]);
+    //   return jscad.geometries.geom2.fromPoints(polygon);
+    case "polygon":
       let poly = shape.points
         .reverse()
         .map(([x, y]) => [x, y])

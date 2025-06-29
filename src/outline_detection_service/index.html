@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Contour Detection App</title>
+  </head>
+  <body>
+    <form id="imageForm" action="/detect_contours" method="post" enctype="multipart/form-data">
+      <input type="file" id="imageInput" name="image" accept="image/*" />
+      <button type="button" onclick="uploadImage()">Detect Contours</button>
+    </form>
+    <div id="result"></div>
+
+    <script>
+      // Helper function to convert file to base64
+      function getBase64(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result.split(',')[1]); // Get only the base64 string
+          reader.onerror = error => reject(error);
+          reader.readAsDataURL(file);
+        });
+      }
+
+      async function uploadImage() {
+        const input = document.getElementById("imageInput");
+        const photoFile = input.files[0]; // Get the selected file
+
+        if (!photoFile) {
+          alert("Please select an image.");
+          return;
+        }
+
+        try {
+          // Convert the image file to base64
+          const base64Image = await getBase64(photoFile);
+
+          // Send the image to Remove.bg API using fetch
+          const removeBgResponse = await fetch("https://api.remove.bg/v1.0/removebg", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-API-Key": "ivUjq457ecL51sn2vzD2umUw",  // Replace with your actual API key
+            },
+            body: JSON.stringify({
+              image_file_b64: base64Image,
+            }),
+          });
+
+          if (!removeBgResponse.ok) {
+            throw new Error("Failed to remove background");
+          }
+
+          // The response will be a blob (binary image data)
+          const blob = await removeBgResponse.blob();
+
+          // Convert the blob back to a file and send it to the contour detection API
+          const formData = new FormData();
+          formData.append("image", blob, "image.png");
+
+          const contourResponse = await fetch("http://127.0.0.1:5000/detect_contours", {
+            method: "POST",
+            body: formData,
+          });
+
+          const contourData = await contourResponse.json();
+
+          // Display the contours and processed image
+          displayContours(contourData);
+
+        } catch (error) {
+          console.error("Error:", error);
+        }
+      }
+
+      function displayContours(data) {
+        const resultDiv = document.getElementById("result");
+        resultDiv.innerHTML = "";
+
+        if ("error" in data) {
+          resultDiv.innerHTML = `<p>Error: ${data.error}</p>`;
+        } else {
+          // Display the processed image
+          const imgElement = document.createElement("img");
+          imgElement.src = "data:image/png;base64," + data.image_data;
+          resultDiv.appendChild(imgElement);
+
+          // Display contours data
+          for (const key in data.contours) {
+            const points = data.contours[key];
+            resultDiv.innerHTML += `<p>Contour ${key}: ${JSON.stringify(points)}</p>`;
+          }
+        }
+      }
+    </script>
+  </body>
+</html>

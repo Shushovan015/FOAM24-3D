@@ -148,6 +148,19 @@ export function removeAllObjectsFromScene(scene) {
   });
 }
 
+export function getBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result.split(",")[1]); // Get only the base64 string
+    reader.onerror = (error) => reject(error);
+    reader.readAsDataURL(file);
+  });
+}
+
+export function generateId() {
+  return `shape-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+}
+
 /* between 786 and 790
 function draw3dLine(p0, p1, camera) {
     let p0_ = p0.project(camera).multiply(new THREE.Vector3(1,-1,1)).addScalar(1.0).multiplyScalar(0.5).multiply(new THREE.Vector3(ctx.canvas.width, ctx.canvas.height, 1))
@@ -220,3 +233,25 @@ function draw3dLine(p0, p1, camera) {
     ctx.arc(p0.x, p0.y, 4, 0, 2*Math.PI);
     ctx.fill();      
     */
+
+export function drawResponsiveText(
+  page,
+  font,
+  text,
+  x,
+  y,
+  maxWidth,
+  maxFontSize = 10
+) {
+  let fontSize = maxFontSize;
+  while (font.widthOfTextAtSize(text, fontSize) > maxWidth && fontSize > 4) {
+    fontSize -= 0.5;
+  }
+
+  page.drawText(text, {
+    x,
+    y,
+    size: fontSize,
+    font,
+  });
+}

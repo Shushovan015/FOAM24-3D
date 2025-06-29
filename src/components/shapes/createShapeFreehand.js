@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { displayLineXY, lineFunction } from "../../utils/displayLinesXY";
 import { disableButton } from "../../utils/buttonClick";
+import { generateId } from "../../utils/common";
 
 export const createShapeFreehand = (
   millimeters,
@@ -52,6 +53,7 @@ export const createShapeFreehand = (
       lines.map((line) => sceneCopy.remove(line));
       newPoints = finalPoints?.map((point) => [point.x, point.y]);
       let shape = {
+        id: generateId(),
         kind: "polygon",
         x: 0, // mouseRayPlaneIntersection.x,
         y: 0, //mouseRayPlaneIntersection.y,
@@ -89,6 +91,7 @@ export const createShapeFreehand = (
     saveButton.onclick = () => {
       newPoints = finalPoints?.map((point) => [point.x, point.y]);
       var shape = {
+        id: generateId(),
         kind: "polygon",
         x: 0, // mouseRayPlaneIntersection.x,
         y: 0, //mouseRayPlaneIntersection.y,

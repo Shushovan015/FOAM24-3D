@@ -280,3 +280,108 @@ body {
   left: 0;
   top: 0;
 }
+
+#my-shapes-container {
+  position: fixed;
+  display: none; /* Initially hide the container */
+  z-index: 2; /* Adjust z-index as needed */
+  border-radius: 50px;
+}
+
+.edit-mode .control-element {
+  pointer-events: none !important;
+}
+/* 
+.menu-container {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+}
+
+.menu-bar {
+  background-color: #d0d0d0;
+  padding: 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 15px 0 0 15px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  transition: all 0.3s ease;
+  bottom: 0;
+  max-height: 100%;
+  height: auto;
+  backdrop-filter: blur(20px);
+}
+
+#menuBar.open {
+  height: 100vh;
+  bottom: 0;
+  top: auto;
+}
+
+#menuBar.closed {
+  max-height: 20px;
+  padding: 10px;
+}
+
+.toggle-button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  color: #3b3a3a;
+  font-weight: bold;
+}
+
+.title {
+  margin-right: 10px;
+  font-size: 18px;
+  color: #3b3a3a;
+  padding-left: 5px;
+}
+
+#menuBar ul {
+  list-style-type: none;
+  padding: 0;
+  margin: 15px 0;
+  display: none;
+}
+
+#menuBar ul li {
+  font-size: 14px;
+  color: #3b3a3a;
+}
+#menuBar.open ul {
+  display: block;
+}
+
+.menu-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  margin: 8px 0;
+  border: 1px solid #484848;
+  border-radius: 6px;
+}
+
+.menu-item:hover {
+  background-color: #e0e0e0;
+}
+
+.delete-button {
+  cursor: pointer;
+  color: #e74c3c;
+}
+
+#arrow::before {
+  content: "\25B2";
+  transition: transform 0.3s ease;
+}
+
+#menuBar.open #arrow::before {
+  transform: rotate(180deg);
+  content: "\25BC";
+} */

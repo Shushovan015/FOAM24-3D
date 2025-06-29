@@ -24,20 +24,37 @@ import {
   shapeToGeom3,
   geom2ToMesh,
   geom3ToMesh,
-  mouseOverShape,
   drawOutline,
+  mouseOverShape,
   drawMeasurementsPhotoshape,
   drawMeasurementsCircle,
   drawMeasurementsRectangle,
   drawMeasurementsPolygon,
   drawMeasurementsLine,
   drawCircle,
+  mergeIntoPolygon,
+  shapesIntersect,
+  getGeom2Points,
+  getBoundingBox,
+  isNearGeneric,
+  shapesIntersectGeneric,
+  // createEditor,
 } from "./src/utils/threeFunctions";
+import { isNear } from "./src/utils/shapeOverlapping";
+import {
+  initPanels,
+  showPanelFromRight,
+  showPanelFromLeft,
+  getCurrentPanel,
+} from "./src/UI/panels";
 import { createPdf } from "./src/components/createPdf";
 import { createShapeCircle } from "./src/components/shapes/createShapeCircle";
 import { createShapeFreehand } from "./src/components/shapes/createShapeFreehand";
 import { createShapeRectangle } from "./src/components/shapes/createShapeRectangle";
+import { createShapePhotoShape } from "./src/components/shapes/createShapePhotoshape";
 import { FoamMaterial, LambertMaterial } from "./src/components/Material";
+import { createDFX } from "./src/components/createDFX";
+import { createImage } from "./src/components/createImage";
 
 // Assets
 // import case1Url from "url:./models/case1.obj";
@@ -51,40 +68,13 @@ let cameraCopy;
 let sceneCopy;
 let rendererCopy;
 let display2D = false;
-
-function showPanelFromRight(id) {
-  let nextPanel = document.querySelector("#" + id);
-  if (nextPanel == currPanel) return;
-  currPanel.style.animationName = "disappear-left";
-  currPanel.style.animationDuration = "0.25s";
-  currPanel.style.animationFillMode = "forwards";
-  currPanel.style.pointerEvents = "none";
-  nextPanel.style.animationName = "appear-right";
-  nextPanel.style.animationDuration = "0.25s";
-  nextPanel.style.animationFillMode = "forwards";
-  nextPanel.style.pointerEvents = "auto";
-
-  currPanel = nextPanel;
-}
-
-function showPanelFromLeft(id) {
-  let nextPanel = document.querySelector("#" + id);
-  if (nextPanel == currPanel) return;
-  currPanel.style.animationName = "disappear-right";
-  currPanel.style.animationDuration = "0.25s";
-  currPanel.style.animationFillMode = "forwards";
-  currPanel.style.pointerEvents = "none";
-  nextPanel.style.animationName = "appear-left";
-  nextPanel.style.animationDuration = "0.25s";
-  nextPanel.style.animationFillMode = "forwards";
-  nextPanel.style.pointerEvents = "auto";
-
-  currPanel = nextPanel;
-}
-
 let sidebar;
+// const shapeEditor = createEditor(cameraCopy, sceneCopy, shapesArray);
 
 function initUI() {
+  initPanels();
+  // Get current panel state
+  currPanel = getCurrentPanel();
   document.querySelectorAll("button").forEach((button) => {
     let { icon } = button.dataset;
     if (icon) {
@@ -139,37 +129,29 @@ function initUI() {
     }
   );
 
-  document.querySelector("#upload-photo-input").onchange = (e) => {
-    let file = e.target.files[0];
-    let reader = new FileReader();
-    reader.onload = (e) => {
-      document.querySelector("#upload-photo-img").onload = (e) => {
-        let polygon = getImageOutline(e.target).map(({ x, y }) => [x, y]);
-        let box = new THREE.Box2();
-        polygon.forEach(([x, y]) => {
-          box.expandByPoint(new THREE.Vector2(x, y));
-        });
-        let center = box.getCenter(new THREE.Vector2());
-        polygon = polygon.map(([x, y]) => [center.x - x, y - center.y]);
-        polygon.reverse();
-        let shape = {
-          kind: "photoshape",
-          x: 0, // mouseRayPlaneIntersection.x,
-          y: 0, //mouseRayPlaneIntersection.y,
-          sizeZ: 250 * millimeters,
-          polygon,
-          rotation: 0,
-        };
-        shapesArray.push(shape);
-        commit();
-        doCsg();
-        selected = shape;
-        showPanelFromRight(selected.kind + "-panel");
-      };
-      document.querySelector("#upload-photo-img").src = e.target.result;
-    };
-    reader.readAsDataURL(file);
-  };
+  setTimeout(() => {
+    createShapePhotoShape(
+      millimeters,
+      selected,
+      shapesArray,
+      commit,
+      showPanelFromLeft,
+      showPanelFromRight,
+      doCsg,
+      display2D,
+      (modifiedSelected) => {
+        // Use modifiedSelected here, which contains the updated value of selected
+        selected = modifiedSelected;
+      },
+      (modifiedDisplay) => {
+        display2D = modifiedDisplay;
+      },
+      cameraCopy,
+      rendererCopy,
+      sceneCopy
+      // createEditor
+    );
+  }, 100);
 
   createShapeRectangle(
     millimeters,
@@ -563,6 +545,19 @@ function initUI() {
     highestPoint,
     lowestPoint
   );
+
+  createDFX(foam, shapesArray, shapeToGeom2, "my_foam_shapes.dxf");
+
+  document.getElementById("nextBtn").addEventListener("click", () => {
+    currentIndex = (currentIndex + 1) % shapesArray.length; // circular navigation
+    updateSelectedShape(currentIndex);
+  });
+
+  // Previous button functionality
+  document.getElementById("prevBtn").addEventListener("click", () => {
+    currentIndex = (currentIndex - 1 + shapesArray.length) % shapesArray.length; // circular navigation
+    updateSelectedShape(currentIndex);
+  });
 }
 
 /* 3D */
@@ -591,6 +586,7 @@ let postScene;
 let postCamera;
 let postQuad;
 let topScene;
+let currentIndex = 0;
 
 function shapeUnderMouse() {
   if (mouseRayPlaneIntersection) {
@@ -609,8 +605,10 @@ function init3D() {
   renderer = new THREE.WebGL1Renderer({
     antialias: true,
     precision: "highp",
+    preserveDrawingBuffer: true,
   });
   renderer.setPixelRatio(window.devicePixelRatio || 1);
+  renderer.domElement.id = "foam-canvas";
   renderer.autoClear = false;
 
   overlayCanvas = document.createElement("canvas");
@@ -640,9 +638,35 @@ function init3D() {
     ONE: THREE.TOUCH.ROTATE,
     TWO: THREE.TOUCH.DOLLY_PAN,
   };
+  const aspect = window.innerWidth / window.innerHeight;
+  const distance = 1 * meters; // Keep the same camera position
+
+  // Convert FOV to Orthographic Frustum Size
+  const frustumHeight =
+    1.7 * distance * Math.tan(THREE.MathUtils.degToRad(50) / 2);
+  const frustumWidth = frustumHeight * aspect;
+
+  // Create Orthographic Camera
+  camera1 = new THREE.OrthographicCamera(
+    -frustumWidth / 2,
+    frustumWidth / 2, // left, right
+    frustumHeight / 2,
+    -frustumHeight / 2, // top, bottom
+    0.1 * meters,
+    100 * meters // near, far (adjusted near plane)
+  );
+
+  // Match position and orientation
+  camera1.position.set(0, 0, distance);
+  camera1.up.set(0, 1, 0);
+  camera1.lookAt(0, 0, 0);
   window.addEventListener("resize", onResize);
   onResize();
-
+  createImage(renderer, scene, camera1, {
+    buttonId: "export-image",
+    scaleFactor: 4,
+    filename: "foam-hd.png",
+  });
   renderer.domElement.style.position = "fixed";
 
   renderer.domElement.style.width = window.innerWidth + "px";
@@ -736,31 +760,31 @@ function init3D() {
       selected = oldSelected;
     }
   });
-
   renderer.domElement.addEventListener("pointerup", (e) => {
-    if (dragging) {
-      if (dragged) {
-        commit();
-      }
+    if (!dragging) return;
+    if (dragged) {
+      commit();
       if (selected) {
-        shapesArray.splice(shapesArray.indexOf(selected), 1);
-        if (!dragged && selected === oldSelected) {
-          shapesArray.unshift(selected);
-          selected = shapeUnderMouse();
-          document.querySelector("#back-button").removeAttribute("disabled");
-          document.querySelector("#back-button").onclick = () => {
-            document.querySelector("#back-button").setAttribute("disabled", "");
-            showPanelFromLeft("main-panel");
-            selected = null;
-          };
-          showPanelFromRight(selected.kind + "-panel");
-        } else {
-          shapesArray.push(selected);
+        const otherIdx = shapesArray.findIndex(
+          (s) => s !== selected && shapesIntersectGeneric(selected, s)
+        );
+        if (otherIdx !== -1) {
+          const selIdx = shapesArray.indexOf(selected);
+          const other = shapesArray[otherIdx];
+          const merged = mergeIntoPolygon(selected, other);
+          // remove originals
+          const [high, low] = [selIdx, otherIdx].sort((a, b) => b - a);
+          shapesArray.splice(high, 1);
+          shapesArray.splice(low, 1);
+          // insert merged
+          shapesArray.splice(low, 0, merged);
+          selected = merged;
         }
       }
-      dragging = false;
-      controls.enabled = true;
     }
+    // …existing reorder/UI logic…
+    dragging = false;
+    controls.enabled = true;
   });
 
   let ground = new THREE.Mesh(
@@ -793,8 +817,8 @@ function init3D() {
     new THREE.MeshBasicMaterial({ map: ssaaRenderTarget.texture })
   );
   postScene.add(postQuad);
-  getValues(camera, topScene, renderer, (camera, topScene, renderer) => {
-    cameraCopy = camera;
+  getValues(camera1, topScene, renderer, (camera1, topScene, renderer) => {
+    cameraCopy = camera1;
     sceneCopy = topScene;
     rendererCopy = renderer;
   });
@@ -870,6 +894,9 @@ function doCsg() {
   worker.onmessage = (e) => {
     let csgModel = scene.getObjectByName("csgModel");
     if (csgModel) {
+      if (csgModel.material) {
+        csgModel.material.dispose();
+      }
       if (csgModel instanceof THREE.Mesh) {
         csgModel.geometry.dispose();
       }
@@ -911,17 +938,20 @@ function drawMeasurements(shape) {
   }
 }
 
+function updateSelectedShape(index) {
+  selected = shapesArray[index];
+  currentIndex = index;
+}
 function onFrame() {
-  camera1 = new THREE.OrthographicCamera(
-    -window.innerWidth / 2.9,
-    window.innerWidth / 2.9,
-    window.innerHeight / 2.9,
-    -window.innerHeight / 2.9,
-    1,
-    1000
-  );
-  camera1.position.set(0, 0, 1000);
-  camera1.up.set(0, 0, 20);
+  let numSamples = parseInt(document.getElementById("pointsCount").value, 10);
+  document.getElementById("pointsCount").addEventListener("input", (e) => {
+    const value = parseInt(e.target.value, 10);
+    if (!isNaN(value) && value > 0 && value <= 5) {
+      numSamples = value;
+      // document.getElementById("points-input").value = numSamples;
+    }
+  });
+
   ctx.canvas.width = ctx.canvas.width;
   ctx.canvas.height = ctx.canvas.height;
   ctx.strokeStyle = "orange";
@@ -932,78 +962,184 @@ function onFrame() {
   display2D
     ? renderer.render(topScene, camera1)
     : renderer.render(topScene, camera);
+  const baseZ = 37 * centimeters;
+  const currentCamera = display2D ? camera1 : camera;
+
+  const NEAR_THRESHOLD = 1 * centimeters;
+
   for (let shape of shapesArray) {
-    let geom2 = shapeToGeom2(shape);
-    let geom3 = shapeToGeom3(shape);
-    if (display2D) {
-      drawOutline(shape, "black", 1, 37 * centimeters, ctx, camera);
+    // 1) If dragging, highlight “near” shapes in RED
+    if (
+      selected &&
+      shape !== selected &&
+      isNearGeneric(selected, shape, NEAR_THRESHOLD)
+    ) {
+      ctx.setLineDash([5, 5]);
+      drawOutline(
+        shape,
+        "red",
+        2,
+        baseZ,
+        ctx,
+        currentCamera,
+        display2D,
+        renderer,
+        selected,
+        sceneCopy,
+        false,
+        numSamples
+      );
+      ctx.setLineDash([]);
+      continue; // skip the normal outlines
     }
+
+    // 2) Otherwise fallback to your usual black/orange/gray
+    if (display2D) {
+      drawOutline(
+        shape,
+        "black",
+        1,
+        baseZ,
+        ctx,
+        currentCamera,
+        display2D,
+        renderer,
+        selected,
+        sceneCopy,
+        false,
+        numSamples
+      );
+    }
+
     if (selected === shape) {
-      drawOutline(shape, "orange", 3, 37 * centimeters, ctx, camera);
-      if (currPanel.id.endsWith("depth-panel")) {
+      drawOutline(
+        shape,
+        "orange",
+        3,
+        baseZ,
+        ctx,
+        currentCamera,
+        display2D,
+        renderer,
+        selected,
+        sceneCopy,
+        true,
+        numSamples
+      );
+      if (currPanel.id.endsWith("depth-panel") && !display2D) {
         ctx.setLineDash([5, 5]);
         drawOutline(
           shape,
           "orange",
           1,
-          37 * centimeters - shape.sizeZ,
+          baseZ - shape.sizeZ,
           ctx,
-          camera
+          currentCamera,
+          display2D,
+          renderer,
+          selected,
+          sceneCopy,
+          false,
+          numSamples
         );
         ctx.setLineDash([]);
       }
       drawMeasurements(shape);
-      let panel = geom2ToMesh(geom2);
-      panel.position.set(0, 0, 37 * centimeters);
-      panel.material = new THREE.MeshBasicMaterial({
-        color: "orange",
-        opacity: 0.2,
-        transparent: true,
-        depthTest: false,
-      });
-      renderer.render(panel, camera);
-      panel.geometry.dispose();
-      if (currPanel.id.endsWith("depth-panel")) {
-        let body = geom3ToMesh(geom3);
-        body.position.set(0, 0, 37 * centimeters - shape.sizeZ);
-        body.material = new THREE.MeshBasicMaterial({
-          color: "orange",
-          opacity: 0.1,
-          transparent: true,
-          depthTest: false,
-        });
-        renderer.render(body, camera);
-        body.geometry.dispose();
-      }
     } else {
       ctx.setLineDash([5, 5]);
-      drawOutline(shape, "gray", 1, 37 * centimeters, ctx, camera);
+      drawOutline(
+        shape,
+        "gray",
+        1,
+        baseZ,
+        ctx,
+        currentCamera,
+        display2D,
+        renderer,
+        selected,
+        sceneCopy,
+        false,
+        numSamples
+      );
       ctx.setLineDash([]);
     }
   }
+
   getCameraValue(camera1, (camera1) => {
     orthoCamera = camera1;
   });
-  /*
-  if (selected === null) {
-  for (let shape of shapesArray) {
-    let geom2 = shapeToGeom2(shape)
-    let geom3 = shapeToGeom3(shape)
-    ctx.setLineDash([5, 5]);        
-    drawOutline(shape, "gray", 1, 37*centimeters);
-    ctx.setLineDash([]);  
-  }
-  }
-  */
-  //renderer.setRenderTarget(null);
-  //renderer.render(postScene, postCamera)
   window.requestAnimationFrame(onFrame);
 }
 
 if (typeof window === "object") {
   initUI();
   init3D();
+  // createImage(renderer, scene, camera);
   commit();
 }
 
 export {};
+
+document.addEventListener("DOMContentLoaded", function () {
+  const myShapesButton = document.getElementById("my-shapes-button");
+  const myShapesContainer = document.getElementById("my-shapes-container");
+  let appendedDiv;
+  let isOpen = false;
+
+  myShapesButton.addEventListener("click", function () {
+    if (isOpen) {
+      myShapesContainer.style.display = "none";
+      if (appendedDiv) appendedDiv.remove();
+      window.removeEventListener("resize", resizeHandler);
+    } else {
+      // Create a new div element
+      appendedDiv = document.createElement("div");
+      appendedDiv.style.backgroundColor =
+        getComputedStyle(myShapesButton).backgroundColor;
+
+      // Set position and width styles for the new div
+      const buttonRect = myShapesButton.getBoundingClientRect();
+      appendedDiv.style.position = "fixed";
+      appendedDiv.style.top = buttonRect.bottom - 38 + "px";
+      appendedDiv.style.left = "0";
+      appendedDiv.style.width = "100%";
+      appendedDiv.style.borderRadius = "3px";
+
+      // Append the new div to the container
+      myShapesContainer.appendChild(appendedDiv);
+
+      // Show the container
+      myShapesContainer.style.display = "block";
+
+      // Update the height initially and listen for window resize
+      resizeHandler = updateAppendedDivHeight;
+      window.addEventListener("resize", resizeHandler);
+      // updateAppendedDivHeight();
+      // window.addEventListener("resize", updateAppendedDivHeight);
+    }
+    isOpen = !isOpen;
+  });
+
+  const dropdownButton = document.getElementById("export-dropdown-button");
+  const dropdown = document.getElementById("export-dropdown");
+
+  dropdownButton.addEventListener("click", () => {
+    dropdown.style.display =
+      dropdown.style.display === "none" ? "block" : "none";
+  });
+
+  // Optional: hide dropdown when clicking outside
+  document.addEventListener("click", (e) => {
+    if (!dropdownButton.contains(e.target) && !dropdown.contains(e.target)) {
+      dropdown.style.display = "none";
+    }
+  });
+
+  function updateAppendedDivHeight() {
+    if (appendedDiv) {
+      const buttonRect = myShapesButton.getBoundingClientRect();
+      const remainingHeight = window.innerHeight - buttonRect.bottom;
+      appendedDiv.style.height = remainingHeight + "px";
+    }
+  }
+});
