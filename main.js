@@ -32,8 +32,15 @@ import {
   drawMeasurementsPolygon,
   drawMeasurementsLine,
   drawCircle,
+  mergeIntoPolygon,
+  shapesIntersect,
+  getGeom2Points,
+  getBoundingBox,
+  isNearGeneric,
+  shapesIntersectGeneric,
   // createEditor,
 } from "./src/utils/threeFunctions";
+import { isNear } from "./src/utils/shapeOverlapping";
 import {
   initPanels,
   showPanelFromRight,
@@ -754,29 +761,30 @@ function init3D() {
     }
   });
   renderer.domElement.addEventListener("pointerup", (e) => {
-    if (dragging) {
-      if (dragged) {
-        commit();
-      }
+    if (!dragging) return;
+    if (dragged) {
+      commit();
       if (selected) {
-        shapesArray.splice(shapesArray.indexOf(selected), 1);
-        if (!dragged && selected === oldSelected) {
-          shapesArray.unshift(selected);
-          selected = shapeUnderMouse();
-          document.querySelector("#back-button").removeAttribute("disabled");
-          document.querySelector("#back-button").onclick = () => {
-            document.querySelector("#back-button").setAttribute("disabled", "");
-            showPanelFromLeft("main-panel");
-            selected = null;
-          };
-          showPanelFromRight(selected.kind + "-panel");
-        } else {
-          shapesArray.push(selected);
+        const otherIdx = shapesArray.findIndex(
+          (s) => s !== selected && shapesIntersectGeneric(selected, s)
+        );
+        if (otherIdx !== -1) {
+          const selIdx = shapesArray.indexOf(selected);
+          const other = shapesArray[otherIdx];
+          const merged = mergeIntoPolygon(selected, other);
+          // remove originals
+          const [high, low] = [selIdx, otherIdx].sort((a, b) => b - a);
+          shapesArray.splice(high, 1);
+          shapesArray.splice(low, 1);
+          // insert merged
+          shapesArray.splice(low, 0, merged);
+          selected = merged;
         }
       }
-      dragging = false;
-      controls.enabled = true;
     }
+    // …existing reorder/UI logic…
+    dragging = false;
+    controls.enabled = true;
   });
 
   let ground = new THREE.Mesh(
@@ -956,7 +964,36 @@ function onFrame() {
     : renderer.render(topScene, camera);
   const baseZ = 37 * centimeters;
   const currentCamera = display2D ? camera1 : camera;
+
+  const NEAR_THRESHOLD = 1 * centimeters;
+
   for (let shape of shapesArray) {
+    // 1) If dragging, highlight “near” shapes in RED
+    if (
+      selected &&
+      shape !== selected &&
+      isNearGeneric(selected, shape, NEAR_THRESHOLD)
+    ) {
+      ctx.setLineDash([5, 5]);
+      drawOutline(
+        shape,
+        "red",
+        2,
+        baseZ,
+        ctx,
+        currentCamera,
+        display2D,
+        renderer,
+        selected,
+        sceneCopy,
+        false,
+        numSamples
+      );
+      ctx.setLineDash([]);
+      continue; // skip the normal outlines
+    }
+
+    // 2) Otherwise fallback to your usual black/orange/gray
     if (display2D) {
       drawOutline(
         shape,
@@ -973,6 +1010,7 @@ function onFrame() {
         numSamples
       );
     }
+
     if (selected === shape) {
       drawOutline(
         shape,
@@ -988,8 +1026,6 @@ function onFrame() {
         true,
         numSamples
       );
-
-      // Only show depth outline in 3D mode
       if (currPanel.id.endsWith("depth-panel") && !display2D) {
         ctx.setLineDash([5, 5]);
         drawOutline(
@@ -1009,7 +1045,6 @@ function onFrame() {
         ctx.setLineDash([]);
       }
       drawMeasurements(shape);
-      // ... rest of selected shape rendering ...
     } else {
       ctx.setLineDash([5, 5]);
       drawOutline(

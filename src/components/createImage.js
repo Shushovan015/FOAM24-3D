@@ -13,15 +13,12 @@ export function createImage(
   }
 
   btn.addEventListener("click", () => {
-    // 1) snapshot current
     const origSize = renderer.getSize(new THREE.Vector2());
     const origDPR = renderer.getPixelRatio();
 
-    // 2) compute HD dims
     const width = origSize.x * scaleFactor;
     const height = origSize.y * scaleFactor;
 
-    // 3) build a render target
     const rt = new THREE.WebGLRenderTarget(width, height, {
       minFilter: THREE.LinearFilter,
       magFilter: THREE.LinearFilter,
@@ -39,15 +36,12 @@ export function createImage(
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
     }
-    // (orthographic camera assumed already set for top-down)
 
     renderer.render(scene, camera);
 
-    // 5) read the pixels back
     const buffer = new Uint8Array(width * height * 4);
     renderer.readRenderTargetPixels(rt, 0, 0, width, height, buffer);
 
-    // ✂️ Flip rows so image isn’t upside-down
     const rowBytes = width * 4;
     for (let y = 0; y < height / 2; y++) {
       const topRowOffset = y * rowBytes;
@@ -59,11 +53,9 @@ export function createImage(
       }
     }
 
-    // 6) cleanup render target
     renderer.setRenderTarget(null);
     rt.dispose();
 
-    // 7) draw into a small 2D canvas & export
     const canvas2d = document.createElement("canvas");
     canvas2d.width = width;
     canvas2d.height = height;
@@ -85,7 +77,6 @@ export function createImage(
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      // 8) restore original renderer
       renderer.setPixelRatio(origDPR);
       renderer.setSize(origSize.x, origSize.y, false);
       if (camera.isPerspectiveCamera) {

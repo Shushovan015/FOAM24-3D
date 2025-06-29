@@ -1,6 +1,7 @@
 import * as jscad from "@jscad/modeling";
 import * as THREE from "three";
 import earcut from "earcut";
+import { isOverlapping } from "./shapeOverlapping";
 
 export function project(p0, camera, ctx) {
   return p0
@@ -12,82 +13,268 @@ export function project(p0, camera, ctx) {
 }
 
 export function shapeToGeom2(shape) {
-  switch (shape?.kind) {
-    case "circle":
+  // helper to be extra-sure we always have numbers
+  function num(v, fallback = 0) {
+    return typeof v === "number" && !isNaN(v) ? v : fallback;
+  }
+
+  if (!shape || typeof shape.kind !== "string") {
+    console.error("shapeToGeom2: bad shape", shape);
+    // empty 1×1 square at origin
+    return jscad.primitives.rectangle({ center: [0, 0], size: [1, 1] });
+  }
+
+  switch (shape.kind) {
+    case "circle": {
+      const cx = num(shape.x),
+        cy = num(shape.y),
+        r = num(shape.radius, 1);
       return jscad.primitives.circle({
-        center: [shape.x, shape.y],
-        radius: shape.radius,
+        center: [cx, cy],
+        radius: r,
         segments: 20,
       });
+    }
     case "line":
-      return shape;
-    case "rectangle":
+      // assume your line shapes already encode valid geometry
+      return Array.isArray(shape) ? shape : [];
+    case "rectangle": {
+      const cx = num(shape.x),
+        cy = num(shape.y);
+      const sx = num(shape.sizeX, 1),
+        sy = num(shape.sizeY, 1);
       let rect = jscad.primitives.rectangle({
-        center: [shape.x, shape.y],
-        size: [shape.sizeX, shape.sizeY],
+        center: [cx, cy],
+        size: [sx, sy],
       });
-      for (let side of rect.sides) {
-        for (let vert of side) {
-          jscad.maths.vec2.rotate(
-            vert,
-            vert,
-            [shape.x, shape.y],
-            jscad.utils.degToRad(shape.rotation)
-          );
+      // apply rotation if present
+      const rot = num(shape.rotation, 0);
+      if (rot !== 0) {
+        for (let side of rect.sides) {
+          for (let vert of side) {
+            jscad.maths.vec2.rotate(
+              vert,
+              vert,
+              [cx, cy],
+              jscad.utils.degToRad(rot)
+            );
+          }
         }
       }
       return rect;
-    case "polygon":
-      let polygon = shape.points
-        .map(([x, y]) => [x, y])
-        .map((v) =>
-          jscad.maths.vec2.rotate(
-            v,
-            v,
-            [0, 0],
-            jscad.utils.degToRad(shape.rotation)
-          )
-        );
-      polygon = polygon.map(([x, y]) => [x + shape.x, y + shape.y]);
-      return jscad.geometries.geom2.fromPoints(polygon);
-    case "photoshape":
-      if (!shape.polygon || !Array.isArray(shape.polygon)) {
-        console.error("Invalid shape.polygon:", shape.polygon);
-        return [];
+    }
+    case "polygon": {
+      const cx = num(shape.x),
+        cy = num(shape.y),
+        rot = num(shape.rotation, 0);
+      if (!Array.isArray(shape.points) || shape.points.length === 0) {
+        return jscad.primitives.rectangle({ center: [cx, cy], size: [1, 1] });
       }
-      let photoshapePolygons = (shape?.polygon || [])?.map((contour, index) => {
-        if (!Array.isArray(contour)) {
-          console.error(`Contour at index ${index} is not an array:`, contour);
-          return [];
-        }
-        // Rotate and translate each point in the contour
-        let transformedContour = contour
-          ?.map((point) => {
-            if (!Array.isArray(point) || point.length !== 2) {
-              console.error("Invalid point in contour:", point);
-              return [0, 0]; // default or error handling
-            }
-            return [point[0], point[1]];
-          })
-          ?.map((v) =>
-            jscad.maths.vec2.rotate(
-              v,
-              v,
-              [0, 0],
-              jscad.utils.degToRad(shape.rotation)
-            )
-          )
-          ?.map(([x, y]) => [x + shape.x, y + shape.y]); // Translate points
-        return transformedContour;
+      // rotate around origin then translate
+      let pts = shape.points.map(([x, y]) => {
+        const px = num(x),
+          py = num(y);
+        let v = [px, py];
+        jscad.maths.vec2.rotate(v, v, [0, 0], jscad.utils.degToRad(rot));
+        return [v[0] + cx, v[1] + cy];
       });
-
-      // Now, photoshapePolygons will be an array of arrays of transformed contours
-      return photoshapePolygons?.map((contour) => {
-        return jscad.geometries.geom2?.fromPoints(contour);
+      return jscad.geometries.geom2.fromPoints(pts);
+    }
+    case "photoshape": {
+      const cx = num(shape.x),
+        cy = num(shape.y),
+        rot = num(shape.rotation, 0);
+      if (!Array.isArray(shape.polygon) || shape.polygon.length === 0) {
+        console.error("shapeToGeom2: bad photoshape.polygon", shape.polygon);
+        return jscad.primitives.rectangle({ center: [cx, cy], size: [1, 1] });
+      }
+      let geoms = [];
+      for (let contour of shape.polygon) {
+        if (!Array.isArray(contour) || contour.length === 0) continue;
+        let pts = contour.map((pt) => {
+          const x = Array.isArray(pt) && pt.length === 2 ? num(pt[0]) : 0;
+          const y = Array.isArray(pt) && pt.length === 2 ? num(pt[1]) : 0;
+          let v = [x, y];
+          jscad.maths.vec2.rotate(v, v, [0, 0], jscad.utils.degToRad(rot));
+          return [v[0] + cx, v[1] + cy];
+        });
+        if (pts.length > 2) {
+          geoms.push(jscad.geometries.geom2.fromPoints(pts));
+        }
+      }
+      return geoms.length === 1 ? geoms[0] : geoms;
+    }
+    default:
+      console.error("shapeToGeom2: unsupported kind", shape.kind);
+      return jscad.primitives.rectangle({
+        center: [num(shape.x), num(shape.y)],
+        size: [1, 1],
       });
   }
 }
+// delete from here is any problem
+export function getGeom2Points(shape) {
+  const geom = shapeToGeom2(shape);
+  // jscad.geometries.geom2.toPoints handles both single‐ and multi‐contour
+  return Array.isArray(geom)
+    ? geom.flatMap((g) => jscad.geometries.geom2.toPoints(g))
+    : jscad.geometries.geom2.toPoints(geom);
+}
 
+export function getBoundingBox(shape) {
+  let pts = [];
+  try {
+    pts = jscad.geometries.geom2.toPoints(shapeToGeom2(shape));
+  } catch (_) {
+    /* ignore */
+  }
+  if (!pts.length && Array.isArray(shape.points)) {
+    pts = shape.points;
+  }
+  if (!pts.length) {
+    return { minX: 0, maxX: 0, minY: 0, maxY: 0 };
+  }
+  let minX = pts[0][0],
+    maxX = pts[0][0];
+  let minY = pts[0][1],
+    maxY = pts[0][1];
+  for (const [x, y] of pts) {
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
+  }
+  return { minX, maxX, minY, maxY };
+}
+
+export function isNearGeneric(a, b, t) {
+  const A = getBoundingBox(a);
+  const B = getBoundingBox(b);
+  return !(
+    A.maxX + t < B.minX ||
+    A.minX - t > B.maxX ||
+    A.maxY + t < B.minY ||
+    A.minY - t > B.maxY
+  );
+}
+
+export function shapesIntersectGeneric(a, b) {
+  const A = getBoundingBox(a);
+  const B = getBoundingBox(b);
+  // if boxes don’t overlap, no shape intersection
+  if (
+    A.maxX < B.minX ||
+    A.minX > B.maxX ||
+    A.maxY < B.minY ||
+    A.minY > B.maxY
+  ) {
+    return false;
+  }
+  // perform real 2D intersection
+  let inter = jscad.booleans.intersect(shapeToGeom2(a), shapeToGeom2(b));
+  if (Array.isArray(inter)) {
+    return inter.some((g) => jscad.geometries.geom2.toPoints(g).length > 0);
+  }
+  return !!inter && jscad.geometries.geom2.toPoints(inter).length > 0;
+}
+
+export function mergeIntoPolygon(a, b) {
+  // 1) Union their 2D geoms
+  let u = jscad.booleans.union(shapeToGeom2(a), shapeToGeom2(b));
+  if (Array.isArray(u)) u = u[0];
+
+  // 2) Build adjacency from every side in u.sides
+  const adj = {}; // key -> Set of neighbor keys
+  const coord = {}; // key -> [x,y]
+  const keyOf = (p) => `${p[0].toFixed(6)},${p[1].toFixed(6)}`;
+
+  for (const side of u.sides || []) {
+    if (!Array.isArray(side) || side.length < 2) continue;
+    const [p1, p2] = side;
+    const k1 = keyOf(p1),
+      k2 = keyOf(p2);
+    coord[k1] = [p1[0], p1[1]];
+    coord[k2] = [p2[0], p2[1]];
+    adj[k1] = adj[k1] || new Set();
+    adj[k2] = adj[k2] || new Set();
+    adj[k1].add(k2);
+    adj[k2].add(k1);
+  }
+
+  // 3) Walk the loop starting from any key
+  const keys = Object.keys(adj);
+  if (keys.length === 0) {
+    console.error("mergeIntoPolygon: no sides!", u);
+    return {
+      kind: "polygon",
+      points: [
+        [0, 0],
+        [1, 0],
+        [1, 1],
+        [0, 1],
+      ],
+      rotation: 0,
+      x: 0,
+      y: 0,
+      sizeX: 1,
+      sizeY: 1,
+      sizeZ: 0,
+    };
+  }
+
+  const loop = [];
+  let start = keys[0],
+    prev = null,
+    cur = start;
+  do {
+    loop.push(cur);
+    // pick the one neighbor that isn’t the vertex we came from
+    const neigh = Array.from(adj[cur]).filter((k) => k !== prev);
+    if (neigh.length === 0) break; // dead end
+    const next = neigh[0];
+    prev = cur;
+    cur = next;
+  } while (cur !== start);
+
+  // 4) Convert keys back to [x,y]
+  const pts = loop.map((k) => coord[k]);
+
+  // 5) Compute bounding box for sizeX/sizeY
+  const xs = pts.map((p) => p[0]),
+    ys = pts.map((p) => p[1]);
+  const minX = Math.min(...xs),
+    maxX = Math.max(...xs);
+  const minY = Math.min(...ys),
+    maxY = Math.max(...ys);
+
+  // 6) Return the merged polygon shape
+  return {
+    kind: "polygon",
+    free: true,
+    id: `shape-${Date.now()}`,
+    points: pts,
+    rotation: 0,
+    x: 0,
+    y: 0,
+    sizeX: maxX - minX,
+    sizeY: maxY - minY,
+    sizeZ: Math.max(a.sizeZ || 0, b.sizeZ || 0),
+  };
+}
+
+/** Helper: get a shape’s AABB from its geom2 points */
+
+export function shapesIntersect(a, b) {
+  // first cheap‐out: if AABBs don't overlap, no intersection
+  if (!isOverlapping(a, b)) return false;
+
+  // now true geometry intersect
+  let inter = jscad.booleans.intersect(shapeToGeom2(a), shapeToGeom2(b));
+  if (Array.isArray(inter)) return inter.length > 0;
+  return !!inter;
+}
+
+// delete till here
 export function shapeToGeom3(shape) {
   let geom2 = shapeToGeom2(shape);
   return jscad.extrusions.extrudeLinear(
