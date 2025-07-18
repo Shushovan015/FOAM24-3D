@@ -255,3 +255,62 @@ export function drawResponsiveText(
     font,
   });
 }
+
+export function confirmMerge(shapeA, shapeB, callback) {
+  const existing = document.getElementById("merge-dialog");
+  if (existing) existing.remove();
+
+  const dialog = document.createElement("div");
+  dialog.id = "merge-dialog";
+  dialog.style.position = "fixed";
+  dialog.style.top = "50%";
+  dialog.style.left = "50%";
+  dialog.style.transform = "translate(-50%, -50%)";
+  dialog.style.background = "#fff";
+  dialog.style.padding = "24px 32px";
+  dialog.style.borderRadius = "12px";
+  dialog.style.boxShadow = "0 8px 24px rgba(0, 0, 0, 0.2)";
+  dialog.style.zIndex = "9999";
+  dialog.style.fontFamily = "sans-serif";
+  dialog.style.minWidth = "320px";
+  dialog.style.textAlign = "center";
+
+  dialog.innerHTML = `
+    <p style="margin-bottom: 24px; font-size: 16px; color: #333;">
+      Shapes are too close. Do you want to merge them?
+    </p>
+    <div style="display: flex; justify-content: center; gap: 16px;">
+      <button id="merge-yes" style="
+        padding: 10px 20px;
+        background-color: #4a90e2;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 14px;
+        cursor: pointer;
+        transition: background-color 0.2s;
+      ">Yes</button>
+      <button id="merge-no" style="
+        padding: 10px 20px;
+        background-color: #e0e0e0;
+        color: #333;
+        border: none;
+        border-radius: 6px;
+        font-size: 14px;
+        cursor: pointer;
+        transition: background-color 0.2s;
+      ">No</button>
+    </div>
+  `;
+
+  document.body.appendChild(dialog);
+
+  document.getElementById("merge-yes").onclick = () => {
+    dialog.remove();
+    callback(true);
+  };
+  document.getElementById("merge-no").onclick = () => {
+    dialog.remove();
+    callback(false);
+  };
+}

@@ -64,6 +64,9 @@ export function shapeToGeom2(shape) {
       return rect;
     }
     case "polygon": {
+      if (shape.geom) {
+        return shape.geom;
+      }
       const cx = num(shape.x),
         cy = num(shape.y),
         rot = num(shape.rotation, 0);
@@ -105,7 +108,6 @@ export function shapeToGeom2(shape) {
       return geoms.length === 1 ? geoms[0] : geoms;
     }
     default:
-      console.error("shapeToGeom2: unsupported kind", shape.kind);
       return jscad.primitives.rectangle({
         center: [num(shape.x), num(shape.y)],
         size: [1, 1],
@@ -183,11 +185,10 @@ export function mergeIntoPolygon(a, b) {
   let u = jscad.booleans.union(shapeToGeom2(a), shapeToGeom2(b));
   if (Array.isArray(u)) u = u[0];
 
-  // 2) Build adjacency from every side in u.sides
-  const adj = {}; // key -> Set of neighbor keys
-  const coord = {}; // key -> [x,y]
+  // 2) Build adjacency & coordinate maps
+  const adj = {},
+    coord = {};
   const keyOf = (p) => `${p[0].toFixed(6)},${p[1].toFixed(6)}`;
-
   for (const side of u.sides || []) {
     if (!Array.isArray(side) || side.length < 2) continue;
     const [p1, p2] = side;
@@ -201,61 +202,90 @@ export function mergeIntoPolygon(a, b) {
     adj[k2].add(k1);
   }
 
-  // 3) Walk the loop starting from any key
   const keys = Object.keys(adj);
-  if (keys.length === 0) {
-    console.error("mergeIntoPolygon: no sides!", u);
+  if (keys.length < 3) {
+    console.error("mergeIntoPolygon: not enough vertices");
     return {
       kind: "polygon",
-      points: [
-        [0, 0],
-        [1, 0],
-        [1, 1],
-        [0, 1],
-      ],
-      rotation: 0,
-      x: 0,
-      y: 0,
-      sizeX: 1,
-      sizeY: 1,
-      sizeZ: 0,
+      points: [],
+      sizeZ: Math.max(a.sizeZ || 0, b.sizeZ || 0),
     };
   }
 
-  const loop = [];
+  // 3) Pick a start: top-most (smallest Y, then X)
+  keys.sort((k1, k2) => {
+    const [x1, y1] = coord[k1],
+      [x2, y2] = coord[k2];
+    return y1 === y2 ? x1 - x2 : y1 - y2;
+  });
   let start = keys[0],
     prev = null,
     cur = start;
-  do {
-    loop.push(cur);
-    // pick the one neighbor that isn’t the vertex we came from
-    const neigh = Array.from(adj[cur]).filter((k) => k !== prev);
-    if (neigh.length === 0) break; // dead end
-    const next = neigh[0];
-    prev = cur;
-    cur = next;
-  } while (cur !== start);
+  // initial direction: point rightwards
+  let dir = [1, 0];
+  const loop = [cur];
 
-  // 4) Convert keys back to [x,y]
+  while (true) {
+    const neighbors = Array.from(adj[cur]).filter((k) => k !== prev);
+    if (neighbors.length === 0) break;
+
+    // choose the neighbor with the smallest left‐turn angle from dir
+    let best = null,
+      bestAngle = Infinity;
+    const [cx, cy] = coord[cur];
+    for (const nbr of neighbors) {
+      const [nx, ny] = coord[nbr];
+      let vx = nx - cx,
+        vy = ny - cy;
+      const mag = Math.hypot(vx, vy);
+      if (mag === 0) continue;
+      vx /= mag;
+      vy /= mag;
+      // cross & dot for signed angle
+      const cross = dir[0] * vy - dir[1] * vx;
+      const dot = dir[0] * vx + dir[1] * vy;
+      let angle = Math.atan2(cross, dot);
+      if (angle < 0) angle += 2 * Math.PI;
+      if (angle < bestAngle) {
+        bestAngle = angle;
+        best = nbr;
+      }
+    }
+    if (!best || best === start) break;
+
+    // advance
+    prev = cur;
+    cur = best;
+    loop.push(cur);
+    // update dir
+    const [px, py] = coord[prev],
+      [cx2, cy2] = coord[cur];
+    const dx = cx2 - px,
+      dy = cy2 - py,
+      dmag = Math.hypot(dx, dy);
+    dir = dmag ? [dx / dmag, dy / dmag] : dir;
+  }
+
+  // 4) Convert the keyed loop back to point array
   const pts = loop.map((k) => coord[k]);
 
-  // 5) Compute bounding box for sizeX/sizeY
+  // 5) Compute sizeX/sizeY
   const xs = pts.map((p) => p[0]),
     ys = pts.map((p) => p[1]);
   const minX = Math.min(...xs),
     maxX = Math.max(...xs);
   const minY = Math.min(...ys),
     maxY = Math.max(...ys);
+  const translatedPoints = pts.map(([x, y]) => [x - minX, y - minY]);
 
-  // 6) Return the merged polygon shape
   return {
     kind: "polygon",
-    free: true,
+    free: false,
     id: `shape-${Date.now()}`,
-    points: pts,
+    points: translatedPoints,
     rotation: 0,
-    x: 0,
-    y: 0,
+    x: minX,
+    y: minY,
     sizeX: maxX - minX,
     sizeY: maxY - minY,
     sizeZ: Math.max(a.sizeZ || 0, b.sizeZ || 0),
@@ -522,10 +552,7 @@ export function mouseOverShape(
     }
   } else if (shape.kind == "photoshape") {
     let v = mouseRayPlaneIntersection;
-    // change of function for multiple shapes coming at once
-    // Assuming shape.polygon is an array of polygons, each a list of vertices
     let polygons = shape.polygon.map((polygon) => {
-      // Rotate each vertex in the polygon
       let rotatedPolygon = polygon.map(([x, y]) =>
         jscad.maths.vec2.rotate(
           [x, y],
@@ -540,18 +567,6 @@ export function mouseOverShape(
       pointInsidePolygon([v.x, v.y], polygon)
     );
     return isInside;
-    // let polygon = shape.polygon
-    //   .map(([x, y]) => [x, y])
-    //   .map((v) =>
-    //     jscad.maths.vec2.rotate(
-    //       v,
-    //       v,
-    //       [0, 0],
-    //       jscad.utils.degToRad(shape.rotation)
-    //     )
-    //   );
-    // polygon = polygon.map(([x, y]) => [x + shape.x, y + shape.y]);
-    // return pointInsidePolygon([v.x, v.y], polygon);
   } else if (shape.kind == "polygon") {
     let v = mouseRayPlaneIntersection;
     let polygon = shape.points
@@ -634,7 +649,7 @@ export function drawOutline(
   selected, // Your selected shape object
   scene,
   displayDot,
-  numSamples
+  // numSamples
 ) {
   ctx.lineWidth = width;
   ctx.strokeStyle = style;
@@ -675,38 +690,21 @@ export function drawOutline(
         });
       }
 
-      // // Use Set to avoid duplicate points
-      // const uniquePoints = new Set(
-      //   geometry.sides
-      //     .flatMap((side) => [side[0], side[1]])
-      //     .map((point) => JSON.stringify(point))
-      // );
-
-      // // Store control points in the shape object for later removal
-      // shape.controlPoints = [];
-
-      // // Create THREE.Points for control points
-      // const positions = [];
-      // uniquePoints.forEach((pointStr) => {
-      //   const point = JSON.parse(pointStr);
-      //   positions.push(point[0], point[1], z);
-      // });
-
       shape.controlPoints = [];
       const positions = [];
 
-      geometry.sides.forEach((side) => {
-        const p1 = side[0];
-        const p2 = side[1];
+      // geometry.sides.forEach((side) => {
+      //   const p1 = side[0];
+      //   const p2 = side[1];
 
-        // const numSamples = 2; // Increase this for more dots
-        for (let i = 0; i <= numSamples; i++) {
-          const t = i / numSamples;
-          const x = p1[0] + (p2[0] - p1[0]) * t;
-          const y = p1[1] + (p2[1] - p1[1]) * t;
-          positions.push(x, y, z);
-        }
-      });
+      //   // const numSamples = 2; // Increase this for more dots
+      //   for (let i = 0; i <= numSamples; i++) {
+      //     const t = i / numSamples;
+      //     const x = p1[0] + (p2[0] - p1[0]) * t;
+      //     const y = p1[1] + (p2[1] - p1[1]) * t;
+      //     positions.push(x, y, z);
+      //   }
+      // });
 
       const pointsGeometry = new THREE.BufferGeometry();
       pointsGeometry.setAttribute(
@@ -984,25 +982,10 @@ export function drawMeasurementsPhotoshape(
   const offsetX = canvasCenterX - shapeCenterX;
   const offsetY = canvasCenterY - shapeCenterY;
 
-  // Modify the transformation function to include centering offset
-  // function transform(v) {
-  //   // Center the shape by subtracting half of sizeX and sizeY
-  //   const centeredV = v
-  //     .sub(new THREE.Vector3(shape.sizeX / 2, shape.sizeY / 2, 0)) // Move shape center to (0,0)
-  //     .applyAxisAngle(
-  //       new THREE.Vector3(0, 0, 1),
-  //       jscad.utils.degToRad(shape?.rotation)
-  //     )
-  //     .add(new THREE.Vector3(offsetX, offsetY, 0)); // Center on canvas
-
-  //   return project(centeredV, camera, ctx);
-  // }
-
   function transform(v, is2DMode, object, shape) {
     const clonedV = v.clone();
 
     if (is2DMode) {
-      // Use offsetX/Y directly from the outer scope
       clonedV
         .sub(new THREE.Vector3(shape.sizeX / 2, shape.sizeY / 2, 0))
         .applyAxisAngle(
@@ -1407,22 +1390,6 @@ export function drawMeasurementsCircle(
     ctx.strokeStyle = "orange";
   }
 }
-
-// export function drawMeasurementsLine(shape, ctx, camera) {
-//   ctx.strokeStyle = shape.color || "black";
-//   ctx.beginPath();
-
-//   function transform(x, y, camera) {
-//     return project(new THREE.Vector3(x, y, 0), camera, ctx);
-//   }
-
-//   let startPoint = transform(shape.startX, shape.startY, camera);
-//   let endPoint = transform(shape.endX, shape.endY, camera);
-
-//   ctx.moveTo(startPoint.x, startPoint.y);
-//   ctx.lineTo(endPoint.x, endPoint.y);
-//   ctx.stroke();
-// }
 
 export function drawMeasurementsLine(shape, ctx, camera, centimeters) {
   ctx.strokeStyle = shape.color || "blue";

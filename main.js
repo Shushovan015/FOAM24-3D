@@ -12,6 +12,7 @@ import {
   updateUndoRedoButtons,
   getValues,
   getCameraValue,
+  confirmMerge,
 } from "./src/utils/common";
 import {
   buttonClick,
@@ -351,28 +352,36 @@ function initUI() {
   document.querySelector("#depth-slider").onchange = commit;
   document.querySelector("#depth-input").onchange = commit;
 
-  setTimeout(() => {
-    createShapeFreehand(
-      millimeters,
-      selected,
-      shapesArray,
-      commit,
-      showPanelFromLeft,
-      showPanelFromRight,
-      doCsg,
-      orthoCamera,
-      sceneCopy,
-      rendererCopy,
-      display2D,
-      (modifiedDisplay) => {
-        display2D = modifiedDisplay;
-      },
-      (modifiedSelected, modifiedDisplay) => {
-        selected = modifiedSelected;
-        display2D = modifiedDisplay;
-      }
-    );
-  }, 100);
+  function waitForFoamAndInitFreehand() {
+    const foamMesh = scene.getObjectByName("csgModel");
+
+    if (foamMesh) {
+      createShapeFreehand(
+        millimeters,
+        selected,
+        shapesArray,
+        commit,
+        showPanelFromLeft,
+        showPanelFromRight,
+        doCsg,
+        orthoCamera,
+        sceneCopy,
+        rendererCopy,
+        display2D,
+        (modifiedDisplay) => {
+          display2D = modifiedDisplay;
+        },
+        (modifiedSelected, modifiedDisplay) => {
+          selected = modifiedSelected;
+          display2D = modifiedDisplay;
+        },
+        foamMesh // ✅ pass foam here
+      );
+    } else {
+      setTimeout(waitForFoamAndInitFreehand, 100);
+    }
+  }
+  waitForFoamAndInitFreehand();
 
   depthButtonClick(
     "polygon-depth-button",
@@ -765,20 +774,31 @@ function init3D() {
     if (dragged) {
       commit();
       if (selected) {
+        console.log(shapesArray, "arr");
         const otherIdx = shapesArray.findIndex(
           (s) => s !== selected && shapesIntersectGeneric(selected, s)
         );
         if (otherIdx !== -1) {
-          const selIdx = shapesArray.indexOf(selected);
           const other = shapesArray[otherIdx];
-          const merged = mergeIntoPolygon(selected, other);
-          // remove originals
-          const [high, low] = [selIdx, otherIdx].sort((a, b) => b - a);
-          shapesArray.splice(high, 1);
-          shapesArray.splice(low, 1);
-          // insert merged
-          shapesArray.splice(low, 0, merged);
-          selected = merged;
+          confirmMerge(selected, other, (shouldMerge) => {
+            if (shouldMerge) {
+              const selIdx = shapesArray.indexOf(selected);
+              const otherIdx2 = shapesArray.indexOf(other);
+              const merged = mergeIntoPolygon(selected, other);
+              const [high, low] = [selIdx, otherIdx2].sort((a, b) => b - a);
+              shapesArray.splice(high, 1);
+              shapesArray.splice(low, 1);
+              shapesArray.splice(low, 0, merged);
+              selected = merged;
+              doCsg();
+              commit();
+            } else {
+              // Push selected slightly away to break overlap
+              selected.x += 10;
+              selected.y += 10;
+              doCsg();
+            }
+          });
         }
       }
     }
@@ -943,14 +963,14 @@ function updateSelectedShape(index) {
   currentIndex = index;
 }
 function onFrame() {
-  let numSamples = parseInt(document.getElementById("pointsCount").value, 10);
-  document.getElementById("pointsCount").addEventListener("input", (e) => {
-    const value = parseInt(e.target.value, 10);
-    if (!isNaN(value) && value > 0 && value <= 5) {
-      numSamples = value;
-      // document.getElementById("points-input").value = numSamples;
-    }
-  });
+  // let numSamples = parseInt(document.getElementById("pointsCount").value, 10);
+  // document.getElementById("pointsCount").addEventListener("input", (e) => {
+  //   const value = parseInt(e.target.value, 10);
+  //   if (!isNaN(value) && value > 0 && value <= 5) {
+  //     numSamples = value;
+  //     // document.getElementById("points-input").value = numSamples;
+  //   }
+  // });
 
   ctx.canvas.width = ctx.canvas.width;
   ctx.canvas.height = ctx.canvas.height;
@@ -986,8 +1006,8 @@ function onFrame() {
         renderer,
         selected,
         sceneCopy,
-        false,
-        numSamples
+        false
+        // numSamples
       );
       ctx.setLineDash([]);
       continue; // skip the normal outlines
@@ -1006,8 +1026,8 @@ function onFrame() {
         renderer,
         selected,
         sceneCopy,
-        false,
-        numSamples
+        false
+        // numSamples
       );
     }
 
@@ -1023,8 +1043,8 @@ function onFrame() {
         renderer,
         selected,
         sceneCopy,
-        true,
-        numSamples
+        true
+        // numSamples
       );
       if (currPanel.id.endsWith("depth-panel") && !display2D) {
         ctx.setLineDash([5, 5]);
@@ -1039,8 +1059,8 @@ function onFrame() {
           renderer,
           selected,
           sceneCopy,
-          false,
-          numSamples
+          false
+          // numSamples
         );
         ctx.setLineDash([]);
       }
@@ -1058,8 +1078,8 @@ function onFrame() {
         renderer,
         selected,
         sceneCopy,
-        false,
-        numSamples
+        false
+        // numSamples
       );
       ctx.setLineDash([]);
     }
@@ -1072,8 +1092,8 @@ function onFrame() {
 }
 
 if (typeof window === "object") {
-  initUI();
   init3D();
+  initUI();
   // createImage(renderer, scene, camera);
   commit();
 }

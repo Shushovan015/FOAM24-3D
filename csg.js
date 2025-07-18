@@ -80,8 +80,8 @@ function shapeToGeom2(shape) {
     //   polygon = polygon.map(([x, y]) => [x + shape.x, y + shape.y]);
     //   return jscad.geometries.geom2.fromPoints(polygon);
     case "polygon":
-      let poly = shape.points
-        .reverse()
+      let newShape = shape.free ? shape.points.slice().reverse() : shape.points;
+      let poly = newShape
         .map(([x, y]) => [x, y])
         .map((v) =>
           jscad.maths.vec2.rotate(
