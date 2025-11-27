@@ -49,6 +49,7 @@ import {
   getCurrentPanel,
 } from "./src/UI/panels";
 import { createPdf } from "./src/components/createPdf";
+import { createPdfIso } from "./src/components/createPdfIsometric";
 import { createShapeCircle } from "./src/components/shapes/createShapeCircle";
 import { createShapeFreehand } from "./src/components/shapes/createShapeFreehand";
 import { createShapeRectangle } from "./src/components/shapes/createShapeRectangle";
@@ -546,6 +547,15 @@ function initUI() {
 
   // Create the pdf
   createPdf(
+    foam,
+    shapesArray,
+    shapeToGeom2,
+    rightestPoint,
+    leftestPoint,
+    highestPoint,
+    lowestPoint
+  );
+  createPdfIso(
     foam,
     shapesArray,
     shapeToGeom2,

@@ -125,6 +125,7 @@ export const createShapePhotoShape = (
             sizeY: 250 * millimeters,
             points: contour, // Each contour as the polygon
             rotation: 0,
+            free: true,
           };
 
           shapesArray.push(shape);

@@ -7,8 +7,8 @@
     
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@48,400,0,0" />    
     
-    <script type="module" crossorigin src="/assets/index-a5456d0f.js"></script>
-    <link rel="stylesheet" href="/assets/index-df6f347f.css">
+    <script type="module" crossorigin src="/assets/index-7e9bf134.js"></script>
+    <link rel="stylesheet" href="/assets/index-87a3d2ff.css">
   </head>
   <body>
     <div class="x-line" style="display: none;"  ></div>
@@ -44,6 +44,9 @@
               </button>
               <button class="column grow white" data-icon="picture_as_pdf" id="pdf-button">
                 Export PDF technical drawing
+              </button>              
+              <button class="column grow white" data-icon="view_in_ar" id="pdf-iso-button">
+                Export PDF (isometric view)
               </button>
               <button class="column grow white" data-icon="image" id="export-image">
                 Export rendered image of the shape
@@ -114,7 +117,7 @@
           <div class="group">
             <button class="column grow white" id="edit-shape" data-icon="play_shapes">Edit shapes</button>
           </div>
-          <div class="group">
+          <!-- <div class="group">
             <label for="pointsCount" style="color: white; padding-right: 5px;">Points:</label>
             <input 
               type="range"
@@ -125,8 +128,7 @@
               min="1" 
               max="5" 
             />
-                <!-- <input id="points-input" class="column" style="width:auto;" type="number" min="1" max="5" value="1"> -->
-          </div>
+          </div> -->
           <div class="group">
             <div id="navButtons" class="column grow white" style="display: flex; gap: 10px; margin-top: 10px;">
               <button id="prevBtn">Previous</button>

@@ -648,7 +648,7 @@ export function drawOutline(
   renderer,
   selected, // Your selected shape object
   scene,
-  displayDot,
+  displayDot
   // numSamples
 ) {
   ctx.lineWidth = width;
@@ -683,101 +683,84 @@ export function drawOutline(
 
     // If control points should be displayed, add or remove them
     if (showControlPoints) {
-      // Remove existing control points from the scene if they exist
+      // remove old
       if (shape.controlPoints) {
-        shape.controlPoints.forEach((pointObj) => {
-          scene.remove(pointObj);
-        });
+        shape.controlPoints.forEach((obj) => scene.remove(obj));
       }
-
       shape.controlPoints = [];
-      const positions = [];
 
-      // geometry.sides.forEach((side) => {
-      //   const p1 = side[0];
-      //   const p2 = side[1];
+      const CP_Z = z; // keep everything on one plane
+      shape.points.forEach(([x, y], index) => {
+        console.log("raw point:", x, y, "shape offset:", shape.x, shape.y);
+        const sphere = new THREE.Mesh(
+          new THREE.SphereGeometry(3, 16, 16),
+          new THREE.MeshBasicMaterial({ color: 0x00ffff })
+        );
+        sphere.position.set(x + shape.x, y + shape.y, CP_Z);
+        // sphere.position.set(x, y, CP_Z);
+        sphere.name = `controlPoint-${index}`;
+        sphere.userData.pointIndex = index;
+        sphere.userData.draggable = true;
+        scene.add(sphere);
+        shape.controlPoints.push(sphere);
 
-      //   // const numSamples = 2; // Increase this for more dots
-      //   for (let i = 0; i <= numSamples; i++) {
-      //     const t = i / numSamples;
-      //     const x = p1[0] + (p2[0] - p1[0]) * t;
-      //     const y = p1[1] + (p2[1] - p1[1]) * t;
-      //     positions.push(x, y, z);
-      //   }
-      // });
-
-      const pointsGeometry = new THREE.BufferGeometry();
-      pointsGeometry.setAttribute(
-        "position",
-        new THREE.Float32BufferAttribute(positions, 3)
-      );
-
-      const pointsMaterial = new THREE.PointsMaterial({
-        // color: 0xff0000, // change the color of the dot to red
-        color: 0x00ffff,
-        size: 7,
-        sizeAttenuation: false,
+        // keep helper for cursor hit area, but invisible
+        const helper = new THREE.BoxHelper(sphere, 0xffff00);
+        helper.material.opacity = 0;
+        helper.material.transparent = true;
+        helper.material.colorWrite = false;
+        helper.visible = true;
+        scene.add(helper);
       });
 
-      const points = new THREE.Points(pointsGeometry, pointsMaterial);
-      scene.add(points);
-      shape.controlPoints.push(points); // Store the point object for later removal
-
-      setupControlPointInteractions(
-        shape,
-        scene,
-        camera,
-        renderer,
-        display2D,
-        displayDot
-      );
+      setupControlPointInteractions(shape, scene, camera, renderer, CP_Z);
     } else {
-      // If control points are not shown, remove them from the scene
       if (shape.controlPoints) {
-        shape.controlPoints.forEach((pointObj) => {
-          scene.remove(pointObj);
-        });
-        shape.controlPoints = []; // Clear the array of control points
+        shape.controlPoints.forEach((obj) => scene.remove(obj));
+        shape.controlPoints = [];
       }
     }
   });
 }
 
-function setupControlPointInteractions(shape, scene, camera, renderer) {
+function setupControlPointInteractions(
+  shape,
+  scene,
+  camera,
+  renderer,
+  CP_Z = 0
+) {
   const state = {
     isDragging: false,
     selectedPoint: null,
     raycaster: new THREE.Raycaster(),
     mouse: new THREE.Vector2(),
-    originalPoints: [...shape.points], // Store initial points
+    originalPoints: shape.points.map((p) => [...p]),
+    CP_Z: CP_Z,
   };
 
-  // Create overlay div
-  const controlPointOverlay = document.createElement("div");
-  Object.assign(controlPointOverlay.style, {
+  const overlay = document.createElement("div");
+  Object.assign(overlay.style, {
     position: "fixed",
-    top: "0",
-    left: "0",
-    width: "100%",
-    height: "100%",
+    inset: "0",
     zIndex: "10000",
     pointerEvents: "none",
     opacity: "0",
     cursor: "default",
   });
-  document.body.appendChild(controlPointOverlay);
+  document.body.appendChild(overlay);
 
-  // Convert screen coordinates
-  function getMouseCoordinates(event) {
-    const rect = renderer.domElement.getBoundingClientRect();
+  const getRect = () => renderer.domElement.getBoundingClientRect();
+  const ndcFromEvent = (evt) => {
+    const r = getRect();
     return {
-      x: ((event.clientX - rect.left) / rect.width) * 2 - 1,
-      y: -((event.clientY - rect.top) / rect.height) * 2 + 1,
+      x: ((evt.clientX - r.left) / r.width) * 2 - 1,
+      y: -((evt.clientY - r.top) / r.height) * 2 + 1,
     };
-  }
+  };
 
-  // Create visual indicators and map control points to shape points
-  shape.controlPoints.forEach((point, index) => {
+  // indicators + per-point helpers
+  shape.controlPoints.forEach((point) => {
     const indicator = document.createElement("div");
     Object.assign(indicator.style, {
       position: "absolute",
@@ -788,36 +771,37 @@ function setupControlPointInteractions(shape, scene, camera, renderer) {
       transform: "translate(-50%, -50%)",
       pointerEvents: "none",
     });
-    controlPointOverlay.appendChild(indicator);
+    overlay.appendChild(indicator);
 
-    point.userData = {
+    // extend userData instead of replacing it
+    Object.assign(point.userData, {
       indicator,
-      pointIndex: index, // Maps to shape.points array
       updatePosition: () => {
-        const vector = point.position.clone().project(camera);
-        const x = (vector.x * 0.5 + 0.5) * window.innerWidth;
-        const y = (-(vector.y * 0.5) + 0.5) * window.innerHeight;
+        const r = getRect();
+        const v = point.position.clone().project(camera);
+        const x = (v.x * 0.5 + 0.5) * r.width + r.left;
+        const y = (-(v.y * 0.5) + 0.5) * r.height + r.top;
         indicator.style.left = `${x}px`;
         indicator.style.top = `${y}px`;
       },
-    };
+    });
   });
 
-  // Mouse down handler
-  function onMouseDown(event) {
-    const coords = getMouseCoordinates(event);
-    state.mouse.set(coords.x, coords.y);
+  function onMouseDown(evt) {
+    const ndc = ndcFromEvent(evt);
+    state.mouse.set(ndc.x, ndc.y);
     state.raycaster.setFromCamera(state.mouse, camera);
+    const hit = state.raycaster.intersectObjects(shape.controlPoints, false);
 
-    const intersects = state.raycaster.intersectObjects(shape.controlPoints);
-    if (intersects.length > 0) {
-      event.preventDefault();
+    if (hit.length) {
+      evt.preventDefault();
       state.isDragging = true;
-      state.selectedPoint = intersects[0].object;
+      state.selectedPoint = hit[0].object;
 
-      // Log initial points
-      console.group("Initial Points");
-      console.log("Before editing:", JSON.parse(JSON.stringify(shape.points)));
+      // debug
+      console.group("[drag] start");
+      console.log("selected index:", state.selectedPoint.userData.pointIndex);
+      console.log("points before:", JSON.parse(JSON.stringify(shape.points)));
       console.groupEnd();
 
       window.addEventListener("mousemove", onMouseMove);
@@ -825,130 +809,79 @@ function setupControlPointInteractions(shape, scene, camera, renderer) {
     }
   }
 
-  // Mouse move handler
-  function onMouseMove(event) {
+  function onMouseMove(evt) {
     if (!state.isDragging || !state.selectedPoint) return;
 
-    const coords = getMouseCoordinates(event);
-    state.mouse.set(coords.x, coords.y);
+    const ndc = ndcFromEvent(evt);
+    state.mouse.set(ndc.x, ndc.y);
     state.raycaster.setFromCamera(state.mouse, camera);
 
-    const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
-    const newPosition = new THREE.Vector3();
-    state.raycaster.ray.intersectPlane(plane, newPosition);
+    // drag on the same Z plane as the spheres
+    const dragPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -state.CP_Z);
+    const pos = new THREE.Vector3();
+    state.raycaster.ray.intersectPlane(dragPlane, pos);
 
-    // Update control point position
-    state.selectedPoint.position.copy(newPosition);
+    // update sphere
+    state.selectedPoint.position.set(pos.x, pos.y, state.CP_Z);
 
-    // Update corresponding point in shape.points array
-    const pointIndex = state.selectedPoint.userData.pointIndex;
-    shape.points[pointIndex] = [newPosition.x, newPosition.y];
+    // update data
+    const i = state.selectedPoint.userData.pointIndex;
+    // shape.points[i] = [pos.x, pos.y];
+    shape.points[i] = [pos.x - shape.x, pos.y - shape.y];
 
-    // Update visual indicator
-    if (state.selectedPoint.userData.updatePosition) {
-      state.selectedPoint.userData.updatePosition();
-    }
+    // update indicator
+    state.selectedPoint.userData.updatePosition?.();
 
-    // Update shape geometry
-    updateShapeGeometry(shape, state.selectedPoint, newPosition);
-  }
-
-  function updateShapeGeometry(shape, controlPoint, newPosition) {
-    const pointIndex = controlPoint.userData.pointIndex;
-
+    // if you have a live geometry, update it here
     if (shape.geometry?.attributes?.position) {
-      const positions = shape.geometry.attributes.position.array;
-      positions[pointIndex * 3] = newPosition.x;
-      positions[pointIndex * 3 + 1] = newPosition.y;
-      positions[pointIndex * 3 + 2] = newPosition.z;
-
+      const a = shape.geometry.attributes.position.array;
+      a[i * 3] = pos.x;
+      a[i * 3 + 1] = pos.y;
+      a[i * 3 + 2] = state.CP_Z;
       shape.geometry.attributes.position.needsUpdate = true;
       if (shape.geometry.index) shape.geometry.computeVertexNormals();
     }
   }
 
-  // Mouse up handler
   function onMouseUp() {
-    if (state.isDragging) {
-      // Log final points
-      console.group("Final Points");
-      console.log("After editing:", JSON.parse(JSON.stringify(shape.points)));
-      console.log(
-        "Changes:",
-        getChangedPoints(state.originalPoints, shape.points)
-      );
-      console.groupEnd();
+    if (!state.isDragging) return;
 
-      window.removeEventListener("mousemove", onMouseMove);
-      window.removeEventListener("mouseup", onMouseUp);
-      state.isDragging = false;
-      state.selectedPoint = null;
-    }
-  }
+    console.group("[drag] end");
+    console.log("points after:", JSON.parse(JSON.stringify(shape.points)));
+    console.groupEnd();
 
-  // Helper to show changed points
-  function getChangedPoints(original, updated) {
-    return original
-      .map((point, index) => {
-        const [origX, origY] = point;
-        const [updatedX, updatedY] = updated[index];
-        return {
-          point: index,
-          original: [origX, origY],
-          updated: [updatedX, updatedY],
-          changed: origX !== updatedX || origY !== updatedY,
-        };
-      })
-      .filter((p) => p.changed);
-  }
-
-  function onDocumentMouseMove(event) {
-    const coords = getMouseCoordinates(event);
-    state.mouse.set(coords.x, coords.y);
-    state.raycaster.setFromCamera(state.mouse, camera);
-
-    const intersects = state.raycaster.intersectObjects(shape.controlPoints);
-
-    if (intersects.length > 0) {
-      controlPointOverlay.style.pointerEvents = "auto"; // allow dragging
-      controlPointOverlay.style.cursor = "move"; // show move cursor
-    } else {
-      controlPointOverlay.style.pointerEvents = "none"; // allow clicking buttons
-      controlPointOverlay.style.cursor = "default"; // normal cursor
-    }
-  }
-
-  window.addEventListener("mousemove", onDocumentMouseMove);
-
-  // Animation loop
-  function updateIndicators() {
-    shape.controlPoints.forEach((point) => {
-      if (point.userData.updatePosition) {
-        point.userData.updatePosition();
-      }
-    });
-    requestAnimationFrame(updateIndicators);
-  }
-  updateIndicators();
-
-  // Event listeners
-  controlPointOverlay.addEventListener("mousedown", onMouseDown);
-  controlPointOverlay.addEventListener(
-    "touchstart",
-    (e) => {
-      onMouseDown(e.touches[0]);
-    },
-    { passive: false }
-  );
-
-  // Cleanup
-  shape.cleanup = () => {
-    cancelAnimationFrame(updateIndicators);
-    controlPointOverlay.removeEventListener("mousedown", onMouseDown);
-    controlPointOverlay.removeEventListener("touchstart", onMouseDown);
     window.removeEventListener("mousemove", onMouseMove);
     window.removeEventListener("mouseup", onMouseUp);
-    document.body.removeChild(controlPointOverlay);
+    state.isDragging = false;
+    state.selectedPoint = null;
+  }
+
+  function onHover(evt) {
+    const ndc = ndcFromEvent(evt);
+    state.mouse.set(ndc.x, ndc.y);
+    state.raycaster.setFromCamera(state.mouse, camera);
+    const hit = state.raycaster.intersectObjects(shape.controlPoints, false);
+    overlay.style.pointerEvents = hit.length ? "auto" : "none";
+    overlay.style.cursor = hit.length ? "move" : "default";
+  }
+
+  window.addEventListener("mousemove", onHover);
+  overlay.addEventListener("mousedown", onMouseDown);
+
+  // indicator loop
+  let rafId;
+  (function tick() {
+    shape.controlPoints.forEach((p) => p.userData.updatePosition?.());
+    rafId = requestAnimationFrame(tick);
+  })();
+
+  shape.cleanup = () => {
+    cancelAnimationFrame(rafId);
+    overlay.removeEventListener("mousedown", onMouseDown);
+    window.removeEventListener("mousemove", onHover);
+    window.removeEventListener("mousemove", onMouseMove);
+    window.removeEventListener("mouseup", onMouseUp);
+    document.body.removeChild(overlay);
   };
 }
 // Unified projection function
@@ -1604,9 +1537,10 @@ export function createEditor(shape, camera, renderer, onUpdate) {
         // Store in controlPoints array
         if (!controlPoints[i]) {
           controlPoints[i] = {
-            worldPos: point,
+            worldPos: [point[0], point[1]],
             screenPos: screenPos,
             index: i,
+            originalWorldPos: [point[0], point[1]],
           };
         } else {
           controlPoints[i].screenPos = screenPos;

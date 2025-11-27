@@ -11034,7 +11034,8 @@ ${nonManifold.join("\n")}`);
           return [];
         }
       case "polygon":
-        let poly = shape.points.reverse().map(([x, y]) => [x, y]).map(
+        let newShape = shape.free ? shape.points.slice().reverse() : shape.points;
+        let poly = newShape.map(([x, y]) => [x, y]).map(
           (v) => src.maths.vec2.rotate(
             v,
             v,
@@ -11066,4 +11067,4 @@ ${nonManifold.join("\n")}`);
     postMessage(src.booleans.subtract(geom3s));
   };
 })();
-//# sourceMappingURL=csg-9fc5e3de.js.map
+//# sourceMappingURL=csg-0bd089ce.js.map

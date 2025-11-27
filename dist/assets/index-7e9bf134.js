@@ -19598,6 +19598,73 @@ function toJSON$1(shapes, options, data) {
     data.options.extrudePath = options.extrudePath.toJSON();
   return data;
 }
+class SphereGeometry extends BufferGeometry {
+  constructor(radius = 1, widthSegments = 32, heightSegments = 16, phiStart = 0, phiLength = Math.PI * 2, thetaStart = 0, thetaLength = Math.PI) {
+    super();
+    this.type = "SphereGeometry";
+    this.parameters = {
+      radius,
+      widthSegments,
+      heightSegments,
+      phiStart,
+      phiLength,
+      thetaStart,
+      thetaLength
+    };
+    widthSegments = Math.max(3, Math.floor(widthSegments));
+    heightSegments = Math.max(2, Math.floor(heightSegments));
+    const thetaEnd = Math.min(thetaStart + thetaLength, Math.PI);
+    let index = 0;
+    const grid = [];
+    const vertex2 = new Vector3();
+    const normal2 = new Vector3();
+    const indices = [];
+    const vertices = [];
+    const normals = [];
+    const uvs = [];
+    for (let iy = 0; iy <= heightSegments; iy++) {
+      const verticesRow = [];
+      const v = iy / heightSegments;
+      let uOffset = 0;
+      if (iy == 0 && thetaStart == 0) {
+        uOffset = 0.5 / widthSegments;
+      } else if (iy == heightSegments && thetaEnd == Math.PI) {
+        uOffset = -0.5 / widthSegments;
+      }
+      for (let ix = 0; ix <= widthSegments; ix++) {
+        const u = ix / widthSegments;
+        vertex2.x = -radius * Math.cos(phiStart + u * phiLength) * Math.sin(thetaStart + v * thetaLength);
+        vertex2.y = radius * Math.cos(thetaStart + v * thetaLength);
+        vertex2.z = radius * Math.sin(phiStart + u * phiLength) * Math.sin(thetaStart + v * thetaLength);
+        vertices.push(vertex2.x, vertex2.y, vertex2.z);
+        normal2.copy(vertex2).normalize();
+        normals.push(normal2.x, normal2.y, normal2.z);
+        uvs.push(u + uOffset, 1 - v);
+        verticesRow.push(index++);
+      }
+      grid.push(verticesRow);
+    }
+    for (let iy = 0; iy < heightSegments; iy++) {
+      for (let ix = 0; ix < widthSegments; ix++) {
+        const a = grid[iy][ix + 1];
+        const b = grid[iy][ix];
+        const c2 = grid[iy + 1][ix];
+        const d = grid[iy + 1][ix + 1];
+        if (iy !== 0 || thetaStart > 0)
+          indices.push(a, b, d);
+        if (iy !== heightSegments - 1 || thetaEnd < Math.PI)
+          indices.push(b, c2, d);
+      }
+    }
+    this.setIndex(indices);
+    this.setAttribute("position", new Float32BufferAttribute(vertices, 3));
+    this.setAttribute("normal", new Float32BufferAttribute(normals, 3));
+    this.setAttribute("uv", new Float32BufferAttribute(uvs, 2));
+  }
+  static fromJSON(data) {
+    return new SphereGeometry(data.radius, data.widthSegments, data.heightSegments, data.phiStart, data.phiLength, data.thetaStart, data.thetaLength);
+  }
+}
 class MeshPhongMaterial extends Material {
   constructor(parameters2) {
     super();
@@ -20156,6 +20223,75 @@ class Box2 {
   }
   equals(box) {
     return box.min.equals(this.min) && box.max.equals(this.max);
+  }
+}
+const _box = /* @__PURE__ */ new Box3();
+class BoxHelper extends LineSegments {
+  constructor(object, color = 16776960) {
+    const indices = new Uint16Array([0, 1, 1, 2, 2, 3, 3, 0, 4, 5, 5, 6, 6, 7, 7, 4, 0, 4, 1, 5, 2, 6, 3, 7]);
+    const positions = new Float32Array(8 * 3);
+    const geometry = new BufferGeometry();
+    geometry.setIndex(new BufferAttribute(indices, 1));
+    geometry.setAttribute("position", new BufferAttribute(positions, 3));
+    super(geometry, new LineBasicMaterial({ color, toneMapped: false }));
+    this.object = object;
+    this.type = "BoxHelper";
+    this.matrixAutoUpdate = false;
+    this.update();
+  }
+  update(object) {
+    if (object !== void 0) {
+      console.warn("THREE.BoxHelper: .update() has no longer arguments.");
+    }
+    if (this.object !== void 0) {
+      _box.setFromObject(this.object);
+    }
+    if (_box.isEmpty())
+      return;
+    const min2 = _box.min;
+    const max2 = _box.max;
+    const position = this.geometry.attributes.position;
+    const array = position.array;
+    array[0] = max2.x;
+    array[1] = max2.y;
+    array[2] = max2.z;
+    array[3] = min2.x;
+    array[4] = max2.y;
+    array[5] = max2.z;
+    array[6] = min2.x;
+    array[7] = min2.y;
+    array[8] = max2.z;
+    array[9] = max2.x;
+    array[10] = min2.y;
+    array[11] = max2.z;
+    array[12] = max2.x;
+    array[13] = max2.y;
+    array[14] = min2.z;
+    array[15] = min2.x;
+    array[16] = max2.y;
+    array[17] = min2.z;
+    array[18] = min2.x;
+    array[19] = min2.y;
+    array[20] = min2.z;
+    array[21] = max2.x;
+    array[22] = min2.y;
+    array[23] = min2.z;
+    position.needsUpdate = true;
+    this.geometry.computeBoundingSphere();
+  }
+  setFromObject(object) {
+    this.object = object;
+    this.update();
+    return this;
+  }
+  copy(source, recursive) {
+    super.copy(source, recursive);
+    this.object = source.object;
+    return this;
+  }
+  dispose() {
+    this.geometry.dispose();
+    this.material.dispose();
   }
 }
 if (typeof __THREE_DEVTOOLS__ !== "undefined") {
@@ -21478,6 +21614,61 @@ function drawResponsiveText(page, font, text2, x, y, maxWidth, maxFontSize = 10)
     size: fontSize,
     font
   });
+}
+function confirmMerge(shapeA, shapeB, callback) {
+  const existing = document.getElementById("merge-dialog");
+  if (existing)
+    existing.remove();
+  const dialog = document.createElement("div");
+  dialog.id = "merge-dialog";
+  dialog.style.position = "fixed";
+  dialog.style.top = "50%";
+  dialog.style.left = "50%";
+  dialog.style.transform = "translate(-50%, -50%)";
+  dialog.style.background = "#fff";
+  dialog.style.padding = "24px 32px";
+  dialog.style.borderRadius = "12px";
+  dialog.style.boxShadow = "0 8px 24px rgba(0, 0, 0, 0.2)";
+  dialog.style.zIndex = "9999";
+  dialog.style.fontFamily = "sans-serif";
+  dialog.style.minWidth = "320px";
+  dialog.style.textAlign = "center";
+  dialog.innerHTML = `
+    <p style="margin-bottom: 24px; font-size: 16px; color: #333;">
+      Shapes are too close. Do you want to merge them?
+    </p>
+    <div style="display: flex; justify-content: center; gap: 16px;">
+      <button id="merge-yes" style="
+        padding: 10px 20px;
+        background-color: #4a90e2;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 14px;
+        cursor: pointer;
+        transition: background-color 0.2s;
+      ">Yes</button>
+      <button id="merge-no" style="
+        padding: 10px 20px;
+        background-color: #e0e0e0;
+        color: #333;
+        border: none;
+        border-radius: 6px;
+        font-size: 14px;
+        cursor: pointer;
+        transition: background-color 0.2s;
+      ">No</button>
+    </div>
+  `;
+  document.body.appendChild(dialog);
+  document.getElementById("merge-yes").onclick = () => {
+    dialog.remove();
+    callback(true);
+  };
+  document.getElementById("merge-no").onclick = () => {
+    dialog.remove();
+    callback(false);
+  };
 }
 const buttonClick = (buttonName, panelLeft, panelRight, selected2, showPanelFromLeft2, showPanelFromRight2, additionalCallback = () => {
 }) => {
@@ -32977,75 +33168,219 @@ function project(p0, camera2, ctx2) {
   return p0.project(camera2).multiply(new Vector3(1, -1, 1)).addScalar(1).multiplyScalar(0.5).multiply(new Vector3(ctx2.canvas.width, ctx2.canvas.height, 1));
 }
 function shapeToGeom2(shape) {
-  var _a;
-  switch (shape == null ? void 0 : shape.kind) {
-    case "circle":
+  function num(v, fallback = 0) {
+    return typeof v === "number" && !isNaN(v) ? v : fallback;
+  }
+  if (!shape || typeof shape.kind !== "string") {
+    console.error("shapeToGeom2: bad shape", shape);
+    return src.primitives.rectangle({ center: [0, 0], size: [1, 1] });
+  }
+  switch (shape.kind) {
+    case "circle": {
+      const cx2 = num(shape.x), cy2 = num(shape.y), r = num(shape.radius, 1);
       return src.primitives.circle({
-        center: [shape.x, shape.y],
-        radius: shape.radius,
+        center: [cx2, cy2],
+        radius: r,
         segments: 20
       });
+    }
     case "line":
-      return shape;
-    case "rectangle":
+      return Array.isArray(shape) ? shape : [];
+    case "rectangle": {
+      const cx2 = num(shape.x), cy2 = num(shape.y);
+      const sx2 = num(shape.sizeX, 1), sy2 = num(shape.sizeY, 1);
       let rect = src.primitives.rectangle({
-        center: [shape.x, shape.y],
-        size: [shape.sizeX, shape.sizeY]
+        center: [cx2, cy2],
+        size: [sx2, sy2]
       });
-      for (let side of rect.sides) {
-        for (let vert of side) {
-          src.maths.vec2.rotate(
-            vert,
-            vert,
-            [shape.x, shape.y],
-            src.utils.degToRad(shape.rotation)
-          );
+      const rot = num(shape.rotation, 0);
+      if (rot !== 0) {
+        for (let side of rect.sides) {
+          for (let vert of side) {
+            src.maths.vec2.rotate(
+              vert,
+              vert,
+              [cx2, cy2],
+              src.utils.degToRad(rot)
+            );
+          }
         }
       }
       return rect;
-    case "polygon":
-      let polygon2 = shape.points.map(([x, y]) => [x, y]).map(
-        (v) => src.maths.vec2.rotate(
-          v,
-          v,
-          [0, 0],
-          src.utils.degToRad(shape.rotation)
-        )
-      );
-      polygon2 = polygon2.map(([x, y]) => [x + shape.x, y + shape.y]);
-      return src.geometries.geom2.fromPoints(polygon2);
-    case "photoshape":
-      if (!shape.polygon || !Array.isArray(shape.polygon)) {
-        console.error("Invalid shape.polygon:", shape.polygon);
-        return [];
+    }
+    case "polygon": {
+      if (shape.geom) {
+        return shape.geom;
       }
-      let photoshapePolygons = (_a = (shape == null ? void 0 : shape.polygon) || []) == null ? void 0 : _a.map((contour, index) => {
-        var _a2, _b;
-        if (!Array.isArray(contour)) {
-          console.error(`Contour at index ${index} is not an array:`, contour);
-          return [];
-        }
-        let transformedContour = (_b = (_a2 = contour == null ? void 0 : contour.map((point) => {
-          if (!Array.isArray(point) || point.length !== 2) {
-            console.error("Invalid point in contour:", point);
-            return [0, 0];
-          }
-          return [point[0], point[1]];
-        })) == null ? void 0 : _a2.map(
-          (v) => src.maths.vec2.rotate(
-            v,
-            v,
-            [0, 0],
-            src.utils.degToRad(shape.rotation)
-          )
-        )) == null ? void 0 : _b.map(([x, y]) => [x + shape.x, y + shape.y]);
-        return transformedContour;
+      const cx2 = num(shape.x), cy2 = num(shape.y), rot = num(shape.rotation, 0);
+      if (!Array.isArray(shape.points) || shape.points.length === 0) {
+        return src.primitives.rectangle({ center: [cx2, cy2], size: [1, 1] });
+      }
+      let pts = shape.points.map(([x, y]) => {
+        const px2 = num(x), py2 = num(y);
+        let v = [px2, py2];
+        src.maths.vec2.rotate(v, v, [0, 0], src.utils.degToRad(rot));
+        return [v[0] + cx2, v[1] + cy2];
       });
-      return photoshapePolygons == null ? void 0 : photoshapePolygons.map((contour) => {
-        var _a2;
-        return (_a2 = src.geometries.geom2) == null ? void 0 : _a2.fromPoints(contour);
+      return src.geometries.geom2.fromPoints(pts);
+    }
+    case "photoshape": {
+      const cx2 = num(shape.x), cy2 = num(shape.y), rot = num(shape.rotation, 0);
+      if (!Array.isArray(shape.polygon) || shape.polygon.length === 0) {
+        console.error("shapeToGeom2: bad photoshape.polygon", shape.polygon);
+        return src.primitives.rectangle({ center: [cx2, cy2], size: [1, 1] });
+      }
+      let geoms = [];
+      for (let contour of shape.polygon) {
+        if (!Array.isArray(contour) || contour.length === 0)
+          continue;
+        let pts = contour.map((pt) => {
+          const x = Array.isArray(pt) && pt.length === 2 ? num(pt[0]) : 0;
+          const y = Array.isArray(pt) && pt.length === 2 ? num(pt[1]) : 0;
+          let v = [x, y];
+          src.maths.vec2.rotate(v, v, [0, 0], src.utils.degToRad(rot));
+          return [v[0] + cx2, v[1] + cy2];
+        });
+        if (pts.length > 2) {
+          geoms.push(src.geometries.geom2.fromPoints(pts));
+        }
+      }
+      return geoms.length === 1 ? geoms[0] : geoms;
+    }
+    default:
+      return src.primitives.rectangle({
+        center: [num(shape.x), num(shape.y)],
+        size: [1, 1]
       });
   }
+}
+function getBoundingBox(shape) {
+  let pts = [];
+  try {
+    pts = src.geometries.geom2.toPoints(shapeToGeom2(shape));
+  } catch (_) {
+  }
+  if (!pts.length && Array.isArray(shape.points)) {
+    pts = shape.points;
+  }
+  if (!pts.length) {
+    return { minX: 0, maxX: 0, minY: 0, maxY: 0 };
+  }
+  let minX = pts[0][0], maxX = pts[0][0];
+  let minY = pts[0][1], maxY = pts[0][1];
+  for (const [x, y] of pts) {
+    if (x < minX)
+      minX = x;
+    if (x > maxX)
+      maxX = x;
+    if (y < minY)
+      minY = y;
+    if (y > maxY)
+      maxY = y;
+  }
+  return { minX, maxX, minY, maxY };
+}
+function isNearGeneric(a, b, t) {
+  const A = getBoundingBox(a);
+  const B = getBoundingBox(b);
+  return !(A.maxX + t < B.minX || A.minX - t > B.maxX || A.maxY + t < B.minY || A.minY - t > B.maxY);
+}
+function shapesIntersectGeneric(a, b) {
+  const A = getBoundingBox(a);
+  const B = getBoundingBox(b);
+  if (A.maxX < B.minX || A.minX > B.maxX || A.maxY < B.minY || A.minY > B.maxY) {
+    return false;
+  }
+  let inter = src.booleans.intersect(shapeToGeom2(a), shapeToGeom2(b));
+  if (Array.isArray(inter)) {
+    return inter.some((g) => src.geometries.geom2.toPoints(g).length > 0);
+  }
+  return !!inter && src.geometries.geom2.toPoints(inter).length > 0;
+}
+function mergeIntoPolygon(a, b) {
+  let u = src.booleans.union(shapeToGeom2(a), shapeToGeom2(b));
+  if (Array.isArray(u))
+    u = u[0];
+  const adj = {}, coord = {};
+  const keyOf = (p) => `${p[0].toFixed(6)},${p[1].toFixed(6)}`;
+  for (const side of u.sides || []) {
+    if (!Array.isArray(side) || side.length < 2)
+      continue;
+    const [p1, p2] = side;
+    const k1 = keyOf(p1), k2 = keyOf(p2);
+    coord[k1] = [p1[0], p1[1]];
+    coord[k2] = [p2[0], p2[1]];
+    adj[k1] = adj[k1] || /* @__PURE__ */ new Set();
+    adj[k2] = adj[k2] || /* @__PURE__ */ new Set();
+    adj[k1].add(k2);
+    adj[k2].add(k1);
+  }
+  const keys = Object.keys(adj);
+  if (keys.length < 3) {
+    console.error("mergeIntoPolygon: not enough vertices");
+    return {
+      kind: "polygon",
+      points: [],
+      sizeZ: Math.max(a.sizeZ || 0, b.sizeZ || 0)
+    };
+  }
+  keys.sort((k1, k2) => {
+    const [x1, y1] = coord[k1], [x2, y2] = coord[k2];
+    return y1 === y2 ? x1 - x2 : y1 - y2;
+  });
+  let start = keys[0], prev = null, cur = start;
+  let dir = [1, 0];
+  const loop = [cur];
+  while (true) {
+    const neighbors = Array.from(adj[cur]).filter((k) => k !== prev);
+    if (neighbors.length === 0)
+      break;
+    let best = null, bestAngle = Infinity;
+    const [cx2, cy2] = coord[cur];
+    for (const nbr of neighbors) {
+      const [nx, ny] = coord[nbr];
+      let vx = nx - cx2, vy = ny - cy2;
+      const mag = Math.hypot(vx, vy);
+      if (mag === 0)
+        continue;
+      vx /= mag;
+      vy /= mag;
+      const cross2 = dir[0] * vy - dir[1] * vx;
+      const dot2 = dir[0] * vx + dir[1] * vy;
+      let angle2 = Math.atan2(cross2, dot2);
+      if (angle2 < 0)
+        angle2 += 2 * Math.PI;
+      if (angle2 < bestAngle) {
+        bestAngle = angle2;
+        best = nbr;
+      }
+    }
+    if (!best || best === start)
+      break;
+    prev = cur;
+    cur = best;
+    loop.push(cur);
+    const [px2, py2] = coord[prev], [cx22, cy22] = coord[cur];
+    const dx = cx22 - px2, dy = cy22 - py2, dmag = Math.hypot(dx, dy);
+    dir = dmag ? [dx / dmag, dy / dmag] : dir;
+  }
+  const pts = loop.map((k) => coord[k]);
+  const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  const translatedPoints = pts.map(([x, y]) => [x - minX, y - minY]);
+  return {
+    kind: "polygon",
+    free: false,
+    id: `shape-${Date.now()}`,
+    points: translatedPoints,
+    rotation: 0,
+    x: minX,
+    y: minY,
+    sizeX: maxX - minX,
+    sizeY: maxY - minY,
+    sizeZ: Math.max(a.sizeZ || 0, b.sizeZ || 0)
+  };
 }
 function geom3ToMesh(geom32) {
   geom32 = src.modifiers.generalize(
@@ -33134,7 +33469,7 @@ function mouseOverShape(shape, mouseRayPlaneIntersection2, pointInsidePolygon2) 
   }
   return false;
 }
-function drawOutline(shape, style2, width, z, ctx2, camera2, display2D2, renderer2, selected2, scene2, displayDot, numSamples) {
+function drawOutline(shape, style2, width, z, ctx2, camera2, display2D2, renderer2, selected2, scene2, displayDot) {
   ctx2.lineWidth = width;
   ctx2.strokeStyle = style2;
   const geom22 = shapeToGeom2(shape);
@@ -33157,82 +33492,66 @@ function drawOutline(shape, style2, width, z, ctx2, camera2, display2D2, rendere
     ctx2.stroke();
     if (showControlPoints) {
       if (shape.controlPoints) {
-        shape.controlPoints.forEach((pointObj) => {
-          scene2.remove(pointObj);
-        });
+        shape.controlPoints.forEach((obj) => scene2.remove(obj));
       }
       shape.controlPoints = [];
-      const positions = [];
-      geometry.sides.forEach((side) => {
-        const p1 = side[0];
-        const p2 = side[1];
-        for (let i = 0; i <= numSamples; i++) {
-          const t = i / numSamples;
-          const x = p1[0] + (p2[0] - p1[0]) * t;
-          const y = p1[1] + (p2[1] - p1[1]) * t;
-          positions.push(x, y, z);
-        }
+      const CP_Z = z;
+      shape.points.forEach(([x, y], index) => {
+        console.log("raw point:", x, y, "shape offset:", shape.x, shape.y);
+        const sphere2 = new Mesh(
+          new SphereGeometry(3, 16, 16),
+          new MeshBasicMaterial({ color: 65535 })
+        );
+        sphere2.position.set(x + shape.x, y + shape.y, CP_Z);
+        sphere2.name = `controlPoint-${index}`;
+        sphere2.userData.pointIndex = index;
+        sphere2.userData.draggable = true;
+        scene2.add(sphere2);
+        shape.controlPoints.push(sphere2);
+        const helper = new BoxHelper(sphere2, 16776960);
+        helper.material.opacity = 0;
+        helper.material.transparent = true;
+        helper.material.colorWrite = false;
+        helper.visible = true;
+        scene2.add(helper);
       });
-      const pointsGeometry = new BufferGeometry();
-      pointsGeometry.setAttribute(
-        "position",
-        new Float32BufferAttribute(positions, 3)
-      );
-      const pointsMaterial = new PointsMaterial({
-        // color: 0xff0000, // change the color of the dot to red
-        color: 65535,
-        size: 7,
-        sizeAttenuation: false
-      });
-      const points = new Points(pointsGeometry, pointsMaterial);
-      scene2.add(points);
-      shape.controlPoints.push(points);
-      setupControlPointInteractions(
-        shape,
-        scene2,
-        camera2,
-        renderer2
-      );
+      setupControlPointInteractions(shape, scene2, camera2, renderer2, CP_Z);
     } else {
       if (shape.controlPoints) {
-        shape.controlPoints.forEach((pointObj) => {
-          scene2.remove(pointObj);
-        });
+        shape.controlPoints.forEach((obj) => scene2.remove(obj));
         shape.controlPoints = [];
       }
     }
   });
 }
-function setupControlPointInteractions(shape, scene2, camera2, renderer2) {
+function setupControlPointInteractions(shape, scene2, camera2, renderer2, CP_Z = 0) {
   const state = {
     isDragging: false,
     selectedPoint: null,
     raycaster: new Raycaster(),
     mouse: new Vector2(),
-    originalPoints: [...shape.points]
-    // Store initial points
+    originalPoints: shape.points.map((p) => [...p]),
+    CP_Z
   };
-  const controlPointOverlay = document.createElement("div");
-  Object.assign(controlPointOverlay.style, {
+  const overlay = document.createElement("div");
+  Object.assign(overlay.style, {
     position: "fixed",
-    top: "0",
-    left: "0",
-    width: "100%",
-    height: "100%",
+    inset: "0",
     zIndex: "10000",
     pointerEvents: "none",
     opacity: "0",
     cursor: "default"
   });
-  document.body.appendChild(controlPointOverlay);
-  function getMouseCoordinates(event) {
-    const rect = renderer2.domElement.getBoundingClientRect();
+  document.body.appendChild(overlay);
+  const getRect = () => renderer2.domElement.getBoundingClientRect();
+  const ndcFromEvent = (evt) => {
+    const r = getRect();
     return {
-      x: (event.clientX - rect.left) / rect.width * 2 - 1,
-      y: -((event.clientY - rect.top) / rect.height) * 2 + 1
+      x: (evt.clientX - r.left) / r.width * 2 - 1,
+      y: -((evt.clientY - r.top) / r.height) * 2 + 1
     };
-  }
-  shape.controlPoints.forEach((point, index) => {
+  };
+  shape.controlPoints.forEach((point) => {
     const indicator = document.createElement("div");
     Object.assign(indicator.style, {
       position: "absolute",
@@ -33243,131 +33562,96 @@ function setupControlPointInteractions(shape, scene2, camera2, renderer2) {
       transform: "translate(-50%, -50%)",
       pointerEvents: "none"
     });
-    controlPointOverlay.appendChild(indicator);
-    point.userData = {
+    overlay.appendChild(indicator);
+    Object.assign(point.userData, {
       indicator,
-      pointIndex: index,
-      // Maps to shape.points array
       updatePosition: () => {
-        const vector = point.position.clone().project(camera2);
-        const x = (vector.x * 0.5 + 0.5) * window.innerWidth;
-        const y = (-(vector.y * 0.5) + 0.5) * window.innerHeight;
+        const r = getRect();
+        const v = point.position.clone().project(camera2);
+        const x = (v.x * 0.5 + 0.5) * r.width + r.left;
+        const y = (-(v.y * 0.5) + 0.5) * r.height + r.top;
         indicator.style.left = `${x}px`;
         indicator.style.top = `${y}px`;
       }
-    };
+    });
   });
-  function onMouseDown(event) {
-    const coords = getMouseCoordinates(event);
-    state.mouse.set(coords.x, coords.y);
+  function onMouseDown(evt) {
+    const ndc = ndcFromEvent(evt);
+    state.mouse.set(ndc.x, ndc.y);
     state.raycaster.setFromCamera(state.mouse, camera2);
-    const intersects2 = state.raycaster.intersectObjects(shape.controlPoints);
-    if (intersects2.length > 0) {
-      event.preventDefault();
+    const hit = state.raycaster.intersectObjects(shape.controlPoints, false);
+    if (hit.length) {
+      evt.preventDefault();
       state.isDragging = true;
-      state.selectedPoint = intersects2[0].object;
-      console.group("Initial Points");
-      console.log("Before editing:", JSON.parse(JSON.stringify(shape.points)));
+      state.selectedPoint = hit[0].object;
+      console.group("[drag] start");
+      console.log("selected index:", state.selectedPoint.userData.pointIndex);
+      console.log("points before:", JSON.parse(JSON.stringify(shape.points)));
       console.groupEnd();
       window.addEventListener("mousemove", onMouseMove);
       window.addEventListener("mouseup", onMouseUp);
     }
   }
-  function onMouseMove(event) {
+  function onMouseMove(evt) {
+    var _a, _b, _c, _d;
     if (!state.isDragging || !state.selectedPoint)
       return;
-    const coords = getMouseCoordinates(event);
-    state.mouse.set(coords.x, coords.y);
+    const ndc = ndcFromEvent(evt);
+    state.mouse.set(ndc.x, ndc.y);
     state.raycaster.setFromCamera(state.mouse, camera2);
-    const plane2 = new Plane$1(new Vector3(0, 0, 1), 0);
-    const newPosition = new Vector3();
-    state.raycaster.ray.intersectPlane(plane2, newPosition);
-    state.selectedPoint.position.copy(newPosition);
-    const pointIndex = state.selectedPoint.userData.pointIndex;
-    shape.points[pointIndex] = [newPosition.x, newPosition.y];
-    if (state.selectedPoint.userData.updatePosition) {
-      state.selectedPoint.userData.updatePosition();
-    }
-    updateShapeGeometry(shape, state.selectedPoint, newPosition);
-  }
-  function updateShapeGeometry(shape2, controlPoint, newPosition) {
-    var _a, _b;
-    const pointIndex = controlPoint.userData.pointIndex;
-    if ((_b = (_a = shape2.geometry) == null ? void 0 : _a.attributes) == null ? void 0 : _b.position) {
-      const positions = shape2.geometry.attributes.position.array;
-      positions[pointIndex * 3] = newPosition.x;
-      positions[pointIndex * 3 + 1] = newPosition.y;
-      positions[pointIndex * 3 + 2] = newPosition.z;
-      shape2.geometry.attributes.position.needsUpdate = true;
-      if (shape2.geometry.index)
-        shape2.geometry.computeVertexNormals();
+    const dragPlane = new Plane$1(new Vector3(0, 0, 1), -state.CP_Z);
+    const pos = new Vector3();
+    state.raycaster.ray.intersectPlane(dragPlane, pos);
+    state.selectedPoint.position.set(pos.x, pos.y, state.CP_Z);
+    const i = state.selectedPoint.userData.pointIndex;
+    shape.points[i] = [pos.x - shape.x, pos.y - shape.y];
+    (_b = (_a = state.selectedPoint.userData).updatePosition) == null ? void 0 : _b.call(_a);
+    if ((_d = (_c = shape.geometry) == null ? void 0 : _c.attributes) == null ? void 0 : _d.position) {
+      const a = shape.geometry.attributes.position.array;
+      a[i * 3] = pos.x;
+      a[i * 3 + 1] = pos.y;
+      a[i * 3 + 2] = state.CP_Z;
+      shape.geometry.attributes.position.needsUpdate = true;
+      if (shape.geometry.index)
+        shape.geometry.computeVertexNormals();
     }
   }
   function onMouseUp() {
-    if (state.isDragging) {
-      console.group("Final Points");
-      console.log("After editing:", JSON.parse(JSON.stringify(shape.points)));
-      console.log(
-        "Changes:",
-        getChangedPoints(state.originalPoints, shape.points)
-      );
-      console.groupEnd();
-      window.removeEventListener("mousemove", onMouseMove);
-      window.removeEventListener("mouseup", onMouseUp);
-      state.isDragging = false;
-      state.selectedPoint = null;
-    }
-  }
-  function getChangedPoints(original, updated) {
-    return original.map((point, index) => {
-      const [origX, origY] = point;
-      const [updatedX, updatedY] = updated[index];
-      return {
-        point: index,
-        original: [origX, origY],
-        updated: [updatedX, updatedY],
-        changed: origX !== updatedX || origY !== updatedY
-      };
-    }).filter((p) => p.changed);
-  }
-  function onDocumentMouseMove(event) {
-    const coords = getMouseCoordinates(event);
-    state.mouse.set(coords.x, coords.y);
-    state.raycaster.setFromCamera(state.mouse, camera2);
-    const intersects2 = state.raycaster.intersectObjects(shape.controlPoints);
-    if (intersects2.length > 0) {
-      controlPointOverlay.style.pointerEvents = "auto";
-      controlPointOverlay.style.cursor = "move";
-    } else {
-      controlPointOverlay.style.pointerEvents = "none";
-      controlPointOverlay.style.cursor = "default";
-    }
-  }
-  window.addEventListener("mousemove", onDocumentMouseMove);
-  function updateIndicators() {
-    shape.controlPoints.forEach((point) => {
-      if (point.userData.updatePosition) {
-        point.userData.updatePosition();
-      }
-    });
-    requestAnimationFrame(updateIndicators);
-  }
-  updateIndicators();
-  controlPointOverlay.addEventListener("mousedown", onMouseDown);
-  controlPointOverlay.addEventListener(
-    "touchstart",
-    (e) => {
-      onMouseDown(e.touches[0]);
-    },
-    { passive: false }
-  );
-  shape.cleanup = () => {
-    cancelAnimationFrame(updateIndicators);
-    controlPointOverlay.removeEventListener("mousedown", onMouseDown);
-    controlPointOverlay.removeEventListener("touchstart", onMouseDown);
+    if (!state.isDragging)
+      return;
+    console.group("[drag] end");
+    console.log("points after:", JSON.parse(JSON.stringify(shape.points)));
+    console.groupEnd();
     window.removeEventListener("mousemove", onMouseMove);
     window.removeEventListener("mouseup", onMouseUp);
-    document.body.removeChild(controlPointOverlay);
+    state.isDragging = false;
+    state.selectedPoint = null;
+  }
+  function onHover(evt) {
+    const ndc = ndcFromEvent(evt);
+    state.mouse.set(ndc.x, ndc.y);
+    state.raycaster.setFromCamera(state.mouse, camera2);
+    const hit = state.raycaster.intersectObjects(shape.controlPoints, false);
+    overlay.style.pointerEvents = hit.length ? "auto" : "none";
+    overlay.style.cursor = hit.length ? "move" : "default";
+  }
+  window.addEventListener("mousemove", onHover);
+  overlay.addEventListener("mousedown", onMouseDown);
+  let rafId;
+  (function tick() {
+    shape.controlPoints.forEach((p) => {
+      var _a, _b;
+      return (_b = (_a = p.userData).updatePosition) == null ? void 0 : _b.call(_a);
+    });
+    rafId = requestAnimationFrame(tick);
+  })();
+  shape.cleanup = () => {
+    cancelAnimationFrame(rafId);
+    overlay.removeEventListener("mousedown", onMouseDown);
+    window.removeEventListener("mousemove", onHover);
+    window.removeEventListener("mousemove", onMouseMove);
+    window.removeEventListener("mouseup", onMouseUp);
+    document.body.removeChild(overlay);
   };
 }
 function projectPoint(x, y, z, camera2, renderer2) {
@@ -53284,6 +53568,367 @@ const createPdf = (foam2, shapesArray2, shapeToGeom22, rightestPoint2, leftestPo
     link.click();
   };
 };
+const createPdfIso = (foam2, shapesArray2, shapeToGeom22, opts = {}) => {
+  const cfg = {
+    originMode: opts.originMode || "auto",
+    // "auto" | "min" | "center"
+    foamOrigin: opts.foamOrigin || { x: 0, y: 0 },
+    elevationZScale: opts.elevationZScale ?? 1,
+    labelUnit: opts.labelUnit || "mm",
+    stroke: opts.stroke ?? 1.2,
+    dimStroke: opts.dimStroke ?? 0.9,
+    arrow: opts.arrow ?? 5,
+    fontSize: opts.fontSize ?? 10,
+    showDepthInside: opts.showDepthInside ?? true
+  };
+  const safeText = (s) => String(s).replace(/[\u2010-\u2015\u2212]/g, "-");
+  const absmm = (v) => `${Math.round(Math.abs(v))} ${cfg.labelUnit}`;
+  const bbox2 = (pts) => {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const [x, y] of pts) {
+      if (x < minX)
+        minX = x;
+      if (y < minY)
+        minY = y;
+      if (x > maxX)
+        maxX = x;
+      if (y > maxY)
+        maxY = y;
+    }
+    return { minX, minY, maxX, maxY, w: maxX - minX, h: maxY - minY };
+  };
+  const fit2rect = (pts, rect, pad = 8) => {
+    if (!pts.length)
+      return { transform: (p) => p, s: 1, tx: 0, ty: 0 };
+    const bb = bbox2(pts);
+    const sx2 = (rect.w - 2 * pad) / (bb.w || 1);
+    const sy2 = (rect.h - 2 * pad) / (bb.h || 1);
+    const s = Math.min(sx2, sy2);
+    const tx = rect.cx - (bb.minX + bb.w / 2) * s;
+    const ty = rect.cy - (bb.minY + bb.h / 2) * s;
+    return { s, tx, ty, transform: (p) => [p[0] * s + tx, p[1] * s + ty] };
+  };
+  const loopsFromGeom2 = (geom22) => {
+    const key = (p) => `${p[0].toFixed(6)},${p[1].toFixed(6)}`;
+    const un = (k) => k.split(",").map(Number);
+    const adj = /* @__PURE__ */ new Map();
+    for (const e of geom22.sides || []) {
+      if (!e || e.length < 2)
+        continue;
+      const [a, b] = e, ka = key(a), kb = key(b);
+      if (!adj.has(ka))
+        adj.set(ka, /* @__PURE__ */ new Set());
+      if (!adj.has(kb))
+        adj.set(kb, /* @__PURE__ */ new Set());
+      adj.get(ka).add(kb);
+      adj.get(kb).add(ka);
+    }
+    const visited = /* @__PURE__ */ new Set(), loops = [];
+    for (const s of adj.keys()) {
+      for (const n of adj.get(s)) {
+        const e0 = `${s}->${n}`;
+        if (visited.has(e0))
+          continue;
+        const loop = [un(s)];
+        let prev = s, cur = n;
+        visited.add(e0);
+        while (cur !== s) {
+          loop.push(un(cur));
+          const nbr = [...adj.get(cur)];
+          let pick = nbr.find((k) => k !== prev);
+          if (nbr.length > 2) {
+            const P = un(prev), C = un(cur);
+            let best = null, bestAng = 1e9;
+            for (const cand of nbr) {
+              if (cand === prev)
+                continue;
+              const N = un(cand), v12 = [C[0] - P[0], C[1] - P[1]], v22 = [N[0] - C[0], N[1] - C[1]];
+              const ang = Math.atan2(v12[0] * v22[1] - v12[1] * v22[0], v12[0] * v22[0] + v12[1] * v22[1]);
+              const lt = ang <= 0 ? ang + 2 * Math.PI : ang;
+              if (lt < bestAng) {
+                bestAng = lt;
+                best = cand;
+              }
+            }
+            if (best)
+              pick = best;
+          }
+          const e1 = `${cur}->${pick}`;
+          if (visited.has(e1))
+            break;
+          visited.add(e1);
+          prev = cur;
+          cur = pick;
+        }
+        if (loop.length >= 3) {
+          const A = loop.reduce((s2, p, i) => {
+            const q = loop[(i + 1) % loop.length];
+            return s2 + (p[0] * q[1] - p[1] * q[0]);
+          }, 0);
+          if (A < 0)
+            loop.reverse();
+          loops.push(loop);
+        }
+      }
+    }
+    const area2 = (L) => Math.abs(L.reduce((s, p, i) => {
+      const q = L[(i + 1) % L.length];
+      return s + (p[0] * q[1] - p[1] * q[0]);
+    }, 0));
+    loops.sort((A, B) => area2(B) - area2(A));
+    return loops;
+  };
+  const extrudeShape = (shape) => {
+    const loops = loopsFromGeom2(shapeToGeom22(shape));
+    const z = shape.sizeZ ?? 0;
+    return loops.map((loop) => ({
+      top: loop.map(([x, y]) => [x, y, z]),
+      bottom: loop.map(([x, y]) => [x, y, 0])
+    }));
+  };
+  const projIso = ([x, y, z]) => {
+    const a = Math.PI / 6;
+    return [(x - y) * Math.cos(a), (x + y) * Math.sin(a) - z];
+  };
+  const drawLoop = (page, pts, th) => {
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[i], b = pts[(i + 1) % pts.length];
+      page.drawLine({ start: { x: a[0], y: a[1] }, end: { x: b[0], y: b[1] }, thickness: th });
+    }
+  };
+  const line4 = (page, a, b, th) => page.drawLine({ start: { x: a[0], y: a[1] }, end: { x: b[0], y: b[1] }, thickness: th });
+  document.querySelector("#pdf-iso-button").onclick = async () => {
+    const tplBytes = await fetch(templateUrl).then((r) => r.arrayBuffer());
+    const tplPdf = await PDFDocument.load(tplBytes);
+    const [tplPage] = await tplPdf.getPages();
+    const W = tplPage.getWidth(), H = tplPage.getHeight();
+    const pdf = await PDFDocument.create();
+    const page = pdf.addPage([W, H]);
+    const font = await pdf.embedFont(StandardFonts.Helvetica);
+    const FRAME = { inset: 18, thick: 1.5 };
+    const fx = FRAME.inset, fy = FRAME.inset;
+    const fw = W - 2 * FRAME.inset, fh = H - 2 * FRAME.inset;
+    page.drawRectangle({ x: fx, y: fy, width: fw, height: fh, borderWidth: FRAME.thick, color: rgb(1, 1, 1) });
+    page.drawText("Orthographic and isometric projections of foam pockets", { x: fx, y: H - FRAME.inset + 6, size: 12, font });
+    const allTopXY = [];
+    for (const s of shapesArray2) {
+      for (const pr of extrudeShape(s)) {
+        allTopXY.push(...pr.top.map(([x, y]) => [x, y]));
+      }
+    }
+    const bbShapes = allTopXY.length ? bbox2(allTopXY) : { minX: 0, minY: 0, maxX: 0, maxY: 0 };
+    const origin2 = cfg.foamOrigin || { x: 0, y: 0 };
+    const candidateMin = {
+      minX: origin2.x,
+      minY: origin2.y,
+      maxX: origin2.x + foam2.sizeX,
+      maxY: origin2.y + foam2.sizeY,
+      w: foam2.sizeX,
+      h: foam2.sizeY
+    };
+    const candidateCenter = {
+      minX: origin2.x - foam2.sizeX / 2,
+      minY: origin2.y - foam2.sizeY / 2,
+      maxX: origin2.x + foam2.sizeX / 2,
+      maxY: origin2.y + foam2.sizeY / 2,
+      w: foam2.sizeX,
+      h: foam2.sizeY
+    };
+    const overflowCost = (rect) => {
+      const ox = Math.max(0, rect.minX - bbShapes.minX) + Math.max(0, bbShapes.maxX - rect.maxX);
+      const oy = Math.max(0, rect.minY - bbShapes.minY) + Math.max(0, bbShapes.maxY - rect.maxY);
+      return ox + oy;
+    };
+    let foamRect;
+    if (cfg.originMode === "min") {
+      foamRect = candidateMin;
+    } else if (cfg.originMode === "center") {
+      foamRect = candidateCenter;
+    } else {
+      const cMin = overflowCost(candidateMin);
+      const cCtr = overflowCost(candidateCenter);
+      if (cMin === cCtr) {
+        const centerShapes = [(bbShapes.minX + bbShapes.maxX) / 2, (bbShapes.minY + bbShapes.maxY) / 2];
+        const dMin = Math.hypot(
+          centerShapes[0] - (candidateMin.minX + candidateMin.maxX) / 2,
+          centerShapes[1] - (candidateMin.minY + candidateMin.maxY) / 2
+        );
+        const dCtr = Math.hypot(
+          centerShapes[0] - (candidateCenter.minX + candidateCenter.maxX) / 2,
+          centerShapes[1] - (candidateCenter.minY + candidateCenter.maxY) / 2
+        );
+        foamRect = dMin <= dCtr ? candidateMin : candidateCenter;
+      } else {
+        foamRect = cMin < cCtr ? candidateMin : candidateCenter;
+      }
+    }
+    const pockets = shapesArray2.map((s, i) => {
+      const ex = extrudeShape(s)[0];
+      const top2 = ex.top.map(([x, y]) => [x, y]);
+      const bb = bbox2(top2);
+      return { name: s.name || `Pocket ${i + 1}`, top2, bb, depth: s.sizeZ ?? 0 };
+    });
+    const margin = FRAME.inset + 28;
+    const viewW = (W - margin * 3) / 2;
+    const viewH = (H - margin * 3) / 2;
+    const boxTop = { cx: margin + viewW / 2, cy: H - margin - viewH / 2, w: viewW, h: viewH };
+    const boxIso = { cx: margin * 2 + viewW + viewW / 2, cy: H - margin - viewH / 2, w: viewW, h: viewH };
+    const boxFront = { cx: margin + viewW / 2, cy: margin + viewH / 2, w: viewW, h: viewH };
+    const boxSide = { cx: margin * 2 + viewW + viewW / 2, cy: margin + viewH / 2, w: viewW, h: viewH };
+    const drawTop = () => {
+      const foamCorners = [
+        [foamRect.minX, foamRect.minY],
+        [foamRect.maxX, foamRect.minY],
+        [foamRect.maxX, foamRect.maxY],
+        [foamRect.minX, foamRect.maxY]
+      ];
+      const all = [...foamCorners, ...pockets.flatMap((p) => p.top2)];
+      const fit = fit2rect(all, boxTop, 18);
+      const T = (p) => fit.transform(p);
+      drawLoop(page, foamCorners.map(T), cfg.stroke);
+      for (const p of pockets)
+        drawLoop(page, p.top2.map(T), cfg.stroke);
+      const dimH = (x1, x2, y, txtBelow = false) => {
+        const A = T([x1, y]), B = T([x2, y]);
+        line4(page, A, B, cfg.dimStroke);
+        const ah = cfg.arrow, dir = Math.sign(B[0] - A[0]) || 1;
+        line4(page, A, [A[0] + ah * dir, A[1] + ah / 2], cfg.dimStroke);
+        line4(page, A, [A[0] + ah * dir, A[1] - ah / 2], cfg.dimStroke);
+        line4(page, B, [B[0] - ah * dir, B[1] + ah / 2], cfg.dimStroke);
+        line4(page, B, [B[0] - ah * dir, B[1] - ah / 2], cfg.dimStroke);
+        const midX = (A[0] + B[0]) / 2, ty = A[1] + (txtBelow ? -10 : 4);
+        const label = absmm(x2 - x1);
+        page.drawText(label, { x: midX - font.widthOfTextAtSize(label, cfg.fontSize) / 2, y: ty, size: cfg.fontSize, font });
+      };
+      const dimV = (x, y1, y2, txtRight = false) => {
+        const A = T([x, y1]), B = T([x, y2]);
+        line4(page, A, B, cfg.dimStroke);
+        const ah = cfg.arrow, dir = Math.sign(B[1] - A[1]) || 1;
+        line4(page, A, [A[0] + ah / 2, A[1] + ah * dir], cfg.dimStroke);
+        line4(page, A, [A[0] - ah / 2, A[1] + ah * dir], cfg.dimStroke);
+        line4(page, B, [B[0] + ah / 2, B[1] - ah * dir], cfg.dimStroke);
+        line4(page, B, [B[0] - ah / 2, B[1] - ah * dir], cfg.dimStroke);
+        const midY = (A[1] + B[1]) / 2;
+        const tx = A[0] + (txtRight ? 4 : -4 - font.widthOfTextAtSize("0000", cfg.fontSize));
+        const label = absmm(y2 - y1);
+        page.drawText(label, { x: tx, y: midY - cfg.fontSize / 2, size: cfg.fontSize, font });
+      };
+      for (const p of pockets) {
+        const { minX, maxX, minY, maxY } = p.bb;
+        const OUT = 14 / (fit.s || 1);
+        dimH(foamRect.minX, minX, minY - OUT, true);
+        dimH(maxX, foamRect.maxX, maxY + OUT, false);
+        dimV(minX - OUT, foamRect.minY, minY, false);
+        dimV(maxX + OUT, maxY, foamRect.maxY, true);
+        const c2 = T([(minX + maxX) / 2, (minY + maxY) / 2]);
+        const lbl = safeText(p.name);
+        page.drawText(lbl, { x: c2[0] - font.widthOfTextAtSize(lbl, cfg.fontSize) / 2, y: c2[1] - cfg.fontSize / 2, size: cfg.fontSize, font });
+      }
+      const cap = "Top View";
+      page.drawText(cap, { x: boxTop.cx - font.widthOfTextAtSize(cap, cfg.fontSize) / 2, y: boxTop.cy - boxTop.h / 2 + 4, size: cfg.fontSize, font });
+    };
+    const drawFront = () => {
+      const all = [[foamRect.minX, 0], [foamRect.maxX, foam2.sizeZ]];
+      const fit = fit2rect(all, boxFront, 18);
+      const T = (p) => fit.transform(p);
+      drawLoop(page, [
+        [foamRect.minX, 0],
+        [foamRect.maxX, 0],
+        [foamRect.maxX, foam2.sizeZ],
+        [foamRect.minX, foam2.sizeZ]
+      ].map(T), cfg.stroke);
+      for (const p of pockets) {
+        const r = [
+          [p.bb.minX, 0],
+          [p.bb.maxX, 0],
+          [p.bb.maxX, p.depth],
+          [p.bb.minX, p.depth]
+        ].map(T);
+        drawLoop(page, r, cfg.stroke);
+        if (cfg.showDepthInside && p.depth > 0) {
+          const mid = [(r[0][0] + r[1][0]) / 2, (r[1][1] + r[2][1]) / 2];
+          const lbl = absmm(p.depth);
+          page.drawText(lbl, { x: mid[0] - font.widthOfTextAtSize(lbl, cfg.fontSize) / 2, y: mid[1] - cfg.fontSize / 2, size: cfg.fontSize, font });
+        }
+      }
+      const cap = "Front View";
+      page.drawText(cap, { x: boxFront.cx - font.widthOfTextAtSize(cap, cfg.fontSize) / 2, y: boxFront.cy - boxFront.h / 2 + 4, size: cfg.fontSize, font });
+    };
+    const drawSide = () => {
+      const all = [[foamRect.minY, 0], [foamRect.maxY, foam2.sizeZ]];
+      const fit = fit2rect(all, boxSide, 18);
+      const T = (p) => fit.transform(p);
+      drawLoop(page, [
+        [foamRect.minY, 0],
+        [foamRect.maxY, 0],
+        [foamRect.maxY, foam2.sizeZ],
+        [foamRect.minY, foam2.sizeZ]
+      ].map(T), cfg.stroke);
+      for (const p of pockets) {
+        const r = [
+          [p.bb.minY, 0],
+          [p.bb.maxY, 0],
+          [p.bb.maxY, p.depth],
+          [p.bb.minY, p.depth]
+        ].map(T);
+        drawLoop(page, r, cfg.stroke);
+        if (cfg.showDepthInside && p.depth > 0) {
+          const mid = [(r[0][0] + r[1][0]) / 2, (r[1][1] + r[2][1]) / 2];
+          const lbl = absmm(p.depth);
+          page.drawText(lbl, { x: mid[0] - font.widthOfTextAtSize(lbl, cfg.fontSize) / 2, y: mid[1] - cfg.fontSize / 2, size: cfg.fontSize, font });
+        }
+      }
+      const cap = "Side View";
+      page.drawText(cap, { x: boxSide.cx - font.widthOfTextAtSize(cap, cfg.fontSize) / 2, y: boxSide.cy - boxSide.h / 2 + 4, size: cfg.fontSize, font });
+    };
+    const drawIso = () => {
+      const foamPrism = [
+        [foamRect.minX, foamRect.minY, 0],
+        [foamRect.maxX, foamRect.minY, 0],
+        [foamRect.maxX, foamRect.maxY, 0],
+        [foamRect.minX, foamRect.maxY, 0],
+        [foamRect.minX, foamRect.minY, foam2.sizeZ],
+        [foamRect.maxX, foamRect.minY, foam2.sizeZ],
+        [foamRect.maxX, foamRect.maxY, foam2.sizeZ],
+        [foamRect.minX, foamRect.maxY, foam2.sizeZ]
+      ].map(projIso);
+      const shapesIso = [];
+      for (const s of shapesArray2) {
+        for (const pr of extrudeShape(s)) {
+          shapesIso.push(...pr.top.map(projIso), ...pr.bottom.map(projIso));
+        }
+      }
+      const fit = fit2rect([...foamPrism, ...shapesIso], boxIso, 18);
+      const T = (p) => fit.transform(p);
+      const F = foamPrism.map(T);
+      const edges = [[0, 1], [1, 2], [2, 3], [3, 0], [4, 5], [5, 6], [6, 7], [7, 4], [0, 4], [1, 5], [2, 6], [3, 7]];
+      for (const [a2, b] of edges)
+        line4(page, F[a2], F[b], 0.7);
+      for (const s of shapesArray2) {
+        for (const pr of extrudeShape(s)) {
+          const top = pr.top.map(projIso).map(T);
+          const bot = pr.bottom.map(projIso).map(T);
+          drawLoop(page, bot, 0.9);
+          for (let i = 0; i < bot.length; i++)
+            line4(page, bot[i], top[i], 1);
+          drawLoop(page, top, 1.4);
+        }
+      }
+      const cap = "3D Isometric";
+      page.drawText(cap, { x: boxIso.cx - font.widthOfTextAtSize(cap, cfg.fontSize) / 2, y: boxIso.cy - boxIso.h / 2 + 4, size: cfg.fontSize, font });
+    };
+    drawTop();
+    drawIso();
+    drawFront();
+    drawSide();
+    const bytes = await pdf.save();
+    const blob = new Blob([bytes], { type: "application/pdf" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "foam_pockets_projection.pdf";
+    a.click();
+  };
+};
 const createShapeCircle = (millimeters2, selected2, shapesArray2, commit2, showPanelFromLeft2, showPanelFromRight2, doCsg2, callback) => {
   document.querySelector("#create-circle").onclick = () => {
     document.querySelector("#back-button").removeAttribute("disabled");
@@ -53335,13 +53980,26 @@ function lineFunction(name1, name2, boolValue) {
   document.querySelector(".x-coordinates").style.display = `${name1}`;
   document.querySelector(".y-coordinates").style.display = `${name1}`;
 }
-const createShapeFreehand = (millimeters2, selected2, shapesArray2, commit2, showPanelFromLeft2, showPanelFromRight2, doCsg2, orthoCamera2, sceneCopy2, rendererCopy2, display2D2, callback1, callback) => {
+const createShapeFreehand = (millimeters2, selected2, shapesArray2, commit2, showPanelFromLeft2, showPanelFromRight2, doCsg2, orthoCamera2, sceneCopy2, rendererCopy2, display2D2, callback1, callback, foamMesh) => {
   document.querySelector("#create-polygon").onclick = () => {
     let newPoints;
     lineFunction("block", "flex", true);
     disableButton(false);
     display2D2 = true;
+    const foamBox = (() => {
+      foamMesh.geometry.computeBoundingBox();
+      const box = foamMesh.geometry.boundingBox.clone();
+      foamMesh.updateMatrixWorld();
+      box.applyMatrix4(foamMesh.matrixWorld);
+      return box;
+    })();
+    function isInsideFoam(point2) {
+      return foamBox.containsPoint(point2);
+    }
     document.querySelector("#back-button").onclick = () => {
+      drawingActive = false;
+      document.body.style.cursor = originalCursor;
+      document.body.style.cursor = "default";
       distanceText.textContent = "";
       registering = false;
       lineFunction("none", "none", true);
@@ -53356,6 +54014,9 @@ const createShapeFreehand = (millimeters2, selected2, shapesArray2, commit2, sho
       document.removeEventListener("pointerdown", pointerDown);
     };
     document.querySelector("#buttonContainer").onclick = () => {
+      drawingActive = false;
+      document.body.style.cursor = originalCursor;
+      document.body.style.cursor = "default";
       distanceText.textContent = "";
       registering = false;
       sceneCopy2.remove(line4);
@@ -53373,9 +54034,7 @@ const createShapeFreehand = (millimeters2, selected2, shapesArray2, commit2, sho
         id: generateId(),
         kind: "polygon",
         x: 0,
-        // mouseRayPlaneIntersection.x,
         y: 0,
-        //mouseRayPlaneIntersection.y,
         sizeZ: 300 * millimeters2,
         sizeX: 200 * millimeters2,
         sizeY: 200 * millimeters2,
@@ -53391,31 +54050,13 @@ const createShapeFreehand = (millimeters2, selected2, shapesArray2, commit2, sho
       callback(selected2);
     };
     const saveButton = document.getElementById("saveButtonContainer");
-    function customConfirm() {
-      var result = window.confirm(
-        "The shape is saved temporarily. Do you want to save in the the shape library?"
-      );
-      if (result) {
-        var jsonString = localStorage.getItem("cachedJson");
-        if (jsonString) {
-          var retrievedObject = JSON.parse(jsonString);
-          console.log(retrievedObject, "object");
-        } else {
-          alert("No JSON found in cache.");
-        }
-      } else {
-        console.log("User clicked No or closed the dialog.");
-      }
-    }
     saveButton.onclick = () => {
       newPoints = finalPoints == null ? void 0 : finalPoints.map((point2) => [point2.x, point2.y]);
       var shape = {
         id: generateId(),
         kind: "polygon",
         x: 0,
-        // mouseRayPlaneIntersection.x,
         y: 0,
-        //mouseRayPlaneIntersection.y,
         sizeZ: 300 * millimeters2,
         sizeX: 200 * millimeters2,
         sizeY: 200 * millimeters2,
@@ -53423,9 +54064,14 @@ const createShapeFreehand = (millimeters2, selected2, shapesArray2, commit2, sho
         rotation: 0,
         free: true
       };
-      var jsonString = JSON.stringify(shape);
-      localStorage.setItem("cachedJson", jsonString);
-      customConfirm();
+      localStorage.setItem("cachedJson", JSON.stringify(shape));
+      if (window.confirm("The shape is saved temporarily. Do you want to save in the the shape library?")) {
+        const json = localStorage.getItem("cachedJson");
+        if (json)
+          console.log(JSON.parse(json));
+        else
+          alert("No JSON found in cache.");
+      }
       drawing = false;
       registering = false;
     };
@@ -53438,20 +54084,16 @@ const createShapeFreehand = (millimeters2, selected2, shapesArray2, commit2, sho
     var proximityThreshold = 5;
     let objectZCoordinate = 0;
     const distanceText = document.createElement("div");
-    distanceText.style.position = "absolute";
-    distanceText.style.top = "10px";
-    distanceText.style.left = "10px";
-    distanceText.style.color = "white";
-    document.body.appendChild(distanceText);
-    const lineMaterial = new LineBasicMaterial({
-      color: 16777215,
-      linewidth: 2
+    Object.assign(distanceText.style, {
+      position: "absolute",
+      top: "10px",
+      left: "10px",
+      color: "white"
     });
+    document.body.appendChild(distanceText);
+    const lineMaterial = new LineBasicMaterial({ color: 16777215, linewidth: 2 });
     const lineGeometry = new BufferGeometry();
-    lineGeometry.setAttribute(
-      "position",
-      new BufferAttribute(new Float32Array(6), 3)
-    );
+    lineGeometry.setAttribute("position", new BufferAttribute(new Float32Array(6), 3));
     const line4 = new Line(lineGeometry, lineMaterial);
     line4.renderOrder = 1;
     let point, registering = false;
@@ -53460,37 +54102,32 @@ const createShapeFreehand = (millimeters2, selected2, shapesArray2, commit2, sho
     const plane2 = new Plane$1(new Vector3(0, 0, 1), 0);
     const intersection = new Vector3();
     document.addEventListener("pointerdown", pointerDown);
+    const originalCursor = document.body.style.cursor;
+    document.addEventListener("mousemove", onMouseMove);
+    let drawingActive = true;
     displayLineXY();
-    function onMouseMove(event) {
-      if (registering) {
-        const intersection2 = getMouseIntersection();
-        const endPoint = intersection2.clone();
-        const midpoint = new Vector3().lerpVectors(point, endPoint, 0.5);
-        sceneCopy2.add(line4);
-        line4.geometry.attributes.position.setXYZ(
-          1,
-          endPoint.x,
-          endPoint.y,
-          endPoint.z
-        );
-        line4.geometry.attributes.position.needsUpdate = true;
-        const screenX = midpoint.x + window.innerWidth / 2;
-        const screenY = midpoint.y + window.innerHeight / 2 - 20;
-        distanceText.style.top = `${screenY}px`;
-        distanceText.style.left = `${screenX}px`;
-        const distance2 = point.distanceTo(endPoint) * 10;
-        const unit = "mm";
-        distanceText.textContent = `Distance: ${distance2.toFixed(2)} ${unit}`;
-      }
-    }
     function getMouseIntersection(event) {
       raycaster.setFromCamera(mouse, orthoCamera2);
-      const intersection2 = new Vector3();
-      raycaster.ray.intersectPlane(
-        new Plane$1(new Vector3(0, 0, 1), 0),
-        intersection2
-      );
-      return intersection2;
+      const intersect2 = new Vector3();
+      raycaster.ray.intersectPlane(plane2, intersect2);
+      return intersect2;
+    }
+    function onMouseMove(event) {
+      mouse.x = event.clientX / window.innerWidth * 2 - 1;
+      mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+      const intersect2 = getMouseIntersection();
+      document.body.style.cursor = display2D2 && drawingActive && isInsideFoam(intersect2) ? "crosshair" : originalCursor;
+      if (registering && isInsideFoam(intersect2)) {
+        const endPoint = intersect2.clone();
+        const midpoint = new Vector3().lerpVectors(point, endPoint, 0.5);
+        sceneCopy2.add(line4);
+        line4.geometry.attributes.position.setXYZ(1, endPoint.x, endPoint.y, endPoint.z);
+        line4.geometry.attributes.position.needsUpdate = true;
+        distanceText.style.top = `${midpoint.y + window.innerHeight / 2 - 20}px`;
+        distanceText.style.left = `${midpoint.x + window.innerWidth / 2}px`;
+        const distance2 = point.distanceTo(endPoint) * 10;
+        distanceText.textContent = `Distance: ${distance2.toFixed(2)} mm`;
+      }
     }
     function pointerDown(event) {
       const rect = event.target.getBoundingClientRect();
@@ -53498,19 +54135,19 @@ const createShapeFreehand = (millimeters2, selected2, shapesArray2, commit2, sho
       mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
       raycaster.setFromCamera(mouse, orthoCamera2);
       raycaster.ray.intersectPlane(plane2, intersection);
+      const intersect2 = getMouseIntersection();
+      if (!isInsideFoam(intersect2))
+        return;
       registering = true;
-      if (registering) {
-        const intersection2 = getMouseIntersection();
-        point = intersection2.clone();
-        line4.geometry.attributes.position.setXYZ(0, point.x, point.y, point.z);
-        line4.geometry.attributes.position.setXYZ(1, point.x, point.y, point.z);
-        line4.geometry.attributes.position.needsUpdate = true;
-        line4.visible = true;
-      }
+      point = intersect2.clone();
+      line4.geometry.attributes.position.setXYZ(0, point.x, point.y, point.z);
+      line4.geometry.attributes.position.setXYZ(1, point.x, point.y, point.z);
+      line4.geometry.attributes.position.needsUpdate = true;
+      line4.visible = true;
       if (drawing) {
         if (points.length > 1) {
           const firstPoint = points[0];
-          const distanceToFirstPoint = firstPoint.distanceTo(intersection);
+          const distanceToFirstPoint = firstPoint.distanceTo(intersect2);
           if (distanceToFirstPoint < proximityThreshold) {
             distanceText.textContent = "";
             disableButton(true);
@@ -53518,53 +54155,37 @@ const createShapeFreehand = (millimeters2, selected2, shapesArray2, commit2, sho
             document.getElementById("saveButtonContainer").disabled = false;
             finalPoints = [...points];
             drawing = false;
-            const newPoints2 = points.map(
-              (point2) => new Vector3(point2.x, point2.y, point2.z)
-            );
-            const shape = new Shape(
-              newPoints2.map((point2) => new Vector2(point2.x, point2.y))
-            );
-            const extrudeSettings = {
-              depth: 0,
-              bevelEnabled: false
-            };
-            const geometry = new ExtrudeGeometry(shape, extrudeSettings);
-            const material = new MeshBasicMaterial({
-              color: 16777215,
-              side: DoubleSide
-            });
-            mesh = new Mesh(geometry, material);
+            const newPoints2 = points.map((p) => new Vector3(p.x, p.y, p.z));
+            const shape = new Shape(newPoints2.map((p) => new Vector2(p.x, p.y)));
+            const extrudeSettings = { depth: 0, bevelEnabled: false };
+            const geometry2 = new ExtrudeGeometry(shape, extrudeSettings);
+            const material2 = new MeshBasicMaterial({ color: 16777215, side: DoubleSide });
+            mesh = new Mesh(geometry2, material2);
             mesh.position.z = objectZCoordinate;
             sceneCopy2.add(mesh);
             points = [];
+            return;
           }
         }
-        if (drawing) {
-          const unprojectedPoint = intersection.clone();
-          unprojectedPoint.z = objectZCoordinate + 1;
-          points.push(unprojectedPoint);
-          const geometry = new CircleGeometry(3, 32);
-          const material = new MeshBasicMaterial({ color: 16711680 });
-          const circle2 = new Mesh(geometry, material);
-          circle2.position.copy(unprojectedPoint);
-          sceneCopy2.add(circle2);
-          circles.push(circle2);
-          if (points.length > 1) {
-            const lineGeometry2 = new BufferGeometry().setFromPoints(
-              points
-            );
-            const lineMaterial2 = new LineBasicMaterial({
-              color: 16753920,
-              linewidth: 15
-            });
-            const line5 = new Line(lineGeometry2, lineMaterial2);
-            sceneCopy2.add(line5);
-            lines.push(line5);
-          }
+        const unprojectedPoint = intersect2.clone();
+        unprojectedPoint.z = objectZCoordinate + 1;
+        points.push(unprojectedPoint);
+        const geometry = new CircleGeometry(3, 32);
+        const material = new MeshBasicMaterial({ color: 16711680 });
+        const circle2 = new Mesh(geometry, material);
+        circle2.position.copy(unprojectedPoint);
+        sceneCopy2.add(circle2);
+        circles.push(circle2);
+        if (points.length > 1) {
+          const lineGeometry2 = new BufferGeometry().setFromPoints(points);
+          const lineMaterial2 = new LineBasicMaterial({ color: 16753920, linewidth: 15 });
+          const line5 = new Line(lineGeometry2, lineMaterial2);
+          sceneCopy2.add(line5);
+          lines.push(line5);
         }
       } else {
         drawing = true;
-        const unprojectedPoint = intersection.clone();
+        const unprojectedPoint = intersect2.clone();
         unprojectedPoint.z = objectZCoordinate + 1;
         const geometry = new CircleGeometry(3, 32);
         const material = new MeshBasicMaterial({ color: 16711680 });
@@ -53573,11 +54194,6 @@ const createShapeFreehand = (millimeters2, selected2, shapesArray2, commit2, sho
         sceneCopy2.add(circle2);
         circles.push(circle2);
         points.push(unprojectedPoint.clone());
-        document.addEventListener("mousemove", (event2) => {
-          mouse.x = event2.clientX / window.innerWidth * 2 - 1;
-          mouse.y = -(event2.clientY / window.innerHeight) * 2 + 1;
-          onMouseMove();
-        });
       }
     }
     showPanelFromRight2("polygon-panel");
@@ -53688,7 +54304,8 @@ const createShapePhotoShape = (millimeters2, selected2, shapesArray2, commit2, s
             sizeY: 250 * millimeters2,
             points: contour,
             // Each contour as the polygon
-            rotation: 0
+            rotation: 0,
+            free: true
           };
           shapesArray2.push(shape);
           if (index === 0) {
@@ -54284,28 +54901,36 @@ function initUI() {
   });
   document.querySelector("#depth-slider").onchange = commit;
   document.querySelector("#depth-input").onchange = commit;
-  setTimeout(() => {
-    createShapeFreehand(
-      millimeters,
-      selected,
-      shapesArray,
-      commit,
-      showPanelFromLeft,
-      showPanelFromRight,
-      doCsg,
-      orthoCamera,
-      sceneCopy,
-      rendererCopy,
-      display2D,
-      (modifiedDisplay) => {
-        display2D = modifiedDisplay;
-      },
-      (modifiedSelected, modifiedDisplay) => {
-        selected = modifiedSelected;
-        display2D = modifiedDisplay;
-      }
-    );
-  }, 100);
+  function waitForFoamAndInitFreehand() {
+    const foamMesh = scene.getObjectByName("csgModel");
+    if (foamMesh) {
+      createShapeFreehand(
+        millimeters,
+        selected,
+        shapesArray,
+        commit,
+        showPanelFromLeft,
+        showPanelFromRight,
+        doCsg,
+        orthoCamera,
+        sceneCopy,
+        rendererCopy,
+        display2D,
+        (modifiedDisplay) => {
+          display2D = modifiedDisplay;
+        },
+        (modifiedSelected, modifiedDisplay) => {
+          selected = modifiedSelected;
+          display2D = modifiedDisplay;
+        },
+        foamMesh
+        // ✅ pass foam here
+      );
+    } else {
+      setTimeout(waitForFoamAndInitFreehand, 100);
+    }
+  }
+  waitForFoamAndInitFreehand();
   depthButtonClick(
     "polygon-depth-button",
     "main-panel",
@@ -54462,6 +55087,12 @@ function initUI() {
     leftestPoint,
     highestPoint,
     lowestPoint
+  );
+  createPdfIso(
+    foam,
+    shapesArray,
+    shapeToGeom2,
+    rightestPoint
   );
   createDFX(foam, shapesArray, shapeToGeom2, "my_foam_shapes.dxf");
   document.getElementById("nextBtn").addEventListener("click", () => {
@@ -54642,29 +55273,40 @@ function init3D() {
     }
   });
   renderer.domElement.addEventListener("pointerup", (e) => {
-    if (dragging) {
-      if (dragged) {
-        commit();
-      }
+    if (!dragging)
+      return;
+    if (dragged) {
+      commit();
       if (selected) {
-        shapesArray.splice(shapesArray.indexOf(selected), 1);
-        if (!dragged && selected === oldSelected) {
-          shapesArray.unshift(selected);
-          selected = shapeUnderMouse();
-          document.querySelector("#back-button").removeAttribute("disabled");
-          document.querySelector("#back-button").onclick = () => {
-            document.querySelector("#back-button").setAttribute("disabled", "");
-            showPanelFromLeft("main-panel");
-            selected = null;
-          };
-          showPanelFromRight(selected.kind + "-panel");
-        } else {
-          shapesArray.push(selected);
+        console.log(shapesArray, "arr");
+        const otherIdx = shapesArray.findIndex(
+          (s) => s !== selected && shapesIntersectGeneric(selected, s)
+        );
+        if (otherIdx !== -1) {
+          const other = shapesArray[otherIdx];
+          confirmMerge(selected, other, (shouldMerge) => {
+            if (shouldMerge) {
+              const selIdx = shapesArray.indexOf(selected);
+              const otherIdx2 = shapesArray.indexOf(other);
+              const merged = mergeIntoPolygon(selected, other);
+              const [high, low] = [selIdx, otherIdx2].sort((a, b) => b - a);
+              shapesArray.splice(high, 1);
+              shapesArray.splice(low, 1);
+              shapesArray.splice(low, 0, merged);
+              selected = merged;
+              doCsg();
+              commit();
+            } else {
+              selected.x += 10;
+              selected.y += 10;
+              doCsg();
+            }
+          });
         }
       }
-      dragging = false;
-      controls.enabled = true;
     }
+    dragging = false;
+    controls.enabled = true;
   });
   let ground = new Mesh(
     new PlaneGeometry(100 * meters, 100 * meters, 1, 1),
@@ -54758,7 +55400,7 @@ function doCsg() {
   if (worker) {
     worker.terminate();
   }
-  worker = new Worker(new URL("/assets/csg-9fc5e3de.js", self.location), { type: "module" });
+  worker = new Worker(new URL("/assets/csg-0bd089ce.js", self.location), { type: "module" });
   worker.onmessage = (e) => {
     let csgModel = scene.getObjectByName("csgModel");
     if (csgModel) {
@@ -54809,13 +55451,6 @@ function updateSelectedShape(index) {
   currentIndex = index;
 }
 function onFrame() {
-  let numSamples = parseInt(document.getElementById("pointsCount").value, 10);
-  document.getElementById("pointsCount").addEventListener("input", (e) => {
-    const value = parseInt(e.target.value, 10);
-    if (!isNaN(value) && value > 0 && value <= 5) {
-      numSamples = value;
-    }
-  });
   ctx.canvas.width = ctx.canvas.width;
   ctx.canvas.height = ctx.canvas.height;
   ctx.strokeStyle = "orange";
@@ -54825,7 +55460,27 @@ function onFrame() {
   display2D ? renderer.render(topScene, camera1) : renderer.render(topScene, camera);
   const baseZ = 37 * centimeters;
   const currentCamera = display2D ? camera1 : camera;
+  const NEAR_THRESHOLD = 1 * centimeters;
   for (let shape of shapesArray) {
+    if (selected && shape !== selected && isNearGeneric(selected, shape, NEAR_THRESHOLD)) {
+      ctx.setLineDash([5, 5]);
+      drawOutline(
+        shape,
+        "red",
+        2,
+        baseZ,
+        ctx,
+        currentCamera,
+        display2D,
+        renderer,
+        selected,
+        sceneCopy,
+        false
+        // numSamples
+      );
+      ctx.setLineDash([]);
+      continue;
+    }
     if (display2D) {
       drawOutline(
         shape,
@@ -54838,8 +55493,8 @@ function onFrame() {
         renderer,
         selected,
         sceneCopy,
-        false,
-        numSamples
+        false
+        // numSamples
       );
     }
     if (selected === shape) {
@@ -54854,8 +55509,8 @@ function onFrame() {
         renderer,
         selected,
         sceneCopy,
-        true,
-        numSamples
+        true
+        // numSamples
       );
       if (currPanel.id.endsWith("depth-panel") && !display2D) {
         ctx.setLineDash([5, 5]);
@@ -54870,8 +55525,8 @@ function onFrame() {
           renderer,
           selected,
           sceneCopy,
-          false,
-          numSamples
+          false
+          // numSamples
         );
         ctx.setLineDash([]);
       }
@@ -54889,8 +55544,8 @@ function onFrame() {
         renderer,
         selected,
         sceneCopy,
-        false,
-        numSamples
+        false
+        // numSamples
       );
       ctx.setLineDash([]);
     }
@@ -54901,8 +55556,8 @@ function onFrame() {
   window.requestAnimationFrame(onFrame);
 }
 if (typeof window === "object") {
-  initUI();
   init3D();
+  initUI();
   commit();
 }
 document.addEventListener("DOMContentLoaded", function() {
@@ -54950,4 +55605,4 @@ document.addEventListener("DOMContentLoaded", function() {
     }
   }
 });
-//# sourceMappingURL=index-a5456d0f.js.map
+//# sourceMappingURL=index-7e9bf134.js.map
