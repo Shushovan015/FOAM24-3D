@@ -33172,7 +33172,6 @@ function shapeToGeom2(shape) {
     return typeof v === "number" && !isNaN(v) ? v : fallback;
   }
   if (!shape || typeof shape.kind !== "string") {
-    console.error("shapeToGeom2: bad shape", shape);
     return src.primitives.rectangle({ center: [0, 0], size: [1, 1] });
   }
   switch (shape.kind) {
@@ -33227,7 +33226,6 @@ function shapeToGeom2(shape) {
     case "photoshape": {
       const cx2 = num(shape.x), cy2 = num(shape.y), rot = num(shape.rotation, 0);
       if (!Array.isArray(shape.polygon) || shape.polygon.length === 0) {
-        console.error("shapeToGeom2: bad photoshape.polygon", shape.polygon);
         return src.primitives.rectangle({ center: [cx2, cy2], size: [1, 1] });
       }
       let geoms = [];
@@ -33497,7 +33495,6 @@ function drawOutline(shape, style2, width, z, ctx2, camera2, display2D2, rendere
       shape.controlPoints = [];
       const CP_Z = z;
       shape.points.forEach(([x, y], index) => {
-        console.log("raw point:", x, y, "shape offset:", shape.x, shape.y);
         const sphere2 = new Mesh(
           new SphereGeometry(3, 16, 16),
           new MeshBasicMaterial({ color: 65535 })
@@ -33584,10 +33581,6 @@ function setupControlPointInteractions(shape, scene2, camera2, renderer2, CP_Z =
       evt.preventDefault();
       state.isDragging = true;
       state.selectedPoint = hit[0].object;
-      console.group("[drag] start");
-      console.log("selected index:", state.selectedPoint.userData.pointIndex);
-      console.log("points before:", JSON.parse(JSON.stringify(shape.points)));
-      console.groupEnd();
       window.addEventListener("mousemove", onMouseMove);
       window.addEventListener("mouseup", onMouseUp);
     }
@@ -33619,9 +33612,6 @@ function setupControlPointInteractions(shape, scene2, camera2, renderer2, CP_Z =
   function onMouseUp() {
     if (!state.isDragging)
       return;
-    console.group("[drag] end");
-    console.log("points after:", JSON.parse(JSON.stringify(shape.points)));
-    console.groupEnd();
     window.removeEventListener("mousemove", onMouseMove);
     window.removeEventListener("mouseup", onMouseUp);
     state.isDragging = false;
@@ -53562,10 +53552,8 @@ const createPdf = (foam2, shapesArray2, shapeToGeom22, rightestPoint2, leftestPo
     drawResponsiveText(page, font, formData.gewicht, 1050, 135 + OFFSET_Y, 80);
     const bytes = await pdf.save();
     const blob = new Blob([bytes], { type: "application/pdf" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = "custom_drawing.pdf";
-    link.click();
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank");
   };
 };
 const createPdfIso = (foam2, shapesArray2, shapeToGeom22, opts = {}) => {
@@ -53643,7 +53631,10 @@ const createPdfIso = (foam2, shapesArray2, shapeToGeom22, opts = {}) => {
               if (cand === prev)
                 continue;
               const N = un(cand), v12 = [C[0] - P[0], C[1] - P[1]], v22 = [N[0] - C[0], N[1] - C[1]];
-              const ang = Math.atan2(v12[0] * v22[1] - v12[1] * v22[0], v12[0] * v22[0] + v12[1] * v22[1]);
+              const ang = Math.atan2(
+                v12[0] * v22[1] - v12[1] * v22[0],
+                v12[0] * v22[0] + v12[1] * v22[1]
+              );
               const lt = ang <= 0 ? ang + 2 * Math.PI : ang;
               if (lt < bestAng) {
                 bestAng = lt;
@@ -53671,10 +53662,12 @@ const createPdfIso = (foam2, shapesArray2, shapeToGeom22, opts = {}) => {
         }
       }
     }
-    const area2 = (L) => Math.abs(L.reduce((s, p, i) => {
-      const q = L[(i + 1) % L.length];
-      return s + (p[0] * q[1] - p[1] * q[0]);
-    }, 0));
+    const area2 = (L) => Math.abs(
+      L.reduce((s, p, i) => {
+        const q = L[(i + 1) % L.length];
+        return s + (p[0] * q[1] - p[1] * q[0]);
+      }, 0)
+    );
     loops.sort((A, B) => area2(B) - area2(A));
     return loops;
   };
@@ -53690,13 +53683,25 @@ const createPdfIso = (foam2, shapesArray2, shapeToGeom22, opts = {}) => {
     const a = Math.PI / 6;
     return [(x - y) * Math.cos(a), (x + y) * Math.sin(a) - z];
   };
+  const safeThickness = (th) => {
+    const num = Number(th);
+    return isNaN(num) ? 1 : num;
+  };
   const drawLoop = (page, pts, th) => {
     for (let i = 0; i < pts.length; i++) {
       const a = pts[i], b = pts[(i + 1) % pts.length];
-      page.drawLine({ start: { x: a[0], y: a[1] }, end: { x: b[0], y: b[1] }, thickness: th });
+      page.drawLine({
+        start: { x: a[0], y: a[1] },
+        end: { x: b[0], y: b[1] },
+        thickness: safeThickness(th)
+      });
     }
   };
-  const line4 = (page, a, b, th) => page.drawLine({ start: { x: a[0], y: a[1] }, end: { x: b[0], y: b[1] }, thickness: th });
+  const line4 = (page, a, b, th) => page.drawLine({
+    start: { x: a[0], y: a[1] },
+    end: { x: b[0], y: b[1] },
+    thickness: safeThickness(th)
+  });
   document.querySelector("#pdf-iso-button").onclick = async () => {
     const tplBytes = await fetch(templateUrl).then((r) => r.arrayBuffer());
     const tplPdf = await PDFDocument.load(tplBytes);
@@ -53708,8 +53713,20 @@ const createPdfIso = (foam2, shapesArray2, shapeToGeom22, opts = {}) => {
     const FRAME = { inset: 18, thick: 1.5 };
     const fx = FRAME.inset, fy = FRAME.inset;
     const fw = W - 2 * FRAME.inset, fh = H - 2 * FRAME.inset;
-    page.drawRectangle({ x: fx, y: fy, width: fw, height: fh, borderWidth: FRAME.thick, color: rgb(1, 1, 1) });
-    page.drawText("Orthographic and isometric projections of foam pockets", { x: fx, y: H - FRAME.inset + 6, size: 12, font });
+    page.drawRectangle({
+      x: fx,
+      y: fy,
+      width: fw,
+      height: fh,
+      borderWidth: FRAME.thick,
+      color: rgb(1, 1, 1)
+    });
+    page.drawText("Orthographic and isometric projections of foam pockets", {
+      x: fx,
+      y: H - FRAME.inset + 6,
+      size: 12,
+      font
+    });
     const allTopXY = [];
     for (const s of shapesArray2) {
       for (const pr of extrudeShape(s)) {
@@ -53748,7 +53765,10 @@ const createPdfIso = (foam2, shapesArray2, shapeToGeom22, opts = {}) => {
       const cMin = overflowCost(candidateMin);
       const cCtr = overflowCost(candidateCenter);
       if (cMin === cCtr) {
-        const centerShapes = [(bbShapes.minX + bbShapes.maxX) / 2, (bbShapes.minY + bbShapes.maxY) / 2];
+        const centerShapes = [
+          (bbShapes.minX + bbShapes.maxX) / 2,
+          (bbShapes.minY + bbShapes.maxY) / 2
+        ];
         const dMin = Math.hypot(
           centerShapes[0] - (candidateMin.minX + candidateMin.maxX) / 2,
           centerShapes[1] - (candidateMin.minY + candidateMin.maxY) / 2
@@ -53766,15 +53786,62 @@ const createPdfIso = (foam2, shapesArray2, shapeToGeom22, opts = {}) => {
       const ex = extrudeShape(s)[0];
       const top2 = ex.top.map(([x, y]) => [x, y]);
       const bb = bbox2(top2);
-      return { name: s.name || `Pocket ${i + 1}`, top2, bb, depth: s.sizeZ ?? 0 };
+      return {
+        name: s.name || `Pocket ${i + 1}`,
+        top2,
+        bb,
+        depth: s.sizeZ ?? 0
+      };
     });
     const margin = FRAME.inset + 28;
     const viewW = (W - margin * 3) / 2;
     const viewH = (H - margin * 3) / 2;
-    const boxTop = { cx: margin + viewW / 2, cy: H - margin - viewH / 2, w: viewW, h: viewH };
-    const boxIso = { cx: margin * 2 + viewW + viewW / 2, cy: H - margin - viewH / 2, w: viewW, h: viewH };
-    const boxFront = { cx: margin + viewW / 2, cy: margin + viewH / 2, w: viewW, h: viewH };
-    const boxSide = { cx: margin * 2 + viewW + viewW / 2, cy: margin + viewH / 2, w: viewW, h: viewH };
+    const boxTop = {
+      cx: margin + viewW / 2,
+      cy: H - margin - viewH / 2,
+      w: viewW,
+      h: viewH
+    };
+    const boxIso = {
+      cx: margin * 2 + viewW + viewW / 2,
+      cy: H - margin - viewH / 2,
+      w: viewW,
+      h: viewH
+    };
+    const boxFront = {
+      cx: margin + viewW / 2,
+      cy: margin + viewH / 2,
+      w: viewW,
+      h: viewH
+    };
+    const boxSide = {
+      cx: margin * 2 + viewW + viewW / 2,
+      cy: margin + viewH / 2,
+      w: viewW,
+      h: viewH
+    };
+    const pocketColors = [
+      rgb(0.89, 0.1, 0.11),
+      // #e41a1c
+      rgb(0.22, 0.49, 0.73),
+      // #377eb8
+      rgb(0.31, 0.68, 0.31),
+      // #4daf4a
+      rgb(0.6, 0.31, 0.64),
+      // #984ea3
+      rgb(1, 0.5, 0),
+      // #ff7f00
+      rgb(1, 1, 0.2),
+      // #ffff33
+      rgb(0.65, 0.34, 0.16),
+      // #a65628
+      rgb(0.97, 0.13, 0.75),
+      // #f781bf
+      rgb(0.6, 0.6, 0.6),
+      // #999999
+      rgb(0.4, 0.76, 0.65)
+      // #66c2a5
+    ];
     const drawTop = () => {
       const foamCorners = [
         [foamRect.minX, foamRect.minY],
@@ -53785,58 +53852,128 @@ const createPdfIso = (foam2, shapesArray2, shapeToGeom22, opts = {}) => {
       const all = [...foamCorners, ...pockets.flatMap((p) => p.top2)];
       const fit = fit2rect(all, boxTop, 18);
       const T = (p) => fit.transform(p);
-      drawLoop(page, foamCorners.map(T), cfg.stroke);
-      for (const p of pockets)
-        drawLoop(page, p.top2.map(T), cfg.stroke);
-      const dimH = (x1, x2, y, txtBelow = false) => {
+      drawLoop(page, foamCorners.map(T), {
+        color: rgb(0, 0, 0),
+        thickness: cfg.strokeThickness || 1
+      });
+      const foamCenterX = (foamRect.minX + foamRect.maxX) / 2;
+      const dimH = (x1, x2, y, color, txtBelow = false) => {
         const A = T([x1, y]), B = T([x2, y]);
-        line4(page, A, B, cfg.dimStroke);
-        const ah = cfg.arrow, dir = Math.sign(B[0] - A[0]) || 1;
-        line4(page, A, [A[0] + ah * dir, A[1] + ah / 2], cfg.dimStroke);
-        line4(page, A, [A[0] + ah * dir, A[1] - ah / 2], cfg.dimStroke);
-        line4(page, B, [B[0] - ah * dir, B[1] + ah / 2], cfg.dimStroke);
-        line4(page, B, [B[0] - ah * dir, B[1] - ah / 2], cfg.dimStroke);
-        const midX = (A[0] + B[0]) / 2, ty = A[1] + (txtBelow ? -10 : 4);
+        line4(page, A, B, { color, thickness: cfg.dimStroke });
+        const ah = cfg.arrow;
+        const dir = Math.sign(B[0] - A[0]) || 1;
+        line4(page, A, [A[0] + ah * dir, A[1] + ah / 2], {
+          color,
+          thickness: cfg.dimStroke
+        });
+        line4(page, A, [A[0] + ah * dir, A[1] - ah / 2], {
+          color,
+          thickness: cfg.dimStroke
+        });
+        line4(page, B, [B[0] - ah * dir, B[1] + ah / 2], {
+          color,
+          thickness: cfg.dimStroke
+        });
+        line4(page, B, [B[0] - ah * dir, B[1] - ah / 2], {
+          color,
+          thickness: cfg.dimStroke
+        });
+        const midX = (A[0] + B[0]) / 2;
+        const ty = A[1] + (txtBelow ? -10 : 4);
         const label = absmm(x2 - x1);
-        page.drawText(label, { x: midX - font.widthOfTextAtSize(label, cfg.fontSize) / 2, y: ty, size: cfg.fontSize, font });
+        page.drawText(label, {
+          x: midX - font.widthOfTextAtSize(label, cfg.fontSize) / 2,
+          y: ty,
+          size: cfg.fontSize,
+          font,
+          color
+        });
       };
-      const dimV = (x, y1, y2, txtRight = false) => {
+      const dimV = (x, y1, y2, color, txtRight = false) => {
         const A = T([x, y1]), B = T([x, y2]);
-        line4(page, A, B, cfg.dimStroke);
-        const ah = cfg.arrow, dir = Math.sign(B[1] - A[1]) || 1;
-        line4(page, A, [A[0] + ah / 2, A[1] + ah * dir], cfg.dimStroke);
-        line4(page, A, [A[0] - ah / 2, A[1] + ah * dir], cfg.dimStroke);
-        line4(page, B, [B[0] + ah / 2, B[1] - ah * dir], cfg.dimStroke);
-        line4(page, B, [B[0] - ah / 2, B[1] - ah * dir], cfg.dimStroke);
+        line4(page, A, B, { color, thickness: cfg.dimStroke });
+        const ah = cfg.arrow;
+        const dir = Math.sign(B[1] - A[1]) || 1;
+        line4(page, A, [A[0] + ah / 2, A[1] + ah * dir], {
+          color,
+          thickness: cfg.dimStroke
+        });
+        line4(page, A, [A[0] - ah / 2, A[1] + ah * dir], {
+          color,
+          thickness: cfg.dimStroke
+        });
+        line4(page, B, [B[0] + ah / 2, B[1] - ah * dir], {
+          color,
+          thickness: cfg.dimStroke
+        });
+        line4(page, B, [B[0] - ah / 2, B[1] - ah * dir], {
+          color,
+          thickness: cfg.dimStroke
+        });
         const midY = (A[1] + B[1]) / 2;
-        const tx = A[0] + (txtRight ? 4 : -4 - font.widthOfTextAtSize("0000", cfg.fontSize));
+        const tx = txtRight ? A[0] + 4 : A[0] - 4 - font.widthOfTextAtSize("0000", cfg.fontSize);
         const label = absmm(y2 - y1);
-        page.drawText(label, { x: tx, y: midY - cfg.fontSize / 2, size: cfg.fontSize, font });
+        page.drawText(label, {
+          x: tx,
+          y: midY - cfg.fontSize / 2,
+          size: cfg.fontSize,
+          font,
+          color
+        });
       };
-      for (const p of pockets) {
+      for (let i = 0; i < pockets.length; i++) {
+        const p = pockets[i];
+        const color = pocketColors[i % pocketColors.length];
+        drawLoop(page, p.top2.map(T), {
+          color,
+          thickness: cfg.strokeThickness || 1
+        });
         const { minX, maxX, minY, maxY } = p.bb;
         const OUT = 14 / (fit.s || 1);
-        dimH(foamRect.minX, minX, minY - OUT, true);
-        dimH(maxX, foamRect.maxX, maxY + OUT, false);
-        dimV(minX - OUT, foamRect.minY, minY, false);
-        dimV(maxX + OUT, maxY, foamRect.maxY, true);
+        const pocketCenter = (minX + maxX) / 2;
+        dimH(minX, maxX, maxY + OUT + OUT, color);
+        if (pocketCenter < foamCenterX) {
+          dimH(foamRect.minX, minX, maxY + OUT, color, false);
+        } else {
+          dimH(maxX, foamRect.maxX, maxY + OUT, color, false);
+        }
+        dimV(minX - OUT, foamRect.minY, minY, color, false);
+        dimV(maxX + OUT, maxY, foamRect.maxY, color, true);
         const c2 = T([(minX + maxX) / 2, (minY + maxY) / 2]);
         const lbl = safeText(p.name);
-        page.drawText(lbl, { x: c2[0] - font.widthOfTextAtSize(lbl, cfg.fontSize) / 2, y: c2[1] - cfg.fontSize / 2, size: cfg.fontSize, font });
+        page.drawText(lbl, {
+          x: c2[0] - font.widthOfTextAtSize(lbl, cfg.fontSize) / 2,
+          y: c2[1] - cfg.fontSize / 2,
+          size: cfg.fontSize,
+          font,
+          color
+        });
       }
       const cap = "Top View";
-      page.drawText(cap, { x: boxTop.cx - font.widthOfTextAtSize(cap, cfg.fontSize) / 2, y: boxTop.cy - boxTop.h / 2 + 4, size: cfg.fontSize, font });
+      page.drawText(cap, {
+        x: boxTop.cx - font.widthOfTextAtSize(cap, cfg.fontSize) / 2,
+        y: boxTop.cy - boxTop.h / 2 + 4,
+        size: cfg.fontSize,
+        font
+      });
     };
     const drawFront = () => {
-      const all = [[foamRect.minX, 0], [foamRect.maxX, foam2.sizeZ]];
+      const all = [
+        [foamRect.minX, 0],
+        [foamRect.maxX, foam2.sizeZ]
+      ];
       const fit = fit2rect(all, boxFront, 18);
       const T = (p) => fit.transform(p);
-      drawLoop(page, [
-        [foamRect.minX, 0],
-        [foamRect.maxX, 0],
-        [foamRect.maxX, foam2.sizeZ],
-        [foamRect.minX, foam2.sizeZ]
-      ].map(T), cfg.stroke);
+      drawLoop(
+        page,
+        [
+          [foamRect.minX, 0],
+          [foamRect.maxX, 0],
+          [foamRect.maxX, foam2.sizeZ],
+          [foamRect.minX, foam2.sizeZ]
+        ].map(T),
+        cfg.stroke
+      );
       for (const p of pockets) {
         const r = [
           [p.bb.minX, 0],
@@ -53848,22 +53985,39 @@ const createPdfIso = (foam2, shapesArray2, shapeToGeom22, opts = {}) => {
         if (cfg.showDepthInside && p.depth > 0) {
           const mid = [(r[0][0] + r[1][0]) / 2, (r[1][1] + r[2][1]) / 2];
           const lbl = absmm(p.depth);
-          page.drawText(lbl, { x: mid[0] - font.widthOfTextAtSize(lbl, cfg.fontSize) / 2, y: mid[1] - cfg.fontSize / 2, size: cfg.fontSize, font });
+          page.drawText(lbl, {
+            x: mid[0] - font.widthOfTextAtSize(lbl, cfg.fontSize) / 2,
+            y: mid[1] - cfg.fontSize / 2,
+            size: cfg.fontSize,
+            font
+          });
         }
       }
       const cap = "Front View";
-      page.drawText(cap, { x: boxFront.cx - font.widthOfTextAtSize(cap, cfg.fontSize) / 2, y: boxFront.cy - boxFront.h / 2 + 4, size: cfg.fontSize, font });
+      page.drawText(cap, {
+        x: boxFront.cx - font.widthOfTextAtSize(cap, cfg.fontSize) / 2,
+        y: boxFront.cy - boxFront.h / 2 + 4,
+        size: cfg.fontSize,
+        font
+      });
     };
     const drawSide = () => {
-      const all = [[foamRect.minY, 0], [foamRect.maxY, foam2.sizeZ]];
+      const all = [
+        [foamRect.minY, 0],
+        [foamRect.maxY, foam2.sizeZ]
+      ];
       const fit = fit2rect(all, boxSide, 18);
       const T = (p) => fit.transform(p);
-      drawLoop(page, [
-        [foamRect.minY, 0],
-        [foamRect.maxY, 0],
-        [foamRect.maxY, foam2.sizeZ],
-        [foamRect.minY, foam2.sizeZ]
-      ].map(T), cfg.stroke);
+      drawLoop(
+        page,
+        [
+          [foamRect.minY, 0],
+          [foamRect.maxY, 0],
+          [foamRect.maxY, foam2.sizeZ],
+          [foamRect.minY, foam2.sizeZ]
+        ].map(T),
+        cfg.stroke
+      );
       for (const p of pockets) {
         const r = [
           [p.bb.minY, 0],
@@ -53875,11 +54029,21 @@ const createPdfIso = (foam2, shapesArray2, shapeToGeom22, opts = {}) => {
         if (cfg.showDepthInside && p.depth > 0) {
           const mid = [(r[0][0] + r[1][0]) / 2, (r[1][1] + r[2][1]) / 2];
           const lbl = absmm(p.depth);
-          page.drawText(lbl, { x: mid[0] - font.widthOfTextAtSize(lbl, cfg.fontSize) / 2, y: mid[1] - cfg.fontSize / 2, size: cfg.fontSize, font });
+          page.drawText(lbl, {
+            x: mid[0] - font.widthOfTextAtSize(lbl, cfg.fontSize) / 2,
+            y: mid[1] - cfg.fontSize / 2,
+            size: cfg.fontSize,
+            font
+          });
         }
       }
       const cap = "Side View";
-      page.drawText(cap, { x: boxSide.cx - font.widthOfTextAtSize(cap, cfg.fontSize) / 2, y: boxSide.cy - boxSide.h / 2 + 4, size: cfg.fontSize, font });
+      page.drawText(cap, {
+        x: boxSide.cx - font.widthOfTextAtSize(cap, cfg.fontSize) / 2,
+        y: boxSide.cy - boxSide.h / 2 + 4,
+        size: cfg.fontSize,
+        font
+      });
     };
     const drawIso = () => {
       const foamPrism = [
@@ -53901,9 +54065,22 @@ const createPdfIso = (foam2, shapesArray2, shapeToGeom22, opts = {}) => {
       const fit = fit2rect([...foamPrism, ...shapesIso], boxIso, 18);
       const T = (p) => fit.transform(p);
       const F = foamPrism.map(T);
-      const edges = [[0, 1], [1, 2], [2, 3], [3, 0], [4, 5], [5, 6], [6, 7], [7, 4], [0, 4], [1, 5], [2, 6], [3, 7]];
-      for (const [a2, b] of edges)
-        line4(page, F[a2], F[b], 0.7);
+      const edges = [
+        [0, 1],
+        [1, 2],
+        [2, 3],
+        [3, 0],
+        [4, 5],
+        [5, 6],
+        [6, 7],
+        [7, 4],
+        [0, 4],
+        [1, 5],
+        [2, 6],
+        [3, 7]
+      ];
+      for (const [a, b] of edges)
+        line4(page, F[a], F[b], 0.7);
       for (const s of shapesArray2) {
         for (const pr of extrudeShape(s)) {
           const top = pr.top.map(projIso).map(T);
@@ -53915,7 +54092,12 @@ const createPdfIso = (foam2, shapesArray2, shapeToGeom22, opts = {}) => {
         }
       }
       const cap = "3D Isometric";
-      page.drawText(cap, { x: boxIso.cx - font.widthOfTextAtSize(cap, cfg.fontSize) / 2, y: boxIso.cy - boxIso.h / 2 + 4, size: cfg.fontSize, font });
+      page.drawText(cap, {
+        x: boxIso.cx - font.widthOfTextAtSize(cap, cfg.fontSize) / 2,
+        y: boxIso.cy - boxIso.h / 2 + 4,
+        size: cfg.fontSize,
+        font
+      });
     };
     drawTop();
     drawIso();
@@ -53923,10 +54105,8 @@ const createPdfIso = (foam2, shapesArray2, shapeToGeom22, opts = {}) => {
     drawSide();
     const bytes = await pdf.save();
     const blob = new Blob([bytes], { type: "application/pdf" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "foam_pockets_projection.pdf";
-    a.click();
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank");
   };
 };
 const createShapeCircle = (millimeters2, selected2, shapesArray2, commit2, showPanelFromLeft2, showPanelFromRight2, doCsg2, callback) => {
@@ -54272,7 +54452,8 @@ const createShapePhotoShape = (millimeters2, selected2, shapesArray2, commit2, s
       }).then((blob) => {
         const formData = new FormData();
         formData.append("image", blob, "image.png");
-        return fetch("https://fm24api.com/detect_contours", {
+        return fetch("http://localhost:5000/detect_contours", {
+          // return fetch("https://fm24api.com/detect_contours", {
           method: "POST",
           body: formData
         });
@@ -55277,7 +55458,6 @@ function init3D() {
     if (dragged) {
       commit();
       if (selected) {
-        console.log(shapesArray, "arr");
         const otherIdx = shapesArray.findIndex(
           (s) => s !== selected && shapesIntersectGeneric(selected, s)
         );
@@ -55604,4 +55784,4 @@ document.addEventListener("DOMContentLoaded", function() {
     }
   }
 });
-//# sourceMappingURL=index-fc2c0f2b.js.map
+//# sourceMappingURL=index-75fc8962.js.map
