@@ -19,7 +19,6 @@ export function shapeToGeom2(shape) {
   }
 
   if (!shape || typeof shape.kind !== "string") {
-    console.error("shapeToGeom2: bad shape", shape);
     // empty 1×1 square at origin
     return jscad.primitives.rectangle({ center: [0, 0], size: [1, 1] });
   }
@@ -88,7 +87,6 @@ export function shapeToGeom2(shape) {
         cy = num(shape.y),
         rot = num(shape.rotation, 0);
       if (!Array.isArray(shape.polygon) || shape.polygon.length === 0) {
-        console.error("shapeToGeom2: bad photoshape.polygon", shape.polygon);
         return jscad.primitives.rectangle({ center: [cx, cy], size: [1, 1] });
       }
       let geoms = [];
@@ -691,7 +689,6 @@ export function drawOutline(
 
       const CP_Z = z; // keep everything on one plane
       shape.points.forEach(([x, y], index) => {
-        console.log("raw point:", x, y, "shape offset:", shape.x, shape.y);
         const sphere = new THREE.Mesh(
           new THREE.SphereGeometry(3, 16, 16),
           new THREE.MeshBasicMaterial({ color: 0x00ffff })
@@ -799,10 +796,10 @@ function setupControlPointInteractions(
       state.selectedPoint = hit[0].object;
 
       // debug
-      console.group("[drag] start");
-      console.log("selected index:", state.selectedPoint.userData.pointIndex);
-      console.log("points before:", JSON.parse(JSON.stringify(shape.points)));
-      console.groupEnd();
+      // console.group("[drag] start");
+      // console.log("selected index:", state.selectedPoint.userData.pointIndex);
+      // console.log("points before:", JSON.parse(JSON.stringify(shape.points)));
+      // console.groupEnd();
 
       window.addEventListener("mousemove", onMouseMove);
       window.addEventListener("mouseup", onMouseUp);
@@ -846,9 +843,9 @@ function setupControlPointInteractions(
   function onMouseUp() {
     if (!state.isDragging) return;
 
-    console.group("[drag] end");
-    console.log("points after:", JSON.parse(JSON.stringify(shape.points)));
-    console.groupEnd();
+    // console.group("[drag] end");
+    // console.log("points after:", JSON.parse(JSON.stringify(shape.points)));
+    // console.groupEnd();
 
     window.removeEventListener("mousemove", onMouseMove);
     window.removeEventListener("mouseup", onMouseUp);

@@ -337,11 +337,17 @@ export const createPdf = (
     drawResponsiveText(page, font, formData.material, 1050, 55 + OFFSET_Y, 120);
     drawResponsiveText(page, font, formData.gewicht, 1050, 135 + OFFSET_Y, 80);
 
+    // const bytes = await pdf.save();
+    // const blob = new Blob([bytes], { type: "application/pdf" });
+    // const link = document.createElement("a");
+    // link.href = URL.createObjectURL(blob);
+    // link.download = "custom_drawing.pdf";
+    // link.click();
+
+    // Save PDF and open in a new tab for preview
     const bytes = await pdf.save();
     const blob = new Blob([bytes], { type: "application/pdf" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = "custom_drawing.pdf";
-    link.click();
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank");
   };
 };

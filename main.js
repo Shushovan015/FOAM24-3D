@@ -784,7 +784,6 @@ function init3D() {
     if (dragged) {
       commit();
       if (selected) {
-        console.log(shapesArray, "arr");
         const otherIdx = shapesArray.findIndex(
           (s) => s !== selected && shapesIntersectGeneric(selected, s)
         );
