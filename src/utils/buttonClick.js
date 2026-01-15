@@ -7,7 +7,9 @@ export const buttonClick = (
   showPanelFromRight,
   additionalCallback = () => {}
 ) => {
-  document.querySelector(`#${buttonName}`).onclick = () => {
+  const btn = document.querySelector(`#${buttonName}`);
+  if (!btn) return; // element may not exist in current UI
+  btn.onclick = () => {
     document.querySelector("#back-button").removeAttribute("disabled");
     document.querySelector("#back-button").onclick = () => {
       document.querySelector("#back-button").setAttribute("disabled", "");
@@ -51,7 +53,9 @@ export const deleteButtonClick = (
   selected,
   showPanelFromLeft
 ) => {
-  document.querySelector(`#${buttonName}`).onclick = () => {
+  const btn = document.querySelector(`#${buttonName}`);
+  if (!btn) return;
+  btn.onclick = () => {
     shapesArray.splice(shapesArray.indexOf(selected), 1);
     commit();
     doCsg();
@@ -70,7 +74,9 @@ export const depthButtonClick = (
   showPanelFromRight,
   additionalCallback = () => {}
 ) => {
-  document.querySelector(`#${buttonName}`).onclick = () => {
+  const btn = document.querySelector(`#${buttonName}`);
+  if (!btn) return;
+  btn.onclick = () => {
     document.querySelector("#back-button").removeAttribute("disabled");
     document.querySelector("#back-button").onclick = () => {
       document.querySelector("#back-button").setAttribute("disabled", "");
@@ -86,34 +92,30 @@ export const depthButtonClick = (
 };
 
 export const sliderButtonClick = (sliderName, sliderInput, doCsg, callback) => {
-  document.querySelector(`#${sliderName}`).oninput = (e) => {
-    document.querySelector(`#${sliderInput}`).value = e.target.value;
+  const slider = document.querySelector(`#${sliderName}`);
+  const input = document.querySelector(`#${sliderInput}`);
+  if (!slider || !input) return;
+  slider.oninput = (e) => {
+    input.value = e.target.value;
     callback(Number(e.target.value));
-    // selected.radius = Number(e.target.value);
     doCsg();
   };
 };
 
 export const disableButton = (boolValue) => {
+  const depthBtn = document.querySelector("#polygon-depth-button");
+  const rotateBtn = document.querySelector("#polygon-rotate-button");
+  const deleteBtn = document.querySelector("#polygon-delete-button");
+
+  if (!depthBtn || !rotateBtn || !deleteBtn) return;
+
   if (boolValue) {
-    document
-      .querySelector("#polygon-depth-button")
-      .removeAttribute("disabled", "");
-    document
-      .querySelector("#polygon-rotate-button")
-      .removeAttribute("disabled", "");
-    document
-      .querySelector("#polygon-delete-button")
-      .removeAttribute("disabled", "");
+    depthBtn.removeAttribute("disabled");
+    rotateBtn.removeAttribute("disabled");
+    deleteBtn.removeAttribute("disabled");
   } else {
-    document
-      .querySelector("#polygon-depth-button")
-      .setAttribute("disabled", "");
-    document
-      .querySelector("#polygon-rotate-button")
-      .setAttribute("disabled", "");
-    document
-      .querySelector("#polygon-delete-button")
-      .setAttribute("disabled", "");
+    depthBtn.setAttribute("disabled", "");
+    rotateBtn.setAttribute("disabled", "");
+    deleteBtn.setAttribute("disabled", "");
   }
 };

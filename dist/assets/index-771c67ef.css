@@ -2499,6 +2499,7 @@ button.grow {
     opacity: 1;
     transform: none;
   }
+
   to {
     opacity: 0;
     transform: translateX(-25%);
@@ -2510,6 +2511,7 @@ button.grow {
     opacity: 0;
     transform: translateX(25%);
   }
+
   to {
     opacity: 1;
     transform: none;
@@ -2521,6 +2523,7 @@ button.grow {
     opacity: 1;
     transform: none;
   }
+
   to {
     opacity: 0;
     transform: translateX(25%);
@@ -2532,6 +2535,7 @@ button.grow {
     opacity: 0;
     transform: translateX(-25%);
   }
+
   to {
     opacity: 1;
     transform: none;
@@ -2543,6 +2547,7 @@ button.grow {
     opacity: 1;
     transform: none;
   }
+
   to {
     opacity: 0;
     transform: translateY(-25%);
@@ -2554,6 +2559,7 @@ button.grow {
     opacity: 0;
     transform: translateY(-25%);
   }
+
   to {
     opacity: 1;
     transform: none;
@@ -2646,7 +2652,8 @@ body {
   font-size: 16px;
   margin-bottom: 20px;
   z-index: 1000;
-  margin-left: 10px; /* Add some margin between buttons */
+  margin-left: 10px;
+  /* Add some margin between buttons */
 }
 
 .x-line,
@@ -2696,14 +2703,70 @@ body {
 
 #my-shapes-container {
   position: fixed;
-  display: none; /* Initially hide the container */
-  z-index: 2; /* Adjust z-index as needed */
+  display: none;
+  /* Initially hide the container */
+  z-index: 2;
+  /* Adjust z-index as needed */
   border-radius: 50px;
 }
 
 .edit-mode .control-element {
   pointer-events: none !important;
 }
+
+.edit-information {
+  position: fixed;
+  left: 50%;
+  bottom: 15px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 20px;
+  z-index: 1000;
+}
+
+
+.edit-note {
+  display: none;
+  color: black;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.edit-buttons {
+  display: none;
+  gap: 10px;
+}
+
+#photoshape-step-back {
+  background-color: #4caf50;
+  color: white;
+  padding: 10px 27px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 16px;
+  z-index: 1000;
+  margin-left: 10px;
+  /* Add some margin between buttons */
+}
+
+#photoshape-step-next {
+  background-color: #4caf50;
+  color: white;
+  padding: 10px 27px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 16px;
+  z-index: 1000;
+  margin-left: 10px;
+  /* Add some margin between buttons */
+}
+
+
 /* 
 .menu-container {
   position: fixed;

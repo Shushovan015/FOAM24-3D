@@ -783,6 +783,7 @@ export const createPdfIso = (foam, shapesArray, shapeToGeom2, opts = {}) => {
       PDF.rgb(0.4, 0.76, 0.65), // #66c2a5
     ];
 
+    let here1//draw top measurement inside
     const drawTop = () => {
       const foamCorners = [
         [foamRect.minX, foamRect.minY],
@@ -931,45 +932,473 @@ export const createPdfIso = (foam, shapesArray, shapeToGeom2, opts = {}) => {
       });
     };
 
+    let here; //draw top measurement outside
+    // const drawTop = () => {
+    //   const foamCorners = [
+    //     [foamRect.minX, foamRect.minY],
+    //     [foamRect.maxX, foamRect.minY],
+    //     [foamRect.maxX, foamRect.maxY],
+    //     [foamRect.minX, foamRect.maxY],
+    //   ];
+
+    //   const all = [...foamCorners, ...pockets.flatMap((p) => p.top2)];
+    //   const fit = fit2rect(all, boxTop, 18);
+    //   const s = fit.s,
+    //     tx = fit.tx,
+    //     ty = fit.ty;
+    //   const X = (x) => x * s + tx;
+    //   const Y = (y) => y * s + ty;
+
+    //   const foamCenterX = (foamRect.minX + foamRect.maxX) / 2;
+
+    //   const lineStyled = (a, b, style = {}) => {
+    //     const { color = PDF.rgb(0, 0, 0), thickness = cfg.dimStroke } = style;
+    //     page.drawLine({
+    //       start: { x: a[0], y: a[1] },
+    //       end: { x: b[0], y: b[1] },
+    //       thickness: safeThickness(thickness),
+    //       color,
+    //     });
+    //   };
+    //   const drawLoopStyled = (pts, color, thickness) => {
+    //     for (let i = 0; i < pts.length; i++) {
+    //       const a = pts[i],
+    //         b = pts[(i + 1) % pts.length];
+    //       lineStyled(a, b, { color, thickness });
+    //     }
+    //   };
+    //   const tick = (p, dir, color) => {
+    //     const len = 4;
+    //     const [dx, dy] = dir;
+    //     const mag = Math.hypot(dx, dy) || 1;
+    //     const ux = (dx / mag) * len,
+    //       uy = (dy / mag) * len;
+    //     const perp = [-uy, ux];
+    //     lineStyled(
+    //       [p[0] - perp[0], p[1] - perp[1]],
+    //       [p[0] + perp[0], p[1] + perp[1]],
+    //       { color, thickness: cfg.dimStroke }
+    //     );
+    //   };
+    //   const drawLabel = (txt, x, y, color) => {
+    //     const w = font.widthOfTextAtSize(txt, cfg.fontSize);
+    //     const h = cfg.fontSize;
+    //     const pad = 2;
+    //     page.drawRectangle({
+    //       x: x - w / 2 - pad,
+    //       y: y - h / 2 - pad / 2,
+    //       width: w + 2 * pad,
+    //       height: h + pad,
+    //       color: PDF.rgb(1, 1, 1),
+    //       borderColor: PDF.rgb(1, 1, 1),
+    //       borderWidth: 0,
+    //     });
+    //     page.drawText(txt, {
+    //       x: x - w / 2,
+    //       y: y - h / 2,
+    //       size: cfg.fontSize,
+    //       font,
+    //       color,
+    //     });
+    //   };
+
+    //   // Draw foam outline
+    //   drawLoopStyled(
+    //     foamCorners.map(([x, y]) => [X(x), Y(y)]),
+    //     PDF.rgb(0, 0, 0),
+    //     cfg.strokeThickness || 1
+    //   );
+
+    //   // Group pockets by foam center (left/right halves)
+    //   const leftGroup = pockets
+    //     .filter((p) => (p.bb.minX + p.bb.maxX) / 2 <= foamCenterX)
+    //     .sort((a, b) => a.bb.minX + a.bb.maxX - (b.bb.minX + b.bb.maxX));
+    //   const rightGroup = pockets
+    //     .filter((p) => (p.bb.minX + p.bb.maxX) / 2 > foamCenterX)
+    //     .sort((a, b) => a.bb.minX + a.bb.maxX - (b.bb.minX + b.bb.maxX));
+
+    //   // Spacing for stacked dimensions (top rows extend upward, bottom rows downward)
+    //   const H_BASE_TOP_L = Y(foamRect.maxY) + 14;
+    //   const H_BASE_TOP_R = Y(foamRect.maxY) + 14;
+    //   const H_BASE_BOTTOM_L = Y(foamRect.minY) - 14;
+    //   const H_BASE_BOTTOM_R = Y(foamRect.minY) - 14;
+    //   const H_STEP = 16;
+    //   const V_BASE_L = X(foamRect.minX) - 18;
+    //   const V_BASE_R = X(foamRect.maxX) + 18;
+    //   const V_STEP = 16;
+    //   const V_LABEL_Y_STEP = 22; // bigger stagger between pockets
+    //   const V_LABEL_SIDE_OFFSET = 8; // slight side-based offset to avoid mirroring
+
+    //   const dimH = (x1, x2, yPx, color, label, labelOffset = 3) => {
+    //     const A = [X(x1), yPx],
+    //       B = [X(x2), yPx];
+    //     lineStyled(A, B, { color, thickness: cfg.dimStroke });
+    //     tick(A, [B[0] - A[0], B[1] - A[1]], color);
+    //     tick(B, [A[0] - B[0], A[1] - B[1]], color);
+    //     const midX = (A[0] + B[0]) / 2;
+    //     drawLabel(label, midX, yPx + labelOffset, color);
+    //   };
+
+    //   const dimV = (xPx, y1, y2, color, label, labelYOffset = 0) => {
+    //     const A = [xPx, Y(y1)],
+    //       B = [xPx, Y(y2)];
+    //     lineStyled(A, B, { color, thickness: cfg.dimStroke });
+    //     tick(A, [A[0] - B[0], A[1] - B[1]], color);
+    //     tick(B, [B[0] - A[0], B[1] - A[1]], color);
+    //     const midY = (A[1] + B[1]) / 2;
+    //     drawLabel(label, xPx, midY + labelYOffset, color);
+    //   };
+
+    //   const drawPocketDims = (
+    //     p,
+    //     color,
+    //     hIdx,
+    //     vIdx,
+    //     isLeftSide,
+    //     isTopRow
+    //   ) => {
+    //     const { minX, maxX, minY, maxY } = p.bb;
+    //     const width = maxX - minX;
+    //     const height = maxY - minY;
+    //     const gapL = minX - foamRect.minX;
+    //     const gapR = foamRect.maxX - maxX;
+    //     const gapB = minY - foamRect.minY;
+    //     const gapT = foamRect.maxY - maxY;
+
+    //     const yDimBase = isTopRow
+    //       ? isLeftSide
+    //         ? H_BASE_TOP_L
+    //         : H_BASE_TOP_R
+    //       : isLeftSide
+    //         ? H_BASE_BOTTOM_L
+    //         : H_BASE_BOTTOM_R;
+    //     const yDir = isTopRow ? 1 : -1;
+    //     const yDim = yDimBase + yDir * hIdx * H_STEP;
+    //     const yDim2 = yDim + yDir * 7; // slight separation between two stacked dims
+    //     const labelOffsetH = isTopRow ? 3 : -3;
+
+    //     if (isLeftSide) {
+    //       dimH(foamRect.minX, minX, yDim, color, absmm(gapL), labelOffsetH);
+    //       dimH(minX, maxX, yDim2, color, absmm(width), labelOffsetH);
+    //     } else {
+    //       dimH(minX, maxX, yDim, color, absmm(width), labelOffsetH);
+    //       dimH(maxX, foamRect.maxX, yDim2, color, absmm(gapR), labelOffsetH);
+    //     }
+
+    //     // Stagger vertical labels by pocket index and side
+    //     const baseYOffset = vIdx * V_LABEL_Y_STEP;
+    //     const sideOffset = isLeftSide ? -V_LABEL_SIDE_OFFSET : V_LABEL_SIDE_OFFSET;
+    //     const offsets = [
+    //       baseYOffset - 10 + sideOffset,
+    //       baseYOffset + sideOffset,
+    //       baseYOffset + 10 + sideOffset,
+    //     ];
+
+    //     const xDim = isLeftSide ? V_BASE_L - vIdx * V_STEP : V_BASE_R + vIdx * V_STEP;
+    //     dimV(xDim, foamRect.minY, minY, color, absmm(gapB), offsets[0]);
+    //     dimV(xDim, minY, maxY, color, absmm(height), offsets[1]);
+    //     dimV(xDim, maxY, foamRect.maxY, color, absmm(gapT), offsets[2]);
+    //   };
+
+    //   const renderGroup = (group, isLeftSide) => {
+    //     const annotated = group.map((p, idx) => ({
+    //       pocket: p,
+    //       color: pocketColors[idx % pocketColors.length],
+    //       originalIdx: idx,
+    //     }));
+
+    //     // Draw outlines and labels first
+    //     annotated.forEach(({ pocket, color }) => {
+    //       drawLoopStyled(
+    //         pocket.top2.map(([x, y]) => [X(x), Y(y)]),
+    //         color,
+    //         cfg.strokeThickness || 1
+    //       );
+    //       const cx = X((pocket.bb.minX + pocket.bb.maxX) / 2);
+    //       const cy = Y((pocket.bb.minY + pocket.bb.maxY) / 2);
+    //       const lbl = safeText(pocket.name);
+    //       drawLabel(lbl, cx, cy, color);
+    //     });
+
+    //     // Split dims across top/bottom rows to reduce overlaps
+    //     const half = Math.ceil(annotated.length / 2);
+    //     const topRow = annotated.slice(0, half);
+    //     const bottomRow = annotated.slice(half);
+
+    //     const renderDims = (list, isTopRow) => {
+    //       list.forEach(({ pocket, color, originalIdx }, localIdx) => {
+    //         drawPocketDims(
+    //           pocket,
+    //           color,
+    //           localIdx,
+    //           originalIdx,
+    //           isLeftSide,
+    //           isTopRow
+    //         );
+    //       });
+    //     };
+
+    //     renderDims(topRow, true);
+    //     renderDims(bottomRow, false);
+    //   };
+
+    //   renderGroup(leftGroup, true);
+    //   renderGroup(rightGroup, false);
+
+    //   const cap = "Top View";
+    //   page.drawText(cap, {
+    //     x: boxTop.cx - font.widthOfTextAtSize(cap, cfg.fontSize) / 2,
+    //     y: boxTop.cy - boxTop.h / 2 + 4,
+    //     size: cfg.fontSize,
+    //     font,
+    //   });
+    // };
+
+    let here3; //drawTop with labels and dimensions
+    // const drawTop = () => {
+    //   const foamCorners = [
+    //     [foamRect.minX, foamRect.minY],
+    //     [foamRect.maxX, foamRect.minY],
+    //     [foamRect.maxX, foamRect.maxY],
+    //     [foamRect.minX, foamRect.maxY],
+    //   ];
+
+    //   const all = [...foamCorners, ...pockets.flatMap((p) => p.top2)];
+    //   const fit = fit2rect(all, boxTop, 18);
+    //   const s = fit.s,
+    //     tx = fit.tx,
+    //     ty = fit.ty;
+    //   const X = (x) => x * s + tx;
+    //   const Y = (y) => y * s + ty;
+
+    //   const lineStyled = (a, b, style = {}) => {
+    //     const { color = PDF.rgb(0, 0, 0), thickness = cfg.dimStroke } = style;
+    //     page.drawLine({
+    //       start: { x: a[0], y: a[1] },
+    //       end: { x: b[0], y: b[1] },
+    //       thickness: safeThickness(thickness),
+    //       color,
+    //     });
+    //   };
+    //   const drawLoopStyled = (pts, color, thickness) => {
+    //     for (let i = 0; i < pts.length; i++) {
+    //       const a = pts[i],
+    //         b = pts[(i + 1) % pts.length];
+    //       lineStyled(a, b, { color, thickness });
+    //     }
+    //   };
+    //   const drawLabel = (txt, x, y, color, size = cfg.fontSize) => {
+    //     const w = font.widthOfTextAtSize(txt, size);
+    //     const h = size;
+    //     const pad = 2;
+    //     page.drawRectangle({
+    //       x: x - w / 2 - pad,
+    //       y: y - h / 2 - pad / 2,
+    //       width: w + 2 * pad,
+    //       height: h + pad,
+    //       color: PDF.rgb(1, 1, 1),
+    //       borderColor: PDF.rgb(1, 1, 1),
+    //       borderWidth: 0,
+    //     });
+    //     page.drawText(txt, { x: x - w / 2, y: y - h / 2, size, font, color });
+    //   };
+
+    //   // Draw foam outline
+    //   drawLoopStyled(
+    //     foamCorners.map(([x, y]) => [X(x), Y(y)]),
+    //     PDF.rgb(0, 0, 0),
+    //     cfg.strokeThickness || 1
+    //   );
+
+    //   // Draw pockets with inside labels; collect legend rows
+    //   const legendRows = [];
+    //   pockets.forEach((p, i) => {
+    //     const color = pocketColors[i % pocketColors.length];
+    //     const { minX, maxX, minY, maxY } = p.bb;
+    //     const widthVal = maxX - minX;
+    //     const heightVal = maxY - minY;
+    //     const leftOff = minX - foamRect.minX;
+    //     const rightOff = foamRect.maxX - maxX;
+    //     const bottomOff = minY - foamRect.minY;
+    //     const topOff = foamRect.maxY - maxY;
+
+    //     drawLoopStyled(
+    //       p.top2.map(([x, y]) => [X(x), Y(y)]),
+    //       color,
+    //       cfg.strokeThickness || 1
+    //     );
+
+    //     const cx = X((minX + maxX) / 2);
+    //     const cy = Y((minY + maxY) / 2);
+    //     drawLabel(safeText(p.name || `Pocket ${i + 1}`), cx, cy, color);
+    //     const whLabel = `${absmm(widthVal)} × ${absmm(heightVal)}`;
+    //     drawLabel(whLabel, cx, cy - cfg.fontSize - 2, color, cfg.fontSize - 1);
+
+    //     legendRows.push({
+    //       name: safeText(p.name || `Pocket ${i + 1}`),
+    //       w: absmm(widthVal),
+    //       h: absmm(heightVal),
+    //       left: absmm(leftOff),
+    //       right: absmm(rightOff),
+    //       bottom: absmm(bottomOff),
+    //       top: absmm(topOff),
+    //       color,
+    //     });
+    //   });
+
+    //   // Legend table to the right of the top view
+    //   const legendFont = cfg.fontSize - 1;
+    //   const legendRowH = legendFont + 4;
+    //   const colHeaders = [
+    //     "Pocket",
+    //     "Width",
+    //     "Height",
+    //     "Left",
+    //     "Right",
+    //     "Bottom",
+    //     "Top",
+    //   ];
+    //   const colWidths = [70, 55, 55, 55, 55, 60, 55];
+    //   const tableWidth = colWidths.reduce((a, b) => a + b, 0) + 8;
+    //   const tableX = boxTop.cx + boxTop.w / 2 + 16;
+    //   const tableY = boxTop.cy + boxTop.h / 2 - 8;
+
+    //   const drawCell = (
+    //     txt,
+    //     x,
+    //     y,
+    //     w,
+    //     align = "left",
+    //     color = PDF.rgb(0, 0, 0)
+    //   ) => {
+    //     const tw = font.widthOfTextAtSize(txt, legendFont);
+    //     let tx = x + 4;
+    //     if (align === "right") tx = x + w - tw - 4;
+    //     if (align === "center") tx = x + (w - tw) / 2;
+    //     page.drawText(txt, { x: tx, y, size: legendFont, font, color });
+    //   };
+
+    //   // Header background
+    //   page.drawRectangle({
+    //     x: tableX,
+    //     y: tableY,
+    //     width: tableWidth,
+    //     height: legendRowH,
+    //     color: PDF.rgb(0.95, 0.95, 0.95),
+    //   });
+
+    //   // Headers
+    //   let cxAccum = tableX + 4;
+    //   colHeaders.forEach((h, idx) => {
+    //     drawCell(h, cxAccum - 4, tableY + 2, colWidths[idx], "left");
+    //     cxAccum += colWidths[idx];
+    //   });
+
+    //   // Rows
+    //   legendRows.forEach((row, rIdx) => {
+    //     const y = tableY - legendRowH * (rIdx + 1) + 2;
+    //     let x = tableX;
+    //     drawCell(row.name, x, y, colWidths[0], "left", row.color);
+    //     x += colWidths[0];
+    //     drawCell(row.w, x, y, colWidths[1], "right", row.color);
+    //     x += colWidths[1];
+    //     drawCell(row.h, x, y, colWidths[2], "right", row.color);
+    //     x += colWidths[2];
+    //     drawCell(row.left, x, y, colWidths[3], "right", row.color);
+    //     x += colWidths[3];
+    //     drawCell(row.right, x, y, colWidths[4], "right", row.color);
+    //     x += colWidths[4];
+    //     drawCell(row.bottom, x, y, colWidths[5], "right", row.color);
+    //     x += colWidths[5];
+    //     drawCell(row.top, x, y, colWidths[6], "right", row.color);
+    //   });
+
+    //   // Caption
+    //   const cap = "Top View";
+    //   page.drawText(cap, {
+    //     x: boxTop.cx - font.widthOfTextAtSize(cap, cfg.fontSize) / 2,
+    //     y: boxTop.cy - boxTop.h / 2 + 4,
+    //     size: cfg.fontSize,
+    //     font,
+    //   });
+
+    //   // Units note
+    //   const unitNote = `Dimensions: ${cfg.labelUnit}`;
+    //   page.drawText(unitNote, {
+    //     x: tableX,
+    //     y: boxTop.cy - boxTop.h / 2 + 6,
+    //     size: legendFont,
+    //     font,
+    //     color: PDF.rgb(0.2, 0.2, 0.2),
+    //   });
+    // };
+    let here2
     // 7) Front (X–Z) and Side (Y–Z)
     const drawFront = () => {
+      // Fit includes foam height and pocket depths
       const all = [
         [foamRect.minX, 0],
         [foamRect.maxX, foam.sizeZ],
+        ...pockets.flatMap((p) => [
+          [p.bb.minX, p.depth || 0],
+          [p.bb.maxX, p.depth || 0],
+        ]),
       ];
       const fit = fit2rect(all, boxFront, 18);
       const T = (p) => fit.transform(p);
 
-      drawLoop(
-        page,
+      const drawLoopStyled = (pts, thickness = cfg.stroke, color = PDF.rgb(0, 0, 0)) => {
+        for (let i = 0; i < pts.length; i++) {
+          const a = pts[i];
+          const b = pts[(i + 1) % pts.length];
+          page.drawLine({
+            start: { x: a[0], y: a[1] },
+            end: { x: b[0], y: b[1] },
+            thickness: safeThickness(thickness),
+            color,
+          });
+        }
+      };
+
+      // Foam outline (black)
+      drawLoopStyled(
         [
           [foamRect.minX, 0],
           [foamRect.maxX, 0],
           [foamRect.maxX, foam.sizeZ],
           [foamRect.minX, foam.sizeZ],
         ].map(T),
-        cfg.stroke
+        cfg.stroke,
+        PDF.rgb(0, 0, 0)
       );
 
-      for (const p of pockets) {
-        const r = [
+      // Pockets: black outline + single depth label
+      pockets.forEach((p) => {
+        const depth = p.depth || 0;
+        const rect = [
           [p.bb.minX, 0],
           [p.bb.maxX, 0],
-          [p.bb.maxX, p.depth],
-          [p.bb.minX, p.depth],
+          [p.bb.maxX, depth],
+          [p.bb.minX, depth],
         ].map(T);
-        drawLoop(page, r, cfg.stroke);
-        if (cfg.showDepthInside && p.depth > 0) {
-          const mid = [(r[0][0] + r[1][0]) / 2, (r[1][1] + r[2][1]) / 2];
-          const lbl = absmm(p.depth);
+
+        drawLoopStyled(rect, cfg.stroke, PDF.rgb(0, 0, 0));
+
+        if (depth > 0 && cfg.showDepthInside) {
+          const mid = [
+            (rect[0][0] + rect[1][0]) / 2,
+            (rect[1][1] + rect[2][1]) / 2,
+          ];
+          const lbl = absmm(depth);
           page.drawText(lbl, {
             x: mid[0] - font.widthOfTextAtSize(lbl, cfg.fontSize) / 2,
             y: mid[1] - cfg.fontSize / 2,
             size: cfg.fontSize,
             font,
+            color: PDF.rgb(0, 0, 0),
           });
         }
-      }
+      });
 
       const cap = "Front View";
       page.drawText(cap, {
@@ -981,43 +1410,99 @@ export const createPdfIso = (foam, shapesArray, shapeToGeom2, opts = {}) => {
     };
 
     const drawSide = () => {
+      // Fit includes foam height and all pocket depths
       const all = [
         [foamRect.minY, 0],
         [foamRect.maxY, foam.sizeZ],
+        ...pockets.flatMap((p) => [
+          [p.bb.minY, p.depth || 0],
+          [p.bb.maxY, p.depth || 0],
+        ]),
       ];
       const fit = fit2rect(all, boxSide, 18);
       const T = (p) => fit.transform(p);
 
-      drawLoop(
-        page,
+      const drawLoopStyled = (pts, thickness = cfg.stroke, color = PDF.rgb(0, 0, 0)) => {
+        for (let i = 0; i < pts.length; i++) {
+          const a = pts[i];
+          const b = pts[(i + 1) % pts.length];
+          page.drawLine({
+            start: { x: a[0], y: a[1] },
+            end: { x: b[0], y: b[1] },
+            thickness: safeThickness(thickness),
+            color,
+          });
+        }
+      };
+
+      // Foam outline (black)
+      drawLoopStyled(
         [
           [foamRect.minY, 0],
           [foamRect.maxY, 0],
           [foamRect.maxY, foam.sizeZ],
           [foamRect.minY, foam.sizeZ],
         ].map(T),
-        cfg.stroke
+        cfg.stroke,
+        PDF.rgb(0, 0, 0)
       );
 
-      for (const p of pockets) {
-        const r = [
+      // Pockets: black outline + depth label + dimension line
+      pockets.forEach((p) => {
+        const depth = p.depth || 0;
+        const rect = [
           [p.bb.minY, 0],
           [p.bb.maxY, 0],
-          [p.bb.maxY, p.depth],
-          [p.bb.minY, p.depth],
+          [p.bb.maxY, depth],
+          [p.bb.minY, depth],
         ].map(T);
-        drawLoop(page, r, cfg.stroke);
-        if (cfg.showDepthInside && p.depth > 0) {
-          const mid = [(r[0][0] + r[1][0]) / 2, (r[1][1] + r[2][1]) / 2];
-          const lbl = absmm(p.depth);
+
+        drawLoopStyled(rect, cfg.stroke, PDF.rgb(0, 0, 0));
+
+        if (depth > 0 && cfg.showDepthInside) {
+          const mid = [
+            (rect[0][0] + rect[1][0]) / 2,
+            (rect[1][1] + rect[2][1]) / 2,
+          ];
+          const lbl = absmm(depth);
           page.drawText(lbl, {
             x: mid[0] - font.widthOfTextAtSize(lbl, cfg.fontSize) / 2,
             y: mid[1] - cfg.fontSize / 2,
             size: cfg.fontSize,
             font,
+            color: PDF.rgb(0, 0, 0),
+          });
+
+          // Depth dimension line to the right of the pocket
+          const dimX = rect[1][0] + 10;
+          page.drawLine({
+            start: { x: dimX, y: rect[0][1] },
+            end: { x: dimX, y: rect[1][1] },
+            thickness: safeThickness(cfg.dimStroke),
+            color: PDF.rgb(0, 0, 0),
+          });
+          // ticks
+          page.drawLine({
+            start: { x: dimX - 4, y: rect[0][1] },
+            end: { x: dimX + 4, y: rect[0][1] },
+            thickness: safeThickness(cfg.dimStroke),
+            color: PDF.rgb(0, 0, 0),
+          });
+          page.drawLine({
+            start: { x: dimX - 4, y: rect[1][1] },
+            end: { x: dimX + 4, y: rect[1][1] },
+            thickness: safeThickness(cfg.dimStroke),
+            color: PDF.rgb(0, 0, 0),
+          });
+          page.drawText(lbl, {
+            x: dimX + 6,
+            y: mid[1] - cfg.fontSize / 2,
+            size: cfg.fontSize,
+            font,
+            color: PDF.rgb(0, 0, 0),
           });
         }
-      }
+      });
 
       const cap = "Side View";
       page.drawText(cap, {
@@ -1027,6 +1512,7 @@ export const createPdfIso = (foam, shapesArray, shapeToGeom2, opts = {}) => {
         font,
       });
     };
+
 
     // 8) Isometric
     const drawIso = () => {
@@ -1086,6 +1572,7 @@ export const createPdfIso = (foam, shapesArray, shapeToGeom2, opts = {}) => {
         font,
       });
     };
+
 
     // 9) Draw all
     drawTop();

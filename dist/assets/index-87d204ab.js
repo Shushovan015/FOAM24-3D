@@ -21672,7 +21672,10 @@ function confirmMerge(shapeA, shapeB, callback) {
 }
 const buttonClick = (buttonName, panelLeft, panelRight, selected2, showPanelFromLeft2, showPanelFromRight2, additionalCallback = () => {
 }) => {
-  document.querySelector(`#${buttonName}`).onclick = () => {
+  const btn = document.querySelector(`#${buttonName}`);
+  if (!btn)
+    return;
+  btn.onclick = () => {
     document.querySelector("#back-button").removeAttribute("disabled");
     document.querySelector("#back-button").onclick = () => {
       document.querySelector("#back-button").setAttribute("disabled", "");
@@ -21683,7 +21686,10 @@ const buttonClick = (buttonName, panelLeft, panelRight, selected2, showPanelFrom
   };
 };
 const deleteButtonClick = (buttonName, shapesArray2, commit2, doCsg2, selected2, showPanelFromLeft2) => {
-  document.querySelector(`#${buttonName}`).onclick = () => {
+  const btn = document.querySelector(`#${buttonName}`);
+  if (!btn)
+    return;
+  btn.onclick = () => {
     shapesArray2.splice(shapesArray2.indexOf(selected2), 1);
     commit2();
     doCsg2();
@@ -21694,7 +21700,10 @@ const deleteButtonClick = (buttonName, shapesArray2, commit2, doCsg2, selected2,
 };
 const depthButtonClick = (buttonName, panelLeft, panelRight, selected2, showPanelFromLeft2, showPanelFromRight2, additionalCallback = () => {
 }) => {
-  document.querySelector(`#${buttonName}`).onclick = () => {
+  const btn = document.querySelector(`#${buttonName}`);
+  if (!btn)
+    return;
+  btn.onclick = () => {
     document.querySelector("#back-button").removeAttribute("disabled");
     document.querySelector("#back-button").onclick = () => {
       document.querySelector("#back-button").setAttribute("disabled", "");
@@ -21708,21 +21717,30 @@ const depthButtonClick = (buttonName, panelLeft, panelRight, selected2, showPane
   };
 };
 const sliderButtonClick = (sliderName, sliderInput, doCsg2, callback) => {
-  document.querySelector(`#${sliderName}`).oninput = (e) => {
-    document.querySelector(`#${sliderInput}`).value = e.target.value;
+  const slider = document.querySelector(`#${sliderName}`);
+  const input = document.querySelector(`#${sliderInput}`);
+  if (!slider || !input)
+    return;
+  slider.oninput = (e) => {
+    input.value = e.target.value;
     callback(Number(e.target.value));
     doCsg2();
   };
 };
 const disableButton = (boolValue) => {
+  const depthBtn = document.querySelector("#polygon-depth-button");
+  const rotateBtn = document.querySelector("#polygon-rotate-button");
+  const deleteBtn = document.querySelector("#polygon-delete-button");
+  if (!depthBtn || !rotateBtn || !deleteBtn)
+    return;
   if (boolValue) {
-    document.querySelector("#polygon-depth-button").removeAttribute("disabled", "");
-    document.querySelector("#polygon-rotate-button").removeAttribute("disabled", "");
-    document.querySelector("#polygon-delete-button").removeAttribute("disabled", "");
+    depthBtn.removeAttribute("disabled");
+    rotateBtn.removeAttribute("disabled");
+    deleteBtn.removeAttribute("disabled");
   } else {
-    document.querySelector("#polygon-depth-button").setAttribute("disabled", "");
-    document.querySelector("#polygon-rotate-button").setAttribute("disabled", "");
-    document.querySelector("#polygon-delete-button").setAttribute("disabled", "");
+    depthBtn.setAttribute("disabled", "");
+    rotateBtn.setAttribute("disabled", "");
+    deleteBtn.setAttribute("disabled", "");
   }
 };
 const flatten$L = (arr) => arr.reduce((acc, val) => Array.isArray(val) ? acc.concat(flatten$L(val)) : acc.concat(val), []);
@@ -53960,39 +53978,60 @@ const createPdfIso = (foam2, shapesArray2, shapeToGeom22, opts = {}) => {
     const drawFront = () => {
       const all = [
         [foamRect.minX, 0],
-        [foamRect.maxX, foam2.sizeZ]
+        [foamRect.maxX, foam2.sizeZ],
+        ...pockets.flatMap((p) => [
+          [p.bb.minX, p.depth || 0],
+          [p.bb.maxX, p.depth || 0]
+        ])
       ];
       const fit = fit2rect(all, boxFront, 18);
       const T = (p) => fit.transform(p);
-      drawLoop(
-        page,
+      const drawLoopStyled = (pts, thickness = cfg.stroke, color = rgb(0, 0, 0)) => {
+        for (let i = 0; i < pts.length; i++) {
+          const a = pts[i];
+          const b = pts[(i + 1) % pts.length];
+          page.drawLine({
+            start: { x: a[0], y: a[1] },
+            end: { x: b[0], y: b[1] },
+            thickness: safeThickness(thickness),
+            color
+          });
+        }
+      };
+      drawLoopStyled(
         [
           [foamRect.minX, 0],
           [foamRect.maxX, 0],
           [foamRect.maxX, foam2.sizeZ],
           [foamRect.minX, foam2.sizeZ]
         ].map(T),
-        cfg.stroke
+        cfg.stroke,
+        rgb(0, 0, 0)
       );
-      for (const p of pockets) {
-        const r = [
+      pockets.forEach((p) => {
+        const depth = p.depth || 0;
+        const rect = [
           [p.bb.minX, 0],
           [p.bb.maxX, 0],
-          [p.bb.maxX, p.depth],
-          [p.bb.minX, p.depth]
+          [p.bb.maxX, depth],
+          [p.bb.minX, depth]
         ].map(T);
-        drawLoop(page, r, cfg.stroke);
-        if (cfg.showDepthInside && p.depth > 0) {
-          const mid = [(r[0][0] + r[1][0]) / 2, (r[1][1] + r[2][1]) / 2];
-          const lbl = absmm(p.depth);
+        drawLoopStyled(rect, cfg.stroke, rgb(0, 0, 0));
+        if (depth > 0 && cfg.showDepthInside) {
+          const mid = [
+            (rect[0][0] + rect[1][0]) / 2,
+            (rect[1][1] + rect[2][1]) / 2
+          ];
+          const lbl = absmm(depth);
           page.drawText(lbl, {
             x: mid[0] - font.widthOfTextAtSize(lbl, cfg.fontSize) / 2,
             y: mid[1] - cfg.fontSize / 2,
             size: cfg.fontSize,
-            font
+            font,
+            color: rgb(0, 0, 0)
           });
         }
-      }
+      });
       const cap = "Front View";
       page.drawText(cap, {
         x: boxFront.cx - font.widthOfTextAtSize(cap, cfg.fontSize) / 2,
@@ -54004,39 +54043,86 @@ const createPdfIso = (foam2, shapesArray2, shapeToGeom22, opts = {}) => {
     const drawSide = () => {
       const all = [
         [foamRect.minY, 0],
-        [foamRect.maxY, foam2.sizeZ]
+        [foamRect.maxY, foam2.sizeZ],
+        ...pockets.flatMap((p) => [
+          [p.bb.minY, p.depth || 0],
+          [p.bb.maxY, p.depth || 0]
+        ])
       ];
       const fit = fit2rect(all, boxSide, 18);
       const T = (p) => fit.transform(p);
-      drawLoop(
-        page,
+      const drawLoopStyled = (pts, thickness = cfg.stroke, color = rgb(0, 0, 0)) => {
+        for (let i = 0; i < pts.length; i++) {
+          const a = pts[i];
+          const b = pts[(i + 1) % pts.length];
+          page.drawLine({
+            start: { x: a[0], y: a[1] },
+            end: { x: b[0], y: b[1] },
+            thickness: safeThickness(thickness),
+            color
+          });
+        }
+      };
+      drawLoopStyled(
         [
           [foamRect.minY, 0],
           [foamRect.maxY, 0],
           [foamRect.maxY, foam2.sizeZ],
           [foamRect.minY, foam2.sizeZ]
         ].map(T),
-        cfg.stroke
+        cfg.stroke,
+        rgb(0, 0, 0)
       );
-      for (const p of pockets) {
-        const r = [
+      pockets.forEach((p) => {
+        const depth = p.depth || 0;
+        const rect = [
           [p.bb.minY, 0],
           [p.bb.maxY, 0],
-          [p.bb.maxY, p.depth],
-          [p.bb.minY, p.depth]
+          [p.bb.maxY, depth],
+          [p.bb.minY, depth]
         ].map(T);
-        drawLoop(page, r, cfg.stroke);
-        if (cfg.showDepthInside && p.depth > 0) {
-          const mid = [(r[0][0] + r[1][0]) / 2, (r[1][1] + r[2][1]) / 2];
-          const lbl = absmm(p.depth);
+        drawLoopStyled(rect, cfg.stroke, rgb(0, 0, 0));
+        if (depth > 0 && cfg.showDepthInside) {
+          const mid = [
+            (rect[0][0] + rect[1][0]) / 2,
+            (rect[1][1] + rect[2][1]) / 2
+          ];
+          const lbl = absmm(depth);
           page.drawText(lbl, {
             x: mid[0] - font.widthOfTextAtSize(lbl, cfg.fontSize) / 2,
             y: mid[1] - cfg.fontSize / 2,
             size: cfg.fontSize,
-            font
+            font,
+            color: rgb(0, 0, 0)
+          });
+          const dimX = rect[1][0] + 10;
+          page.drawLine({
+            start: { x: dimX, y: rect[0][1] },
+            end: { x: dimX, y: rect[1][1] },
+            thickness: safeThickness(cfg.dimStroke),
+            color: rgb(0, 0, 0)
+          });
+          page.drawLine({
+            start: { x: dimX - 4, y: rect[0][1] },
+            end: { x: dimX + 4, y: rect[0][1] },
+            thickness: safeThickness(cfg.dimStroke),
+            color: rgb(0, 0, 0)
+          });
+          page.drawLine({
+            start: { x: dimX - 4, y: rect[1][1] },
+            end: { x: dimX + 4, y: rect[1][1] },
+            thickness: safeThickness(cfg.dimStroke),
+            color: rgb(0, 0, 0)
+          });
+          page.drawText(lbl, {
+            x: dimX + 6,
+            y: mid[1] - cfg.fontSize / 2,
+            size: cfg.fontSize,
+            font,
+            color: rgb(0, 0, 0)
           });
         }
-      }
+      });
       const cap = "Side View";
       page.drawText(cap, {
         x: boxSide.cx - font.widthOfTextAtSize(cap, cfg.fontSize) / 2,
@@ -54410,13 +54496,264 @@ const createShapeRectangle = (millimeters2, selected2, shapesArray2, commit2, sh
   };
 };
 const createShapePhotoShape = (millimeters2, selected2, shapesArray2, commit2, showPanelFromLeft2, showPanelFromRight2, doCsg2, display2D2, callback, callback1, camera2, renderer2, scene2) => {
+  const stepUI = {
+    container: document.querySelector("#photoshape-stepper"),
+    steps: Array.from(document.querySelectorAll("[data-photoshape-step]")),
+    note: document.querySelector("#photoshape-step-note"),
+    back: document.querySelector("#photoshape-step-back"),
+    next: document.querySelector("#photoshape-step-next")
+  };
+  let photoshapeFlowActive = false;
+  let photoshapeFlowReady = false;
+  let photoshapeStep = 1;
+  const setPhotoshapeFlowActive = (active) => {
+    photoshapeFlowActive = active;
+    if (stepUI.container) {
+      stepUI.container.style.display = active ? "block" : "none";
+    }
+  };
+  const setPhotoshapeStep = (step, options = {}) => {
+    photoshapeStep = step;
+    if (stepUI.note && typeof options.note === "string") {
+      stepUI.note.textContent = options.note;
+    }
+    if (stepUI.back && typeof options.canBack === "boolean") {
+      stepUI.back.disabled = !options.canBack;
+    }
+    if (stepUI.next && typeof options.canNext === "boolean") {
+      stepUI.next.disabled = !options.canNext;
+    }
+    if (stepUI.next && typeof options.nextLabel === "string") {
+      stepUI.next.textContent = options.nextLabel;
+    }
+    if (stepUI.back && typeof options.backLabel === "string") {
+      stepUI.back.textContent = options.backLabel;
+    }
+    if (stepUI.steps && stepUI.steps.length) {
+      stepUI.steps.forEach((el) => {
+        const stepNum = parseInt(el.getAttribute("data-photoshape-step"), 10);
+        if (!Number.isNaN(stepNum)) {
+          el.style.opacity = stepNum <= photoshapeStep ? "1" : "0.35";
+          el.style.fontWeight = stepNum === photoshapeStep ? "700" : "400";
+        }
+      });
+    }
+  };
+  const photoshapeSession = {
+    ids: [],
+    index: 0
+  };
+  const selectPhotoshapeByIndex = (idx) => {
+    if (!photoshapeSession.ids.length)
+      return;
+    const id = photoshapeSession.ids[idx];
+    const nextShape = shapesArray2.find((s) => s.id === id);
+    if (!nextShape)
+      return;
+    selected2 = nextShape;
+    callback(selected2);
+    showPanelFromRight2(selected2.kind + "-panel");
+  };
+  const getPhotoshapeNextLabel = () => {
+    if (!photoshapeSession.ids.length)
+      return "Finish";
+    return photoshapeSession.index < photoshapeSession.ids.length - 1 ? "Next" : "Finish";
+  };
+  photoshapeSession.visited = /* @__PURE__ */ new Set();
+  photoshapeSession.remaining = 0;
+  const beginPhotoshapeEditSession = () => {
+    photoshapeSession.visited.clear();
+    photoshapeSession.remaining = photoshapeSession.ids.length;
+    let startIdx = 0;
+    if (selected2 && selected2.id) {
+      const idx = photoshapeSession.ids.indexOf(selected2.id);
+      if (idx !== -1)
+        startIdx = idx;
+    }
+    photoshapeSession.index = startIdx;
+  };
+  const markCurrentAsVisited = () => {
+    const id = photoshapeSession.ids[photoshapeSession.index];
+    if (id && !photoshapeSession.visited.has(id)) {
+      photoshapeSession.visited.add(id);
+      photoshapeSession.remaining = Math.max(0, photoshapeSession.remaining - 1);
+    }
+  };
+  const findNextUnvisitedIndex = () => {
+    const total = photoshapeSession.ids.length;
+    for (let step = 1; step <= total; step++) {
+      const idx = (photoshapeSession.index + step) % total;
+      const id = photoshapeSession.ids[idx];
+      if (!photoshapeSession.visited.has(id))
+        return idx;
+    }
+    return -1;
+  };
+  const advanceToNextUnvisited = () => {
+    markCurrentAsVisited();
+    if (photoshapeSession.remaining <= 0)
+      return false;
+    const nextIdx = findNextUnvisitedIndex();
+    if (nextIdx === -1)
+      return false;
+    photoshapeSession.index = nextIdx;
+    selectPhotoshapeByIndex(nextIdx);
+    return true;
+  };
+  const getPhotoshapeNextLabelCycle = () => {
+    return photoshapeSession.remaining > 1 ? "Next" : "Finish";
+  };
+  setPhotoshapeFlowActive(false);
+  setPhotoshapeStep(1, {
+    note: "Upload an image to start.",
+    canBack: false,
+    canNext: false,
+    nextLabel: "Edit"
+  });
+  if (stepUI.back) {
+    stepUI.back.addEventListener("click", () => {
+      if (!photoshapeFlowActive)
+        return;
+      if (photoshapeStep === 3) {
+        callback1(false);
+        setPhotoshapeStep(2, {
+          note: "Outline ready. Click Edit to adjust points.",
+          canBack: true,
+          canNext: true,
+          nextLabel: "Edit"
+        });
+      } else if (photoshapeStep === 2) {
+        setPhotoshapeStep(1, {
+          note: "Upload an image to start.",
+          canBack: false,
+          canNext: false,
+          nextLabel: "Edit"
+        });
+      }
+    });
+  }
+  if (stepUI.next) {
+    stepUI.next.addEventListener("click", () => {
+      if (!photoshapeFlowActive)
+        return;
+      if (photoshapeStep === 3 && photoshapeSession.ids.length) {
+        const moved = advanceToNextUnvisited();
+        if (moved) {
+          callback1(true);
+          setPhotoshapeStep(3, {
+            note: `Edit outline: shape ${photoshapeSession.index + 1} of ${photoshapeSession.ids.length}`,
+            canBack: true,
+            canNext: true,
+            nextLabel: getPhotoshapeNextLabelCycle()
+          });
+          showPanelFromLeft2("upload-photo-panel");
+          return;
+        }
+      }
+      if (photoshapeStep === 3 && photoshapeSession.ids.length > 0 && photoshapeSession.index < photoshapeSession.ids.length - 1) {
+        photoshapeSession.index += 1;
+        selectPhotoshapeByIndex(photoshapeSession.index);
+        callback1(true);
+        setPhotoshapeStep(3, {
+          note: `Edit outline: shape ${photoshapeSession.index + 1} of ${photoshapeSession.ids.length}`,
+          canBack: true,
+          canNext: true,
+          nextLabel: getPhotoshapeNextLabel()
+        });
+        showPanelFromLeft2("upload-photo-panel");
+        return;
+      }
+      if (photoshapeStep === 2) {
+        callback1(true);
+        setPhotoshapeStep(3, {
+          note: `Edit outline: shape ${photoshapeSession.index + 1} of ${photoshapeSession.ids.length}`,
+          canBack: true,
+          canNext: true,
+          nextLabel: getPhotoshapeNextLabel()
+        });
+        beginPhotoshapeEditSession();
+        setPhotoshapeStep(3, {
+          note: `Edit outline: shape ${photoshapeSession.index + 1} of ${photoshapeSession.ids.length}`,
+          canBack: true,
+          canNext: true,
+          nextLabel: getPhotoshapeNextLabelCycle()
+        });
+        showPanelFromLeft2("upload-photo-panel");
+      } else if (photoshapeStep === 3) {
+        callback1(false);
+        setPhotoshapeStep(2, {
+          note: "Outline ready. Click Edit to adjust again.",
+          canBack: true,
+          canNext: true,
+          nextLabel: "Edit"
+        });
+        setPhotoshapeFlowActive(false);
+        document.getElementById("photoshape-step-note").style.display = `none`;
+        document.getElementById("photoshape-button").style.display = `none`;
+        if (selected2) {
+          showPanelFromRight2(selected2.kind + "-panel");
+        }
+      }
+    });
+  }
+  const editShapeButton = document.querySelector("#edit-shape");
+  if (editShapeButton) {
+    editShapeButton.addEventListener("click", () => {
+      if (!photoshapeFlowReady)
+        return;
+      setPhotoshapeFlowActive(true);
+      setPhotoshapeStep(3, {
+        note: "Edit outline: drag the red points.",
+        canBack: true,
+        canNext: true,
+        nextLabel: "Finish"
+      });
+      setPhotoshapeStep(3, {
+        note: `Edit outline: shape ${photoshapeSession.index + 1} of ${photoshapeSession.ids.length}`,
+        canBack: true,
+        canNext: true,
+        nextLabel: getPhotoshapeNextLabel()
+      });
+      beginPhotoshapeEditSession();
+      setPhotoshapeStep(3, {
+        note: `Edit outline: shape ${photoshapeSession.index + 1} of ${photoshapeSession.ids.length}`,
+        canBack: true,
+        canNext: true,
+        nextLabel: getPhotoshapeNextLabelCycle()
+      });
+      showPanelFromLeft2("upload-photo-panel");
+    });
+  }
   document.querySelector("#upload-photo-input").onchange = (e) => {
+    photoshapeSession.ids = [];
+    photoshapeSession.index = 0;
+    setPhotoshapeFlowActive(true);
+    setPhotoshapeStep(1, {
+      note: "Upload an image to start.",
+      canBack: false,
+      canNext: false,
+      nextLabel: "Edit"
+    });
+    photoshapeFlowReady = false;
+    document.getElementById("photoshape-step-note").style.display = `flex`;
+    document.getElementById("photoshape-button").style.display = `flex`;
+    callback1(false);
     document.querySelector("#back-button").removeAttribute("disabled");
     document.querySelector("#back-button").onclick = () => {
       document.querySelector("#back-button").setAttribute("disabled", "");
+      document.getElementById("photoshape-step-note").style.display = `none`;
+      document.getElementById("photoshape-button").style.display = `none`;
       showPanelFromLeft2("main-panel");
       callback1(false);
       selected2 = null;
+      setPhotoshapeFlowActive(false);
+      photoshapeFlowReady = false;
+      setPhotoshapeStep(1, {
+        note: "Upload an image to start.",
+        canBack: false,
+        canNext: false,
+        nextLabel: "Edit"
+      });
     };
     document.querySelector("#edit-shape").onclick = () => {
       callback1(true);
@@ -54425,6 +54762,12 @@ const createShapePhotoShape = (millimeters2, selected2, shapesArray2, commit2, s
     if (file) {
       const imgElement = document.getElementById("upload-photo-img");
       const reader = new FileReader();
+      setPhotoshapeStep(2, {
+        note: "Removing background and detecting outline...",
+        canBack: true,
+        canNext: false,
+        nextLabel: "Edit"
+      });
       reader.onload = function(e2) {
         imgElement.src = e2.target.result;
         uploadImage(file, e2.target.result);
@@ -54432,6 +54775,12 @@ const createShapePhotoShape = (millimeters2, selected2, shapesArray2, commit2, s
       reader.readAsDataURL(file);
     }
     function uploadImage(file2, imageSrc) {
+      setPhotoshapeStep(2, {
+        note: "Removing background and detecting outline...",
+        canBack: true,
+        canNext: false,
+        nextLabel: "Edit"
+      });
       getBase64(file2).then((base64Image) => {
         return fetch("https://api.remove.bg/v1.0/removebg", {
           method: "POST",
@@ -54471,6 +54820,8 @@ const createShapePhotoShape = (millimeters2, selected2, shapesArray2, commit2, s
     function createShape(contoursData, imageSrc) {
       const imgElement = document.querySelector("#upload-photo-img");
       imgElement.onload = () => {
+        photoshapeSession.ids = [];
+        photoshapeSession.index = 0;
         contoursData.forEach((contour, index) => {
           let shape = {
             id: generateId(),
@@ -54488,6 +54839,7 @@ const createShapePhotoShape = (millimeters2, selected2, shapesArray2, commit2, s
             free: true
           };
           shapesArray2.push(shape);
+          photoshapeSession.ids.push(shape.id);
           if (index === 0) {
             selected2 = shape;
             showPanelFromRight2(selected2.kind + "-panel");
@@ -54496,6 +54848,17 @@ const createShapePhotoShape = (millimeters2, selected2, shapesArray2, commit2, s
           }
         });
         commit2();
+        photoshapeSession.index = 0;
+        beginPhotoshapeEditSession();
+        photoshapeFlowReady = true;
+        setPhotoshapeFlowActive(true);
+        setPhotoshapeStep(2, {
+          note: "Outline ready. Click Edit to adjust points.",
+          canBack: true,
+          canNext: true,
+          nextLabel: "Edit"
+        });
+        showPanelFromLeft2("upload-photo-panel");
       };
       imgElement.src = imageSrc;
     }
@@ -55784,4 +56147,4 @@ document.addEventListener("DOMContentLoaded", function() {
     }
   }
 });
-//# sourceMappingURL=index-75fc8962.js.map
+//# sourceMappingURL=index-87d204ab.js.map
