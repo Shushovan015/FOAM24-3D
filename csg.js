@@ -64,21 +64,6 @@ function shapeToGeom2(shape) {
         );
         return []; // Return an empty array if the format is incorrect
       }
-
-    // case "photoshape":
-    //   let polygon = shape.polygon
-    //     .reverse()
-    //     .map(([x, y]) => [x, y])
-    //     .map((v) =>
-    //       jscad.maths.vec2.rotate(
-    //         v,
-    //         v,
-    //         [0, 0],
-    //         jscad.utils.degToRad(shape.rotation)
-    //       )
-    //     );
-    //   polygon = polygon.map(([x, y]) => [x + shape.x, y + shape.y]);
-    //   return jscad.geometries.geom2.fromPoints(polygon);
     case "polygon":
       let newShape = shape.free ? shape.points.slice().reverse() : shape.points;
       let poly = newShape

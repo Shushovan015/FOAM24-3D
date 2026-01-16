@@ -330,27 +330,6 @@ export function geom2ToLineSegments(geom2) {
   return new THREE.LineSegments(geo, new THREE.LineBasicMaterial());
 }
 
-// export function geom2ToMesh(geom2) {
-//   console.log(geom2, "geom2");
-//   let positions = [];
-//   for (let line of geom2.sides) {
-//     for (let vertex of line) {
-//       positions.push(vertex[0]);
-//       positions.push(vertex[1]);
-//       positions.push(0);
-//     }
-//   }
-//   let indices = earcut(positions, [], 3);
-//   let geo = new THREE.BufferGeometry();
-//   geo.setAttribute(
-//     "position",
-//     new THREE.BufferAttribute(new Float32Array(positions), 3, false)
-//   );
-//   geo.setIndex(indices);
-//   geo.computeVertexNormals();
-//   return new THREE.Mesh(geo, new THREE.MeshBasicMaterial());
-// }
-
 //New Geom 2 mesh function(updated)
 export function geom2ToMesh(geom2) {
   let positions = [];
@@ -642,82 +621,103 @@ export function drawOutline(
   z,
   ctx,
   camera,
-  display2D, // This flag controls dot visibility
+  display2D,
   renderer,
-  selected, // Your selected shape object
+  selected,
   scene,
   displayDot
-  // numSamples
 ) {
   ctx.lineWidth = width;
   ctx.strokeStyle = style;
 
-  const geom2 = shapeToGeom2(shape);
-  const geometries = Array.isArray(geom2) ? geom2 : [geom2];
-
-  // Check if we should show control points
   const showControlPoints = display2D && displayDot;
 
-  geometries.forEach((geometry) => {
-    if (!geometry?.sides?.length) return;
+  // Fast path while editing: draw directly from points (no jscad)
+  if (showControlPoints && shape.kind === "polygon" && Array.isArray(shape.points)) {
+    drawPolygonFromPoints(shape.points, shape, z, ctx, camera, renderer);
+  } else {
+    const geom2 = shapeToGeom2(shape);
+    const geometries = Array.isArray(geom2) ? geom2 : [geom2];
 
-    ctx.beginPath();
+    geometries.forEach((geometry) => {
+      if (!geometry?.sides?.length) return;
 
-    // Get first point
-    const firstPoint = geometry.sides[0][0];
-    let p0 = projectPoint(firstPoint[0], firstPoint[1], z, camera, renderer);
-    ctx.moveTo(p0.x, p0.y);
+      ctx.beginPath();
+      const firstPoint = geometry.sides[0][0];
+      const p0 = projectPoint(firstPoint[0], firstPoint[1], z, camera, renderer);
+      ctx.moveTo(p0.x, p0.y);
 
-    // Draw subsequent points
-    geometry.sides.forEach((line) => {
-      const point = line[1];
-      const p1 = projectPoint(point[0], point[1], z, camera, renderer);
-      ctx.lineTo(p1.x, p1.y);
+      geometry.sides.forEach((line) => {
+        const point = line[1];
+        const p1 = projectPoint(point[0], point[1], z, camera, renderer);
+        ctx.lineTo(p1.x, p1.y);
+      });
+
+      ctx.lineTo(p0.x, p0.y);
+      ctx.stroke();
     });
+  }
 
-    // Close path
-    ctx.lineTo(p0.x, p0.y);
-    ctx.stroke();
-
-    // If control points should be displayed, add or remove them
-    if (showControlPoints) {
-      // remove old
-      if (shape.controlPoints) {
-        shape.controlPoints.forEach((obj) => scene.remove(obj));
-      }
+  if (showControlPoints && Array.isArray(shape.points)) {
+    if (
+      !shape.controlPoints ||
+      shape.controlPoints.length !== shape.points.length * 2
+    ) {
+      clearControlPoints(shape, scene);
       shape.controlPoints = [];
 
-      const CP_Z = z; // keep everything on one plane
+      const CP_Z = z;
       shape.points.forEach(([x, y], index) => {
         const sphere = new THREE.Mesh(
           new THREE.SphereGeometry(3, 16, 16),
           new THREE.MeshBasicMaterial({ color: 0x00ffff })
         );
         sphere.position.set(x + shape.x, y + shape.y, CP_Z);
-        // sphere.position.set(x, y, CP_Z);
         sphere.name = `controlPoint-${index}`;
         sphere.userData.pointIndex = index;
-        sphere.userData.draggable = true;
+        sphere.userData.isControlSphere = true;
         scene.add(sphere);
         shape.controlPoints.push(sphere);
 
-        // keep helper for cursor hit area, but invisible
         const helper = new THREE.BoxHelper(sphere, 0xffff00);
         helper.material.opacity = 0;
         helper.material.transparent = true;
         helper.material.colorWrite = false;
         helper.visible = true;
+        helper.userData.pointIndex = index;
+        helper.userData.isControlHelper = true;
         scene.add(helper);
+        shape.controlPoints.push(helper);
       });
-
-      setupControlPointInteractions(shape, scene, camera, renderer, CP_Z);
     } else {
-      if (shape.controlPoints) {
-        shape.controlPoints.forEach((obj) => scene.remove(obj));
-        shape.controlPoints = [];
+      const CP_Z = z;
+      for (let i = 0; i < shape.controlPoints.length; i += 2) {
+        const sphere = shape.controlPoints[i];
+        const pt = shape.points[sphere.userData.pointIndex];
+        if (!pt) continue;
+        sphere.position.set(pt[0] + shape.x, pt[1] + shape.y, CP_Z);
       }
     }
-  });
+
+    if (!shape._controlPointsSetup) {
+      shape._controlPointsSetup = true;
+      setupControlPointInteractions(shape, scene, camera, renderer, z);
+    }
+  } else {
+    clearControlPoints(shape, scene);
+  }
+}
+
+function clearControlPoints(shape, scene) {
+  if (shape.cleanup) {
+    shape.cleanup();
+    delete shape.cleanup;
+  }
+  if (shape.controlPoints) {
+    shape.controlPoints.forEach((obj) => scene.remove(obj));
+  }
+  shape.controlPoints = [];
+  shape._controlPointsSetup = false;
 }
 
 function setupControlPointInteractions(
@@ -727,25 +727,19 @@ function setupControlPointInteractions(
   renderer,
   CP_Z = 0
 ) {
+  if (shape._controlPointHandlersInitialized) return;
+  shape._controlPointHandlersInitialized = true;
+
   const state = {
     isDragging: false,
     selectedPoint: null,
     raycaster: new THREE.Raycaster(),
     mouse: new THREE.Vector2(),
-    originalPoints: shape.points.map((p) => [...p]),
     CP_Z: CP_Z,
   };
 
-  const overlay = document.createElement("div");
-  Object.assign(overlay.style, {
-    position: "fixed",
-    inset: "0",
-    zIndex: "10000",
-    pointerEvents: "none",
-    opacity: "0",
-    cursor: "default",
-  });
-  document.body.appendChild(overlay);
+  const target = renderer.domElement;
+  target.style.pointerEvents = "auto";
 
   const getRect = () => renderer.domElement.getBoundingClientRect();
   const ndcFromEvent = (evt) => {
@@ -756,50 +750,30 @@ function setupControlPointInteractions(
     };
   };
 
-  // indicators + per-point helpers
-  shape.controlPoints.forEach((point) => {
-    const indicator = document.createElement("div");
-    Object.assign(indicator.style, {
-      position: "absolute",
-      width: "20px",
-      height: "20px",
-      background: "rgba(255,0,0,0.3)",
-      borderRadius: "50%",
-      transform: "translate(-50%, -50%)",
-      pointerEvents: "none",
-    });
-    overlay.appendChild(indicator);
-
-    // extend userData instead of replacing it
-    Object.assign(point.userData, {
-      indicator,
-      updatePosition: () => {
-        const r = getRect();
-        const v = point.position.clone().project(camera);
-        const x = (v.x * 0.5 + 0.5) * r.width + r.left;
-        const y = (-(v.y * 0.5) + 0.5) * r.height + r.top;
-        indicator.style.left = `${x}px`;
-        indicator.style.top = `${y}px`;
-      },
-    });
-  });
-
-  function onMouseDown(evt) {
+  function syncRaycast(evt) {
+    scene.updateMatrixWorld(true);
+    shape.controlPoints.forEach((p) => p.updateMatrixWorld(true));
     const ndc = ndcFromEvent(evt);
     state.mouse.set(ndc.x, ndc.y);
     state.raycaster.setFromCamera(state.mouse, camera);
-    const hit = state.raycaster.intersectObjects(shape.controlPoints, false);
+  }
+
+  function onMouseDown(evt) {
+    evt.stopPropagation();
+    syncRaycast(evt);
+    const hit = state.raycaster.intersectObjects(shape.controlPoints, true);
 
     if (hit.length) {
       evt.preventDefault();
       state.isDragging = true;
-      state.selectedPoint = hit[0].object;
 
-      // debug
-      // console.group("[drag] start");
-      // console.log("selected index:", state.selectedPoint.userData.pointIndex);
-      // console.log("points before:", JSON.parse(JSON.stringify(shape.points)));
-      // console.groupEnd();
+      const obj = hit[0].object;
+      const idx = obj.userData.pointIndex;
+
+      state.selectedPoint =
+        shape.controlPoints.find(
+          (p) => p.userData.pointIndex === idx && p.userData.isControlSphere
+        ) || obj;
 
       window.addEventListener("mousemove", onMouseMove);
       window.addEventListener("mouseup", onMouseUp);
@@ -809,44 +783,21 @@ function setupControlPointInteractions(
   function onMouseMove(evt) {
     if (!state.isDragging || !state.selectedPoint) return;
 
-    const ndc = ndcFromEvent(evt);
-    state.mouse.set(ndc.x, ndc.y);
-    state.raycaster.setFromCamera(state.mouse, camera);
+    syncRaycast(evt);
 
-    // drag on the same Z plane as the spheres
     const dragPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -state.CP_Z);
     const pos = new THREE.Vector3();
     state.raycaster.ray.intersectPlane(dragPlane, pos);
 
-    // update sphere
     state.selectedPoint.position.set(pos.x, pos.y, state.CP_Z);
 
-    // update data
     const i = state.selectedPoint.userData.pointIndex;
-    // shape.points[i] = [pos.x, pos.y];
     shape.points[i] = [pos.x - shape.x, pos.y - shape.y];
 
-    // update indicator
-    state.selectedPoint.userData.updatePosition?.();
-
-    // if you have a live geometry, update it here
-    if (shape.geometry?.attributes?.position) {
-      const a = shape.geometry.attributes.position.array;
-      a[i * 3] = pos.x;
-      a[i * 3 + 1] = pos.y;
-      a[i * 3 + 2] = state.CP_Z;
-      shape.geometry.attributes.position.needsUpdate = true;
-      if (shape.geometry.index) shape.geometry.computeVertexNormals();
-    }
   }
 
   function onMouseUp() {
     if (!state.isDragging) return;
-
-    // console.group("[drag] end");
-    // console.log("points after:", JSON.parse(JSON.stringify(shape.points)));
-    // console.groupEnd();
-
     window.removeEventListener("mousemove", onMouseMove);
     window.removeEventListener("mouseup", onMouseUp);
     state.isDragging = false;
@@ -854,33 +805,43 @@ function setupControlPointInteractions(
   }
 
   function onHover(evt) {
-    const ndc = ndcFromEvent(evt);
-    state.mouse.set(ndc.x, ndc.y);
-    state.raycaster.setFromCamera(state.mouse, camera);
-    const hit = state.raycaster.intersectObjects(shape.controlPoints, false);
-    overlay.style.pointerEvents = hit.length ? "auto" : "none";
-    overlay.style.cursor = hit.length ? "move" : "default";
+    syncRaycast(evt);
+    const hit = state.raycaster.intersectObjects(shape.controlPoints, true);
+    target.style.cursor = hit.length ? "move" : "";
   }
 
+  target.addEventListener("mousedown", onMouseDown, { capture: true });
   window.addEventListener("mousemove", onHover);
-  overlay.addEventListener("mousedown", onMouseDown);
 
-  // indicator loop
-  let rafId;
-  (function tick() {
-    shape.controlPoints.forEach((p) => p.userData.updatePosition?.());
-    rafId = requestAnimationFrame(tick);
-  })();
 
   shape.cleanup = () => {
-    cancelAnimationFrame(rafId);
-    overlay.removeEventListener("mousedown", onMouseDown);
+    target.removeEventListener("mousedown", onMouseDown);
     window.removeEventListener("mousemove", onHover);
     window.removeEventListener("mousemove", onMouseMove);
     window.removeEventListener("mouseup", onMouseUp);
-    document.body.removeChild(overlay);
+    shape._controlPointHandlersInitialized = false;
   };
 }
+function drawPolygonFromPoints(points, shape, z, ctx, camera, renderer) {
+  if (!points || points.length < 2) return;
+
+  ctx.beginPath();
+  for (let i = 0; i < points.length; i++) {
+    const [x, y] = points[i];
+    const v = new THREE.Vector3(
+      x + shape.x,
+      y + shape.y,
+      z
+    );
+
+    const p = projectPoint(v.x, v.y, v.z, camera, renderer);
+    if (i === 0) ctx.moveTo(p.x, p.y);
+    else ctx.lineTo(p.x, p.y);
+  }
+  ctx.closePath();
+  ctx.stroke();
+}
+
 // Unified projection function
 function projectPoint(x, y, z, camera, renderer) {
   const vector = new THREE.Vector3(x, y, z);

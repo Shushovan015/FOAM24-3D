@@ -353,6 +353,7 @@ export const createShapePhotoShape = (
   const setPhotoshapeStep = (step, options = {}) => {
     photoshapeStep = step;
 
+
     if (stepUI.note && typeof options.note === "string") {
       stepUI.note.textContent = options.note;
     }
@@ -379,7 +380,10 @@ export const createShapePhotoShape = (
       });
     }
   };
-
+  const setEditing = (on) => {
+    window.__editingPoints = on;
+    callback1(on);
+  };
   const photoshapeSession = {
     ids: [],
     index: 0,
@@ -463,7 +467,7 @@ export const createShapePhotoShape = (
       if (!photoshapeFlowActive) return;
 
       if (photoshapeStep === 3) {
-        callback1(false);
+        setEditing(false);
         setPhotoshapeStep(2, {
           note: "Outline ready. Click Edit to adjust points.",
           canBack: true,
@@ -487,7 +491,7 @@ export const createShapePhotoShape = (
       if (photoshapeStep === 3 && photoshapeSession.ids.length) {
         const moved = advanceToNextUnvisited();
         if (moved) {
-          callback1(true);
+          setEditing(true);
           setPhotoshapeStep(3, {
             note: `Edit outline: shape ${photoshapeSession.index + 1} of ${photoshapeSession.ids.length}`,
             canBack: true,
@@ -506,7 +510,7 @@ export const createShapePhotoShape = (
       ) {
         photoshapeSession.index += 1;
         selectPhotoshapeByIndex(photoshapeSession.index);
-        callback1(true);
+        setEditing(true);
         setPhotoshapeStep(3, {
           note: `Edit outline: shape ${photoshapeSession.index + 1} of ${photoshapeSession.ids.length}`,
           canBack: true,
@@ -519,7 +523,7 @@ export const createShapePhotoShape = (
 
 
       if (photoshapeStep === 2) {
-        callback1(true);
+        setEditing(true);
         setPhotoshapeStep(3, {
           note: `Edit outline: shape ${photoshapeSession.index + 1} of ${photoshapeSession.ids.length}`,
           canBack: true,
@@ -537,7 +541,7 @@ export const createShapePhotoShape = (
 
         showPanelFromLeft("upload-photo-panel");
       } else if (photoshapeStep === 3) {
-        callback1(false);
+        setEditing(false);
         setPhotoshapeStep(2, {
           note: "Outline ready. Click Edit to adjust again.",
           canBack: true,
@@ -600,7 +604,7 @@ export const createShapePhotoShape = (
     photoshapeFlowReady = false;
     document.getElementById("photoshape-step-note").style.display = `flex`;
     document.getElementById("photoshape-button").style.display = `flex`;
-    callback1(false);
+    setEditing(false);
 
     document.querySelector("#back-button").removeAttribute("disabled");
     document.querySelector("#back-button").onclick = () => {
@@ -608,7 +612,7 @@ export const createShapePhotoShape = (
       document.getElementById("photoshape-step-note").style.display = `none`;
       document.getElementById("photoshape-button").style.display = `none`;
       showPanelFromLeft("main-panel");
-      callback1(false);
+      setEditing(false);
       selected = null;
       setPhotoshapeFlowActive(false);
       photoshapeFlowReady = false;
@@ -621,7 +625,7 @@ export const createShapePhotoShape = (
 
     };
     document.querySelector("#edit-shape").onclick = () => {
-      callback1(true);
+      setEditing(true);
     };
     const file = e.target.files[0];
     if (file) {
