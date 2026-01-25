@@ -9,7 +9,7 @@
   <link rel="stylesheet"
     href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@48,400,0,0" />
   
-  <script type="module" crossorigin src="/assets/index-87d204ab.js"></script>
+  <script type="module" crossorigin src="/assets/index-e097006e.js"></script>
   <link rel="stylesheet" href="/assets/index-771c67ef.css">
 </head>
 
@@ -58,7 +58,7 @@
         </div>
 
 
-      </div><!--panel-->
+      </div>
       <div class="panel" id="shapes-panel">
         <div class="group">
           <button class="column grow white" id="create-rectangle" data-icon="rectangle">Rectangle</button>
@@ -71,7 +71,7 @@
         </div>
         <div id="my-shapes-container">
         </div>
-      </div><!--panel-->
+      </div>
       <div class="panel" id="foam-panel">
         <div class="group">
           <button class="column grow white" id="edit-outline" disabled data-icon="polyline">Edit Outline</button>
@@ -79,14 +79,14 @@
             Radiuses</button>
           <button class="column grow white" id="push-edges" disabled data-icon="compress">Push Edges</button>
         </div>
-      </div><!--panel-->
+      </div>
       <div class="panel" id="case-panel">
         <div class="group">
           <button class="column grow white" id="upload-model" disabled data-icon="cloud_upload">Upload OBJ
             Model</button>
           <button class="column grow white" id="position" disabled data-icon="open_with">Move</button>
         </div>
-      </div><!--panel-->
+      </div>
       <div class="panel" id="circle-panel">
         <div class="group">
           <button class="column grow white" id="radius-button" data-icon="width">Radius</button>
@@ -94,7 +94,7 @@
           <button class="column grow white" id="copy-button" disabled data-icon="copy_all">Copy</button>
           <button class="column grow white" id="delete-button" data-icon="delete">Delete</button>
         </div>
-      </div><!--panel-->
+      </div>
       <div class="panel" id="rectangle-panel">
         <div class="group">
           <button class="column grow white" id="rectangle-resize-button" data-icon="aspect_ratio">Resize</button>
@@ -103,7 +103,7 @@
           <button class="column grow white" id="rectangle-copy-button" disabled data-icon="copy_all">Copy</button>
           <button class="column grow white" id="rectangle-delete-button" data-icon="delete">Delete</button>
         </div>
-      </div><!--panel-->
+      </div>
       <div class="panel" id="photoshape-panel">
         <div class="group">
           <button class="column grow white" id="photoshape-depth-button" data-icon="height">Depth</button>
@@ -111,7 +111,7 @@
           <button class="column grow white" id="photoshape-copy-button" disabled data-icon="copy_all">Copy</button>
           <button class="column grow white" id="photoshape-delete-button" data-icon="delete">Delete</button>
         </div>
-      </div><!--panel-->
+      </div>
       <div class="panel" id="polygon-panel">
         <div class="group">
           <button class="column grow white" id="polygon-depth-button" data-icon="height">Depth</button>
@@ -122,18 +122,6 @@
         <div class="group">
           <button class="column grow white" id="edit-shape" data-icon="play_shapes">Edit shapes</button>
         </div>
-        <!-- <div class="group">
-            <label for="pointsCount" style="color: white; padding-right: 5px;">Points:</label>
-            <input 
-              type="range"
-              class="column grow" 
-              id="pointsCount" 
-              name="pointsCount" 
-              value="1" 
-              min="1" 
-              max="5" 
-            />
-          </div> -->
         <div class="group">
           <div id="navButtons" class="column grow white" style="display: flex; gap: 10px; margin-top: 10px;">
             <button id="prevBtn">Previous</button>
@@ -146,13 +134,13 @@
           <input id="radius-slider" class="column grow" type="range" min="5" max="350" value="100">
           <input id="radius-input" class="column" style="width:auto;" type="number" min="5" max="350" value="100">
         </div>
-      </div><!--panel-->
+      </div>
       <div class="panel" id="depth-panel">
         <div class="group">
           <input id="depth-slider" class="column grow" type="range" min="5" max="370" value="250">
           <input id="depth-input" class="column" style="width:auto;" type="number" min="5" max="370" value="250">
         </div>
-      </div><!--panel-->
+      </div>
       <div class="panel" id="rectangle-resize-panel">
         <div class="group">
           <input id="rectangle-width-slider" class="column grow" type="range" min="5" max="350" value="100">
@@ -164,48 +152,48 @@
           <input id="rectangle-height-input" class="column" style="width:auto;" type="number" min="5" max="350"
             value="100">
         </div>
-      </div><!--panel-->
+      </div>
       <div class="panel" id="rectangle-depth-panel">
         <div class="group">
           <input id="rectangle-depth-slider" class="column grow" type="range" min="5" max="370" value="250">
           <input id="rectangle-depth-input" class="column" style="width:auto;" type="number" min="5" max="370"
             value="250">
         </div>
-      </div><!--panel-->
+      </div>
       <div class="panel" id="rectangle-rotate-panel">
         <div class="group">
           <input id="rectangle-rotate-slider" class="column grow" type="range" min="0" max="360" value="0">
           <input id="rectangle-rotate-input" class="column" style="width:auto;" type="number" min="0" max="360"
             value="0">
         </div>
-      </div><!--panel-->
+      </div>
       <div class="panel" id="photoshape-depth-panel">
         <div class="group">
           <input id="photoshape-depth-slider" class="column grow" type="range" min="5" max="370" value="250">
           <input id="photoshape-depth-input" class="column" style="width:auto;" type="number" min="5" max="370"
             value="250">
         </div>
-      </div><!--panel-->
+      </div>
       <div class="panel" id="photoshape-rotate-panel">
         <div class="group">
           <input id="photoshape-rotate-slider" class="column grow" type="range" min="0" max="360" value="0">
           <input id="photoshape-rotate-input" class="column" style="width:auto;" type="number" min="0" max="360"
             value="0">
         </div>
-      </div><!--panel-->
+      </div>
       <div class="panel" id="polygon-depth-panel">
         <div class="group">
           <input id="polygon-depth-slider" class="column grow" type="range" min="5" max="370" value="250">
           <input id="polygon-depth-input" class="column" style="width:auto;" type="number" min="5" max="370"
             value="250">
         </div>
-      </div><!--panel-->
+      </div>
       <div class="panel" id="polygon-rotate-panel">
         <div class="group">
           <input id="polygon-rotate-slider" class="column grow" type="range" min="0" max="360" value="0">
           <input id="polygon-rotate-input" class="column" style="width:auto;" type="number" min="0" max="360" value="0">
         </div>
-      </div><!--panel-->
+      </div>
       <div class="panel" id="upload-photo-panel">
         <input id="upload-photo-input" type="file">
         <img id="upload-photo-img"></img>
@@ -239,46 +227,6 @@
             <button class="grow white" id="corner-radiuses-shape"  data-icon="rounded_corner">Corner Radiuses</button>
           </div>
         </div>-->
-      <!--panel-->
-      <!--
-        <div class="panel grow" id="photoshape-panel">
-          <div style="display: flex; background-color: white;">
-            <i class="material-symbols-outlined">search</i>
-            <input style="flex-grow:1" type="text" placeholder="Search photoshape library"/>
-          </div>
-          <div style="flex-grow: 1; overflow-y: scroll; background-color: white;">
-            <div class="grid-2 items-center">
-              <figure class="fit m0"><figcaption>Guitar</figcaption><img class="fit" src="guitar.jpg" /></figure>
-              <figure class="fit m0"><figcaption>Glock 17</figcaption><img class="fit" src="glock.jpg" /></figure>
-              <figure class="fit m0"><figcaption>Glock 17</figcaption><img class="fit" src="glock.jpg" /></figure>
-              <figure class="fit m0"><figcaption>Stapler</figcaption><img class="fit" src="stapler.jpg" /></figure>
-              <figure class="fit m0"><figcaption>Glock 17</figcaption><img class="fit" src="glock.jpg" /></figure>
-              <figure class="fit m0"><figcaption>Guitar</figcaption><img class="fit" src="guitar.jpg" /></figure>
-              <figure class="fit m0"><figcaption>Guitar</figcaption><img class="fit" src="guitar.jpg" /></figure>
-              <figure class="fit m0"><figcaption>Glock 17</figcaption><img class="fit" src="glock.jpg" /></figure>
-              <figure class="fit m0"><figcaption>Stapler</figcaption><img class="fit" src="stapler.jpg" /></figure>
-              <figure class="fit m0"><figcaption>Guitar</figcaption><img class="fit" src="guitar.jpg" /></figure>
-              <figure class="fit m0"><figcaption>Glock 17</figcaption><img class="fit" src="glock.jpg" /></figure>
-              <figure class="fit m0"><figcaption>Glock 17</figcaption><img class="fit" src="glock.jpg" /></figure>
-              <figure class="fit m0"><figcaption>Stapler</figcaption><img class="fit" src="stapler.jpg" /></figure>
-              <figure class="fit m0"><figcaption>Glock 17</figcaption><img class="fit" src="glock.jpg" /></figure>
-              <figure class="fit m0"><figcaption>Guitar</figcaption><img class="fit" src="guitar.jpg" /></figure>
-              <figure class="fit m0"><figcaption>Guitar</figcaption><img class="fit" src="guitar.jpg" /></figure>
-              <figure class="fit m0"><figcaption>Glock 17</figcaption><img class="fit" src="glock.jpg" /></figure>
-              <figure class="fit m0"><figcaption>Stapler</figcaption><img class="fit" src="stapler.jpg" /></figure>
-              <figure class="fit m0"><figcaption>Guitar</figcaption><img class="fit" src="guitar.jpg" /></figure>
-              <figure class="fit m0"><figcaption>Glock 17</figcaption><img class="fit" src="glock.jpg" /></figure>
-              <figure class="fit m0"><figcaption>Glock 17</figcaption><img class="fit" src="glock.jpg" /></figure>
-              <figure class="fit m0"><figcaption>Stapler</figcaption><img class="fit" src="stapler.jpg" /></figure>
-              <figure class="fit m0"><figcaption>Glock 17</figcaption><img class="fit" src="glock.jpg" /></figure>
-              <figure class="fit m0"><figcaption>Guitar</figcaption><img class="fit" src="guitar.jpg" /></figure>
-              <figure class="fit m0"><figcaption>Guitar</figcaption><img class="fit" src="guitar.jpg" /></figure>
-              <figure class="fit m0"><figcaption>Glock 17</figcaption><img class="fit" src="glock.jpg" /></figure>
-              <figure class="fit m0"><figcaption>Stapler</figcaption><img class="fit" src="stapler.jpg" /></figure>
-            </div>
-          </div>
-        </div>-->
-      <!--panel-->
     </div>
   </div>
   <div class="edit-information">
@@ -293,28 +241,7 @@
     <button class="button" id="buttonContainer" style="display: none;">Done</button>
     <button class="button" id="saveButtonContainer" style="display: none;">Save</button>
   </div>
-  <!-- <div class="menu-container">
-      <div class="menu-bar" id="menuBar">
-        <div class="toggle-button" id="toggleButton">
-          <span class="arrow" id="arrow"></span>
-          <span class="title">Saved Shape</span>
-        </div>
-        <ul>
-          <li class="menu-item">
-            Item 1
-            <span class="delete-button" onclick="deleteItem(this)">X</span>
-          </li>
-          <li class="menu-item">
-            Item 2
-            <span class="delete-button" onclick="deleteItem(this)">X</span>
-          </li>
-          <li class="menu-item">
-            Item 3
-            <span class="delete-button" onclick="deleteItem(this)">X</span>
-          </li>
-        </ul>
-      </div>
-    </div> -->
+
   
 </body>
 

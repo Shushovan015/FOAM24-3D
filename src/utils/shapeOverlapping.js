@@ -7,7 +7,6 @@ export function isNear(a, b, t) {
   );
 }
 
-/** Returns true if A and B’s AABBs actually overlap. */
 export function isOverlapping(a, b) {
   return !(
     a.x + a.sizeX/2 < b.x - b.sizeX/2 ||

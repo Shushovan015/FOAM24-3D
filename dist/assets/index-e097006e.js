@@ -2781,11 +2781,11 @@ class Vector3 {
     this.z = iz * qw + iw * -qz + ix * -qy - iy * -qx;
     return this;
   }
-  project(camera2) {
-    return this.applyMatrix4(camera2.matrixWorldInverse).applyMatrix4(camera2.projectionMatrix);
+  project(camera) {
+    return this.applyMatrix4(camera.matrixWorldInverse).applyMatrix4(camera.projectionMatrix);
   }
-  unproject(camera2) {
-    return this.applyMatrix4(camera2.projectionMatrixInverse).applyMatrix4(camera2.matrixWorld);
+  unproject(camera) {
+    return this.applyMatrix4(camera.projectionMatrixInverse).applyMatrix4(camera.matrixWorld);
   }
   transformDirection(m) {
     const x = this.x, y = this.y, z = this.z;
@@ -6919,9 +6919,9 @@ function cloneUniformsGroups(src2) {
   }
   return dst;
 }
-function getUnlitUniformColorSpace(renderer2) {
-  if (renderer2.getRenderTarget() === null) {
-    return renderer2.outputEncoding === sRGBEncoding ? SRGBColorSpace : LinearSRGBColorSpace;
+function getUnlitUniformColorSpace(renderer) {
+  if (renderer.getRenderTarget() === null) {
+    return renderer.outputEncoding === sRGBEncoding ? SRGBColorSpace : LinearSRGBColorSpace;
   }
   return LinearSRGBColorSpace;
 }
@@ -7273,34 +7273,34 @@ class CubeCamera extends Object3D {
     cameraNZ.lookAt(0, 0, -1);
     this.add(cameraNZ);
   }
-  update(renderer2, scene2) {
+  update(renderer, scene) {
     if (this.parent === null)
       this.updateMatrixWorld();
     const renderTarget = this.renderTarget;
     const [cameraPX, cameraNX, cameraPY, cameraNY, cameraPZ, cameraNZ] = this.children;
-    const currentRenderTarget = renderer2.getRenderTarget();
-    const currentToneMapping = renderer2.toneMapping;
-    const currentXrEnabled = renderer2.xr.enabled;
-    renderer2.toneMapping = NoToneMapping;
-    renderer2.xr.enabled = false;
+    const currentRenderTarget = renderer.getRenderTarget();
+    const currentToneMapping = renderer.toneMapping;
+    const currentXrEnabled = renderer.xr.enabled;
+    renderer.toneMapping = NoToneMapping;
+    renderer.xr.enabled = false;
     const generateMipmaps = renderTarget.texture.generateMipmaps;
     renderTarget.texture.generateMipmaps = false;
-    renderer2.setRenderTarget(renderTarget, 0);
-    renderer2.render(scene2, cameraPX);
-    renderer2.setRenderTarget(renderTarget, 1);
-    renderer2.render(scene2, cameraNX);
-    renderer2.setRenderTarget(renderTarget, 2);
-    renderer2.render(scene2, cameraPY);
-    renderer2.setRenderTarget(renderTarget, 3);
-    renderer2.render(scene2, cameraNY);
-    renderer2.setRenderTarget(renderTarget, 4);
-    renderer2.render(scene2, cameraPZ);
+    renderer.setRenderTarget(renderTarget, 0);
+    renderer.render(scene, cameraPX);
+    renderer.setRenderTarget(renderTarget, 1);
+    renderer.render(scene, cameraNX);
+    renderer.setRenderTarget(renderTarget, 2);
+    renderer.render(scene, cameraPY);
+    renderer.setRenderTarget(renderTarget, 3);
+    renderer.render(scene, cameraNY);
+    renderer.setRenderTarget(renderTarget, 4);
+    renderer.render(scene, cameraPZ);
     renderTarget.texture.generateMipmaps = generateMipmaps;
-    renderer2.setRenderTarget(renderTarget, 5);
-    renderer2.render(scene2, cameraNZ);
-    renderer2.setRenderTarget(currentRenderTarget);
-    renderer2.toneMapping = currentToneMapping;
-    renderer2.xr.enabled = currentXrEnabled;
+    renderer.setRenderTarget(renderTarget, 5);
+    renderer.render(scene, cameraNZ);
+    renderer.setRenderTarget(currentRenderTarget);
+    renderer.toneMapping = currentToneMapping;
+    renderer.xr.enabled = currentXrEnabled;
     renderTarget.texture.needsPMREMUpdate = true;
   }
 }
@@ -7330,7 +7330,7 @@ class WebGLCubeRenderTarget extends WebGLRenderTarget {
     this.texture.generateMipmaps = options.generateMipmaps !== void 0 ? options.generateMipmaps : false;
     this.texture.minFilter = options.minFilter !== void 0 ? options.minFilter : LinearFilter;
   }
-  fromEquirectangularTexture(renderer2, texture) {
+  fromEquirectangularTexture(renderer, texture) {
     this.texture.type = texture.type;
     this.texture.encoding = texture.encoding;
     this.texture.generateMipmaps = texture.generateMipmaps;
@@ -7398,20 +7398,20 @@ class WebGLCubeRenderTarget extends WebGLRenderTarget {
     const currentMinFilter = texture.minFilter;
     if (texture.minFilter === LinearMipmapLinearFilter)
       texture.minFilter = LinearFilter;
-    const camera2 = new CubeCamera(1, 10, this);
-    camera2.update(renderer2, mesh);
+    const camera = new CubeCamera(1, 10, this);
+    camera.update(renderer, mesh);
     texture.minFilter = currentMinFilter;
     mesh.geometry.dispose();
     mesh.material.dispose();
     return this;
   }
-  clear(renderer2, color, depth, stencil) {
-    const currentRenderTarget = renderer2.getRenderTarget();
+  clear(renderer, color, depth, stencil) {
+    const currentRenderTarget = renderer.getRenderTarget();
     for (let i = 0; i < 6; i++) {
-      renderer2.setRenderTarget(this, i);
-      renderer2.clear(color, depth, stencil);
+      renderer.setRenderTarget(this, i);
+      renderer.clear(color, depth, stencil);
     }
-    renderer2.setRenderTarget(currentRenderTarget);
+    renderer.setRenderTarget(currentRenderTarget);
   }
 }
 const _vector1 = /* @__PURE__ */ new Vector3();
@@ -8491,7 +8491,7 @@ ShaderLib.physical = {
   fragmentShader: ShaderChunk.meshphysical_frag
 };
 const _rgb = { r: 0, b: 0, g: 0 };
-function WebGLBackground(renderer2, cubemaps, cubeuvmaps, state, objects, alpha, premultipliedAlpha) {
+function WebGLBackground(renderer, cubemaps, cubeuvmaps, state2, objects, alpha, premultipliedAlpha) {
   const clearColor = new Color(0);
   let clearAlpha = alpha === true ? 0 : 1;
   let planeMesh;
@@ -8499,14 +8499,14 @@ function WebGLBackground(renderer2, cubemaps, cubeuvmaps, state, objects, alpha,
   let currentBackground = null;
   let currentBackgroundVersion = 0;
   let currentTonemapping = null;
-  function render(renderList, scene2) {
+  function render(renderList, scene) {
     let forceClear = false;
-    let background = scene2.isScene === true ? scene2.background : null;
+    let background = scene.isScene === true ? scene.background : null;
     if (background && background.isTexture) {
-      const usePMREM = scene2.backgroundBlurriness > 0;
+      const usePMREM = scene.backgroundBlurriness > 0;
       background = (usePMREM ? cubeuvmaps : cubemaps).get(background);
     }
-    const xr = renderer2.xr;
+    const xr = renderer.xr;
     const session = xr.getSession && xr.getSession();
     if (session && session.environmentBlendMode === "additive") {
       background = null;
@@ -8517,8 +8517,8 @@ function WebGLBackground(renderer2, cubemaps, cubeuvmaps, state, objects, alpha,
       setClear(background, 1);
       forceClear = true;
     }
-    if (renderer2.autoClear || forceClear) {
-      renderer2.clear(renderer2.autoClearColor, renderer2.autoClearDepth, renderer2.autoClearStencil);
+    if (renderer.autoClear || forceClear) {
+      renderer.clear(renderer.autoClearColor, renderer.autoClearDepth, renderer.autoClearStencil);
     }
     if (background && (background.isCubeTexture || background.mapping === CubeUVReflectionMapping)) {
       if (boxMesh === void 0) {
@@ -8537,8 +8537,8 @@ function WebGLBackground(renderer2, cubemaps, cubeuvmaps, state, objects, alpha,
         );
         boxMesh.geometry.deleteAttribute("normal");
         boxMesh.geometry.deleteAttribute("uv");
-        boxMesh.onBeforeRender = function(renderer3, scene3, camera2) {
-          this.matrixWorld.copyPosition(camera2.matrixWorld);
+        boxMesh.onBeforeRender = function(renderer2, scene2, camera) {
+          this.matrixWorld.copyPosition(camera.matrixWorld);
         };
         Object.defineProperty(boxMesh.material, "envMap", {
           get: function() {
@@ -8549,14 +8549,14 @@ function WebGLBackground(renderer2, cubemaps, cubeuvmaps, state, objects, alpha,
       }
       boxMesh.material.uniforms.envMap.value = background;
       boxMesh.material.uniforms.flipEnvMap.value = background.isCubeTexture && background.isRenderTargetTexture === false ? -1 : 1;
-      boxMesh.material.uniforms.backgroundBlurriness.value = scene2.backgroundBlurriness;
-      boxMesh.material.uniforms.backgroundIntensity.value = scene2.backgroundIntensity;
+      boxMesh.material.uniforms.backgroundBlurriness.value = scene.backgroundBlurriness;
+      boxMesh.material.uniforms.backgroundIntensity.value = scene.backgroundIntensity;
       boxMesh.material.toneMapped = background.encoding === sRGBEncoding ? false : true;
-      if (currentBackground !== background || currentBackgroundVersion !== background.version || currentTonemapping !== renderer2.toneMapping) {
+      if (currentBackground !== background || currentBackgroundVersion !== background.version || currentTonemapping !== renderer.toneMapping) {
         boxMesh.material.needsUpdate = true;
         currentBackground = background;
         currentBackgroundVersion = background.version;
-        currentTonemapping = renderer2.toneMapping;
+        currentTonemapping = renderer.toneMapping;
       }
       boxMesh.layers.enableAll();
       renderList.unshift(boxMesh, boxMesh.geometry, boxMesh.material, 0, 0, null);
@@ -8584,25 +8584,25 @@ function WebGLBackground(renderer2, cubemaps, cubeuvmaps, state, objects, alpha,
         objects.update(planeMesh);
       }
       planeMesh.material.uniforms.t2D.value = background;
-      planeMesh.material.uniforms.backgroundIntensity.value = scene2.backgroundIntensity;
+      planeMesh.material.uniforms.backgroundIntensity.value = scene.backgroundIntensity;
       planeMesh.material.toneMapped = background.encoding === sRGBEncoding ? false : true;
       if (background.matrixAutoUpdate === true) {
         background.updateMatrix();
       }
       planeMesh.material.uniforms.uvTransform.value.copy(background.matrix);
-      if (currentBackground !== background || currentBackgroundVersion !== background.version || currentTonemapping !== renderer2.toneMapping) {
+      if (currentBackground !== background || currentBackgroundVersion !== background.version || currentTonemapping !== renderer.toneMapping) {
         planeMesh.material.needsUpdate = true;
         currentBackground = background;
         currentBackgroundVersion = background.version;
-        currentTonemapping = renderer2.toneMapping;
+        currentTonemapping = renderer.toneMapping;
       }
       planeMesh.layers.enableAll();
       renderList.unshift(planeMesh, planeMesh.geometry, planeMesh.material, 0, 0, null);
     }
   }
   function setClear(color, alpha2) {
-    color.getRGB(_rgb, getUnlitUniformColorSpace(renderer2));
-    state.buffers.color.setClear(_rgb.r, _rgb.g, _rgb.b, alpha2, premultipliedAlpha);
+    color.getRGB(_rgb, getUnlitUniformColorSpace(renderer));
+    state2.buffers.color.setClear(_rgb.r, _rgb.g, _rgb.b, alpha2, premultipliedAlpha);
   }
   return {
     getClearColor: function() {
@@ -8634,9 +8634,9 @@ function WebGLBindingStates(gl, extensions, attributes, capabilities) {
   function setup(object, material, program, geometry, index) {
     let updateBuffers = false;
     if (vaoAvailable) {
-      const state = getBindingState(geometry, program, material);
-      if (currentState !== state) {
-        currentState = state;
+      const state2 = getBindingState(geometry, program, material);
+      if (currentState !== state2) {
+        currentState = state2;
         bindVertexArrayObject(currentState.object);
       }
       updateBuffers = needsUpdate(object, geometry, program, index);
@@ -8689,12 +8689,12 @@ function WebGLBindingStates(gl, extensions, attributes, capabilities) {
       stateMap = {};
       programMap[program.id] = stateMap;
     }
-    let state = stateMap[wireframe];
-    if (state === void 0) {
-      state = createBindingState(createVertexArrayObject());
-      stateMap[wireframe] = state;
+    let state2 = stateMap[wireframe];
+    if (state2 === void 0) {
+      state2 = createBindingState(createVertexArrayObject());
+      stateMap[wireframe] = state2;
     }
-    return state;
+    return state2;
   }
   function createBindingState(vao) {
     const newAttributes = [];
@@ -9110,10 +9110,10 @@ function WebGLClipping(properties) {
   this.endShadows = function() {
     renderingShadows = false;
   };
-  this.setGlobalState = function(planes, camera2) {
-    globalState = projectPlanes(planes, camera2, 0);
+  this.setGlobalState = function(planes, camera) {
+    globalState = projectPlanes(planes, camera, 0);
   };
-  this.setState = function(material, camera2, useCache) {
+  this.setState = function(material, camera, useCache) {
     const planes = material.clippingPlanes, clipIntersection = material.clipIntersection, clipShadows = material.clipShadows;
     const materialProperties = properties.get(material);
     if (!localClippingEnabled || planes === null || planes.length === 0 || renderingShadows && !clipShadows) {
@@ -9126,7 +9126,7 @@ function WebGLClipping(properties) {
       const nGlobal = renderingShadows ? 0 : numGlobalPlanes, lGlobal = nGlobal * 4;
       let dstArray = materialProperties.clippingState || null;
       uniform.value = dstArray;
-      dstArray = projectPlanes(planes, camera2, lGlobal, useCache);
+      dstArray = projectPlanes(planes, camera, lGlobal, useCache);
       for (let i = 0; i !== lGlobal; ++i) {
         dstArray[i] = globalState[i];
       }
@@ -9143,13 +9143,13 @@ function WebGLClipping(properties) {
     scope.numPlanes = numGlobalPlanes;
     scope.numIntersection = 0;
   }
-  function projectPlanes(planes, camera2, dstOffset, skipTransform) {
+  function projectPlanes(planes, camera, dstOffset, skipTransform) {
     const nPlanes = planes !== null ? planes.length : 0;
     let dstArray = null;
     if (nPlanes !== 0) {
       dstArray = uniform.value;
       if (skipTransform !== true || dstArray === null) {
-        const flatSize = dstOffset + nPlanes * 4, viewMatrix = camera2.matrixWorldInverse;
+        const flatSize = dstOffset + nPlanes * 4, viewMatrix = camera.matrixWorldInverse;
         viewNormalMatrix.getNormalMatrix(viewMatrix);
         if (dstArray === null || dstArray.length < flatSize) {
           dstArray = new Float32Array(flatSize);
@@ -9168,7 +9168,7 @@ function WebGLClipping(properties) {
     return dstArray;
   }
 }
-function WebGLCubeMaps(renderer2) {
+function WebGLCubeMaps(renderer) {
   let cubemaps = /* @__PURE__ */ new WeakMap();
   function mapTextureMapping(texture, mapping) {
     if (mapping === EquirectangularReflectionMapping) {
@@ -9189,7 +9189,7 @@ function WebGLCubeMaps(renderer2) {
           const image = texture.image;
           if (image && image.height > 0) {
             const renderTarget = new WebGLCubeRenderTarget(image.height / 2);
-            renderTarget.fromEquirectangularTexture(renderer2, texture);
+            renderTarget.fromEquirectangularTexture(renderer, texture);
             cubemaps.set(texture, renderTarget);
             texture.addEventListener("dispose", onTextureDispose);
             return mapTextureMapping(renderTarget.texture, texture.mapping);
@@ -9327,8 +9327,8 @@ const _axisDirections = [
   /* @__PURE__ */ new Vector3(-PHI, INV_PHI, 0)
 ];
 class PMREMGenerator {
-  constructor(renderer2) {
-    this._renderer = renderer2;
+  constructor(renderer) {
+    this._renderer = renderer;
     this._pingPongRenderTarget = null;
     this._lodMax = 0;
     this._cubeSize = 0;
@@ -9347,12 +9347,12 @@ class PMREMGenerator {
    * and far planes ensure the scene is rendered in its entirety (the cubeCamera
    * is placed at the origin).
    */
-  fromScene(scene2, sigma = 0, near = 0.1, far = 100) {
+  fromScene(scene, sigma = 0, near = 0.1, far = 100) {
     _oldTarget = this._renderer.getRenderTarget();
     this._setSize(256);
     const cubeUVRenderTarget = this._allocateTargets();
     cubeUVRenderTarget.depthBuffer = true;
-    this._sceneToCubeUV(scene2, near, far, cubeUVRenderTarget);
+    this._sceneToCubeUV(scene, near, far, cubeUVRenderTarget);
     if (sigma > 0) {
       this._blur(cubeUVRenderTarget, 0, 0, sigma);
     }
@@ -9468,18 +9468,18 @@ class PMREMGenerator {
     const tmpMesh = new Mesh(this._lodPlanes[0], material);
     this._renderer.compile(tmpMesh, _flatCamera);
   }
-  _sceneToCubeUV(scene2, near, far, cubeUVRenderTarget) {
+  _sceneToCubeUV(scene, near, far, cubeUVRenderTarget) {
     const fov2 = 90;
     const aspect2 = 1;
     const cubeCamera = new PerspectiveCamera(fov2, aspect2, near, far);
     const upSign = [1, -1, 1, 1, 1, 1];
     const forwardSign = [1, 1, 1, -1, -1, -1];
-    const renderer2 = this._renderer;
-    const originalAutoClear = renderer2.autoClear;
-    const toneMapping = renderer2.toneMapping;
-    renderer2.getClearColor(_clearColor);
-    renderer2.toneMapping = NoToneMapping;
-    renderer2.autoClear = false;
+    const renderer = this._renderer;
+    const originalAutoClear = renderer.autoClear;
+    const toneMapping = renderer.toneMapping;
+    renderer.getClearColor(_clearColor);
+    renderer.toneMapping = NoToneMapping;
+    renderer.autoClear = false;
     const backgroundMaterial = new MeshBasicMaterial({
       name: "PMREM.Background",
       side: BackSide,
@@ -9488,11 +9488,11 @@ class PMREMGenerator {
     });
     const backgroundBox = new Mesh(new BoxGeometry(), backgroundMaterial);
     let useSolidColor = false;
-    const background = scene2.background;
+    const background = scene.background;
     if (background) {
       if (background.isColor) {
         backgroundMaterial.color.copy(background);
-        scene2.background = null;
+        scene.background = null;
         useSolidColor = true;
       }
     } else {
@@ -9513,20 +9513,20 @@ class PMREMGenerator {
       }
       const size = this._cubeSize;
       _setViewport(cubeUVRenderTarget, col * size, i > 2 ? size : 0, size, size);
-      renderer2.setRenderTarget(cubeUVRenderTarget);
+      renderer.setRenderTarget(cubeUVRenderTarget);
       if (useSolidColor) {
-        renderer2.render(backgroundBox, cubeCamera);
+        renderer.render(backgroundBox, cubeCamera);
       }
-      renderer2.render(scene2, cubeCamera);
+      renderer.render(scene, cubeCamera);
     }
     backgroundBox.geometry.dispose();
     backgroundBox.material.dispose();
-    renderer2.toneMapping = toneMapping;
-    renderer2.autoClear = originalAutoClear;
-    scene2.background = background;
+    renderer.toneMapping = toneMapping;
+    renderer.autoClear = originalAutoClear;
+    scene.background = background;
   }
   _textureToCubeUV(texture, cubeUVRenderTarget) {
-    const renderer2 = this._renderer;
+    const renderer = this._renderer;
     const isCubeTexture = texture.mapping === CubeReflectionMapping || texture.mapping === CubeRefractionMapping;
     if (isCubeTexture) {
       if (this._cubemapMaterial === null) {
@@ -9544,19 +9544,19 @@ class PMREMGenerator {
     uniforms["envMap"].value = texture;
     const size = this._cubeSize;
     _setViewport(cubeUVRenderTarget, 0, 0, 3 * size, 2 * size);
-    renderer2.setRenderTarget(cubeUVRenderTarget);
-    renderer2.render(mesh, _flatCamera);
+    renderer.setRenderTarget(cubeUVRenderTarget);
+    renderer.render(mesh, _flatCamera);
   }
   _applyPMREM(cubeUVRenderTarget) {
-    const renderer2 = this._renderer;
-    const autoClear = renderer2.autoClear;
-    renderer2.autoClear = false;
+    const renderer = this._renderer;
+    const autoClear = renderer.autoClear;
+    renderer.autoClear = false;
     for (let i = 1; i < this._lodPlanes.length; i++) {
       const sigma = Math.sqrt(this._sigmas[i] * this._sigmas[i] - this._sigmas[i - 1] * this._sigmas[i - 1]);
       const poleAxis = _axisDirections[(i - 1) % _axisDirections.length];
       this._blur(cubeUVRenderTarget, i - 1, i, sigma, poleAxis);
     }
-    renderer2.autoClear = autoClear;
+    renderer.autoClear = autoClear;
   }
   /**
    * This is a two-pass Gaussian blur for a cubemap. Normally this is done
@@ -9587,7 +9587,7 @@ class PMREMGenerator {
     );
   }
   _halfBlur(targetIn, targetOut, lodIn, lodOut, sigmaRadians, direction2, poleAxis) {
-    const renderer2 = this._renderer;
+    const renderer = this._renderer;
     const blurMaterial = this._blurMaterial;
     if (direction2 !== "latitudinal" && direction2 !== "longitudinal") {
       console.error(
@@ -9633,8 +9633,8 @@ class PMREMGenerator {
     const x = 3 * outputSize * (lodOut > _lodMax - LOD_MIN ? lodOut - _lodMax + LOD_MIN : 0);
     const y = 4 * (this._cubeSize - outputSize);
     _setViewport(targetOut, x, y, 3 * outputSize, 2 * outputSize);
-    renderer2.setRenderTarget(targetOut);
-    renderer2.render(blurMesh, _flatCamera);
+    renderer.setRenderTarget(targetOut);
+    renderer.render(blurMesh, _flatCamera);
   }
 }
 function _createPlanes(lodMax) {
@@ -9935,7 +9935,7 @@ function _getCommonVertexShader() {
 	`
   );
 }
-function WebGLCubeUVMaps(renderer2) {
+function WebGLCubeUVMaps(renderer) {
   let cubeUVmaps = /* @__PURE__ */ new WeakMap();
   let pmremGenerator = null;
   function get(texture) {
@@ -9948,7 +9948,7 @@ function WebGLCubeUVMaps(renderer2) {
           texture.needsPMREMUpdate = false;
           let renderTarget = cubeUVmaps.get(texture);
           if (pmremGenerator === null)
-            pmremGenerator = new PMREMGenerator(renderer2);
+            pmremGenerator = new PMREMGenerator(renderer);
           renderTarget = isEquirectMap ? pmremGenerator.fromEquirectangular(texture, renderTarget) : pmremGenerator.fromCubemap(texture, renderTarget);
           cubeUVmaps.set(texture, renderTarget);
           return renderTarget.texture;
@@ -9959,7 +9959,7 @@ function WebGLCubeUVMaps(renderer2) {
             const image = texture.image;
             if (isEquirectMap && image && image.height > 0 || isCubeMap && image && isCubeTextureComplete(image)) {
               if (pmremGenerator === null)
-                pmremGenerator = new PMREMGenerator(renderer2);
+                pmremGenerator = new PMREMGenerator(renderer);
               const renderTarget = isEquirectMap ? pmremGenerator.fromEquirectangular(texture) : pmremGenerator.fromCubemap(texture);
               cubeUVmaps.set(texture, renderTarget);
               texture.addEventListener("dispose", onTextureDispose);
@@ -10863,49 +10863,49 @@ function setValueV4uiArray(gl, v) {
 function setValueT1Array(gl, v, textures) {
   const cache2 = this.cache;
   const n = v.length;
-  const units = allocTexUnits(textures, n);
-  if (!arraysEqual(cache2, units)) {
-    gl.uniform1iv(this.addr, units);
-    copyArray(cache2, units);
+  const units2 = allocTexUnits(textures, n);
+  if (!arraysEqual(cache2, units2)) {
+    gl.uniform1iv(this.addr, units2);
+    copyArray(cache2, units2);
   }
   for (let i = 0; i !== n; ++i) {
-    textures.setTexture2D(v[i] || emptyTexture, units[i]);
+    textures.setTexture2D(v[i] || emptyTexture, units2[i]);
   }
 }
 function setValueT3DArray(gl, v, textures) {
   const cache2 = this.cache;
   const n = v.length;
-  const units = allocTexUnits(textures, n);
-  if (!arraysEqual(cache2, units)) {
-    gl.uniform1iv(this.addr, units);
-    copyArray(cache2, units);
+  const units2 = allocTexUnits(textures, n);
+  if (!arraysEqual(cache2, units2)) {
+    gl.uniform1iv(this.addr, units2);
+    copyArray(cache2, units2);
   }
   for (let i = 0; i !== n; ++i) {
-    textures.setTexture3D(v[i] || empty3dTexture, units[i]);
+    textures.setTexture3D(v[i] || empty3dTexture, units2[i]);
   }
 }
 function setValueT6Array(gl, v, textures) {
   const cache2 = this.cache;
   const n = v.length;
-  const units = allocTexUnits(textures, n);
-  if (!arraysEqual(cache2, units)) {
-    gl.uniform1iv(this.addr, units);
-    copyArray(cache2, units);
+  const units2 = allocTexUnits(textures, n);
+  if (!arraysEqual(cache2, units2)) {
+    gl.uniform1iv(this.addr, units2);
+    copyArray(cache2, units2);
   }
   for (let i = 0; i !== n; ++i) {
-    textures.setTextureCube(v[i] || emptyCubeTexture, units[i]);
+    textures.setTextureCube(v[i] || emptyCubeTexture, units2[i]);
   }
 }
 function setValueT2DArrayArray(gl, v, textures) {
   const cache2 = this.cache;
   const n = v.length;
-  const units = allocTexUnits(textures, n);
-  if (!arraysEqual(cache2, units)) {
-    gl.uniform1iv(this.addr, units);
-    copyArray(cache2, units);
+  const units2 = allocTexUnits(textures, n);
+  if (!arraysEqual(cache2, units2)) {
+    gl.uniform1iv(this.addr, units2);
+    copyArray(cache2, units2);
   }
   for (let i = 0; i !== n; ++i) {
-    textures.setTexture2DArray(v[i] || emptyArrayTexture, units[i]);
+    textures.setTexture2DArray(v[i] || emptyArrayTexture, units2[i]);
   }
 }
 function getPureArraySetter(type) {
@@ -11279,8 +11279,8 @@ function generateCubeUVSize(parameters2) {
   const texelWidth = 1 / (3 * Math.max(Math.pow(2, maxMip), 7 * 16));
   return { texelWidth, texelHeight, maxMip };
 }
-function WebGLProgram(renderer2, cacheKey, parameters2, bindingStates) {
-  const gl = renderer2.getContext();
+function WebGLProgram(renderer, cacheKey, parameters2, bindingStates) {
+  const gl = renderer.getContext();
   const defines = parameters2.defines;
   let vertexShader = parameters2.vertexShader;
   let fragmentShader = parameters2.fragmentShader;
@@ -11531,7 +11531,7 @@ function WebGLProgram(renderer2, cacheKey, parameters2, bindingStates) {
     gl.bindAttribLocation(program, 0, "position");
   }
   gl.linkProgram(program);
-  if (renderer2.debug.checkShaderErrors) {
+  if (renderer.debug.checkShaderErrors) {
     const programLog = gl.getProgramInfoLog(program).trim();
     const vertexLog = gl.getShaderInfoLog(glVertexShader).trim();
     const fragmentLog = gl.getShaderInfoLog(glFragmentShader).trim();
@@ -11662,7 +11662,7 @@ class WebGLShaderStage {
     this.usedTimes = 0;
   }
 }
-function WebGLPrograms(renderer2, cubemaps, cubeuvmaps, extensions, capabilities, bindingStates, clipping) {
+function WebGLPrograms(renderer, cubemaps, cubeuvmaps, extensions, capabilities, bindingStates, clipping) {
   const _programLayers = new Layers();
   const _customShaders = new WebGLShaderCache();
   const programs = [];
@@ -11687,10 +11687,10 @@ function WebGLPrograms(renderer2, cubemaps, cubeuvmaps, extensions, capabilities
     ShadowMaterial: "shadow",
     SpriteMaterial: "sprite"
   };
-  function getParameters(material, lights, shadows, scene2, object) {
-    const fog = scene2.fog;
+  function getParameters(material, lights, shadows, scene, object) {
+    const fog = scene.fog;
     const geometry = object.geometry;
-    const environment = material.isMeshStandardMaterial ? scene2.environment : null;
+    const environment = material.isMeshStandardMaterial ? scene.environment : null;
     const envMap = (material.isMeshStandardMaterial ? cubeuvmaps : cubemaps).get(material.envMap || environment);
     const envMapCubeUVHeight = !!envMap && envMap.mapping === CubeUVReflectionMapping ? envMap.image.height : null;
     const shaderID = shaderIDs[material.type];
@@ -11722,7 +11722,7 @@ function WebGLPrograms(renderer2, cubemaps, cubeuvmaps, extensions, capabilities
       customVertexShaderID = _customShaders.getVertexShaderID(material);
       customFragmentShaderID = _customShaders.getFragmentShaderID(material);
     }
-    const currentRenderTarget = renderer2.getRenderTarget();
+    const currentRenderTarget = renderer.getRenderTarget();
     const useAlphaTest = material.alphaTest > 0;
     const useClearcoat = material.clearcoat > 0;
     const useIridescence = material.iridescence > 0;
@@ -11741,7 +11741,7 @@ function WebGLPrograms(renderer2, cubemaps, cubeuvmaps, extensions, capabilities
       instancing: object.isInstancedMesh === true,
       instancingColor: object.isInstancedMesh === true && object.instanceColor !== null,
       supportsVertexTextures: vertexTextures,
-      outputEncoding: currentRenderTarget === null ? renderer2.outputEncoding : currentRenderTarget.isXRRenderTarget === true ? currentRenderTarget.texture.encoding : LinearEncoding,
+      outputEncoding: currentRenderTarget === null ? renderer.outputEncoding : currentRenderTarget.isXRRenderTarget === true ? currentRenderTarget.texture.encoding : LinearEncoding,
       map: !!material.map,
       matcap: !!material.matcap,
       envMap: !!envMap,
@@ -11809,10 +11809,10 @@ function WebGLPrograms(renderer2, cubemaps, cubeuvmaps, extensions, capabilities
       numClippingPlanes: clipping.numPlanes,
       numClipIntersection: clipping.numIntersection,
       dithering: material.dithering,
-      shadowMapEnabled: renderer2.shadowMap.enabled && shadows.length > 0,
-      shadowMapType: renderer2.shadowMap.type,
-      toneMapping: material.toneMapped ? renderer2.toneMapping : NoToneMapping,
-      physicallyCorrectLights: renderer2.physicallyCorrectLights,
+      shadowMapEnabled: renderer.shadowMap.enabled && shadows.length > 0,
+      shadowMapType: renderer.shadowMap.type,
+      toneMapping: material.toneMapped ? renderer.toneMapping : NoToneMapping,
+      physicallyCorrectLights: renderer.physicallyCorrectLights,
       premultipliedAlpha: material.premultipliedAlpha,
       doubleSided: material.side === DoubleSide,
       flipSided: material.side === BackSide,
@@ -11847,7 +11847,7 @@ function WebGLPrograms(renderer2, cubemaps, cubeuvmaps, extensions, capabilities
     if (parameters2.isRawShaderMaterial === false) {
       getProgramCacheKeyParameters(array, parameters2);
       getProgramCacheKeyBooleans(array, parameters2);
-      array.push(renderer2.outputEncoding);
+      array.push(renderer.outputEncoding);
     }
     array.push(parameters2.customProgramCacheKey);
     return array.join();
@@ -12023,7 +12023,7 @@ function WebGLPrograms(renderer2, cubemaps, cubeuvmaps, extensions, capabilities
       }
     }
     if (program === void 0) {
-      program = new WebGLProgram(renderer2, cacheKey, parameters2, bindingStates);
+      program = new WebGLProgram(renderer, cacheKey, parameters2, bindingStates);
       programs.push(program);
     }
     return program;
@@ -12196,12 +12196,12 @@ function WebGLRenderList() {
 }
 function WebGLRenderLists() {
   let lists = /* @__PURE__ */ new WeakMap();
-  function get(scene2, renderCallDepth) {
-    const listArray = lists.get(scene2);
+  function get(scene, renderCallDepth) {
+    const listArray = lists.get(scene);
     let list;
     if (listArray === void 0) {
       list = new WebGLRenderList();
-      lists.set(scene2, [list]);
+      lists.set(scene, [list]);
     } else {
       if (renderCallDepth >= listArray.length) {
         list = new WebGLRenderList();
@@ -12323,7 +12323,7 @@ function shadowCastingAndTexturingLightsFirst(lightA, lightB) {
 function WebGLLights(extensions, capabilities) {
   const cache2 = new UniformsCache();
   const shadowCache = ShadowUniformsCache();
-  const state = {
+  const state2 = {
     version: 0,
     hash: {
       directionalLength: -1,
@@ -12358,14 +12358,14 @@ function WebGLLights(extensions, capabilities) {
     numSpotLightShadowsWithMaps: 0
   };
   for (let i = 0; i < 9; i++)
-    state.probe.push(new Vector3());
+    state2.probe.push(new Vector3());
   const vector3 = new Vector3();
   const matrix4 = new Matrix4();
   const matrix42 = new Matrix4();
   function setup(lights, physicallyCorrectLights) {
     let r = 0, g = 0, b = 0;
     for (let i = 0; i < 9; i++)
-      state.probe[i].set(0, 0, 0);
+      state2.probe[i].set(0, 0, 0);
     let directionalLength = 0;
     let pointLength = 0;
     let spotLength = 0;
@@ -12390,7 +12390,7 @@ function WebGLLights(extensions, capabilities) {
         b += color.b * intensity * scaleFactor;
       } else if (light.isLightProbe) {
         for (let j = 0; j < 9; j++) {
-          state.probe[j].addScaledVector(light.sh.coefficients[j], intensity);
+          state2.probe[j].addScaledVector(light.sh.coefficients[j], intensity);
         }
       } else if (light.isDirectionalLight) {
         const uniforms = cache2.get(light);
@@ -12402,12 +12402,12 @@ function WebGLLights(extensions, capabilities) {
           shadowUniforms.shadowNormalBias = shadow.normalBias;
           shadowUniforms.shadowRadius = shadow.radius;
           shadowUniforms.shadowMapSize = shadow.mapSize;
-          state.directionalShadow[directionalLength] = shadowUniforms;
-          state.directionalShadowMap[directionalLength] = shadowMap;
-          state.directionalShadowMatrix[directionalLength] = light.shadow.matrix;
+          state2.directionalShadow[directionalLength] = shadowUniforms;
+          state2.directionalShadowMap[directionalLength] = shadowMap;
+          state2.directionalShadowMatrix[directionalLength] = light.shadow.matrix;
           numDirectionalShadows++;
         }
-        state.directional[directionalLength] = uniforms;
+        state2.directional[directionalLength] = uniforms;
         directionalLength++;
       } else if (light.isSpotLight) {
         const uniforms = cache2.get(light);
@@ -12417,24 +12417,24 @@ function WebGLLights(extensions, capabilities) {
         uniforms.coneCos = Math.cos(light.angle);
         uniforms.penumbraCos = Math.cos(light.angle * (1 - light.penumbra));
         uniforms.decay = light.decay;
-        state.spot[spotLength] = uniforms;
+        state2.spot[spotLength] = uniforms;
         const shadow = light.shadow;
         if (light.map) {
-          state.spotLightMap[numSpotMaps] = light.map;
+          state2.spotLightMap[numSpotMaps] = light.map;
           numSpotMaps++;
           shadow.updateMatrices(light);
           if (light.castShadow)
             numSpotShadowsWithMaps++;
         }
-        state.spotLightMatrix[spotLength] = shadow.matrix;
+        state2.spotLightMatrix[spotLength] = shadow.matrix;
         if (light.castShadow) {
           const shadowUniforms = shadowCache.get(light);
           shadowUniforms.shadowBias = shadow.bias;
           shadowUniforms.shadowNormalBias = shadow.normalBias;
           shadowUniforms.shadowRadius = shadow.radius;
           shadowUniforms.shadowMapSize = shadow.mapSize;
-          state.spotShadow[spotLength] = shadowUniforms;
-          state.spotShadowMap[spotLength] = shadowMap;
+          state2.spotShadow[spotLength] = shadowUniforms;
+          state2.spotShadowMap[spotLength] = shadowMap;
           numSpotShadows++;
         }
         spotLength++;
@@ -12443,7 +12443,7 @@ function WebGLLights(extensions, capabilities) {
         uniforms.color.copy(color).multiplyScalar(intensity);
         uniforms.halfWidth.set(light.width * 0.5, 0, 0);
         uniforms.halfHeight.set(0, light.height * 0.5, 0);
-        state.rectArea[rectAreaLength] = uniforms;
+        state2.rectArea[rectAreaLength] = uniforms;
         rectAreaLength++;
       } else if (light.isPointLight) {
         const uniforms = cache2.get(light);
@@ -12459,58 +12459,58 @@ function WebGLLights(extensions, capabilities) {
           shadowUniforms.shadowMapSize = shadow.mapSize;
           shadowUniforms.shadowCameraNear = shadow.camera.near;
           shadowUniforms.shadowCameraFar = shadow.camera.far;
-          state.pointShadow[pointLength] = shadowUniforms;
-          state.pointShadowMap[pointLength] = shadowMap;
-          state.pointShadowMatrix[pointLength] = light.shadow.matrix;
+          state2.pointShadow[pointLength] = shadowUniforms;
+          state2.pointShadowMap[pointLength] = shadowMap;
+          state2.pointShadowMatrix[pointLength] = light.shadow.matrix;
           numPointShadows++;
         }
-        state.point[pointLength] = uniforms;
+        state2.point[pointLength] = uniforms;
         pointLength++;
       } else if (light.isHemisphereLight) {
         const uniforms = cache2.get(light);
         uniforms.skyColor.copy(light.color).multiplyScalar(intensity * scaleFactor);
         uniforms.groundColor.copy(light.groundColor).multiplyScalar(intensity * scaleFactor);
-        state.hemi[hemiLength] = uniforms;
+        state2.hemi[hemiLength] = uniforms;
         hemiLength++;
       }
     }
     if (rectAreaLength > 0) {
       if (capabilities.isWebGL2) {
-        state.rectAreaLTC1 = UniformsLib.LTC_FLOAT_1;
-        state.rectAreaLTC2 = UniformsLib.LTC_FLOAT_2;
+        state2.rectAreaLTC1 = UniformsLib.LTC_FLOAT_1;
+        state2.rectAreaLTC2 = UniformsLib.LTC_FLOAT_2;
       } else {
         if (extensions.has("OES_texture_float_linear") === true) {
-          state.rectAreaLTC1 = UniformsLib.LTC_FLOAT_1;
-          state.rectAreaLTC2 = UniformsLib.LTC_FLOAT_2;
+          state2.rectAreaLTC1 = UniformsLib.LTC_FLOAT_1;
+          state2.rectAreaLTC2 = UniformsLib.LTC_FLOAT_2;
         } else if (extensions.has("OES_texture_half_float_linear") === true) {
-          state.rectAreaLTC1 = UniformsLib.LTC_HALF_1;
-          state.rectAreaLTC2 = UniformsLib.LTC_HALF_2;
+          state2.rectAreaLTC1 = UniformsLib.LTC_HALF_1;
+          state2.rectAreaLTC2 = UniformsLib.LTC_HALF_2;
         } else {
           console.error("THREE.WebGLRenderer: Unable to use RectAreaLight. Missing WebGL extensions.");
         }
       }
     }
-    state.ambient[0] = r;
-    state.ambient[1] = g;
-    state.ambient[2] = b;
-    const hash = state.hash;
+    state2.ambient[0] = r;
+    state2.ambient[1] = g;
+    state2.ambient[2] = b;
+    const hash = state2.hash;
     if (hash.directionalLength !== directionalLength || hash.pointLength !== pointLength || hash.spotLength !== spotLength || hash.rectAreaLength !== rectAreaLength || hash.hemiLength !== hemiLength || hash.numDirectionalShadows !== numDirectionalShadows || hash.numPointShadows !== numPointShadows || hash.numSpotShadows !== numSpotShadows || hash.numSpotMaps !== numSpotMaps) {
-      state.directional.length = directionalLength;
-      state.spot.length = spotLength;
-      state.rectArea.length = rectAreaLength;
-      state.point.length = pointLength;
-      state.hemi.length = hemiLength;
-      state.directionalShadow.length = numDirectionalShadows;
-      state.directionalShadowMap.length = numDirectionalShadows;
-      state.pointShadow.length = numPointShadows;
-      state.pointShadowMap.length = numPointShadows;
-      state.spotShadow.length = numSpotShadows;
-      state.spotShadowMap.length = numSpotShadows;
-      state.directionalShadowMatrix.length = numDirectionalShadows;
-      state.pointShadowMatrix.length = numPointShadows;
-      state.spotLightMatrix.length = numSpotShadows + numSpotMaps - numSpotShadowsWithMaps;
-      state.spotLightMap.length = numSpotMaps;
-      state.numSpotLightShadowsWithMaps = numSpotShadowsWithMaps;
+      state2.directional.length = directionalLength;
+      state2.spot.length = spotLength;
+      state2.rectArea.length = rectAreaLength;
+      state2.point.length = pointLength;
+      state2.hemi.length = hemiLength;
+      state2.directionalShadow.length = numDirectionalShadows;
+      state2.directionalShadowMap.length = numDirectionalShadows;
+      state2.pointShadow.length = numPointShadows;
+      state2.pointShadowMap.length = numPointShadows;
+      state2.spotShadow.length = numSpotShadows;
+      state2.spotShadowMap.length = numSpotShadows;
+      state2.directionalShadowMatrix.length = numDirectionalShadows;
+      state2.pointShadowMatrix.length = numPointShadows;
+      state2.spotLightMatrix.length = numSpotShadows + numSpotMaps - numSpotShadowsWithMaps;
+      state2.spotLightMap.length = numSpotMaps;
+      state2.numSpotLightShadowsWithMaps = numSpotShadowsWithMaps;
       hash.directionalLength = directionalLength;
       hash.pointLength = pointLength;
       hash.spotLength = spotLength;
@@ -12520,27 +12520,27 @@ function WebGLLights(extensions, capabilities) {
       hash.numPointShadows = numPointShadows;
       hash.numSpotShadows = numSpotShadows;
       hash.numSpotMaps = numSpotMaps;
-      state.version = nextVersion++;
+      state2.version = nextVersion++;
     }
   }
-  function setupView(lights, camera2) {
+  function setupView(lights, camera) {
     let directionalLength = 0;
     let pointLength = 0;
     let spotLength = 0;
     let rectAreaLength = 0;
     let hemiLength = 0;
-    const viewMatrix = camera2.matrixWorldInverse;
+    const viewMatrix = camera.matrixWorldInverse;
     for (let i = 0, l = lights.length; i < l; i++) {
       const light = lights[i];
       if (light.isDirectionalLight) {
-        const uniforms = state.directional[directionalLength];
+        const uniforms = state2.directional[directionalLength];
         uniforms.direction.setFromMatrixPosition(light.matrixWorld);
         vector3.setFromMatrixPosition(light.target.matrixWorld);
         uniforms.direction.sub(vector3);
         uniforms.direction.transformDirection(viewMatrix);
         directionalLength++;
       } else if (light.isSpotLight) {
-        const uniforms = state.spot[spotLength];
+        const uniforms = state2.spot[spotLength];
         uniforms.position.setFromMatrixPosition(light.matrixWorld);
         uniforms.position.applyMatrix4(viewMatrix);
         uniforms.direction.setFromMatrixPosition(light.matrixWorld);
@@ -12549,7 +12549,7 @@ function WebGLLights(extensions, capabilities) {
         uniforms.direction.transformDirection(viewMatrix);
         spotLength++;
       } else if (light.isRectAreaLight) {
-        const uniforms = state.rectArea[rectAreaLength];
+        const uniforms = state2.rectArea[rectAreaLength];
         uniforms.position.setFromMatrixPosition(light.matrixWorld);
         uniforms.position.applyMatrix4(viewMatrix);
         matrix42.identity();
@@ -12562,12 +12562,12 @@ function WebGLLights(extensions, capabilities) {
         uniforms.halfHeight.applyMatrix4(matrix42);
         rectAreaLength++;
       } else if (light.isPointLight) {
-        const uniforms = state.point[pointLength];
+        const uniforms = state2.point[pointLength];
         uniforms.position.setFromMatrixPosition(light.matrixWorld);
         uniforms.position.applyMatrix4(viewMatrix);
         pointLength++;
       } else if (light.isHemisphereLight) {
-        const uniforms = state.hemi[hemiLength];
+        const uniforms = state2.hemi[hemiLength];
         uniforms.direction.setFromMatrixPosition(light.matrixWorld);
         uniforms.direction.transformDirection(viewMatrix);
         hemiLength++;
@@ -12577,7 +12577,7 @@ function WebGLLights(extensions, capabilities) {
   return {
     setup,
     setupView,
-    state
+    state: state2
   };
 }
 function WebGLRenderState(extensions, capabilities) {
@@ -12597,17 +12597,17 @@ function WebGLRenderState(extensions, capabilities) {
   function setupLights(physicallyCorrectLights) {
     lights.setup(lightsArray, physicallyCorrectLights);
   }
-  function setupLightsView(camera2) {
-    lights.setupView(lightsArray, camera2);
+  function setupLightsView(camera) {
+    lights.setupView(lightsArray, camera);
   }
-  const state = {
+  const state2 = {
     lightsArray,
     shadowsArray,
     lights
   };
   return {
     init,
-    state,
+    state: state2,
     setupLights,
     setupLightsView,
     pushLight,
@@ -12616,12 +12616,12 @@ function WebGLRenderState(extensions, capabilities) {
 }
 function WebGLRenderStates(extensions, capabilities) {
   let renderStates = /* @__PURE__ */ new WeakMap();
-  function get(scene2, renderCallDepth = 0) {
-    const renderStateArray = renderStates.get(scene2);
+  function get(scene, renderCallDepth = 0) {
+    const renderStateArray = renderStates.get(scene);
     let renderState;
     if (renderStateArray === void 0) {
       renderState = new WebGLRenderState(extensions, capabilities);
-      renderStates.set(scene2, [renderState]);
+      renderStates.set(scene, [renderState]);
     } else {
       if (renderCallDepth >= renderStateArray.length) {
         renderState = new WebGLRenderState(extensions, capabilities);
@@ -12730,7 +12730,7 @@ function WebGLShadowMap(_renderer, _objects, _capabilities) {
   this.autoUpdate = true;
   this.needsUpdate = false;
   this.type = PCFShadowMap;
-  this.render = function(lights, scene2, camera2) {
+  this.render = function(lights, scene, camera) {
     if (scope.enabled === false)
       return;
     if (scope.autoUpdate === false && scope.needsUpdate === false)
@@ -12790,17 +12790,17 @@ function WebGLShadowMap(_renderer, _objects, _capabilities) {
         _state.viewport(_viewport);
         shadow.updateMatrices(light, vp);
         _frustum = shadow.getFrustum();
-        renderObject(scene2, camera2, shadow.camera, light, this.type);
+        renderObject(scene, camera, shadow.camera, light, this.type);
       }
       if (shadow.isPointLightShadow !== true && this.type === VSMShadowMap) {
-        VSMPass(shadow, camera2);
+        VSMPass(shadow, camera);
       }
       shadow.needsUpdate = false;
     }
     scope.needsUpdate = false;
     _renderer.setRenderTarget(currentRenderTarget, activeCubeFace, activeMipmapLevel);
   };
-  function VSMPass(shadow, camera2) {
+  function VSMPass(shadow, camera) {
     const geometry = _objects.update(fullScreenMesh);
     if (shadowMaterialVertical.defines.VSM_SAMPLES !== shadow.blurSamples) {
       shadowMaterialVertical.defines.VSM_SAMPLES = shadow.blurSamples;
@@ -12816,13 +12816,13 @@ function WebGLShadowMap(_renderer, _objects, _capabilities) {
     shadowMaterialVertical.uniforms.radius.value = shadow.radius;
     _renderer.setRenderTarget(shadow.mapPass);
     _renderer.clear();
-    _renderer.renderBufferDirect(camera2, null, geometry, shadowMaterialVertical, fullScreenMesh, null);
+    _renderer.renderBufferDirect(camera, null, geometry, shadowMaterialVertical, fullScreenMesh, null);
     shadowMaterialHorizontal.uniforms.shadow_pass.value = shadow.mapPass.texture;
     shadowMaterialHorizontal.uniforms.resolution.value = shadow.mapSize;
     shadowMaterialHorizontal.uniforms.radius.value = shadow.radius;
     _renderer.setRenderTarget(shadow.map);
     _renderer.clear();
-    _renderer.renderBufferDirect(camera2, null, geometry, shadowMaterialHorizontal, fullScreenMesh, null);
+    _renderer.renderBufferDirect(camera, null, geometry, shadowMaterialHorizontal, fullScreenMesh, null);
   }
   function getDepthMaterial(object, material, light, shadowCameraNear, shadowCameraFar, type) {
     let result = null;
@@ -12871,10 +12871,10 @@ function WebGLShadowMap(_renderer, _objects, _capabilities) {
     }
     return result;
   }
-  function renderObject(object, camera2, shadowCamera, light, type) {
+  function renderObject(object, camera, shadowCamera, light, type) {
     if (object.visible === false)
       return;
-    const visible = object.layers.test(camera2.layers);
+    const visible = object.layers.test(camera.layers);
     if (visible && (object.isMesh || object.isLine || object.isPoints)) {
       if ((object.castShadow || object.receiveShadow && type === VSMShadowMap) && (!object.frustumCulled || _frustum.intersectsObject(object))) {
         object.modelViewMatrix.multiplyMatrices(shadowCamera.matrixWorldInverse, object.matrixWorld);
@@ -12898,7 +12898,7 @@ function WebGLShadowMap(_renderer, _objects, _capabilities) {
     }
     const children = object.children;
     for (let i = 0, l = children.length; i < l; i++) {
-      renderObject(children[i], camera2, shadowCamera, light, type);
+      renderObject(children[i], camera, shadowCamera, light, type);
     }
   }
 }
@@ -13375,13 +13375,13 @@ function WebGLState(gl, extensions, capabilities) {
       currentLineWidth = width;
     }
   }
-  function setPolygonOffset(polygonOffset, factor, units) {
+  function setPolygonOffset(polygonOffset, factor, units2) {
     if (polygonOffset) {
       enable(32823);
-      if (currentPolygonOffsetFactor !== factor || currentPolygonOffsetUnits !== units) {
-        gl.polygonOffset(factor, units);
+      if (currentPolygonOffsetFactor !== factor || currentPolygonOffsetUnits !== units2) {
+        gl.polygonOffset(factor, units2);
         currentPolygonOffsetFactor = factor;
-        currentPolygonOffsetUnits = units;
+        currentPolygonOffsetUnits = units2;
       }
     } else {
       disable(32823);
@@ -13633,7 +13633,7 @@ function WebGLState(gl, extensions, capabilities) {
     reset
   };
 }
-function WebGLTextures(_gl, extensions, state, properties, capabilities, utils2, info) {
+function WebGLTextures(_gl, extensions, state2, properties, capabilities, utils2, info) {
   const isWebGL2 = capabilities.isWebGL2;
   const maxTextures = capabilities.maxTextures;
   const maxCubemapSize = capabilities.maxCubemapSize;
@@ -13885,7 +13885,7 @@ function WebGLTextures(_gl, extensions, state, properties, capabilities, utils2,
         return;
       }
     }
-    state.bindTexture(3553, textureProperties.__webglTexture, 33984 + slot);
+    state2.bindTexture(3553, textureProperties.__webglTexture, 33984 + slot);
   }
   function setTexture2DArray(texture, slot) {
     const textureProperties = properties.get(texture);
@@ -13893,7 +13893,7 @@ function WebGLTextures(_gl, extensions, state, properties, capabilities, utils2,
       uploadTexture(textureProperties, texture, slot);
       return;
     }
-    state.bindTexture(35866, textureProperties.__webglTexture, 33984 + slot);
+    state2.bindTexture(35866, textureProperties.__webglTexture, 33984 + slot);
   }
   function setTexture3D(texture, slot) {
     const textureProperties = properties.get(texture);
@@ -13901,7 +13901,7 @@ function WebGLTextures(_gl, extensions, state, properties, capabilities, utils2,
       uploadTexture(textureProperties, texture, slot);
       return;
     }
-    state.bindTexture(32879, textureProperties.__webglTexture, 33984 + slot);
+    state2.bindTexture(32879, textureProperties.__webglTexture, 33984 + slot);
   }
   function setTextureCube(texture, slot) {
     const textureProperties = properties.get(texture);
@@ -13909,7 +13909,7 @@ function WebGLTextures(_gl, extensions, state, properties, capabilities, utils2,
       uploadCubeTexture(textureProperties, texture, slot);
       return;
     }
-    state.bindTexture(34067, textureProperties.__webglTexture, 33984 + slot);
+    state2.bindTexture(34067, textureProperties.__webglTexture, 33984 + slot);
   }
   const wrappingToGL = {
     [RepeatWrapping]: 10497,
@@ -14007,10 +14007,10 @@ function WebGLTextures(_gl, extensions, state, properties, capabilities, utils2,
       textureType = 32879;
     const forceUpload = initTexture(textureProperties, texture);
     const source = texture.source;
-    state.bindTexture(textureType, textureProperties.__webglTexture, 33984 + slot);
+    state2.bindTexture(textureType, textureProperties.__webglTexture, 33984 + slot);
     const sourceProperties = properties.get(source);
     if (source.version !== sourceProperties.__version || forceUpload === true) {
-      state.activeTexture(33984 + slot);
+      state2.activeTexture(33984 + slot);
       _gl.pixelStorei(37440, texture.flipY);
       _gl.pixelStorei(37441, texture.premultiplyAlpha);
       _gl.pixelStorei(3317, texture.unpackAlignment);
@@ -14060,81 +14060,81 @@ function WebGLTextures(_gl, extensions, state, properties, capabilities, utils2,
         }
         if (allocateMemory) {
           if (useTexStorage) {
-            state.texStorage2D(3553, 1, glInternalFormat, image.width, image.height);
+            state2.texStorage2D(3553, 1, glInternalFormat, image.width, image.height);
           } else {
-            state.texImage2D(3553, 0, glInternalFormat, image.width, image.height, 0, glFormat, glType, null);
+            state2.texImage2D(3553, 0, glInternalFormat, image.width, image.height, 0, glFormat, glType, null);
           }
         }
       } else if (texture.isDataTexture) {
         if (mipmaps.length > 0 && supportsMips) {
           if (useTexStorage && allocateMemory) {
-            state.texStorage2D(3553, levels, glInternalFormat, mipmaps[0].width, mipmaps[0].height);
+            state2.texStorage2D(3553, levels, glInternalFormat, mipmaps[0].width, mipmaps[0].height);
           }
           for (let i = 0, il = mipmaps.length; i < il; i++) {
             mipmap = mipmaps[i];
             if (useTexStorage) {
-              state.texSubImage2D(3553, i, 0, 0, mipmap.width, mipmap.height, glFormat, glType, mipmap.data);
+              state2.texSubImage2D(3553, i, 0, 0, mipmap.width, mipmap.height, glFormat, glType, mipmap.data);
             } else {
-              state.texImage2D(3553, i, glInternalFormat, mipmap.width, mipmap.height, 0, glFormat, glType, mipmap.data);
+              state2.texImage2D(3553, i, glInternalFormat, mipmap.width, mipmap.height, 0, glFormat, glType, mipmap.data);
             }
           }
           texture.generateMipmaps = false;
         } else {
           if (useTexStorage) {
             if (allocateMemory) {
-              state.texStorage2D(3553, levels, glInternalFormat, image.width, image.height);
+              state2.texStorage2D(3553, levels, glInternalFormat, image.width, image.height);
             }
-            state.texSubImage2D(3553, 0, 0, 0, image.width, image.height, glFormat, glType, image.data);
+            state2.texSubImage2D(3553, 0, 0, 0, image.width, image.height, glFormat, glType, image.data);
           } else {
-            state.texImage2D(3553, 0, glInternalFormat, image.width, image.height, 0, glFormat, glType, image.data);
+            state2.texImage2D(3553, 0, glInternalFormat, image.width, image.height, 0, glFormat, glType, image.data);
           }
         }
       } else if (texture.isCompressedTexture) {
         if (texture.isCompressedArrayTexture) {
           if (useTexStorage && allocateMemory) {
-            state.texStorage3D(35866, levels, glInternalFormat, mipmaps[0].width, mipmaps[0].height, image.depth);
+            state2.texStorage3D(35866, levels, glInternalFormat, mipmaps[0].width, mipmaps[0].height, image.depth);
           }
           for (let i = 0, il = mipmaps.length; i < il; i++) {
             mipmap = mipmaps[i];
             if (texture.format !== RGBAFormat) {
               if (glFormat !== null) {
                 if (useTexStorage) {
-                  state.compressedTexSubImage3D(35866, i, 0, 0, 0, mipmap.width, mipmap.height, image.depth, glFormat, mipmap.data, 0, 0);
+                  state2.compressedTexSubImage3D(35866, i, 0, 0, 0, mipmap.width, mipmap.height, image.depth, glFormat, mipmap.data, 0, 0);
                 } else {
-                  state.compressedTexImage3D(35866, i, glInternalFormat, mipmap.width, mipmap.height, image.depth, 0, mipmap.data, 0, 0);
+                  state2.compressedTexImage3D(35866, i, glInternalFormat, mipmap.width, mipmap.height, image.depth, 0, mipmap.data, 0, 0);
                 }
               } else {
                 console.warn("THREE.WebGLRenderer: Attempt to load unsupported compressed texture format in .uploadTexture()");
               }
             } else {
               if (useTexStorage) {
-                state.texSubImage3D(35866, i, 0, 0, 0, mipmap.width, mipmap.height, image.depth, glFormat, glType, mipmap.data);
+                state2.texSubImage3D(35866, i, 0, 0, 0, mipmap.width, mipmap.height, image.depth, glFormat, glType, mipmap.data);
               } else {
-                state.texImage3D(35866, i, glInternalFormat, mipmap.width, mipmap.height, image.depth, 0, glFormat, glType, mipmap.data);
+                state2.texImage3D(35866, i, glInternalFormat, mipmap.width, mipmap.height, image.depth, 0, glFormat, glType, mipmap.data);
               }
             }
           }
         } else {
           if (useTexStorage && allocateMemory) {
-            state.texStorage2D(3553, levels, glInternalFormat, mipmaps[0].width, mipmaps[0].height);
+            state2.texStorage2D(3553, levels, glInternalFormat, mipmaps[0].width, mipmaps[0].height);
           }
           for (let i = 0, il = mipmaps.length; i < il; i++) {
             mipmap = mipmaps[i];
             if (texture.format !== RGBAFormat) {
               if (glFormat !== null) {
                 if (useTexStorage) {
-                  state.compressedTexSubImage2D(3553, i, 0, 0, mipmap.width, mipmap.height, glFormat, mipmap.data);
+                  state2.compressedTexSubImage2D(3553, i, 0, 0, mipmap.width, mipmap.height, glFormat, mipmap.data);
                 } else {
-                  state.compressedTexImage2D(3553, i, glInternalFormat, mipmap.width, mipmap.height, 0, mipmap.data);
+                  state2.compressedTexImage2D(3553, i, glInternalFormat, mipmap.width, mipmap.height, 0, mipmap.data);
                 }
               } else {
                 console.warn("THREE.WebGLRenderer: Attempt to load unsupported compressed texture format in .uploadTexture()");
               }
             } else {
               if (useTexStorage) {
-                state.texSubImage2D(3553, i, 0, 0, mipmap.width, mipmap.height, glFormat, glType, mipmap.data);
+                state2.texSubImage2D(3553, i, 0, 0, mipmap.width, mipmap.height, glFormat, glType, mipmap.data);
               } else {
-                state.texImage2D(3553, i, glInternalFormat, mipmap.width, mipmap.height, 0, glFormat, glType, mipmap.data);
+                state2.texImage2D(3553, i, glInternalFormat, mipmap.width, mipmap.height, 0, glFormat, glType, mipmap.data);
               }
             }
           }
@@ -14142,29 +14142,29 @@ function WebGLTextures(_gl, extensions, state, properties, capabilities, utils2,
       } else if (texture.isDataArrayTexture) {
         if (useTexStorage) {
           if (allocateMemory) {
-            state.texStorage3D(35866, levels, glInternalFormat, image.width, image.height, image.depth);
+            state2.texStorage3D(35866, levels, glInternalFormat, image.width, image.height, image.depth);
           }
-          state.texSubImage3D(35866, 0, 0, 0, 0, image.width, image.height, image.depth, glFormat, glType, image.data);
+          state2.texSubImage3D(35866, 0, 0, 0, 0, image.width, image.height, image.depth, glFormat, glType, image.data);
         } else {
-          state.texImage3D(35866, 0, glInternalFormat, image.width, image.height, image.depth, 0, glFormat, glType, image.data);
+          state2.texImage3D(35866, 0, glInternalFormat, image.width, image.height, image.depth, 0, glFormat, glType, image.data);
         }
       } else if (texture.isData3DTexture) {
         if (useTexStorage) {
           if (allocateMemory) {
-            state.texStorage3D(32879, levels, glInternalFormat, image.width, image.height, image.depth);
+            state2.texStorage3D(32879, levels, glInternalFormat, image.width, image.height, image.depth);
           }
-          state.texSubImage3D(32879, 0, 0, 0, 0, image.width, image.height, image.depth, glFormat, glType, image.data);
+          state2.texSubImage3D(32879, 0, 0, 0, 0, image.width, image.height, image.depth, glFormat, glType, image.data);
         } else {
-          state.texImage3D(32879, 0, glInternalFormat, image.width, image.height, image.depth, 0, glFormat, glType, image.data);
+          state2.texImage3D(32879, 0, glInternalFormat, image.width, image.height, image.depth, 0, glFormat, glType, image.data);
         }
       } else if (texture.isFramebufferTexture) {
         if (allocateMemory) {
           if (useTexStorage) {
-            state.texStorage2D(3553, levels, glInternalFormat, image.width, image.height);
+            state2.texStorage2D(3553, levels, glInternalFormat, image.width, image.height);
           } else {
             let width = image.width, height = image.height;
             for (let i = 0; i < levels; i++) {
-              state.texImage2D(3553, i, glInternalFormat, width, height, 0, glFormat, glType, null);
+              state2.texImage2D(3553, i, glInternalFormat, width, height, 0, glFormat, glType, null);
               width >>= 1;
               height >>= 1;
             }
@@ -14173,25 +14173,25 @@ function WebGLTextures(_gl, extensions, state, properties, capabilities, utils2,
       } else {
         if (mipmaps.length > 0 && supportsMips) {
           if (useTexStorage && allocateMemory) {
-            state.texStorage2D(3553, levels, glInternalFormat, mipmaps[0].width, mipmaps[0].height);
+            state2.texStorage2D(3553, levels, glInternalFormat, mipmaps[0].width, mipmaps[0].height);
           }
           for (let i = 0, il = mipmaps.length; i < il; i++) {
             mipmap = mipmaps[i];
             if (useTexStorage) {
-              state.texSubImage2D(3553, i, 0, 0, glFormat, glType, mipmap);
+              state2.texSubImage2D(3553, i, 0, 0, glFormat, glType, mipmap);
             } else {
-              state.texImage2D(3553, i, glInternalFormat, glFormat, glType, mipmap);
+              state2.texImage2D(3553, i, glInternalFormat, glFormat, glType, mipmap);
             }
           }
           texture.generateMipmaps = false;
         } else {
           if (useTexStorage) {
             if (allocateMemory) {
-              state.texStorage2D(3553, levels, glInternalFormat, image.width, image.height);
+              state2.texStorage2D(3553, levels, glInternalFormat, image.width, image.height);
             }
-            state.texSubImage2D(3553, 0, 0, 0, glFormat, glType, image);
+            state2.texSubImage2D(3553, 0, 0, 0, glFormat, glType, image);
           } else {
-            state.texImage2D(3553, 0, glInternalFormat, glFormat, glType, image);
+            state2.texImage2D(3553, 0, glInternalFormat, glFormat, glType, image);
           }
         }
       }
@@ -14209,10 +14209,10 @@ function WebGLTextures(_gl, extensions, state, properties, capabilities, utils2,
       return;
     const forceUpload = initTexture(textureProperties, texture);
     const source = texture.source;
-    state.bindTexture(34067, textureProperties.__webglTexture, 33984 + slot);
+    state2.bindTexture(34067, textureProperties.__webglTexture, 33984 + slot);
     const sourceProperties = properties.get(source);
     if (source.version !== sourceProperties.__version || forceUpload === true) {
-      state.activeTexture(33984 + slot);
+      state2.activeTexture(33984 + slot);
       _gl.pixelStorei(37440, texture.flipY);
       _gl.pixelStorei(37441, texture.premultiplyAlpha);
       _gl.pixelStorei(3317, texture.unpackAlignment);
@@ -14236,7 +14236,7 @@ function WebGLTextures(_gl, extensions, state, properties, capabilities, utils2,
       let mipmaps;
       if (isCompressed) {
         if (useTexStorage && allocateMemory) {
-          state.texStorage2D(34067, levels, glInternalFormat, image.width, image.height);
+          state2.texStorage2D(34067, levels, glInternalFormat, image.width, image.height);
         }
         for (let i = 0; i < 6; i++) {
           mipmaps = cubeImage[i].mipmaps;
@@ -14245,18 +14245,18 @@ function WebGLTextures(_gl, extensions, state, properties, capabilities, utils2,
             if (texture.format !== RGBAFormat) {
               if (glFormat !== null) {
                 if (useTexStorage) {
-                  state.compressedTexSubImage2D(34069 + i, j, 0, 0, mipmap.width, mipmap.height, glFormat, mipmap.data);
+                  state2.compressedTexSubImage2D(34069 + i, j, 0, 0, mipmap.width, mipmap.height, glFormat, mipmap.data);
                 } else {
-                  state.compressedTexImage2D(34069 + i, j, glInternalFormat, mipmap.width, mipmap.height, 0, mipmap.data);
+                  state2.compressedTexImage2D(34069 + i, j, glInternalFormat, mipmap.width, mipmap.height, 0, mipmap.data);
                 }
               } else {
                 console.warn("THREE.WebGLRenderer: Attempt to load unsupported compressed texture format in .setTextureCube()");
               }
             } else {
               if (useTexStorage) {
-                state.texSubImage2D(34069 + i, j, 0, 0, mipmap.width, mipmap.height, glFormat, glType, mipmap.data);
+                state2.texSubImage2D(34069 + i, j, 0, 0, mipmap.width, mipmap.height, glFormat, glType, mipmap.data);
               } else {
-                state.texImage2D(34069 + i, j, glInternalFormat, mipmap.width, mipmap.height, 0, glFormat, glType, mipmap.data);
+                state2.texImage2D(34069 + i, j, glInternalFormat, mipmap.width, mipmap.height, 0, glFormat, glType, mipmap.data);
               }
             }
           }
@@ -14266,36 +14266,36 @@ function WebGLTextures(_gl, extensions, state, properties, capabilities, utils2,
         if (useTexStorage && allocateMemory) {
           if (mipmaps.length > 0)
             levels++;
-          state.texStorage2D(34067, levels, glInternalFormat, cubeImage[0].width, cubeImage[0].height);
+          state2.texStorage2D(34067, levels, glInternalFormat, cubeImage[0].width, cubeImage[0].height);
         }
         for (let i = 0; i < 6; i++) {
           if (isDataTexture) {
             if (useTexStorage) {
-              state.texSubImage2D(34069 + i, 0, 0, 0, cubeImage[i].width, cubeImage[i].height, glFormat, glType, cubeImage[i].data);
+              state2.texSubImage2D(34069 + i, 0, 0, 0, cubeImage[i].width, cubeImage[i].height, glFormat, glType, cubeImage[i].data);
             } else {
-              state.texImage2D(34069 + i, 0, glInternalFormat, cubeImage[i].width, cubeImage[i].height, 0, glFormat, glType, cubeImage[i].data);
+              state2.texImage2D(34069 + i, 0, glInternalFormat, cubeImage[i].width, cubeImage[i].height, 0, glFormat, glType, cubeImage[i].data);
             }
             for (let j = 0; j < mipmaps.length; j++) {
               const mipmap = mipmaps[j];
               const mipmapImage = mipmap.image[i].image;
               if (useTexStorage) {
-                state.texSubImage2D(34069 + i, j + 1, 0, 0, mipmapImage.width, mipmapImage.height, glFormat, glType, mipmapImage.data);
+                state2.texSubImage2D(34069 + i, j + 1, 0, 0, mipmapImage.width, mipmapImage.height, glFormat, glType, mipmapImage.data);
               } else {
-                state.texImage2D(34069 + i, j + 1, glInternalFormat, mipmapImage.width, mipmapImage.height, 0, glFormat, glType, mipmapImage.data);
+                state2.texImage2D(34069 + i, j + 1, glInternalFormat, mipmapImage.width, mipmapImage.height, 0, glFormat, glType, mipmapImage.data);
               }
             }
           } else {
             if (useTexStorage) {
-              state.texSubImage2D(34069 + i, 0, 0, 0, glFormat, glType, cubeImage[i]);
+              state2.texSubImage2D(34069 + i, 0, 0, 0, glFormat, glType, cubeImage[i]);
             } else {
-              state.texImage2D(34069 + i, 0, glInternalFormat, glFormat, glType, cubeImage[i]);
+              state2.texImage2D(34069 + i, 0, glInternalFormat, glFormat, glType, cubeImage[i]);
             }
             for (let j = 0; j < mipmaps.length; j++) {
               const mipmap = mipmaps[j];
               if (useTexStorage) {
-                state.texSubImage2D(34069 + i, j + 1, 0, 0, glFormat, glType, mipmap.image[i]);
+                state2.texSubImage2D(34069 + i, j + 1, 0, 0, glFormat, glType, mipmap.image[i]);
               } else {
-                state.texImage2D(34069 + i, j + 1, glInternalFormat, glFormat, glType, mipmap.image[i]);
+                state2.texImage2D(34069 + i, j + 1, glInternalFormat, glFormat, glType, mipmap.image[i]);
               }
             }
           }
@@ -14317,18 +14317,18 @@ function WebGLTextures(_gl, extensions, state, properties, capabilities, utils2,
     const renderTargetProperties = properties.get(renderTarget);
     if (!renderTargetProperties.__hasExternalTextures) {
       if (textureTarget === 32879 || textureTarget === 35866) {
-        state.texImage3D(textureTarget, 0, glInternalFormat, renderTarget.width, renderTarget.height, renderTarget.depth, 0, glFormat, glType, null);
+        state2.texImage3D(textureTarget, 0, glInternalFormat, renderTarget.width, renderTarget.height, renderTarget.depth, 0, glFormat, glType, null);
       } else {
-        state.texImage2D(textureTarget, 0, glInternalFormat, renderTarget.width, renderTarget.height, 0, glFormat, glType, null);
+        state2.texImage2D(textureTarget, 0, glInternalFormat, renderTarget.width, renderTarget.height, 0, glFormat, glType, null);
       }
     }
-    state.bindFramebuffer(36160, framebuffer);
+    state2.bindFramebuffer(36160, framebuffer);
     if (useMultisampledRTT(renderTarget)) {
       multisampledRTTExt.framebufferTexture2DMultisampleEXT(36160, attachment, textureTarget, properties.get(texture).__webglTexture, 0, getRenderTargetSamples(renderTarget));
     } else if (textureTarget === 3553 || textureTarget >= 34069 && textureTarget <= 34074) {
       _gl.framebufferTexture2D(36160, attachment, textureTarget, properties.get(texture).__webglTexture, 0);
     }
-    state.bindFramebuffer(36160, null);
+    state2.bindFramebuffer(36160, null);
   }
   function setupRenderBufferStorage(renderbuffer, renderTarget, isMultisample) {
     _gl.bindRenderbuffer(36161, renderbuffer);
@@ -14386,7 +14386,7 @@ function WebGLTextures(_gl, extensions, state, properties, capabilities, utils2,
     const isCube = renderTarget && renderTarget.isWebGLCubeRenderTarget;
     if (isCube)
       throw new Error("Depth Texture with cube render targets is not supported");
-    state.bindFramebuffer(36160, framebuffer);
+    state2.bindFramebuffer(36160, framebuffer);
     if (!(renderTarget.depthTexture && renderTarget.depthTexture.isDepthTexture)) {
       throw new Error("renderTarget.depthTexture must be an instance of THREE.DepthTexture");
     }
@@ -14425,17 +14425,17 @@ function WebGLTextures(_gl, extensions, state, properties, capabilities, utils2,
       if (isCube) {
         renderTargetProperties.__webglDepthbuffer = [];
         for (let i = 0; i < 6; i++) {
-          state.bindFramebuffer(36160, renderTargetProperties.__webglFramebuffer[i]);
+          state2.bindFramebuffer(36160, renderTargetProperties.__webglFramebuffer[i]);
           renderTargetProperties.__webglDepthbuffer[i] = _gl.createRenderbuffer();
           setupRenderBufferStorage(renderTargetProperties.__webglDepthbuffer[i], renderTarget, false);
         }
       } else {
-        state.bindFramebuffer(36160, renderTargetProperties.__webglFramebuffer);
+        state2.bindFramebuffer(36160, renderTargetProperties.__webglFramebuffer);
         renderTargetProperties.__webglDepthbuffer = _gl.createRenderbuffer();
         setupRenderBufferStorage(renderTargetProperties.__webglDepthbuffer, renderTarget, false);
       }
     }
-    state.bindFramebuffer(36160, null);
+    state2.bindFramebuffer(36160, null);
   }
   function rebindTextures(renderTarget, colorTexture, depthTexture) {
     const renderTargetProperties = properties.get(renderTarget);
@@ -14486,7 +14486,7 @@ function WebGLTextures(_gl, extensions, state, properties, capabilities, utils2,
         const textures = isMultipleRenderTargets ? texture : [texture];
         renderTargetProperties.__webglMultisampledFramebuffer = _gl.createFramebuffer();
         renderTargetProperties.__webglColorRenderbuffer = [];
-        state.bindFramebuffer(36160, renderTargetProperties.__webglMultisampledFramebuffer);
+        state2.bindFramebuffer(36160, renderTargetProperties.__webglMultisampledFramebuffer);
         for (let i = 0; i < textures.length; i++) {
           const texture2 = textures[i];
           renderTargetProperties.__webglColorRenderbuffer[i] = _gl.createRenderbuffer();
@@ -14503,11 +14503,11 @@ function WebGLTextures(_gl, extensions, state, properties, capabilities, utils2,
           renderTargetProperties.__webglDepthRenderbuffer = _gl.createRenderbuffer();
           setupRenderBufferStorage(renderTargetProperties.__webglDepthRenderbuffer, renderTarget, true);
         }
-        state.bindFramebuffer(36160, null);
+        state2.bindFramebuffer(36160, null);
       }
     }
     if (isCube) {
-      state.bindTexture(34067, textureProperties.__webglTexture);
+      state2.bindTexture(34067, textureProperties.__webglTexture);
       setTextureParameters(34067, texture, supportsMips);
       for (let i = 0; i < 6; i++) {
         setupFrameBufferTexture(renderTargetProperties.__webglFramebuffer[i], renderTarget, texture, 36064, 34069 + i);
@@ -14515,20 +14515,20 @@ function WebGLTextures(_gl, extensions, state, properties, capabilities, utils2,
       if (textureNeedsGenerateMipmaps(texture, supportsMips)) {
         generateMipmap(34067);
       }
-      state.unbindTexture();
+      state2.unbindTexture();
     } else if (isMultipleRenderTargets) {
       const textures = renderTarget.texture;
       for (let i = 0, il = textures.length; i < il; i++) {
         const attachment = textures[i];
         const attachmentProperties = properties.get(attachment);
-        state.bindTexture(3553, attachmentProperties.__webglTexture);
+        state2.bindTexture(3553, attachmentProperties.__webglTexture);
         setTextureParameters(3553, attachment, supportsMips);
         setupFrameBufferTexture(renderTargetProperties.__webglFramebuffer, renderTarget, attachment, 36064 + i, 3553);
         if (textureNeedsGenerateMipmaps(attachment, supportsMips)) {
           generateMipmap(3553);
         }
       }
-      state.unbindTexture();
+      state2.unbindTexture();
     } else {
       let glTextureType = 3553;
       if (renderTarget.isWebGL3DRenderTarget || renderTarget.isWebGLArrayRenderTarget) {
@@ -14538,13 +14538,13 @@ function WebGLTextures(_gl, extensions, state, properties, capabilities, utils2,
           console.error("THREE.WebGLTextures: THREE.Data3DTexture and THREE.DataArrayTexture only supported with WebGL2.");
         }
       }
-      state.bindTexture(glTextureType, textureProperties.__webglTexture);
+      state2.bindTexture(glTextureType, textureProperties.__webglTexture);
       setTextureParameters(glTextureType, texture, supportsMips);
       setupFrameBufferTexture(renderTargetProperties.__webglFramebuffer, renderTarget, texture, 36064, glTextureType);
       if (textureNeedsGenerateMipmaps(texture, supportsMips)) {
         generateMipmap(glTextureType);
       }
-      state.unbindTexture();
+      state2.unbindTexture();
     }
     if (renderTarget.depthBuffer) {
       setupDepthRenderbuffer(renderTarget);
@@ -14558,9 +14558,9 @@ function WebGLTextures(_gl, extensions, state, properties, capabilities, utils2,
       if (textureNeedsGenerateMipmaps(texture, supportsMips)) {
         const target = renderTarget.isWebGLCubeRenderTarget ? 34067 : 3553;
         const webglTexture = properties.get(texture).__webglTexture;
-        state.bindTexture(target, webglTexture);
+        state2.bindTexture(target, webglTexture);
         generateMipmap(target);
-        state.unbindTexture();
+        state2.unbindTexture();
       }
     }
   }
@@ -14576,14 +14576,14 @@ function WebGLTextures(_gl, extensions, state, properties, capabilities, utils2,
       const isMultipleRenderTargets = renderTarget.isWebGLMultipleRenderTargets === true;
       if (isMultipleRenderTargets) {
         for (let i = 0; i < textures.length; i++) {
-          state.bindFramebuffer(36160, renderTargetProperties.__webglMultisampledFramebuffer);
+          state2.bindFramebuffer(36160, renderTargetProperties.__webglMultisampledFramebuffer);
           _gl.framebufferRenderbuffer(36160, 36064 + i, 36161, null);
-          state.bindFramebuffer(36160, renderTargetProperties.__webglFramebuffer);
+          state2.bindFramebuffer(36160, renderTargetProperties.__webglFramebuffer);
           _gl.framebufferTexture2D(36009, 36064 + i, 3553, null, 0);
         }
       }
-      state.bindFramebuffer(36008, renderTargetProperties.__webglMultisampledFramebuffer);
-      state.bindFramebuffer(36009, renderTargetProperties.__webglFramebuffer);
+      state2.bindFramebuffer(36008, renderTargetProperties.__webglMultisampledFramebuffer);
+      state2.bindFramebuffer(36009, renderTargetProperties.__webglFramebuffer);
       for (let i = 0; i < textures.length; i++) {
         invalidationArray.push(36064 + i);
         if (renderTarget.depthBuffer) {
@@ -14612,18 +14612,18 @@ function WebGLTextures(_gl, extensions, state, properties, capabilities, utils2,
           _gl.invalidateFramebuffer(36008, invalidationArray);
         }
       }
-      state.bindFramebuffer(36008, null);
-      state.bindFramebuffer(36009, null);
+      state2.bindFramebuffer(36008, null);
+      state2.bindFramebuffer(36009, null);
       if (isMultipleRenderTargets) {
         for (let i = 0; i < textures.length; i++) {
-          state.bindFramebuffer(36160, renderTargetProperties.__webglMultisampledFramebuffer);
+          state2.bindFramebuffer(36160, renderTargetProperties.__webglMultisampledFramebuffer);
           _gl.framebufferRenderbuffer(36160, 36064 + i, 36161, renderTargetProperties.__webglColorRenderbuffer[i]);
           const webglTexture = properties.get(textures[i]).__webglTexture;
-          state.bindFramebuffer(36160, renderTargetProperties.__webglFramebuffer);
+          state2.bindFramebuffer(36160, renderTargetProperties.__webglFramebuffer);
           _gl.framebufferTexture2D(36009, 36064 + i, 3553, webglTexture, 0);
         }
       }
-      state.bindFramebuffer(36009, renderTargetProperties.__webglMultisampledFramebuffer);
+      state2.bindFramebuffer(36009, renderTargetProperties.__webglMultisampledFramebuffer);
     }
   }
   function getRenderTargetSamples(renderTarget) {
@@ -15101,7 +15101,7 @@ class DepthTexture extends Texture {
   }
 }
 class WebXRManager extends EventDispatcher {
-  constructor(renderer2, gl) {
+  constructor(renderer, gl) {
     super();
     const scope = this;
     let session = null;
@@ -15189,7 +15189,7 @@ class WebXRManager extends EventDispatcher {
       }
       _currentDepthNear = null;
       _currentDepthFar = null;
-      renderer2.setRenderTarget(initialRenderTarget);
+      renderer.setRenderTarget(initialRenderTarget);
       glBaseLayer = null;
       glProjLayer = null;
       glBinding = null;
@@ -15232,7 +15232,7 @@ class WebXRManager extends EventDispatcher {
     this.setSession = async function(value) {
       session = value;
       if (session !== null) {
-        initialRenderTarget = renderer2.getRenderTarget();
+        initialRenderTarget = renderer.getRenderTarget();
         session.addEventListener("select", onSessionEvent);
         session.addEventListener("selectstart", onSessionEvent);
         session.addEventListener("selectend", onSessionEvent);
@@ -15244,7 +15244,7 @@ class WebXRManager extends EventDispatcher {
         if (attributes.xrCompatible !== true) {
           await gl.makeXRCompatible();
         }
-        if (session.renderState.layers === void 0 || renderer2.capabilities.isWebGL2 === false) {
+        if (session.renderState.layers === void 0 || renderer.capabilities.isWebGL2 === false) {
           const layerInit = {
             antialias: session.renderState.layers === void 0 ? attributes.antialias : true,
             alpha: attributes.alpha,
@@ -15260,7 +15260,7 @@ class WebXRManager extends EventDispatcher {
             {
               format: RGBAFormat,
               type: UnsignedByteType,
-              encoding: renderer2.outputEncoding,
+              encoding: renderer.outputEncoding,
               stencilBuffer: attributes.stencil
             }
           );
@@ -15289,11 +15289,11 @@ class WebXRManager extends EventDispatcher {
               type: UnsignedByteType,
               depthTexture: new DepthTexture(glProjLayer.textureWidth, glProjLayer.textureHeight, depthType, void 0, void 0, void 0, void 0, void 0, void 0, depthFormat),
               stencilBuffer: attributes.stencil,
-              encoding: renderer2.outputEncoding,
+              encoding: renderer.outputEncoding,
               samples: attributes.antialias ? 4 : 0
             }
           );
-          const renderTargetProperties = renderer2.properties.get(newRenderTarget);
+          const renderTargetProperties = renderer.properties.get(newRenderTarget);
           renderTargetProperties.__ignoreDepthValues = glProjLayer.ignoreDepthValues;
         }
         newRenderTarget.isXRRenderTarget = true;
@@ -15341,7 +15341,7 @@ class WebXRManager extends EventDispatcher {
     }
     const cameraLPos = new Vector3();
     const cameraRPos = new Vector3();
-    function setProjectionFromUnion(camera2, cameraL2, cameraR2) {
+    function setProjectionFromUnion(camera, cameraL2, cameraR2) {
       cameraLPos.setFromMatrixPosition(cameraL2.matrixWorld);
       cameraRPos.setFromMatrixPosition(cameraR2.matrixWorld);
       const ipd = cameraLPos.distanceTo(cameraRPos);
@@ -15357,32 +15357,32 @@ class WebXRManager extends EventDispatcher {
       const right = near * rightFov;
       const zOffset = ipd / (-leftFov + rightFov);
       const xOffset = zOffset * -leftFov;
-      cameraL2.matrixWorld.decompose(camera2.position, camera2.quaternion, camera2.scale);
-      camera2.translateX(xOffset);
-      camera2.translateZ(zOffset);
-      camera2.matrixWorld.compose(camera2.position, camera2.quaternion, camera2.scale);
-      camera2.matrixWorldInverse.copy(camera2.matrixWorld).invert();
+      cameraL2.matrixWorld.decompose(camera.position, camera.quaternion, camera.scale);
+      camera.translateX(xOffset);
+      camera.translateZ(zOffset);
+      camera.matrixWorld.compose(camera.position, camera.quaternion, camera.scale);
+      camera.matrixWorldInverse.copy(camera.matrixWorld).invert();
       const near2 = near + zOffset;
       const far2 = far + zOffset;
       const left2 = left - xOffset;
       const right2 = right + (ipd - xOffset);
       const top2 = topFov * far / far2 * near2;
       const bottom2 = bottomFov * far / far2 * near2;
-      camera2.projectionMatrix.makePerspective(left2, right2, top2, bottom2, near2, far2);
+      camera.projectionMatrix.makePerspective(left2, right2, top2, bottom2, near2, far2);
     }
-    function updateCamera(camera2, parent) {
+    function updateCamera(camera, parent) {
       if (parent === null) {
-        camera2.matrixWorld.copy(camera2.matrix);
+        camera.matrixWorld.copy(camera.matrix);
       } else {
-        camera2.matrixWorld.multiplyMatrices(parent.matrixWorld, camera2.matrix);
+        camera.matrixWorld.multiplyMatrices(parent.matrixWorld, camera.matrix);
       }
-      camera2.matrixWorldInverse.copy(camera2.matrixWorld).invert();
+      camera.matrixWorldInverse.copy(camera.matrixWorld).invert();
     }
-    this.updateCamera = function(camera2) {
+    this.updateCamera = function(camera) {
       if (session === null)
         return;
-      cameraVR.near = cameraR.near = cameraL.near = camera2.near;
-      cameraVR.far = cameraR.far = cameraL.far = camera2.far;
+      cameraVR.near = cameraR.near = cameraL.near = camera.near;
+      cameraVR.far = cameraR.far = cameraL.far = camera.far;
       if (_currentDepthNear !== cameraVR.near || _currentDepthFar !== cameraVR.far) {
         session.updateRenderState({
           depthNear: cameraVR.near,
@@ -15391,16 +15391,16 @@ class WebXRManager extends EventDispatcher {
         _currentDepthNear = cameraVR.near;
         _currentDepthFar = cameraVR.far;
       }
-      const parent = camera2.parent;
+      const parent = camera.parent;
       const cameras2 = cameraVR.cameras;
       updateCamera(cameraVR, parent);
       for (let i = 0; i < cameras2.length; i++) {
         updateCamera(cameras2[i], parent);
       }
       cameraVR.matrixWorld.decompose(cameraVR.position, cameraVR.quaternion, cameraVR.scale);
-      camera2.matrix.copy(cameraVR.matrix);
-      camera2.matrix.decompose(camera2.position, camera2.quaternion, camera2.scale);
-      const children = camera2.children;
+      camera.matrix.copy(cameraVR.matrix);
+      camera.matrix.decompose(camera.position, camera.quaternion, camera.scale);
+      const children = camera.children;
       for (let i = 0, l = children.length; i < l; i++) {
         children[i].updateMatrixWorld(true);
       }
@@ -15438,8 +15438,8 @@ class WebXRManager extends EventDispatcher {
       if (pose !== null) {
         const views = pose.views;
         if (glBaseLayer !== null) {
-          renderer2.setRenderTargetFramebuffer(newRenderTarget, glBaseLayer.framebuffer);
-          renderer2.setRenderTarget(newRenderTarget);
+          renderer.setRenderTargetFramebuffer(newRenderTarget, glBaseLayer.framebuffer);
+          renderer.setRenderTarget(newRenderTarget);
         }
         let cameraVRNeedsUpdate = false;
         if (views.length !== cameraVR.cameras.length) {
@@ -15455,29 +15455,29 @@ class WebXRManager extends EventDispatcher {
             const glSubImage = glBinding.getViewSubImage(glProjLayer, view);
             viewport = glSubImage.viewport;
             if (i === 0) {
-              renderer2.setRenderTargetTextures(
+              renderer.setRenderTargetTextures(
                 newRenderTarget,
                 glSubImage.colorTexture,
                 glProjLayer.ignoreDepthValues ? void 0 : glSubImage.depthStencilTexture
               );
-              renderer2.setRenderTarget(newRenderTarget);
+              renderer.setRenderTarget(newRenderTarget);
             }
           }
-          let camera2 = cameras[i];
-          if (camera2 === void 0) {
-            camera2 = new PerspectiveCamera();
-            camera2.layers.enable(i);
-            camera2.viewport = new Vector4();
-            cameras[i] = camera2;
+          let camera = cameras[i];
+          if (camera === void 0) {
+            camera = new PerspectiveCamera();
+            camera.layers.enable(i);
+            camera.viewport = new Vector4();
+            cameras[i] = camera;
           }
-          camera2.matrix.fromArray(view.transform.matrix);
-          camera2.projectionMatrix.fromArray(view.projectionMatrix);
-          camera2.viewport.set(viewport.x, viewport.y, viewport.width, viewport.height);
+          camera.matrix.fromArray(view.transform.matrix);
+          camera.projectionMatrix.fromArray(view.projectionMatrix);
+          camera.viewport.set(viewport.x, viewport.y, viewport.width, viewport.height);
           if (i === 0) {
-            cameraVR.matrix.copy(camera2.matrix);
+            cameraVR.matrix.copy(camera.matrix);
           }
           if (cameraVRNeedsUpdate === true) {
-            cameraVR.cameras.push(camera2);
+            cameraVR.cameras.push(camera);
           }
         }
       }
@@ -15533,9 +15533,9 @@ class WebXRManager extends EventDispatcher {
     };
   }
 }
-function WebGLMaterials(renderer2, properties) {
+function WebGLMaterials(renderer, properties) {
   function refreshFogUniforms(uniforms, fog) {
-    fog.color.getRGB(uniforms.fogColor.value, getUnlitUniformColorSpace(renderer2));
+    fog.color.getRGB(uniforms.fogColor.value, getUnlitUniformColorSpace(renderer));
     if (fog.isFog) {
       uniforms.fogNear.value = fog.near;
       uniforms.fogFar.value = fog.far;
@@ -15636,7 +15636,7 @@ function WebGLMaterials(renderer2, properties) {
     }
     if (material.lightMap) {
       uniforms.lightMap.value = material.lightMap;
-      const scaleFactor = renderer2.physicallyCorrectLights !== true ? Math.PI : 1;
+      const scaleFactor = renderer.physicallyCorrectLights !== true ? Math.PI : 1;
       uniforms.lightMapIntensity.value = material.lightMapIntensity * scaleFactor;
     }
     if (material.aoMap) {
@@ -15874,14 +15874,14 @@ function WebGLMaterials(renderer2, properties) {
     refreshMaterialUniforms
   };
 }
-function WebGLUniformsGroups(gl, info, capabilities, state) {
+function WebGLUniformsGroups(gl, info, capabilities, state2) {
   let buffers = {};
   let updateList = {};
   let allocatedBindingPoints = [];
   const maxBindingPoints = capabilities.isWebGL2 ? gl.getParameter(35375) : 0;
   function bind(uniformsGroup, program) {
     const webglProgram = program.program;
-    state.uniformBlockBinding(uniformsGroup, webglProgram);
+    state2.uniformBlockBinding(uniformsGroup, webglProgram);
   }
   function update(uniformsGroup, program) {
     let buffer = buffers[uniformsGroup.id];
@@ -15892,7 +15892,7 @@ function WebGLUniformsGroups(gl, info, capabilities, state) {
       uniformsGroup.addEventListener("dispose", onUniformsGroupsDispose);
     }
     const webglProgram = program.program;
-    state.updateUBOMapping(uniformsGroup, webglProgram);
+    state2.updateUBOMapping(uniformsGroup, webglProgram);
     const frame = info.render.frame;
     if (updateList[uniformsGroup.id] !== frame) {
       updateBufferData(uniformsGroup);
@@ -16204,7 +16204,7 @@ function WebGLRenderer(parameters2 = {}) {
     console.error("THREE.WebGLRenderer: " + error2.message);
     throw error2;
   }
-  let extensions, capabilities, state, info;
+  let extensions, capabilities, state2, info;
   let properties, textures, cubemaps, cubeuvmaps, attributes, geometries2, objects;
   let programCache, materials, renderLists, renderStates, clipping, shadowMap;
   let background, morphtargets, bufferRenderer, indexedBufferRenderer;
@@ -16214,10 +16214,10 @@ function WebGLRenderer(parameters2 = {}) {
     capabilities = new WebGLCapabilities(_gl, extensions, parameters2);
     extensions.init(capabilities);
     utils2 = new WebGLUtils(_gl, extensions, capabilities);
-    state = new WebGLState(_gl, extensions, capabilities);
+    state2 = new WebGLState(_gl, extensions, capabilities);
     info = new WebGLInfo();
     properties = new WebGLProperties();
-    textures = new WebGLTextures(_gl, extensions, state, properties, capabilities, utils2, info);
+    textures = new WebGLTextures(_gl, extensions, state2, properties, capabilities, utils2, info);
     cubemaps = new WebGLCubeMaps(_this);
     cubeuvmaps = new WebGLCubeUVMaps(_this);
     attributes = new WebGLAttributes(_gl, capabilities);
@@ -16230,9 +16230,9 @@ function WebGLRenderer(parameters2 = {}) {
     materials = new WebGLMaterials(_this, properties);
     renderLists = new WebGLRenderLists();
     renderStates = new WebGLRenderStates(extensions, capabilities);
-    background = new WebGLBackground(_this, cubemaps, cubeuvmaps, state, objects, _alpha, _premultipliedAlpha);
+    background = new WebGLBackground(_this, cubemaps, cubeuvmaps, state2, objects, _alpha, _premultipliedAlpha);
     shadowMap = new WebGLShadowMap(_this, objects, capabilities);
-    uniformsGroups = new WebGLUniformsGroups(_gl, info, capabilities, state);
+    uniformsGroups = new WebGLUniformsGroups(_gl, info, capabilities, state2);
     bufferRenderer = new WebGLBufferRenderer(_gl, extensions, info, capabilities);
     indexedBufferRenderer = new WebGLIndexedBufferRenderer(_gl, extensions, info, capabilities);
     info.programs = programCache.programs;
@@ -16241,7 +16241,7 @@ function WebGLRenderer(parameters2 = {}) {
     _this.properties = properties;
     _this.renderLists = renderLists;
     _this.shadowMap = shadowMap;
-    _this.state = state;
+    _this.state = state2;
     _this.info = info;
   }
   initGLContext();
@@ -16313,7 +16313,7 @@ function WebGLRenderer(parameters2 = {}) {
     } else {
       _viewport.set(x, y, width, height);
     }
-    state.viewport(_currentViewport.copy(_viewport).multiplyScalar(_pixelRatio).floor());
+    state2.viewport(_currentViewport.copy(_viewport).multiplyScalar(_pixelRatio).floor());
   };
   this.getScissor = function(target) {
     return target.copy(_scissor);
@@ -16324,13 +16324,13 @@ function WebGLRenderer(parameters2 = {}) {
     } else {
       _scissor.set(x, y, width, height);
     }
-    state.scissor(_currentScissor.copy(_scissor).multiplyScalar(_pixelRatio).floor());
+    state2.scissor(_currentScissor.copy(_scissor).multiplyScalar(_pixelRatio).floor());
   };
   this.getScissorTest = function() {
     return _scissorTest;
   };
   this.setScissorTest = function(boolean) {
-    state.setScissorTest(_scissorTest = boolean);
+    state2.setScissorTest(_scissorTest = boolean);
   };
   this.setOpaqueSort = function(method) {
     _opaqueSort = method;
@@ -16434,12 +16434,12 @@ function WebGLRenderer(parameters2 = {}) {
       }
     }
   }
-  this.renderBufferDirect = function(camera2, scene2, geometry, material, object, group) {
-    if (scene2 === null)
-      scene2 = _emptyScene;
+  this.renderBufferDirect = function(camera, scene, geometry, material, object, group) {
+    if (scene === null)
+      scene = _emptyScene;
     const frontFaceCW = object.isMesh && object.matrixWorld.determinant() < 0;
-    const program = setProgram(camera2, scene2, geometry, material, object);
-    state.setMaterial(material, frontFaceCW);
+    const program = setProgram(camera, scene, geometry, material, object);
+    state2.setMaterial(material, frontFaceCW);
     let index = geometry.index;
     let rangeFactor = 1;
     if (material.wireframe === true) {
@@ -16466,65 +16466,65 @@ function WebGLRenderer(parameters2 = {}) {
       return;
     bindingStates.setup(object, material, program, geometry, index);
     let attribute;
-    let renderer2 = bufferRenderer;
+    let renderer = bufferRenderer;
     if (index !== null) {
       attribute = attributes.get(index);
-      renderer2 = indexedBufferRenderer;
-      renderer2.setIndex(attribute);
+      renderer = indexedBufferRenderer;
+      renderer.setIndex(attribute);
     }
     if (object.isMesh) {
       if (material.wireframe === true) {
-        state.setLineWidth(material.wireframeLinewidth * getTargetPixelRatio());
-        renderer2.setMode(1);
+        state2.setLineWidth(material.wireframeLinewidth * getTargetPixelRatio());
+        renderer.setMode(1);
       } else {
-        renderer2.setMode(4);
+        renderer.setMode(4);
       }
     } else if (object.isLine) {
       let lineWidth = material.linewidth;
       if (lineWidth === void 0)
         lineWidth = 1;
-      state.setLineWidth(lineWidth * getTargetPixelRatio());
+      state2.setLineWidth(lineWidth * getTargetPixelRatio());
       if (object.isLineSegments) {
-        renderer2.setMode(1);
+        renderer.setMode(1);
       } else if (object.isLineLoop) {
-        renderer2.setMode(2);
+        renderer.setMode(2);
       } else {
-        renderer2.setMode(3);
+        renderer.setMode(3);
       }
     } else if (object.isPoints) {
-      renderer2.setMode(0);
+      renderer.setMode(0);
     } else if (object.isSprite) {
-      renderer2.setMode(4);
+      renderer.setMode(4);
     }
     if (object.isInstancedMesh) {
-      renderer2.renderInstances(drawStart, drawCount, object.count);
+      renderer.renderInstances(drawStart, drawCount, object.count);
     } else if (geometry.isInstancedBufferGeometry) {
       const maxInstanceCount = geometry._maxInstanceCount !== void 0 ? geometry._maxInstanceCount : Infinity;
       const instanceCount = Math.min(geometry.instanceCount, maxInstanceCount);
-      renderer2.renderInstances(drawStart, drawCount, instanceCount);
+      renderer.renderInstances(drawStart, drawCount, instanceCount);
     } else {
-      renderer2.render(drawStart, drawCount);
+      renderer.render(drawStart, drawCount);
     }
   };
-  this.compile = function(scene2, camera2) {
-    function prepare(material, scene3, object) {
+  this.compile = function(scene, camera) {
+    function prepare(material, scene2, object) {
       if (material.transparent === true && material.side === DoubleSide && material.forceSinglePass === false) {
         material.side = BackSide;
         material.needsUpdate = true;
-        getProgram(material, scene3, object);
+        getProgram(material, scene2, object);
         material.side = FrontSide;
         material.needsUpdate = true;
-        getProgram(material, scene3, object);
+        getProgram(material, scene2, object);
         material.side = DoubleSide;
       } else {
-        getProgram(material, scene3, object);
+        getProgram(material, scene2, object);
       }
     }
-    currentRenderState = renderStates.get(scene2);
+    currentRenderState = renderStates.get(scene);
     currentRenderState.init();
     renderStateStack.push(currentRenderState);
-    scene2.traverseVisible(function(object) {
-      if (object.isLight && object.layers.test(camera2.layers)) {
+    scene.traverseVisible(function(object) {
+      if (object.isLight && object.layers.test(camera.layers)) {
         currentRenderState.pushLight(object);
         if (object.castShadow) {
           currentRenderState.pushShadow(object);
@@ -16532,16 +16532,16 @@ function WebGLRenderer(parameters2 = {}) {
       }
     });
     currentRenderState.setupLights(_this.physicallyCorrectLights);
-    scene2.traverse(function(object) {
+    scene.traverse(function(object) {
       const material = object.material;
       if (material) {
         if (Array.isArray(material)) {
           for (let i = 0; i < material.length; i++) {
             const material2 = material[i];
-            prepare(material2, scene2, object);
+            prepare(material2, scene, object);
           }
         } else {
-          prepare(material, scene2, object);
+          prepare(material, scene, object);
         }
       }
     });
@@ -16570,35 +16570,35 @@ function WebGLRenderer(parameters2 = {}) {
   };
   xr.addEventListener("sessionstart", onXRSessionStart);
   xr.addEventListener("sessionend", onXRSessionEnd);
-  this.render = function(scene2, camera2) {
-    if (camera2 !== void 0 && camera2.isCamera !== true) {
+  this.render = function(scene, camera) {
+    if (camera !== void 0 && camera.isCamera !== true) {
       console.error("THREE.WebGLRenderer.render: camera is not an instance of THREE.Camera.");
       return;
     }
     if (_isContextLost === true)
       return;
-    if (scene2.matrixWorldAutoUpdate === true)
-      scene2.updateMatrixWorld();
-    if (camera2.parent === null && camera2.matrixWorldAutoUpdate === true)
-      camera2.updateMatrixWorld();
+    if (scene.matrixWorldAutoUpdate === true)
+      scene.updateMatrixWorld();
+    if (camera.parent === null && camera.matrixWorldAutoUpdate === true)
+      camera.updateMatrixWorld();
     if (xr.enabled === true && xr.isPresenting === true) {
       if (xr.cameraAutoUpdate === true)
-        xr.updateCamera(camera2);
-      camera2 = xr.getCamera();
+        xr.updateCamera(camera);
+      camera = xr.getCamera();
     }
-    if (scene2.isScene === true)
-      scene2.onBeforeRender(_this, scene2, camera2, _currentRenderTarget);
-    currentRenderState = renderStates.get(scene2, renderStateStack.length);
+    if (scene.isScene === true)
+      scene.onBeforeRender(_this, scene, camera, _currentRenderTarget);
+    currentRenderState = renderStates.get(scene, renderStateStack.length);
     currentRenderState.init();
     renderStateStack.push(currentRenderState);
-    _projScreenMatrix.multiplyMatrices(camera2.projectionMatrix, camera2.matrixWorldInverse);
+    _projScreenMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
     _frustum.setFromProjectionMatrix(_projScreenMatrix);
     _localClippingEnabled = this.localClippingEnabled;
     _clippingEnabled = clipping.init(this.clippingPlanes, _localClippingEnabled);
-    currentRenderList = renderLists.get(scene2, renderListStack.length);
+    currentRenderList = renderLists.get(scene, renderListStack.length);
     currentRenderList.init();
     renderListStack.push(currentRenderList);
-    projectObject(scene2, camera2, 0, _this.sortObjects);
+    projectObject(scene, camera, 0, _this.sortObjects);
     currentRenderList.finish();
     if (_this.sortObjects === true) {
       currentRenderList.sort(_opaqueSort, _transparentSort);
@@ -16606,28 +16606,28 @@ function WebGLRenderer(parameters2 = {}) {
     if (_clippingEnabled === true)
       clipping.beginShadows();
     const shadowsArray = currentRenderState.state.shadowsArray;
-    shadowMap.render(shadowsArray, scene2, camera2);
+    shadowMap.render(shadowsArray, scene, camera);
     if (_clippingEnabled === true)
       clipping.endShadows();
     if (this.info.autoReset === true)
       this.info.reset();
-    background.render(currentRenderList, scene2);
+    background.render(currentRenderList, scene);
     currentRenderState.setupLights(_this.physicallyCorrectLights);
-    if (camera2.isArrayCamera) {
-      const cameras = camera2.cameras;
+    if (camera.isArrayCamera) {
+      const cameras = camera.cameras;
       for (let i = 0, l = cameras.length; i < l; i++) {
-        const camera22 = cameras[i];
-        renderScene(currentRenderList, scene2, camera22, camera22.viewport);
+        const camera2 = cameras[i];
+        renderScene(currentRenderList, scene, camera2, camera2.viewport);
       }
     } else {
-      renderScene(currentRenderList, scene2, camera2);
+      renderScene(currentRenderList, scene, camera);
     }
     if (_currentRenderTarget !== null) {
       textures.updateMultisampleRenderTarget(_currentRenderTarget);
       textures.updateRenderTargetMipmap(_currentRenderTarget);
     }
-    if (scene2.isScene === true)
-      scene2.onAfterRender(_this, scene2, camera2);
+    if (scene.isScene === true)
+      scene.onAfterRender(_this, scene, camera);
     bindingStates.resetDefaultState();
     _currentMaterialId = -1;
     _currentCamera = null;
@@ -16644,16 +16644,16 @@ function WebGLRenderer(parameters2 = {}) {
       currentRenderList = null;
     }
   };
-  function projectObject(object, camera2, groupOrder, sortObjects) {
+  function projectObject(object, camera, groupOrder, sortObjects) {
     if (object.visible === false)
       return;
-    const visible = object.layers.test(camera2.layers);
+    const visible = object.layers.test(camera.layers);
     if (visible) {
       if (object.isGroup) {
         groupOrder = object.renderOrder;
       } else if (object.isLOD) {
         if (object.autoUpdate === true)
-          object.update(camera2);
+          object.update(camera);
       } else if (object.isLight) {
         currentRenderState.pushLight(object);
         if (object.castShadow) {
@@ -16700,32 +16700,32 @@ function WebGLRenderer(parameters2 = {}) {
     }
     const children = object.children;
     for (let i = 0, l = children.length; i < l; i++) {
-      projectObject(children[i], camera2, groupOrder, sortObjects);
+      projectObject(children[i], camera, groupOrder, sortObjects);
     }
   }
-  function renderScene(currentRenderList2, scene2, camera2, viewport) {
+  function renderScene(currentRenderList2, scene, camera, viewport) {
     const opaqueObjects = currentRenderList2.opaque;
     const transmissiveObjects = currentRenderList2.transmissive;
     const transparentObjects = currentRenderList2.transparent;
-    currentRenderState.setupLightsView(camera2);
+    currentRenderState.setupLightsView(camera);
     if (_clippingEnabled === true)
-      clipping.setGlobalState(_this.clippingPlanes, camera2);
+      clipping.setGlobalState(_this.clippingPlanes, camera);
     if (transmissiveObjects.length > 0)
-      renderTransmissionPass(opaqueObjects, scene2, camera2);
+      renderTransmissionPass(opaqueObjects, scene, camera);
     if (viewport)
-      state.viewport(_currentViewport.copy(viewport));
+      state2.viewport(_currentViewport.copy(viewport));
     if (opaqueObjects.length > 0)
-      renderObjects(opaqueObjects, scene2, camera2);
+      renderObjects(opaqueObjects, scene, camera);
     if (transmissiveObjects.length > 0)
-      renderObjects(transmissiveObjects, scene2, camera2);
+      renderObjects(transmissiveObjects, scene, camera);
     if (transparentObjects.length > 0)
-      renderObjects(transparentObjects, scene2, camera2);
-    state.buffers.depth.setTest(true);
-    state.buffers.depth.setMask(true);
-    state.buffers.color.setMask(true);
-    state.setPolygonOffset(false);
+      renderObjects(transparentObjects, scene, camera);
+    state2.buffers.depth.setTest(true);
+    state2.buffers.depth.setMask(true);
+    state2.buffers.color.setMask(true);
+    state2.setPolygonOffset(false);
   }
-  function renderTransmissionPass(opaqueObjects, scene2, camera2) {
+  function renderTransmissionPass(opaqueObjects, scene, camera) {
     const isWebGL2 = capabilities.isWebGL2;
     if (_transmissionRenderTarget === null) {
       _transmissionRenderTarget = new WebGLRenderTarget(1, 1, {
@@ -16746,55 +16746,55 @@ function WebGLRenderer(parameters2 = {}) {
     _this.clear();
     const currentToneMapping = _this.toneMapping;
     _this.toneMapping = NoToneMapping;
-    renderObjects(opaqueObjects, scene2, camera2);
+    renderObjects(opaqueObjects, scene, camera);
     _this.toneMapping = currentToneMapping;
     textures.updateMultisampleRenderTarget(_transmissionRenderTarget);
     textures.updateRenderTargetMipmap(_transmissionRenderTarget);
     _this.setRenderTarget(currentRenderTarget);
   }
-  function renderObjects(renderList, scene2, camera2) {
-    const overrideMaterial = scene2.isScene === true ? scene2.overrideMaterial : null;
+  function renderObjects(renderList, scene, camera) {
+    const overrideMaterial = scene.isScene === true ? scene.overrideMaterial : null;
     for (let i = 0, l = renderList.length; i < l; i++) {
       const renderItem = renderList[i];
       const object = renderItem.object;
       const geometry = renderItem.geometry;
       const material = overrideMaterial === null ? renderItem.material : overrideMaterial;
       const group = renderItem.group;
-      if (object.layers.test(camera2.layers)) {
-        renderObject(object, scene2, camera2, geometry, material, group);
+      if (object.layers.test(camera.layers)) {
+        renderObject(object, scene, camera, geometry, material, group);
       }
     }
   }
-  function renderObject(object, scene2, camera2, geometry, material, group) {
-    object.onBeforeRender(_this, scene2, camera2, geometry, material, group);
-    object.modelViewMatrix.multiplyMatrices(camera2.matrixWorldInverse, object.matrixWorld);
+  function renderObject(object, scene, camera, geometry, material, group) {
+    object.onBeforeRender(_this, scene, camera, geometry, material, group);
+    object.modelViewMatrix.multiplyMatrices(camera.matrixWorldInverse, object.matrixWorld);
     object.normalMatrix.getNormalMatrix(object.modelViewMatrix);
-    material.onBeforeRender(_this, scene2, camera2, geometry, object, group);
+    material.onBeforeRender(_this, scene, camera, geometry, object, group);
     if (material.transparent === true && material.side === DoubleSide && material.forceSinglePass === false) {
       material.side = BackSide;
       material.needsUpdate = true;
-      _this.renderBufferDirect(camera2, scene2, geometry, material, object, group);
+      _this.renderBufferDirect(camera, scene, geometry, material, object, group);
       material.side = FrontSide;
       material.needsUpdate = true;
-      _this.renderBufferDirect(camera2, scene2, geometry, material, object, group);
+      _this.renderBufferDirect(camera, scene, geometry, material, object, group);
       material.side = DoubleSide;
     } else {
-      _this.renderBufferDirect(camera2, scene2, geometry, material, object, group);
+      _this.renderBufferDirect(camera, scene, geometry, material, object, group);
     }
-    object.onAfterRender(_this, scene2, camera2, geometry, material, group);
+    object.onAfterRender(_this, scene, camera, geometry, material, group);
   }
-  function getProgram(material, scene2, object) {
-    if (scene2.isScene !== true)
-      scene2 = _emptyScene;
+  function getProgram(material, scene, object) {
+    if (scene.isScene !== true)
+      scene = _emptyScene;
     const materialProperties = properties.get(material);
     const lights = currentRenderState.state.lights;
     const shadowsArray = currentRenderState.state.shadowsArray;
     const lightsStateVersion = lights.state.version;
-    const parameters3 = programCache.getParameters(material, lights.state, shadowsArray, scene2, object);
+    const parameters3 = programCache.getParameters(material, lights.state, shadowsArray, scene, object);
     const programCacheKey = programCache.getProgramCacheKey(parameters3);
     let programs = materialProperties.programs;
-    materialProperties.environment = material.isMeshStandardMaterial ? scene2.environment : null;
-    materialProperties.fog = scene2.fog;
+    materialProperties.environment = material.isMeshStandardMaterial ? scene.environment : null;
+    materialProperties.fog = scene.fog;
     materialProperties.envMap = (material.isMeshStandardMaterial ? cubeuvmaps : cubemaps).get(material.envMap || materialProperties.environment);
     if (programs === void 0) {
       material.addEventListener("dispose", onMaterialDispose);
@@ -16864,12 +16864,12 @@ function WebGLRenderer(parameters2 = {}) {
     materialProperties.vertexTangents = parameters3.vertexTangents;
     materialProperties.toneMapping = parameters3.toneMapping;
   }
-  function setProgram(camera2, scene2, geometry, material, object) {
-    if (scene2.isScene !== true)
-      scene2 = _emptyScene;
+  function setProgram(camera, scene, geometry, material, object) {
+    if (scene.isScene !== true)
+      scene = _emptyScene;
     textures.resetTextureUnits();
-    const fog = scene2.fog;
-    const environment = material.isMeshStandardMaterial ? scene2.environment : null;
+    const fog = scene.fog;
+    const environment = material.isMeshStandardMaterial ? scene.environment : null;
     const encoding = _currentRenderTarget === null ? _this.outputEncoding : _currentRenderTarget.isXRRenderTarget === true ? _currentRenderTarget.texture.encoding : LinearEncoding;
     const envMap = (material.isMeshStandardMaterial ? cubeuvmaps : cubemaps).get(material.envMap || environment);
     const vertexAlphas = material.vertexColors === true && !!geometry.attributes.color && geometry.attributes.color.itemSize === 4;
@@ -16883,9 +16883,9 @@ function WebGLRenderer(parameters2 = {}) {
     const materialProperties = properties.get(material);
     const lights = currentRenderState.state.lights;
     if (_clippingEnabled === true) {
-      if (_localClippingEnabled === true || camera2 !== _currentCamera) {
-        const useCache = camera2 === _currentCamera && material.id === _currentMaterialId;
-        clipping.setState(material, camera2, useCache);
+      if (_localClippingEnabled === true || camera !== _currentCamera) {
+        const useCache = camera === _currentCamera && material.id === _currentMaterialId;
+        clipping.setState(material, camera, useCache);
       }
     }
     let needsProgramChange = false;
@@ -16929,13 +16929,13 @@ function WebGLRenderer(parameters2 = {}) {
     }
     let program = materialProperties.currentProgram;
     if (needsProgramChange === true) {
-      program = getProgram(material, scene2, object);
+      program = getProgram(material, scene, object);
     }
     let refreshProgram = false;
     let refreshMaterial = false;
     let refreshLights = false;
     const p_uniforms = program.getUniforms(), m_uniforms = materialProperties.uniforms;
-    if (state.useProgram(program.program)) {
+    if (state2.useProgram(program.program)) {
       refreshProgram = true;
       refreshMaterial = true;
       refreshLights = true;
@@ -16944,17 +16944,17 @@ function WebGLRenderer(parameters2 = {}) {
       _currentMaterialId = material.id;
       refreshMaterial = true;
     }
-    if (refreshProgram || _currentCamera !== camera2) {
-      p_uniforms.setValue(_gl, "projectionMatrix", camera2.projectionMatrix);
+    if (refreshProgram || _currentCamera !== camera) {
+      p_uniforms.setValue(_gl, "projectionMatrix", camera.projectionMatrix);
       if (capabilities.logarithmicDepthBuffer) {
         p_uniforms.setValue(
           _gl,
           "logDepthBufFC",
-          2 / (Math.log(camera2.far + 1) / Math.LN2)
+          2 / (Math.log(camera.far + 1) / Math.LN2)
         );
       }
-      if (_currentCamera !== camera2) {
-        _currentCamera = camera2;
+      if (_currentCamera !== camera) {
+        _currentCamera = camera;
         refreshMaterial = true;
         refreshLights = true;
       }
@@ -16963,15 +16963,15 @@ function WebGLRenderer(parameters2 = {}) {
         if (uCamPos !== void 0) {
           uCamPos.setValue(
             _gl,
-            _vector3.setFromMatrixPosition(camera2.matrixWorld)
+            _vector3.setFromMatrixPosition(camera.matrixWorld)
           );
         }
       }
       if (material.isMeshPhongMaterial || material.isMeshToonMaterial || material.isMeshLambertMaterial || material.isMeshBasicMaterial || material.isMeshStandardMaterial || material.isShaderMaterial) {
-        p_uniforms.setValue(_gl, "isOrthographic", camera2.isOrthographicCamera === true);
+        p_uniforms.setValue(_gl, "isOrthographic", camera.isOrthographicCamera === true);
       }
       if (material.isMeshPhongMaterial || material.isMeshToonMaterial || material.isMeshLambertMaterial || material.isMeshBasicMaterial || material.isMeshStandardMaterial || material.isShaderMaterial || material.isShadowMaterial || object.isSkinnedMesh) {
-        p_uniforms.setValue(_gl, "viewMatrix", camera2.matrixWorldInverse);
+        p_uniforms.setValue(_gl, "viewMatrix", camera.matrixWorldInverse);
       }
     }
     if (object.isSkinnedMesh) {
@@ -17091,7 +17091,7 @@ function WebGLRenderer(parameters2 = {}) {
     if (renderTarget) {
       const renderTargetProperties = properties.get(renderTarget);
       if (renderTargetProperties.__useDefaultFramebuffer !== void 0) {
-        state.bindFramebuffer(36160, null);
+        state2.bindFramebuffer(36160, null);
         useDefaultFramebuffer = false;
       } else if (renderTargetProperties.__webglFramebuffer === void 0) {
         textures.setupRenderTarget(renderTarget);
@@ -17119,13 +17119,13 @@ function WebGLRenderer(parameters2 = {}) {
       _currentScissor.copy(_scissor).multiplyScalar(_pixelRatio).floor();
       _currentScissorTest = _scissorTest;
     }
-    const framebufferBound = state.bindFramebuffer(36160, framebuffer);
+    const framebufferBound = state2.bindFramebuffer(36160, framebuffer);
     if (framebufferBound && capabilities.drawBuffers && useDefaultFramebuffer) {
-      state.drawBuffers(renderTarget, framebuffer);
+      state2.drawBuffers(renderTarget, framebuffer);
     }
-    state.viewport(_currentViewport);
-    state.scissor(_currentScissor);
-    state.setScissorTest(_currentScissorTest);
+    state2.viewport(_currentViewport);
+    state2.scissor(_currentScissor);
+    state2.setScissorTest(_currentScissorTest);
     if (isCube) {
       const textureProperties = properties.get(renderTarget.texture);
       _gl.framebufferTexture2D(36160, 36064, 34069 + activeCubeFace, textureProperties.__webglTexture, activeMipmapLevel);
@@ -17146,7 +17146,7 @@ function WebGLRenderer(parameters2 = {}) {
       framebuffer = framebuffer[activeCubeFaceIndex];
     }
     if (framebuffer) {
-      state.bindFramebuffer(36160, framebuffer);
+      state2.bindFramebuffer(36160, framebuffer);
       try {
         const texture = renderTarget.texture;
         const textureFormat = texture.format;
@@ -17167,7 +17167,7 @@ function WebGLRenderer(parameters2 = {}) {
         }
       } finally {
         const framebuffer2 = _currentRenderTarget !== null ? properties.get(_currentRenderTarget).__webglFramebuffer : null;
-        state.bindFramebuffer(36160, framebuffer2);
+        state2.bindFramebuffer(36160, framebuffer2);
       }
     }
   };
@@ -17177,7 +17177,7 @@ function WebGLRenderer(parameters2 = {}) {
     const height = Math.floor(texture.image.height * levelScale);
     textures.setTexture2D(texture, 0);
     _gl.copyTexSubImage2D(3553, level, 0, 0, position.x, position.y, width, height);
-    state.unbindTexture();
+    state2.unbindTexture();
   };
   this.copyTextureToTexture = function(position, srcTexture, dstTexture, level = 0) {
     const width = srcTexture.image.width;
@@ -17199,7 +17199,7 @@ function WebGLRenderer(parameters2 = {}) {
     }
     if (level === 0 && dstTexture.generateMipmaps)
       _gl.generateMipmap(3553);
-    state.unbindTexture();
+    state2.unbindTexture();
   };
   this.copyTextureToTexture3D = function(sourceBox, position, srcTexture, dstTexture, level = 0) {
     if (_this.isWebGL1Renderer) {
@@ -17253,7 +17253,7 @@ function WebGLRenderer(parameters2 = {}) {
     _gl.pixelStorei(32877, unpackSkipImages);
     if (level === 0 && dstTexture.generateMipmaps)
       _gl.generateMipmap(glTarget);
-    state.unbindTexture();
+    state2.unbindTexture();
   };
   this.initTexture = function(texture) {
     if (texture.isCubeTexture) {
@@ -17265,13 +17265,13 @@ function WebGLRenderer(parameters2 = {}) {
     } else {
       textures.setTexture2D(texture, 0);
     }
-    state.unbindTexture();
+    state2.unbindTexture();
   };
   this.resetState = function() {
     _currentActiveCubeFace = 0;
     _currentActiveMipmapLevel = 0;
     _currentRenderTarget = null;
-    state.reset();
+    state2.reset();
     bindingStates.reset();
   };
   if (typeof __THREE_DEVTOOLS__ !== "undefined") {
@@ -20039,17 +20039,17 @@ class Raycaster {
   set(origin2, direction2) {
     this.ray.set(origin2, direction2);
   }
-  setFromCamera(coords, camera2) {
-    if (camera2.isPerspectiveCamera) {
-      this.ray.origin.setFromMatrixPosition(camera2.matrixWorld);
-      this.ray.direction.set(coords.x, coords.y, 0.5).unproject(camera2).sub(this.ray.origin).normalize();
-      this.camera = camera2;
-    } else if (camera2.isOrthographicCamera) {
-      this.ray.origin.set(coords.x, coords.y, (camera2.near + camera2.far) / (camera2.near - camera2.far)).unproject(camera2);
-      this.ray.direction.set(0, 0, -1).transformDirection(camera2.matrixWorld);
-      this.camera = camera2;
+  setFromCamera(coords, camera) {
+    if (camera.isPerspectiveCamera) {
+      this.ray.origin.setFromMatrixPosition(camera.matrixWorld);
+      this.ray.direction.set(coords.x, coords.y, 0.5).unproject(camera).sub(this.ray.origin).normalize();
+      this.camera = camera;
+    } else if (camera.isOrthographicCamera) {
+      this.ray.origin.set(coords.x, coords.y, (camera.near + camera.far) / (camera.near - camera.far)).unproject(camera);
+      this.ray.direction.set(0, 0, -1).transformDirection(camera.matrixWorld);
+      this.camera = camera;
     } else {
-      console.error("THREE.Raycaster: Unsupported camera type: " + camera2.type);
+      console.error("THREE.Raycaster: Unsupported camera type: " + camera.type);
     }
   }
   intersectObject(object, recursive = true, intersects2 = []) {
@@ -20369,7 +20369,7 @@ class OrbitControls extends EventDispatcher {
       scope.object.updateProjectionMatrix();
       scope.dispatchEvent(_changeEvent);
       scope.update();
-      state = STATE.NONE;
+      state2 = STATE.NONE;
     };
     this.update = function() {
       const offset2 = new Vector3();
@@ -20383,7 +20383,7 @@ class OrbitControls extends EventDispatcher {
         offset2.copy(position).sub(scope.target);
         offset2.applyQuaternion(quat);
         spherical.setFromVector3(offset2);
-        if (scope.autoRotate && state === STATE.NONE) {
+        if (scope.autoRotate && state2 === STATE.NONE) {
           rotateLeft(getAutoRotationAngle());
         }
         if (scope.enableDamping) {
@@ -20464,7 +20464,7 @@ class OrbitControls extends EventDispatcher {
       TOUCH_DOLLY_PAN: 5,
       TOUCH_DOLLY_ROTATE: 6
     };
-    let state = STATE.NONE;
+    let state2 = STATE.NONE;
     const EPS2 = 1e-6;
     const spherical = new Spherical();
     const sphericalDelta = new Spherical();
@@ -20762,7 +20762,7 @@ class OrbitControls extends EventDispatcher {
         scope.domElement.removeEventListener("pointerup", onPointerUp);
       }
       scope.dispatchEvent(_endEvent);
-      state = STATE.NONE;
+      state2 = STATE.NONE;
     }
     function onPointerCancel(event) {
       removePointer(event);
@@ -20787,19 +20787,19 @@ class OrbitControls extends EventDispatcher {
           if (scope.enableZoom === false)
             return;
           handleMouseDownDolly(event);
-          state = STATE.DOLLY;
+          state2 = STATE.DOLLY;
           break;
         case MOUSE.ROTATE:
           if (event.ctrlKey || event.metaKey || event.shiftKey) {
             if (scope.enablePan === false)
               return;
             handleMouseDownPan(event);
-            state = STATE.PAN;
+            state2 = STATE.PAN;
           } else {
             if (scope.enableRotate === false)
               return;
             handleMouseDownRotate(event);
-            state = STATE.ROTATE;
+            state2 = STATE.ROTATE;
           }
           break;
         case MOUSE.PAN:
@@ -20807,23 +20807,23 @@ class OrbitControls extends EventDispatcher {
             if (scope.enableRotate === false)
               return;
             handleMouseDownRotate(event);
-            state = STATE.ROTATE;
+            state2 = STATE.ROTATE;
           } else {
             if (scope.enablePan === false)
               return;
             handleMouseDownPan(event);
-            state = STATE.PAN;
+            state2 = STATE.PAN;
           }
           break;
         default:
-          state = STATE.NONE;
+          state2 = STATE.NONE;
       }
-      if (state !== STATE.NONE) {
+      if (state2 !== STATE.NONE) {
         scope.dispatchEvent(_startEvent);
       }
     }
     function onMouseMove(event) {
-      switch (state) {
+      switch (state2) {
         case STATE.ROTATE:
           if (scope.enableRotate === false)
             return;
@@ -20842,7 +20842,7 @@ class OrbitControls extends EventDispatcher {
       }
     }
     function onMouseWheel(event) {
-      if (scope.enabled === false || scope.enableZoom === false || state !== STATE.NONE)
+      if (scope.enabled === false || scope.enableZoom === false || state2 !== STATE.NONE)
         return;
       event.preventDefault();
       scope.dispatchEvent(_startEvent);
@@ -20863,16 +20863,16 @@ class OrbitControls extends EventDispatcher {
               if (scope.enableRotate === false)
                 return;
               handleTouchStartRotate();
-              state = STATE.TOUCH_ROTATE;
+              state2 = STATE.TOUCH_ROTATE;
               break;
             case TOUCH.PAN:
               if (scope.enablePan === false)
                 return;
               handleTouchStartPan();
-              state = STATE.TOUCH_PAN;
+              state2 = STATE.TOUCH_PAN;
               break;
             default:
-              state = STATE.NONE;
+              state2 = STATE.NONE;
           }
           break;
         case 2:
@@ -20881,28 +20881,28 @@ class OrbitControls extends EventDispatcher {
               if (scope.enableZoom === false && scope.enablePan === false)
                 return;
               handleTouchStartDollyPan();
-              state = STATE.TOUCH_DOLLY_PAN;
+              state2 = STATE.TOUCH_DOLLY_PAN;
               break;
             case TOUCH.DOLLY_ROTATE:
               if (scope.enableZoom === false && scope.enableRotate === false)
                 return;
               handleTouchStartDollyRotate();
-              state = STATE.TOUCH_DOLLY_ROTATE;
+              state2 = STATE.TOUCH_DOLLY_ROTATE;
               break;
             default:
-              state = STATE.NONE;
+              state2 = STATE.NONE;
           }
           break;
         default:
-          state = STATE.NONE;
+          state2 = STATE.NONE;
       }
-      if (state !== STATE.NONE) {
+      if (state2 !== STATE.NONE) {
         scope.dispatchEvent(_startEvent);
       }
     }
     function onTouchMove(event) {
       trackPointer(event);
-      switch (state) {
+      switch (state2) {
         case STATE.TOUCH_ROTATE:
           if (scope.enableRotate === false)
             return;
@@ -20928,7 +20928,7 @@ class OrbitControls extends EventDispatcher {
           scope.update();
           break;
         default:
-          state = STATE.NONE;
+          state2 = STATE.NONE;
       }
     }
     function onContextMenu(event) {
@@ -20979,7 +20979,7 @@ const _ab = new Vector3();
 const _cb = new Vector3();
 const _color = new Color();
 function ParserState() {
-  const state = {
+  const state2 = {
     objects: [],
     object: {},
     vertices: [],
@@ -21209,8 +21209,8 @@ function ParserState() {
       }
     }
   };
-  state.startObject("", false);
-  return state;
+  state2.startObject("", false);
+  return state2;
 }
 class OBJLoader extends Loader {
   constructor(manager) {
@@ -21241,7 +21241,7 @@ class OBJLoader extends Loader {
     return this;
   }
   parse(text2) {
-    const state = new ParserState();
+    const state2 = new ParserState();
     if (text2.indexOf("\r\n") !== -1) {
       text2 = text2.replace(/\r\n/g, "\n");
     }
@@ -21261,7 +21261,7 @@ class OBJLoader extends Loader {
         const data = line4.split(_face_vertex_data_separator_pattern);
         switch (data[0]) {
           case "v":
-            state.vertices.push(
+            state2.vertices.push(
               parseFloat(data[1]),
               parseFloat(data[2]),
               parseFloat(data[3])
@@ -21272,20 +21272,20 @@ class OBJLoader extends Loader {
                 parseFloat(data[5]),
                 parseFloat(data[6])
               ).convertSRGBToLinear();
-              state.colors.push(_color.r, _color.g, _color.b);
+              state2.colors.push(_color.r, _color.g, _color.b);
             } else {
-              state.colors.push(void 0, void 0, void 0);
+              state2.colors.push(void 0, void 0, void 0);
             }
             break;
           case "vn":
-            state.normals.push(
+            state2.normals.push(
               parseFloat(data[1]),
               parseFloat(data[2]),
               parseFloat(data[3])
             );
             break;
           case "vt":
-            state.uvs.push(
+            state2.uvs.push(
               parseFloat(data[1]),
               parseFloat(data[2])
             );
@@ -21306,7 +21306,7 @@ class OBJLoader extends Loader {
         for (let j = 1, jl = faceVertices.length - 1; j < jl; j++) {
           const v22 = faceVertices[j];
           const v3 = faceVertices[j + 1];
-          state.addFace(
+          state2.addFace(
             v12[0],
             v22[0],
             v3[0],
@@ -21333,44 +21333,44 @@ class OBJLoader extends Loader {
               lineUVs.push(parts[1]);
           }
         }
-        state.addLineGeometry(lineVertices, lineUVs);
+        state2.addLineGeometry(lineVertices, lineUVs);
       } else if (lineFirstChar === "p") {
         const lineData = line4.slice(1).trim();
         const pointData = lineData.split(" ");
-        state.addPointGeometry(pointData);
+        state2.addPointGeometry(pointData);
       } else if ((result = _object_pattern.exec(line4)) !== null) {
         const name = (" " + result[0].slice(1).trim()).slice(1);
-        state.startObject(name);
+        state2.startObject(name);
       } else if (_material_use_pattern.test(line4)) {
-        state.object.startMaterial(line4.substring(7).trim(), state.materialLibraries);
+        state2.object.startMaterial(line4.substring(7).trim(), state2.materialLibraries);
       } else if (_material_library_pattern.test(line4)) {
-        state.materialLibraries.push(line4.substring(7).trim());
+        state2.materialLibraries.push(line4.substring(7).trim());
       } else if (_map_use_pattern.test(line4)) {
         console.warn('THREE.OBJLoader: Rendering identifier "usemap" not supported. Textures must be defined in MTL files.');
       } else if (lineFirstChar === "s") {
         result = line4.split(" ");
         if (result.length > 1) {
           const value = result[1].trim().toLowerCase();
-          state.object.smooth = value !== "0" && value !== "off";
+          state2.object.smooth = value !== "0" && value !== "off";
         } else {
-          state.object.smooth = true;
+          state2.object.smooth = true;
         }
-        const material = state.object.currentMaterial();
+        const material = state2.object.currentMaterial();
         if (material)
-          material.smooth = state.object.smooth;
+          material.smooth = state2.object.smooth;
       } else {
         if (line4 === "\0")
           continue;
         console.warn('THREE.OBJLoader: Unexpected line: "' + line4 + '"');
       }
     }
-    state.finalize();
+    state2.finalize();
     const container = new Group();
-    container.materialLibraries = [].concat(state.materialLibraries);
-    const hasPrimitives = !(state.objects.length === 1 && state.objects[0].geometry.vertices.length === 0);
+    container.materialLibraries = [].concat(state2.materialLibraries);
+    const hasPrimitives = !(state2.objects.length === 1 && state2.objects[0].geometry.vertices.length === 0);
     if (hasPrimitives === true) {
-      for (let i = 0, l = state.objects.length; i < l; i++) {
-        const object = state.objects[i];
+      for (let i = 0, l = state2.objects.length; i < l; i++) {
+        const object = state2.objects[i];
         const geometry = object.geometry;
         const materials = object.materials;
         const isLine = geometry.type === "Line";
@@ -21394,7 +21394,7 @@ class OBJLoader extends Loader {
         for (let mi = 0, miLen = materials.length; mi < miLen; mi++) {
           const sourceMaterial = materials[mi];
           const materialHash = sourceMaterial.name + "_" + sourceMaterial.smooth + "_" + hasVertexColors;
-          let material = state.materials[materialHash];
+          let material = state2.materials[materialHash];
           if (this.materials !== null) {
             material = this.materials.create(sourceMaterial.name);
             if (isLine && material && !(material instanceof LineBasicMaterial)) {
@@ -21421,7 +21421,7 @@ class OBJLoader extends Loader {
             material.name = sourceMaterial.name;
             material.flatShading = sourceMaterial.smooth ? false : true;
             material.vertexColors = hasVertexColors;
-            state.materials[materialHash] = material;
+            state2.materials[materialHash] = material;
           }
           createdMaterials.push(material);
         }
@@ -21451,12 +21451,12 @@ class OBJLoader extends Loader {
         container.add(mesh);
       }
     } else {
-      if (state.vertices.length > 0) {
+      if (state2.vertices.length > 0) {
         const material = new PointsMaterial({ size: 1, sizeAttenuation: false });
         const buffergeometry = new BufferGeometry();
-        buffergeometry.setAttribute("position", new Float32BufferAttribute(state.vertices, 3));
-        if (state.colors.length > 0 && state.colors[0] !== void 0) {
-          buffergeometry.setAttribute("color", new Float32BufferAttribute(state.colors, 3));
+        buffergeometry.setAttribute("position", new Float32BufferAttribute(state2.vertices, 3));
+        if (state2.colors.length > 0 && state2.colors[0] !== void 0) {
+          buffergeometry.setAttribute("color", new Float32BufferAttribute(state2.colors, 3));
           material.vertexColors = true;
         }
         const points = new Points(buffergeometry, material);
@@ -21466,283 +21466,60 @@ class OBJLoader extends Loader {
     return container;
   }
 }
+const units = {
+  millimeters: 1,
+  centimeters: 10,
+  meters: 100 * 10
+};
+const state = {
+  panels: null,
+  currPanel: null,
+  orthoCamera: null,
+  cameraCopy: null,
+  sceneCopy: null,
+  rendererCopy: null,
+  display2D: false,
+  sidebar: null,
+  renderer: null,
+  overlayCanvas: null,
+  ctx: null,
+  ssaaRenderTarget: null,
+  scene: null,
+  camera: null,
+  camera1: null,
+  controls: null,
+  mouseX: 0,
+  mouseY: 0,
+  mouseNdcX: 0,
+  mouseNdcY: 0,
+  mouseRayPlaneIntersection: null,
+  selected: null,
+  oldSelected: null,
+  dragOffset: null,
+  dragging: false,
+  dragged: false,
+  postScene: null,
+  postCamera: null,
+  postQuad: null,
+  topScene: null,
+  currentIndex: 0,
+  foam: {
+    kind: "rectangle",
+    x: 0,
+    y: 0,
+    sizeX: 70 * 10,
+    sizeY: 50 * 10,
+    sizeZ: 37 * 10,
+    rotation: 0
+  },
+  shapesArray: [],
+  worker: null,
+  undoRedoHistory: [],
+  undoRedoPosition: 0
+};
 function getDefaultExportFromCjs(x) {
   return x && x.__esModule && Object.prototype.hasOwnProperty.call(x, "default") ? x["default"] : x;
 }
-function distanceSquaredToLineSegment2(lx1, ly1, ldx, ldy, lineLengthSquared, px2, py2) {
-  var t;
-  if (!lineLengthSquared) {
-    t = 0;
-  } else {
-    t = ((px2 - lx1) * ldx + (py2 - ly1) * ldy) / lineLengthSquared;
-    if (t < 0)
-      t = 0;
-    else if (t > 1)
-      t = 1;
-  }
-  var lx = lx1 + t * ldx, ly = ly1 + t * ldy, dx = px2 - lx, dy = py2 - ly;
-  return dx * dx + dy * dy;
-}
-function distanceSquaredToLineSegment(lx1, ly1, lx2, ly2, px2, py2) {
-  var ldx = lx2 - lx1, ldy = ly2 - ly1, lineLengthSquared = ldx * ldx + ldy * ldy;
-  return distanceSquaredToLineSegment2(lx1, ly1, ldx, ldy, lineLengthSquared, px2, py2);
-}
-function distanceToLineSegment(lx1, ly1, lx2, ly2, px2, py2) {
-  return Math.sqrt(distanceSquaredToLineSegment(lx1, ly1, lx2, ly2, px2, py2));
-}
-distanceToLineSegment.squared = distanceSquaredToLineSegment;
-distanceToLineSegment.squaredWithPrecalc = distanceSquaredToLineSegment2;
-var distanceToLineSegment_1 = distanceToLineSegment;
-distanceToLineSegment_1.squaredWithPrecalc;
-function structuredClone(val) {
-  let str = JSON.stringify(val);
-  return JSON.parse(str);
-}
-function pointInsidePolygon(point, vs) {
-  var x = point[0], y = point[1];
-  var inside = false;
-  for (var i = 0, j = vs.length - 1; i < vs.length; j = i++) {
-    var xi = vs[i][0], yi = vs[i][1];
-    var xj = vs[j][0], yj = vs[j][1];
-    var intersect2 = yi > y != yj > y && x < (xj - xi) * (y - yi) / (yj - yi) + xi;
-    if (intersect2)
-      inside = !inside;
-  }
-  return inside;
-}
-function rightestPoint(shape, shapeToGeom22) {
-  let geom22 = shapeToGeom22(shape);
-  let maxP = [0, 0];
-  let maxX = -Infinity;
-  geom22.sides.forEach(([p0, p1]) => {
-    if (p0[0] > maxX) {
-      maxX = p0[0];
-      maxP = p0;
-    }
-    if (p1[0] > maxX) {
-      maxX = p1[0];
-      maxP = p1;
-    }
-  });
-  return maxP;
-}
-function leftestPoint(shape, shapeToGeom22) {
-  let geom22 = shapeToGeom22(shape);
-  let minP = [0, 0];
-  let minX = Infinity;
-  geom22.sides.forEach(([p0, p1]) => {
-    if (p0[0] < minX) {
-      minX = p0[0];
-      minP = p0;
-    }
-    if (p1[0] < minX) {
-      minX = p1[0];
-      minP = p1;
-    }
-  });
-  return minP;
-}
-function highestPoint(shape, shapeToGeom22) {
-  let geom22 = shapeToGeom22(shape);
-  let maxP = [0, 0];
-  let maxY = -Infinity;
-  geom22.sides.forEach(([p0, p1]) => {
-    if (p0[1] > maxY) {
-      maxY = p0[1];
-      maxP = p0;
-    }
-    if (p1[1] > maxY) {
-      maxY = p1[1];
-      maxP = p1;
-    }
-  });
-  return maxP;
-}
-function lowestPoint(shape, shapeToGeom22) {
-  let geom22 = shapeToGeom22(shape);
-  let minP = [0, 0];
-  let minY = Infinity;
-  geom22.sides.forEach(([p0, p1]) => {
-    if (p0[1] < minY) {
-      minY = p0[1];
-      minP = p0;
-    }
-    if (p1[1] < minY) {
-      minY = p1[1];
-      minP = p1;
-    }
-  });
-  return minP;
-}
-function updateUndoRedoButtons(undoRedoPosition2, undoRedoHistory2) {
-  if (undoRedoPosition2 > 0) {
-    document.querySelector("#undo-button").removeAttribute("disabled");
-  } else {
-    document.querySelector("#undo-button").setAttribute("disabled", "");
-  }
-  if (undoRedoPosition2 < undoRedoHistory2.length - 1) {
-    document.querySelector("#redo-button").removeAttribute("disabled");
-  } else {
-    document.querySelector("#redo-button").setAttribute("disabled", "");
-  }
-}
-const getValues = (camera2, postScene2, renderer2, callback) => {
-  callback(camera2, postScene2, renderer2);
-};
-const getCameraValue = (camera12, callback) => {
-  callback(camera12);
-};
-function getBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result.split(",")[1]);
-    reader.onerror = (error2) => reject(error2);
-    reader.readAsDataURL(file);
-  });
-}
-function generateId() {
-  return `shape-${Date.now()}-${Math.floor(Math.random() * 1e4)}`;
-}
-function drawResponsiveText(page, font, text2, x, y, maxWidth, maxFontSize = 10) {
-  let fontSize = maxFontSize;
-  while (font.widthOfTextAtSize(text2, fontSize) > maxWidth && fontSize > 4) {
-    fontSize -= 0.5;
-  }
-  page.drawText(text2, {
-    x,
-    y,
-    size: fontSize,
-    font
-  });
-}
-function confirmMerge(shapeA, shapeB, callback) {
-  const existing = document.getElementById("merge-dialog");
-  if (existing)
-    existing.remove();
-  const dialog = document.createElement("div");
-  dialog.id = "merge-dialog";
-  dialog.style.position = "fixed";
-  dialog.style.top = "50%";
-  dialog.style.left = "50%";
-  dialog.style.transform = "translate(-50%, -50%)";
-  dialog.style.background = "#fff";
-  dialog.style.padding = "24px 32px";
-  dialog.style.borderRadius = "12px";
-  dialog.style.boxShadow = "0 8px 24px rgba(0, 0, 0, 0.2)";
-  dialog.style.zIndex = "9999";
-  dialog.style.fontFamily = "sans-serif";
-  dialog.style.minWidth = "320px";
-  dialog.style.textAlign = "center";
-  dialog.innerHTML = `
-    <p style="margin-bottom: 24px; font-size: 16px; color: #333;">
-      Shapes are too close. Do you want to merge them?
-    </p>
-    <div style="display: flex; justify-content: center; gap: 16px;">
-      <button id="merge-yes" style="
-        padding: 10px 20px;
-        background-color: #4a90e2;
-        color: white;
-        border: none;
-        border-radius: 6px;
-        font-size: 14px;
-        cursor: pointer;
-        transition: background-color 0.2s;
-      ">Yes</button>
-      <button id="merge-no" style="
-        padding: 10px 20px;
-        background-color: #e0e0e0;
-        color: #333;
-        border: none;
-        border-radius: 6px;
-        font-size: 14px;
-        cursor: pointer;
-        transition: background-color 0.2s;
-      ">No</button>
-    </div>
-  `;
-  document.body.appendChild(dialog);
-  document.getElementById("merge-yes").onclick = () => {
-    dialog.remove();
-    callback(true);
-  };
-  document.getElementById("merge-no").onclick = () => {
-    dialog.remove();
-    callback(false);
-  };
-}
-const buttonClick = (buttonName, panelLeft, panelRight, selected2, showPanelFromLeft2, showPanelFromRight2, additionalCallback = () => {
-}) => {
-  const btn = document.querySelector(`#${buttonName}`);
-  if (!btn)
-    return;
-  btn.onclick = () => {
-    document.querySelector("#back-button").removeAttribute("disabled");
-    document.querySelector("#back-button").onclick = () => {
-      document.querySelector("#back-button").setAttribute("disabled", "");
-      showPanelFromLeft2(`${panelLeft}`);
-    };
-    showPanelFromRight2(`${panelRight}`);
-    additionalCallback();
-  };
-};
-const deleteButtonClick = (buttonName, shapesArray2, commit2, doCsg2, selected2, showPanelFromLeft2) => {
-  const btn = document.querySelector(`#${buttonName}`);
-  if (!btn)
-    return;
-  btn.onclick = () => {
-    shapesArray2.splice(shapesArray2.indexOf(selected2), 1);
-    commit2();
-    doCsg2();
-    document.querySelector("#back-button").setAttribute("disabled", "");
-    showPanelFromLeft2("main-panel");
-    selected2 = null;
-  };
-};
-const depthButtonClick = (buttonName, panelLeft, panelRight, selected2, showPanelFromLeft2, showPanelFromRight2, additionalCallback = () => {
-}) => {
-  const btn = document.querySelector(`#${buttonName}`);
-  if (!btn)
-    return;
-  btn.onclick = () => {
-    document.querySelector("#back-button").removeAttribute("disabled");
-    document.querySelector("#back-button").onclick = () => {
-      document.querySelector("#back-button").setAttribute("disabled", "");
-      showPanelFromLeft2(`${panelLeft}`);
-      if (selected2) {
-        selected2.kind = null;
-      }
-    };
-    showPanelFromRight2(`${panelRight}`);
-    additionalCallback();
-  };
-};
-const sliderButtonClick = (sliderName, sliderInput, doCsg2, callback) => {
-  const slider = document.querySelector(`#${sliderName}`);
-  const input = document.querySelector(`#${sliderInput}`);
-  if (!slider || !input)
-    return;
-  slider.oninput = (e) => {
-    input.value = e.target.value;
-    callback(Number(e.target.value));
-    doCsg2();
-  };
-};
-const disableButton = (boolValue) => {
-  const depthBtn = document.querySelector("#polygon-depth-button");
-  const rotateBtn = document.querySelector("#polygon-rotate-button");
-  const deleteBtn = document.querySelector("#polygon-delete-button");
-  if (!depthBtn || !rotateBtn || !deleteBtn)
-    return;
-  if (boolValue) {
-    depthBtn.removeAttribute("disabled");
-    rotateBtn.removeAttribute("disabled");
-    deleteBtn.removeAttribute("disabled");
-  } else {
-    depthBtn.setAttribute("disabled", "");
-    rotateBtn.setAttribute("disabled", "");
-    deleteBtn.setAttribute("disabled", "");
-  }
-};
 const flatten$L = (arr) => arr.reduce((acc, val) => Array.isArray(val) ? acc.concat(flatten$L(val)) : acc.concat(val), []);
 var flatten_1 = flatten$L;
 const clone$c = (geometry) => Object.assign({}, geometry);
@@ -33182,8 +32959,8 @@ earcut.flatten = function(data) {
   }
   return result;
 };
-function project(p0, camera2, ctx2) {
-  return p0.project(camera2).multiply(new Vector3(1, -1, 1)).addScalar(1).multiplyScalar(0.5).multiply(new Vector3(ctx2.canvas.width, ctx2.canvas.height, 1));
+function project(p0, camera, ctx) {
+  return p0.project(camera).multiply(new Vector3(1, -1, 1)).addScalar(1).multiplyScalar(0.5).multiply(new Vector3(ctx.canvas.width, ctx.canvas.height, 1));
 }
 function shapeToGeom2(shape) {
   function num(v, fallback = 0) {
@@ -33433,10 +33210,10 @@ function geom3ToMesh(geom32) {
   );
   return new Mesh(geo, new MeshBasicMaterial());
 }
-function mouseOverShape(shape, mouseRayPlaneIntersection2, pointInsidePolygon2) {
+function mouseOverShape(shape, mouseRayPlaneIntersection, pointInsidePolygon2) {
   if (shape.kind == "circle") {
     let shapeCenter = new Vector2(shape.x, shape.y);
-    if (shapeCenter.distanceTo(mouseRayPlaneIntersection2) < shape.radius) {
+    if (shapeCenter.distanceTo(mouseRayPlaneIntersection) < shape.radius) {
       return true;
     }
   } else if (shape.kind == "rectangle") {
@@ -33444,7 +33221,7 @@ function mouseOverShape(shape, mouseRayPlaneIntersection2, pointInsidePolygon2) 
       new Vector2(shape.x - shape.sizeX / 2, shape.y - shape.sizeY / 2),
       new Vector2(shape.x + shape.sizeX / 2, shape.y + shape.sizeY / 2)
     );
-    let v = mouseRayPlaneIntersection2;
+    let v = mouseRayPlaneIntersection;
     v = v.clone();
     v = v.rotateAround(
       new Vector2(shape.x, shape.y),
@@ -33454,7 +33231,7 @@ function mouseOverShape(shape, mouseRayPlaneIntersection2, pointInsidePolygon2) 
       return true;
     }
   } else if (shape.kind == "photoshape") {
-    let v = mouseRayPlaneIntersection2;
+    let v = mouseRayPlaneIntersection;
     let polygons = shape.polygon.map((polygon2) => {
       let rotatedPolygon = polygon2.map(
         ([x, y]) => src.maths.vec2.rotate(
@@ -33471,7 +33248,7 @@ function mouseOverShape(shape, mouseRayPlaneIntersection2, pointInsidePolygon2) 
     );
     return isInside;
   } else if (shape.kind == "polygon") {
-    let v = mouseRayPlaneIntersection2;
+    let v = mouseRayPlaneIntersection;
     let polygon2 = shape.points.map(([x, y]) => [x, y]).map(
       (v3) => src.maths.vec2.rotate(
         v3,
@@ -33485,31 +33262,35 @@ function mouseOverShape(shape, mouseRayPlaneIntersection2, pointInsidePolygon2) 
   }
   return false;
 }
-function drawOutline(shape, style2, width, z, ctx2, camera2, display2D2, renderer2, selected2, scene2, displayDot) {
-  ctx2.lineWidth = width;
-  ctx2.strokeStyle = style2;
-  const geom22 = shapeToGeom2(shape);
-  const geometries2 = Array.isArray(geom22) ? geom22 : [geom22];
-  const showControlPoints = display2D2 && displayDot;
-  geometries2.forEach((geometry) => {
-    var _a;
-    if (!((_a = geometry == null ? void 0 : geometry.sides) == null ? void 0 : _a.length))
-      return;
-    ctx2.beginPath();
-    const firstPoint = geometry.sides[0][0];
-    let p0 = projectPoint(firstPoint[0], firstPoint[1], z, camera2, renderer2);
-    ctx2.moveTo(p0.x, p0.y);
-    geometry.sides.forEach((line4) => {
-      const point = line4[1];
-      const p1 = projectPoint(point[0], point[1], z, camera2, renderer2);
-      ctx2.lineTo(p1.x, p1.y);
+function drawOutline(shape, style2, width, z, ctx, camera, display2D, renderer, selected, scene, displayDot) {
+  ctx.lineWidth = width;
+  ctx.strokeStyle = style2;
+  const showControlPoints = display2D && displayDot;
+  if (showControlPoints && shape.kind === "polygon" && Array.isArray(shape.points)) {
+    drawPolygonFromPoints(shape.points, shape, z, ctx, camera, renderer);
+  } else {
+    const geom22 = shapeToGeom2(shape);
+    const geometries2 = Array.isArray(geom22) ? geom22 : [geom22];
+    geometries2.forEach((geometry) => {
+      var _a;
+      if (!((_a = geometry == null ? void 0 : geometry.sides) == null ? void 0 : _a.length))
+        return;
+      ctx.beginPath();
+      const firstPoint = geometry.sides[0][0];
+      const p0 = projectPoint(firstPoint[0], firstPoint[1], z, camera, renderer);
+      ctx.moveTo(p0.x, p0.y);
+      geometry.sides.forEach((line4) => {
+        const point = line4[1];
+        const p1 = projectPoint(point[0], point[1], z, camera, renderer);
+        ctx.lineTo(p1.x, p1.y);
+      });
+      ctx.lineTo(p0.x, p0.y);
+      ctx.stroke();
     });
-    ctx2.lineTo(p0.x, p0.y);
-    ctx2.stroke();
-    if (showControlPoints) {
-      if (shape.controlPoints) {
-        shape.controlPoints.forEach((obj) => scene2.remove(obj));
-      }
+  }
+  if (showControlPoints && Array.isArray(shape.points)) {
+    if (!shape.controlPoints || shape.controlPoints.length !== shape.points.length * 2) {
+      clearControlPoints(shape, scene);
       shape.controlPoints = [];
       const CP_Z = z;
       shape.points.forEach(([x, y], index) => {
@@ -33520,45 +33301,62 @@ function drawOutline(shape, style2, width, z, ctx2, camera2, display2D2, rendere
         sphere2.position.set(x + shape.x, y + shape.y, CP_Z);
         sphere2.name = `controlPoint-${index}`;
         sphere2.userData.pointIndex = index;
-        sphere2.userData.draggable = true;
-        scene2.add(sphere2);
+        sphere2.userData.isControlSphere = true;
+        scene.add(sphere2);
         shape.controlPoints.push(sphere2);
         const helper = new BoxHelper(sphere2, 16776960);
         helper.material.opacity = 0;
         helper.material.transparent = true;
         helper.material.colorWrite = false;
         helper.visible = true;
-        scene2.add(helper);
+        helper.userData.pointIndex = index;
+        helper.userData.isControlHelper = true;
+        scene.add(helper);
+        shape.controlPoints.push(helper);
       });
-      setupControlPointInteractions(shape, scene2, camera2, renderer2, CP_Z);
     } else {
-      if (shape.controlPoints) {
-        shape.controlPoints.forEach((obj) => scene2.remove(obj));
-        shape.controlPoints = [];
+      const CP_Z = z;
+      for (let i = 0; i < shape.controlPoints.length; i += 2) {
+        const sphere2 = shape.controlPoints[i];
+        const pt = shape.points[sphere2.userData.pointIndex];
+        if (!pt)
+          continue;
+        sphere2.position.set(pt[0] + shape.x, pt[1] + shape.y, CP_Z);
       }
     }
-  });
+    if (!shape._controlPointsSetup) {
+      shape._controlPointsSetup = true;
+      setupControlPointInteractions(shape, scene, camera, renderer, z);
+    }
+  } else {
+    clearControlPoints(shape, scene);
+  }
 }
-function setupControlPointInteractions(shape, scene2, camera2, renderer2, CP_Z = 0) {
-  const state = {
+function clearControlPoints(shape, scene) {
+  if (shape.cleanup) {
+    shape.cleanup();
+    delete shape.cleanup;
+  }
+  if (shape.controlPoints) {
+    shape.controlPoints.forEach((obj) => scene.remove(obj));
+  }
+  shape.controlPoints = [];
+  shape._controlPointsSetup = false;
+}
+function setupControlPointInteractions(shape, scene, camera, renderer, CP_Z = 0) {
+  if (shape._controlPointHandlersInitialized)
+    return;
+  shape._controlPointHandlersInitialized = true;
+  const state2 = {
     isDragging: false,
     selectedPoint: null,
     raycaster: new Raycaster(),
     mouse: new Vector2(),
-    originalPoints: shape.points.map((p) => [...p]),
     CP_Z
   };
-  const overlay = document.createElement("div");
-  Object.assign(overlay.style, {
-    position: "fixed",
-    inset: "0",
-    zIndex: "10000",
-    pointerEvents: "none",
-    opacity: "0",
-    cursor: "default"
-  });
-  document.body.appendChild(overlay);
-  const getRect = () => renderer2.domElement.getBoundingClientRect();
+  const target = renderer.domElement;
+  target.style.pointerEvents = "auto";
+  const getRect = () => renderer.domElement.getBoundingClientRect();
   const ndcFromEvent = (evt) => {
     const r = getRect();
     return {
@@ -33566,114 +33364,95 @@ function setupControlPointInteractions(shape, scene2, camera2, renderer2, CP_Z =
       y: -((evt.clientY - r.top) / r.height) * 2 + 1
     };
   };
-  shape.controlPoints.forEach((point) => {
-    const indicator = document.createElement("div");
-    Object.assign(indicator.style, {
-      position: "absolute",
-      width: "20px",
-      height: "20px",
-      background: "rgba(255,0,0,0.3)",
-      borderRadius: "50%",
-      transform: "translate(-50%, -50%)",
-      pointerEvents: "none"
-    });
-    overlay.appendChild(indicator);
-    Object.assign(point.userData, {
-      indicator,
-      updatePosition: () => {
-        const r = getRect();
-        const v = point.position.clone().project(camera2);
-        const x = (v.x * 0.5 + 0.5) * r.width + r.left;
-        const y = (-(v.y * 0.5) + 0.5) * r.height + r.top;
-        indicator.style.left = `${x}px`;
-        indicator.style.top = `${y}px`;
-      }
-    });
-  });
-  function onMouseDown(evt) {
+  function syncRaycast(evt) {
+    scene.updateMatrixWorld(true);
+    shape.controlPoints.forEach((p) => p.updateMatrixWorld(true));
     const ndc = ndcFromEvent(evt);
-    state.mouse.set(ndc.x, ndc.y);
-    state.raycaster.setFromCamera(state.mouse, camera2);
-    const hit = state.raycaster.intersectObjects(shape.controlPoints, false);
+    state2.mouse.set(ndc.x, ndc.y);
+    state2.raycaster.setFromCamera(state2.mouse, camera);
+  }
+  function onMouseDown(evt) {
+    evt.stopPropagation();
+    syncRaycast(evt);
+    const hit = state2.raycaster.intersectObjects(shape.controlPoints, true);
     if (hit.length) {
       evt.preventDefault();
-      state.isDragging = true;
-      state.selectedPoint = hit[0].object;
+      state2.isDragging = true;
+      const obj = hit[0].object;
+      const idx = obj.userData.pointIndex;
+      state2.selectedPoint = shape.controlPoints.find(
+        (p) => p.userData.pointIndex === idx && p.userData.isControlSphere
+      ) || obj;
       window.addEventListener("mousemove", onMouseMove);
       window.addEventListener("mouseup", onMouseUp);
     }
   }
   function onMouseMove(evt) {
-    var _a, _b, _c, _d;
-    if (!state.isDragging || !state.selectedPoint)
+    if (!state2.isDragging || !state2.selectedPoint)
       return;
-    const ndc = ndcFromEvent(evt);
-    state.mouse.set(ndc.x, ndc.y);
-    state.raycaster.setFromCamera(state.mouse, camera2);
-    const dragPlane = new Plane$1(new Vector3(0, 0, 1), -state.CP_Z);
+    syncRaycast(evt);
+    const dragPlane = new Plane$1(new Vector3(0, 0, 1), -state2.CP_Z);
     const pos = new Vector3();
-    state.raycaster.ray.intersectPlane(dragPlane, pos);
-    state.selectedPoint.position.set(pos.x, pos.y, state.CP_Z);
-    const i = state.selectedPoint.userData.pointIndex;
+    state2.raycaster.ray.intersectPlane(dragPlane, pos);
+    state2.selectedPoint.position.set(pos.x, pos.y, state2.CP_Z);
+    const i = state2.selectedPoint.userData.pointIndex;
     shape.points[i] = [pos.x - shape.x, pos.y - shape.y];
-    (_b = (_a = state.selectedPoint.userData).updatePosition) == null ? void 0 : _b.call(_a);
-    if ((_d = (_c = shape.geometry) == null ? void 0 : _c.attributes) == null ? void 0 : _d.position) {
-      const a = shape.geometry.attributes.position.array;
-      a[i * 3] = pos.x;
-      a[i * 3 + 1] = pos.y;
-      a[i * 3 + 2] = state.CP_Z;
-      shape.geometry.attributes.position.needsUpdate = true;
-      if (shape.geometry.index)
-        shape.geometry.computeVertexNormals();
-    }
   }
   function onMouseUp() {
-    if (!state.isDragging)
+    if (!state2.isDragging)
       return;
     window.removeEventListener("mousemove", onMouseMove);
     window.removeEventListener("mouseup", onMouseUp);
-    state.isDragging = false;
-    state.selectedPoint = null;
+    state2.isDragging = false;
+    state2.selectedPoint = null;
   }
   function onHover(evt) {
-    const ndc = ndcFromEvent(evt);
-    state.mouse.set(ndc.x, ndc.y);
-    state.raycaster.setFromCamera(state.mouse, camera2);
-    const hit = state.raycaster.intersectObjects(shape.controlPoints, false);
-    overlay.style.pointerEvents = hit.length ? "auto" : "none";
-    overlay.style.cursor = hit.length ? "move" : "default";
+    syncRaycast(evt);
+    const hit = state2.raycaster.intersectObjects(shape.controlPoints, true);
+    target.style.cursor = hit.length ? "move" : "";
   }
+  target.addEventListener("mousedown", onMouseDown, { capture: true });
   window.addEventListener("mousemove", onHover);
-  overlay.addEventListener("mousedown", onMouseDown);
-  let rafId;
-  (function tick() {
-    shape.controlPoints.forEach((p) => {
-      var _a, _b;
-      return (_b = (_a = p.userData).updatePosition) == null ? void 0 : _b.call(_a);
-    });
-    rafId = requestAnimationFrame(tick);
-  })();
   shape.cleanup = () => {
-    cancelAnimationFrame(rafId);
-    overlay.removeEventListener("mousedown", onMouseDown);
+    target.removeEventListener("mousedown", onMouseDown);
     window.removeEventListener("mousemove", onHover);
     window.removeEventListener("mousemove", onMouseMove);
     window.removeEventListener("mouseup", onMouseUp);
-    document.body.removeChild(overlay);
+    shape._controlPointHandlersInitialized = false;
   };
 }
-function projectPoint(x, y, z, camera2, renderer2) {
+function drawPolygonFromPoints(points, shape, z, ctx, camera, renderer) {
+  if (!points || points.length < 2)
+    return;
+  ctx.beginPath();
+  for (let i = 0; i < points.length; i++) {
+    const [x, y] = points[i];
+    const v = new Vector3(
+      x + shape.x,
+      y + shape.y,
+      z
+    );
+    const p = projectPoint(v.x, v.y, v.z, camera, renderer);
+    if (i === 0)
+      ctx.moveTo(p.x, p.y);
+    else
+      ctx.lineTo(p.x, p.y);
+  }
+  ctx.closePath();
+  ctx.stroke();
+}
+function projectPoint(x, y, z, camera, renderer) {
   const vector = new Vector3(x, y, z);
-  vector.project(camera2);
+  vector.project(camera);
   return {
-    x: (vector.x + 1) * renderer2.domElement.width / 2,
-    y: (1 - vector.y) * renderer2.domElement.height / 2
+    x: (vector.x + 1) * renderer.domElement.width / 2,
+    y: (1 - vector.y) * renderer.domElement.height / 2
   };
 }
-function drawMeasurementsPhotoshape(shape, ctx2, camera2, currPanel2, centimeters2) {
-  ctx2.fillStyle = "orange";
-  const canvasCenterX = ctx2.canvas.width / 2;
-  const canvasCenterY = ctx2.canvas.height / 2;
+function drawMeasurementsPhotoshape(shape, ctx, camera, currPanel2, centimeters) {
+  ctx.fillStyle = "orange";
+  const canvasCenterX = ctx.canvas.width / 2;
+  const canvasCenterY = ctx.canvas.height / 2;
   const shapeCenterX = shape.sizeX / 2;
   const shapeCenterY = shape.sizeY / 2;
   const offsetX = canvasCenterX - shapeCenterX;
@@ -33688,401 +33467,1160 @@ function drawMeasurementsPhotoshape(shape, ctx2, camera2, currPanel2, centimeter
     } else {
       clonedV.applyMatrix4(object.matrixWorld);
     }
-    return project(clonedV, camera2, ctx2);
+    return project(clonedV, camera, ctx);
   }
   if (currPanel2.id.endsWith("-depth-panel")) {
-    ctx2.beginPath();
-    let p0 = transform2(new Vector3(shape.x, shape.y, 37 * centimeters2));
+    ctx.beginPath();
+    let p0 = transform2(new Vector3(shape.x, shape.y, 37 * centimeters));
     let p1 = transform2(
-      new Vector3(shape.x, shape.y, 37 * centimeters2 - shape.sizeZ)
+      new Vector3(shape.x, shape.y, 37 * centimeters - shape.sizeZ)
     );
-    ctx2.moveTo(p0.x, p0.y);
-    ctx2.lineTo(p1.x, p1.y);
-    ctx2.stroke();
+    ctx.moveTo(p0.x, p0.y);
+    ctx.lineTo(p1.x, p1.y);
+    ctx.stroke();
   }
   if (currPanel2.id.endsWith("-depth-panel")) {
-    let p0 = transform2(new Vector3(shape.x, shape.y, 37 * centimeters2));
+    let p0 = transform2(new Vector3(shape.x, shape.y, 37 * centimeters));
     let p1 = transform2(
-      new Vector3(shape.x, shape.y, 37 * centimeters2 - shape.sizeZ)
+      new Vector3(shape.x, shape.y, 37 * centimeters - shape.sizeZ)
     );
     let pMid = new Vector3().addVectors(p0, p1).divideScalar(2);
-    ctx2.font = "bold " + 20 * window.devicePixelRatio + "px sans-serif";
-    ctx2.textAlign = "left";
-    ctx2.fillText(shape.sizeZ.toFixed(0) + "mm", pMid.x, pMid.y);
-    ctx2.strokeStyle = "black";
-    ctx2.strokeText(shape.sizeZ.toFixed(0) + "mm", pMid.x, pMid.y);
-    ctx2.strokeStyle = "orange";
+    ctx.font = "bold " + 20 * window.devicePixelRatio + "px sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText(shape.sizeZ.toFixed(0) + "mm", pMid.x, pMid.y);
+    ctx.strokeStyle = "black";
+    ctx.strokeText(shape.sizeZ.toFixed(0) + "mm", pMid.x, pMid.y);
+    ctx.strokeStyle = "orange";
   }
 }
-function drawMeasurementsRectangle(shape, ctx2, camera2, currPanel2, centimeters2) {
-  ctx2.fillStyle = "orange";
-  function transform2(v, camera3) {
+function drawMeasurementsRectangle(shape, ctx, camera, currPanel2, centimeters) {
+  ctx.fillStyle = "orange";
+  function transform2(v, camera2) {
     return project(
       v.sub(new Vector3(shape.x, shape.y, 0)).applyAxisAngle(
         new Vector3(0, 0, 1),
         src.utils.degToRad(shape.rotation)
       ).add(new Vector3(shape.x, shape.y, 0)),
-      camera3,
-      ctx2
+      camera2,
+      ctx
     );
   }
   if (currPanel2.id.endsWith("-depth-panel")) {
-    ctx2.beginPath();
+    ctx.beginPath();
     let p0 = transform2(
       new Vector3(
         shape.x - shape.sizeX / 2,
         shape.y - shape.sizeY / 2,
-        37 * centimeters2
+        37 * centimeters
       ),
-      camera2
+      camera
     );
     let p1 = transform2(
       new Vector3(
         shape.x - shape.sizeX / 2,
         shape.y - shape.sizeY / 2,
-        37 * centimeters2 - shape.sizeZ
+        37 * centimeters - shape.sizeZ
       ),
-      camera2
+      camera
     );
-    ctx2.moveTo(p0.x, p0.y);
-    ctx2.lineTo(p1.x, p1.y);
-    ctx2.stroke();
+    ctx.moveTo(p0.x, p0.y);
+    ctx.lineTo(p1.x, p1.y);
+    ctx.stroke();
   }
   if (currPanel2.id.endsWith("-resize-panel")) {
-    ctx2.beginPath();
+    ctx.beginPath();
     let p0 = transform2(
       new Vector3(
         shape.x - shape.sizeX / 2,
         shape.y - shape.sizeY / 2,
-        37 * centimeters2
+        37 * centimeters
       ),
-      camera2
+      camera
     );
     let p1 = transform2(
       new Vector3(
         shape.x + shape.sizeX / 2,
         shape.y - shape.sizeY / 2,
-        37 * centimeters2
+        37 * centimeters
       ),
-      camera2
+      camera
     );
-    ctx2.moveTo(p0.x, p0.y);
-    ctx2.lineTo(p1.x, p1.y);
-    ctx2.stroke();
+    ctx.moveTo(p0.x, p0.y);
+    ctx.lineTo(p1.x, p1.y);
+    ctx.stroke();
   }
   if (currPanel2.id.endsWith("-resize-panel")) {
-    ctx2.beginPath();
+    ctx.beginPath();
     let p0 = transform2(
       new Vector3(
         shape.x - shape.sizeX / 2,
         shape.y - shape.sizeY / 2,
-        37 * centimeters2
+        37 * centimeters
       ),
-      camera2
+      camera
     );
     let p1 = transform2(
       new Vector3(
         shape.x - shape.sizeX / 2,
         shape.y + shape.sizeY / 2,
-        37 * centimeters2
+        37 * centimeters
       ),
-      camera2
+      camera
     );
-    ctx2.moveTo(p0.x, p0.y);
-    ctx2.lineTo(p1.x, p1.y);
-    ctx2.stroke();
+    ctx.moveTo(p0.x, p0.y);
+    ctx.lineTo(p1.x, p1.y);
+    ctx.stroke();
   }
   if (currPanel2.id.endsWith("-depth-panel")) {
     let p0 = transform2(
       new Vector3(
         shape.x - shape.sizeX / 2,
         shape.y - shape.sizeY / 2,
-        37 * centimeters2
+        37 * centimeters
       ),
-      camera2
+      camera
     );
     let p1 = transform2(
       new Vector3(
         shape.x - shape.sizeX / 2,
         shape.y - shape.sizeY / 2,
-        37 * centimeters2 - shape.sizeZ
+        37 * centimeters - shape.sizeZ
       ),
-      camera2
+      camera
     );
     let pMid = new Vector3().addVectors(p0, p1).divideScalar(2);
-    ctx2.font = "bold " + 20 * window.devicePixelRatio + "px sans-serif";
-    ctx2.textAlign = "left";
-    ctx2.fillText(shape.sizeZ.toFixed(0) + "mm", pMid.x, pMid.y);
-    ctx2.strokeStyle = "black";
-    ctx2.strokeText(shape.sizeZ.toFixed(0) + "mm", pMid.x, pMid.y);
-    ctx2.strokeStyle = "orange";
+    ctx.font = "bold " + 20 * window.devicePixelRatio + "px sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText(shape.sizeZ.toFixed(0) + "mm", pMid.x, pMid.y);
+    ctx.strokeStyle = "black";
+    ctx.strokeText(shape.sizeZ.toFixed(0) + "mm", pMid.x, pMid.y);
+    ctx.strokeStyle = "orange";
   }
   if (currPanel2.id.endsWith("-resize-panel")) {
     let p0 = transform2(
       new Vector3(
         shape.x - shape.sizeX / 2,
         shape.y - shape.sizeY / 2,
-        37 * centimeters2
+        37 * centimeters
       ),
-      camera2
+      camera
     );
     let p1 = transform2(
       new Vector3(
         shape.x + shape.sizeX / 2,
         shape.y - shape.sizeY / 2,
-        37 * centimeters2
+        37 * centimeters
       ),
-      camera2
+      camera
     );
     let pMid = new Vector3().addVectors(p0, p1).divideScalar(2);
-    ctx2.font = "bold " + 20 * window.devicePixelRatio + "px sans-serif";
-    ctx2.textAlign = "left";
-    ctx2.fillText(shape.sizeX.toFixed(0) + "mm", pMid.x, pMid.y);
-    ctx2.strokeStyle = "black";
-    ctx2.strokeText(shape.sizeX.toFixed(0) + "mm", pMid.x, pMid.y);
-    ctx2.strokeStyle = "orange";
+    ctx.font = "bold " + 20 * window.devicePixelRatio + "px sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText(shape.sizeX.toFixed(0) + "mm", pMid.x, pMid.y);
+    ctx.strokeStyle = "black";
+    ctx.strokeText(shape.sizeX.toFixed(0) + "mm", pMid.x, pMid.y);
+    ctx.strokeStyle = "orange";
   }
   if (currPanel2.id.endsWith("-resize-panel")) {
     let p0 = transform2(
       new Vector3(
         shape.x - shape.sizeX / 2,
         shape.y - shape.sizeY / 2,
-        37 * centimeters2
+        37 * centimeters
       ),
-      camera2
+      camera
     );
     let p1 = transform2(
       new Vector3(
         shape.x - shape.sizeX / 2,
         shape.y + shape.sizeY / 2,
-        37 * centimeters2
+        37 * centimeters
       ),
-      camera2
+      camera
     );
     let pMid = new Vector3().addVectors(p0, p1).divideScalar(2);
-    ctx2.font = "bold " + 20 * window.devicePixelRatio + "px sans-serif";
-    ctx2.textAlign = "left";
-    ctx2.fillText(shape.sizeY.toFixed(0) + "mm", pMid.x, pMid.y);
-    ctx2.strokeStyle = "black";
-    ctx2.strokeText(shape.sizeY.toFixed(0) + "mm", pMid.x, pMid.y);
-    ctx2.strokeStyle = "orange";
+    ctx.font = "bold " + 20 * window.devicePixelRatio + "px sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText(shape.sizeY.toFixed(0) + "mm", pMid.x, pMid.y);
+    ctx.strokeStyle = "black";
+    ctx.strokeText(shape.sizeY.toFixed(0) + "mm", pMid.x, pMid.y);
+    ctx.strokeStyle = "orange";
   }
 }
-function drawMeasurementsPolygon(shape, ctx2, camera2, currPanel2, centimeters2) {
-  ctx2.fillStyle = "orange";
-  function transform2(v, camera3) {
+function drawMeasurementsPolygon(shape, ctx, camera, currPanel2, centimeters) {
+  ctx.fillStyle = "orange";
+  function transform2(v, camera2) {
     return project(
       v.sub(new Vector3(shape == null ? void 0 : shape.x, shape == null ? void 0 : shape.y, 0)).applyAxisAngle(
         new Vector3(0, 0, 1),
         src.utils.degToRad(shape == null ? void 0 : shape.rotation)
       ).add(new Vector3(shape == null ? void 0 : shape.x, shape == null ? void 0 : shape.y, 0)),
-      camera3,
-      ctx2
+      camera2,
+      ctx
     );
   }
   if (currPanel2.id.endsWith("-depth-panel")) {
-    ctx2.beginPath();
+    ctx.beginPath();
     let p0 = transform2(
-      new Vector3(shape.x, shape.y, 37 * centimeters2),
-      camera2
+      new Vector3(shape.x, shape.y, 37 * centimeters),
+      camera
     );
     let p1 = transform2(
-      new Vector3(shape.x, shape.y, 37 * centimeters2 - shape.sizeZ),
-      camera2
+      new Vector3(shape.x, shape.y, 37 * centimeters - shape.sizeZ),
+      camera
     );
-    ctx2.moveTo(p0.x, p0.y);
-    ctx2.lineTo(p1.x, p1.y);
-    ctx2.stroke();
+    ctx.moveTo(p0.x, p0.y);
+    ctx.lineTo(p1.x, p1.y);
+    ctx.stroke();
   }
   if (currPanel2.id.endsWith("-depth-panel")) {
     let p0 = transform2(
-      new Vector3(shape.x, shape.y, 37 * centimeters2),
-      camera2
+      new Vector3(shape.x, shape.y, 37 * centimeters),
+      camera
     );
     let p1 = transform2(
-      new Vector3(shape.x, shape.y, 37 * centimeters2 - shape.sizeZ),
-      camera2
+      new Vector3(shape.x, shape.y, 37 * centimeters - shape.sizeZ),
+      camera
     );
     let pMid = new Vector3().addVectors(p0, p1).divideScalar(2);
-    ctx2.font = "bold " + 20 * window.devicePixelRatio + "px sans-serif";
-    ctx2.textAlign = "left";
-    ctx2.fillText(shape.sizeZ.toFixed(0) + "mm", pMid.x, pMid.y);
-    ctx2.strokeStyle = "black";
-    ctx2.strokeText(shape.sizeZ.toFixed(0) + "mm", pMid.x, pMid.y);
-    ctx2.strokeStyle = "orange";
+    ctx.font = "bold " + 20 * window.devicePixelRatio + "px sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText(shape.sizeZ.toFixed(0) + "mm", pMid.x, pMid.y);
+    ctx.strokeStyle = "black";
+    ctx.strokeText(shape.sizeZ.toFixed(0) + "mm", pMid.x, pMid.y);
+    ctx.strokeStyle = "orange";
   }
 }
-function drawMeasurementsCircle(shape, ctx2, camera2, currPanel2, centimeters2) {
-  ctx2.fillStyle = "orange";
+function drawMeasurementsCircle(shape, ctx, camera, currPanel2, centimeters) {
+  ctx.fillStyle = "orange";
   {
     let p0 = project(
-      new Vector3(shape.x, shape.y, 37 * centimeters2),
-      camera2,
-      ctx2
+      new Vector3(shape.x, shape.y, 37 * centimeters),
+      camera,
+      ctx
     );
     let p1 = project(
-      new Vector3(shape.x, shape.y, 37 * centimeters2 - shape.sizeZ),
-      camera2,
-      ctx2
+      new Vector3(shape.x, shape.y, 37 * centimeters - shape.sizeZ),
+      camera,
+      ctx
     );
     let p2 = project(
-      new Vector3(shape.x + shape.radius, shape.y, 37 * centimeters2),
-      camera2,
-      ctx2
+      new Vector3(shape.x + shape.radius, shape.y, 37 * centimeters),
+      camera,
+      ctx
     );
     if (currPanel2.id.endsWith("radius-panel") || currPanel2.id.endsWith("depth-panel")) {
-      ctx2.beginPath();
-      ctx2.arc(p0.x, p0.y, 4, 0, 2 * Math.PI);
-      ctx2.fill();
+      ctx.beginPath();
+      ctx.arc(p0.x, p0.y, 4, 0, 2 * Math.PI);
+      ctx.fill();
     }
     if (currPanel2.id.endsWith("depth-panel")) {
-      ctx2.beginPath();
-      ctx2.arc(p1.x, p1.y, 4, 0, 2 * Math.PI);
-      ctx2.fill();
+      ctx.beginPath();
+      ctx.arc(p1.x, p1.y, 4, 0, 2 * Math.PI);
+      ctx.fill();
     }
     if (currPanel2.id.endsWith("radius-panel")) {
-      ctx2.beginPath();
-      ctx2.arc(p2.x, p2.y, 4, 0, 2 * Math.PI);
-      ctx2.fill();
+      ctx.beginPath();
+      ctx.arc(p2.x, p2.y, 4, 0, 2 * Math.PI);
+      ctx.fill();
     }
   }
   if (currPanel2.id.endsWith("depth-panel")) {
-    ctx2.beginPath();
+    ctx.beginPath();
     let p0 = project(
-      new Vector3(shape.x, shape.y, 37 * centimeters2),
-      camera2,
-      ctx2
+      new Vector3(shape.x, shape.y, 37 * centimeters),
+      camera,
+      ctx
     );
-    ctx2.moveTo(p0.x, p0.y);
+    ctx.moveTo(p0.x, p0.y);
     let p1 = project(
-      new Vector3(shape.x, shape.y, 37 * centimeters2 - shape.sizeZ),
-      camera2,
-      ctx2
+      new Vector3(shape.x, shape.y, 37 * centimeters - shape.sizeZ),
+      camera,
+      ctx
     );
-    ctx2.lineTo(p1.x, p1.y);
-    ctx2.stroke();
+    ctx.lineTo(p1.x, p1.y);
+    ctx.stroke();
   }
   if (currPanel2.id.endsWith("radius-panel")) {
-    ctx2.beginPath();
+    ctx.beginPath();
     let p0 = project(
-      new Vector3(shape.x, shape.y, 37 * centimeters2),
-      camera2,
-      ctx2
+      new Vector3(shape.x, shape.y, 37 * centimeters),
+      camera,
+      ctx
     );
-    ctx2.moveTo(p0.x, p0.y);
+    ctx.moveTo(p0.x, p0.y);
     let p1 = project(
-      new Vector3(shape.x + shape.radius, shape.y, 37 * centimeters2),
-      camera2,
-      ctx2
+      new Vector3(shape.x + shape.radius, shape.y, 37 * centimeters),
+      camera,
+      ctx
     );
-    ctx2.lineTo(p1.x, p1.y);
-    ctx2.stroke();
+    ctx.lineTo(p1.x, p1.y);
+    ctx.stroke();
   }
   if (currPanel2.id.endsWith("depth-panel")) {
     let p0 = project(
-      new Vector3(shape.x, shape.y, 37 * centimeters2),
-      camera2,
-      ctx2
+      new Vector3(shape.x, shape.y, 37 * centimeters),
+      camera,
+      ctx
     );
     let p1 = project(
-      new Vector3(shape.x, shape.y, 37 * centimeters2 - shape.sizeZ),
-      camera2,
-      ctx2
+      new Vector3(shape.x, shape.y, 37 * centimeters - shape.sizeZ),
+      camera,
+      ctx
     );
     let pMid = new Vector3().addVectors(p0, p1).divideScalar(2);
-    ctx2.font = "bold " + 20 * window.devicePixelRatio + "px sans-serif";
-    ctx2.textAlign = "left";
-    ctx2.fillText(shape.sizeZ.toFixed(0) + "mm", pMid.x, pMid.y);
-    ctx2.strokeStyle = "black";
-    ctx2.strokeText(shape.sizeZ.toFixed(0) + "mm", pMid.x, pMid.y);
-    ctx2.strokeStyle = "orange";
+    ctx.font = "bold " + 20 * window.devicePixelRatio + "px sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText(shape.sizeZ.toFixed(0) + "mm", pMid.x, pMid.y);
+    ctx.strokeStyle = "black";
+    ctx.strokeText(shape.sizeZ.toFixed(0) + "mm", pMid.x, pMid.y);
+    ctx.strokeStyle = "orange";
   }
   if (currPanel2.id.endsWith("radius-panel")) {
     let p0 = project(
-      new Vector3(shape.x, shape.y, 37 * centimeters2),
-      camera2,
-      ctx2
+      new Vector3(shape.x, shape.y, 37 * centimeters),
+      camera,
+      ctx
     );
     let p1 = project(
-      new Vector3(shape.x + shape.radius, shape.y, 37 * centimeters2),
-      camera2,
-      ctx2
+      new Vector3(shape.x + shape.radius, shape.y, 37 * centimeters),
+      camera,
+      ctx
     );
     let pMid = new Vector3().addVectors(p0, p1).divideScalar(2);
-    ctx2.font = "bold " + 20 * window.devicePixelRatio + "px sans-serif";
-    ctx2.textAlign = "center";
-    ctx2.fillText(shape.radius.toFixed(0) + "mm", pMid.x, pMid.y);
-    ctx2.strokeStyle = "black";
-    ctx2.strokeText(shape.radius.toFixed(0) + "mm", pMid.x, pMid.y);
-    ctx2.strokeStyle = "orange";
+    ctx.font = "bold " + 20 * window.devicePixelRatio + "px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(shape.radius.toFixed(0) + "mm", pMid.x, pMid.y);
+    ctx.strokeStyle = "black";
+    ctx.strokeText(shape.radius.toFixed(0) + "mm", pMid.x, pMid.y);
+    ctx.strokeStyle = "orange";
   }
 }
-function drawMeasurementsLine(shape, ctx2, camera2, centimeters2) {
-  ctx2.strokeStyle = shape.color || "blue";
-  ctx2.lineWidth = shape.thickness;
+function drawMeasurementsLine(shape, ctx, camera, centimeters) {
+  ctx.strokeStyle = shape.color || "blue";
+  ctx.lineWidth = shape.thickness;
   let p0 = project(
-    new Vector3(shape.startX, shape.startY, 37 * centimeters2),
-    camera2,
-    ctx2
+    new Vector3(shape.startX, shape.startY, 37 * centimeters),
+    camera,
+    ctx
   );
   let p1 = project(
-    new Vector3(shape.endX, shape.endY, 37 * centimeters2),
-    camera2,
-    ctx2
+    new Vector3(shape.endX, shape.endY, 37 * centimeters),
+    camera,
+    ctx
   );
-  ctx2.beginPath();
-  ctx2.moveTo(p0.x, p0.y);
-  ctx2.lineTo(p1.x, p1.y);
-  ctx2.stroke();
+  ctx.beginPath();
+  ctx.moveTo(p0.x, p0.y);
+  ctx.lineTo(p1.x, p1.y);
+  ctx.stroke();
 }
-function drawCircle(shape, ctx2, camera2, centimeters2) {
-  ctx2.fillStyle = "red";
-  ctx2.beginPath();
-  ctx2.arc(center.x, center.y, shape.radius, 0, 2 * Math.PI);
-  ctx2.fill();
+function drawCircle(shape, ctx, camera, centimeters) {
+  ctx.fillStyle = "red";
+  ctx.beginPath();
+  ctx.arc(center.x, center.y, shape.radius, 0, 2 * Math.PI);
+  ctx.fill();
 }
-let panels$1 = null;
-let currPanel$1 = null;
+class FoamMaterial extends ShaderMaterial {
+  constructor(color, topLayerColor, topLayerThickness, foamHeight) {
+    color = new Color(color);
+    topLayerColor = new Color(topLayerColor);
+    super({
+      vertexShader: `
+              varying vec3 vWorldPosition;
+              varying vec3 vViewPosition;
+              varying vec3 vViewNormal;
+  
+              void main() {
+                 vWorldPosition = vec3(modelMatrix * vec4(position, 1.0));
+                 vViewPosition = vec3(modelViewMatrix * vec4(position, 1.0));
+                 vViewNormal = normalMatrix * normal;
+                 gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+              }
+           `,
+      fragmentShader: `
+              varying vec3 vWorldPosition;
+              varying vec3 vViewPosition;
+              varying vec3 vViewNormal;
+              uniform vec3 color;
+              uniform vec3 topLayerColor;
+              uniform float topLayerThickness;
+              uniform float foamHeight;
+  
+              void main() {
+                 float lambertFactor = dot(-normalize(vViewPosition), normalize(vViewNormal));
+                 float heightFactor = vWorldPosition.z / foamHeight;
+                 float factor = lambertFactor * heightFactor;
+                 float minLight = 0.1;
+                 factor = factor*(1.0-minLight) + (minLight);
+                 
+                 if (vWorldPosition.z < foamHeight - topLayerThickness) {
+                    gl_FragColor.rgb = color.rgb;
+                 } else {
+                    gl_FragColor.rgb = topLayerColor.rgb;
+                 }
+  
+                 gl_FragColor.rgb *= factor;
+                 gl_FragColor.a = 1.0;
+              }
+           `,
+      uniforms: {
+        color: { value: new Vector3(color.r, color.g, color.b) },
+        topLayerColor: {
+          value: new Vector3(
+            topLayerColor.r,
+            topLayerColor.g,
+            topLayerColor.b
+          )
+        },
+        topLayerThickness: { value: topLayerThickness },
+        foamHeight: { value: foamHeight }
+      }
+    });
+  }
+}
+class LambertMaterial extends ShaderMaterial {
+  constructor(color) {
+    color = new Color(color);
+    super({
+      vertexShader: `
+            varying vec3 vViewPosition;
+            varying vec3 vViewNormal;
+
+            void main() {
+               vViewPosition = vec3(modelViewMatrix * vec4(position, 1.0));
+               vViewNormal = normalMatrix * normal;
+               gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+         `,
+      fragmentShader: `
+            varying vec3 vViewPosition;
+            varying vec3 vViewNormal;
+            uniform vec3 color;
+
+            void main() {
+               float factor = dot(-normalize(vViewPosition), normalize(vViewNormal));
+               float minLight = 0.1;
+               factor = factor*(1.0-minLight) + (minLight);
+               
+               gl_FragColor.rgb = color.rgb;
+               gl_FragColor.rgb *= factor;
+               gl_FragColor.a = 1.0;
+            }
+         `,
+      uniforms: {
+        color: { value: new Vector3(color.r, color.g, color.b) }
+      }
+    });
+  }
+}
+function structuredClone(val) {
+  let str = JSON.stringify(val);
+  return JSON.parse(str);
+}
+function pointInsidePolygon(point, vs) {
+  var x = point[0], y = point[1];
+  var inside = false;
+  for (var i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+    var xi = vs[i][0], yi = vs[i][1];
+    var xj = vs[j][0], yj = vs[j][1];
+    var intersect2 = yi > y != yj > y && x < (xj - xi) * (y - yi) / (yj - yi) + xi;
+    if (intersect2)
+      inside = !inside;
+  }
+  return inside;
+}
+function rightestPoint(shape, shapeToGeom22) {
+  let geom22 = shapeToGeom22(shape);
+  let maxP = [0, 0];
+  let maxX = -Infinity;
+  geom22.sides.forEach(([p0, p1]) => {
+    if (p0[0] > maxX) {
+      maxX = p0[0];
+      maxP = p0;
+    }
+    if (p1[0] > maxX) {
+      maxX = p1[0];
+      maxP = p1;
+    }
+  });
+  return maxP;
+}
+function leftestPoint(shape, shapeToGeom22) {
+  let geom22 = shapeToGeom22(shape);
+  let minP = [0, 0];
+  let minX = Infinity;
+  geom22.sides.forEach(([p0, p1]) => {
+    if (p0[0] < minX) {
+      minX = p0[0];
+      minP = p0;
+    }
+    if (p1[0] < minX) {
+      minX = p1[0];
+      minP = p1;
+    }
+  });
+  return minP;
+}
+function highestPoint(shape, shapeToGeom22) {
+  let geom22 = shapeToGeom22(shape);
+  let maxP = [0, 0];
+  let maxY = -Infinity;
+  geom22.sides.forEach(([p0, p1]) => {
+    if (p0[1] > maxY) {
+      maxY = p0[1];
+      maxP = p0;
+    }
+    if (p1[1] > maxY) {
+      maxY = p1[1];
+      maxP = p1;
+    }
+  });
+  return maxP;
+}
+function lowestPoint(shape, shapeToGeom22) {
+  let geom22 = shapeToGeom22(shape);
+  let minP = [0, 0];
+  let minY = Infinity;
+  geom22.sides.forEach(([p0, p1]) => {
+    if (p0[1] < minY) {
+      minY = p0[1];
+      minP = p0;
+    }
+    if (p1[1] < minY) {
+      minY = p1[1];
+      minP = p1;
+    }
+  });
+  return minP;
+}
+function updateUndoRedoButtons(undoRedoPosition, undoRedoHistory) {
+  if (undoRedoPosition > 0) {
+    document.querySelector("#undo-button").removeAttribute("disabled");
+  } else {
+    document.querySelector("#undo-button").setAttribute("disabled", "");
+  }
+  if (undoRedoPosition < undoRedoHistory.length - 1) {
+    document.querySelector("#redo-button").removeAttribute("disabled");
+  } else {
+    document.querySelector("#redo-button").setAttribute("disabled", "");
+  }
+}
+const getValues = (camera, postScene, renderer, callback) => {
+  callback(camera, postScene, renderer);
+};
+const getCameraValue = (camera1, callback) => {
+  callback(camera1);
+};
+function getBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result.split(",")[1]);
+    reader.onerror = (error2) => reject(error2);
+    reader.readAsDataURL(file);
+  });
+}
+function generateId() {
+  return `shape-${Date.now()}-${Math.floor(Math.random() * 1e4)}`;
+}
+function drawResponsiveText(page, font, text2, x, y, maxWidth, maxFontSize = 10) {
+  let fontSize = maxFontSize;
+  while (font.widthOfTextAtSize(text2, fontSize) > maxWidth && fontSize > 4) {
+    fontSize -= 0.5;
+  }
+  page.drawText(text2, {
+    x,
+    y,
+    size: fontSize,
+    font
+  });
+}
+function confirmMerge(shapeA, shapeB, callback) {
+  const existing = document.getElementById("merge-dialog");
+  if (existing)
+    existing.remove();
+  const dialog = document.createElement("div");
+  dialog.id = "merge-dialog";
+  dialog.style.position = "fixed";
+  dialog.style.top = "50%";
+  dialog.style.left = "50%";
+  dialog.style.transform = "translate(-50%, -50%)";
+  dialog.style.background = "#fff";
+  dialog.style.padding = "24px 32px";
+  dialog.style.borderRadius = "12px";
+  dialog.style.boxShadow = "0 8px 24px rgba(0, 0, 0, 0.2)";
+  dialog.style.zIndex = "9999";
+  dialog.style.fontFamily = "sans-serif";
+  dialog.style.minWidth = "320px";
+  dialog.style.textAlign = "center";
+  dialog.innerHTML = `
+    <p style="margin-bottom: 24px; font-size: 16px; color: #333;">
+      Shapes are too close. Do you want to merge them?
+    </p>
+    <div style="display: flex; justify-content: center; gap: 16px;">
+      <button id="merge-yes" style="
+        padding: 10px 20px;
+        background-color: #4a90e2;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 14px;
+        cursor: pointer;
+        transition: background-color 0.2s;
+      ">Yes</button>
+      <button id="merge-no" style="
+        padding: 10px 20px;
+        background-color: #e0e0e0;
+        color: #333;
+        border: none;
+        border-radius: 6px;
+        font-size: 14px;
+        cursor: pointer;
+        transition: background-color 0.2s;
+      ">No</button>
+    </div>
+  `;
+  document.body.appendChild(dialog);
+  document.getElementById("merge-yes").onclick = () => {
+    dialog.remove();
+    callback(true);
+  };
+  document.getElementById("merge-no").onclick = () => {
+    dialog.remove();
+    callback(false);
+  };
+}
+function doCsg() {
+  if (state.worker) {
+    state.worker.terminate();
+  }
+  state.worker = new Worker(new URL("/assets/csg-0bd089ce.js", self.location), {
+    type: "module"
+  });
+  state.worker.onmessage = (e) => {
+    const csgModel = state.scene.getObjectByName("csgModel");
+    if (csgModel) {
+      if (csgModel.material) {
+        csgModel.material.dispose();
+      }
+      if (csgModel instanceof Mesh) {
+        csgModel.geometry.dispose();
+      }
+      state.scene.remove(csgModel);
+    }
+    const mesh = geom3ToMesh(e.data);
+    mesh.material = new FoamMaterial(
+      "red",
+      "#333",
+      2 * units.centimeters,
+      37 * units.centimeters
+    );
+    mesh.name = "csgModel";
+    state.scene.add(mesh);
+  };
+  const foamForWorker = structuredClone(state.foam);
+  const shapesForWorker = structuredClone(state.shapesArray);
+  state.worker.postMessage({ foam: foamForWorker, shapesArray: shapesForWorker });
+}
+let panels = null;
+let currPanel = null;
 function initPanels() {
-  panels$1 = document.querySelectorAll(".panel");
-  panels$1.forEach((panel) => {
+  panels = document.querySelectorAll(".panel");
+  panels.forEach((panel) => {
     panel.style.opacity = 0;
     panel.style.pointerEvents = "none";
   });
-  currPanel$1 = panels$1[0];
-  currPanel$1.style.opacity = 1;
-  currPanel$1.style.pointerEvents = "auto";
+  currPanel = panels[0];
+  currPanel.style.opacity = 1;
+  currPanel.style.pointerEvents = "auto";
 }
 function showPanelFromRight(id) {
   const nextPanel = document.querySelector(`#${id}`);
-  if (nextPanel === currPanel$1)
+  if (nextPanel === currPanel)
     return;
-  currPanel$1.style.animationName = "disappear-left";
-  currPanel$1.style.animationDuration = "0.25s";
-  currPanel$1.style.animationFillMode = "forwards";
-  currPanel$1.style.pointerEvents = "none";
+  currPanel.style.animationName = "disappear-left";
+  currPanel.style.animationDuration = "0.25s";
+  currPanel.style.animationFillMode = "forwards";
+  currPanel.style.pointerEvents = "none";
   nextPanel.style.animationName = "appear-right";
   nextPanel.style.animationDuration = "0.25s";
   nextPanel.style.animationFillMode = "forwards";
   nextPanel.style.pointerEvents = "auto";
-  currPanel$1 = nextPanel;
+  currPanel = nextPanel;
 }
 function showPanelFromLeft(id) {
   const nextPanel = document.querySelector(`#${id}`);
-  if (nextPanel === currPanel$1)
+  if (nextPanel === currPanel)
     return;
-  currPanel$1.style.animationName = "disappear-right";
-  currPanel$1.style.animationDuration = "0.25s";
-  currPanel$1.style.animationFillMode = "forwards";
-  currPanel$1.style.pointerEvents = "none";
+  currPanel.style.animationName = "disappear-right";
+  currPanel.style.animationDuration = "0.25s";
+  currPanel.style.animationFillMode = "forwards";
+  currPanel.style.pointerEvents = "none";
   nextPanel.style.animationName = "appear-left";
   nextPanel.style.animationDuration = "0.25s";
   nextPanel.style.animationFillMode = "forwards";
   nextPanel.style.pointerEvents = "auto";
-  currPanel$1 = nextPanel;
+  currPanel = nextPanel;
 }
 function getCurrentPanel() {
-  return currPanel$1;
+  return currPanel;
+}
+function commit() {
+  if (state.undoRedoPosition !== state.undoRedoHistory.length - 1) {
+    state.undoRedoHistory.splice(state.undoRedoPosition + 1);
+  }
+  state.undoRedoHistory.push(structuredClone(state.shapesArray));
+  state.undoRedoPosition = state.undoRedoHistory.length - 1;
+  updateUndoRedoButtons(state.undoRedoPosition, state.undoRedoHistory);
+}
+function undo() {
+  if (state.undoRedoPosition > 0) {
+    state.undoRedoPosition -= 1;
+    state.shapesArray = structuredClone(
+      state.undoRedoHistory[state.undoRedoPosition]
+    );
+    doCsg();
+  }
+  updateUndoRedoButtons(state.undoRedoPosition, state.undoRedoHistory);
+  document.querySelector("#back-button").setAttribute("disabled", "");
+  showPanelFromLeft("main-panel");
+  state.selected = null;
+}
+function redo() {
+  if (state.undoRedoPosition < state.undoRedoHistory.length - 1) {
+    state.undoRedoPosition += 1;
+    state.shapesArray = structuredClone(
+      state.undoRedoHistory[state.undoRedoPosition]
+    );
+    doCsg();
+  }
+  updateUndoRedoButtons(state.undoRedoPosition, state.undoRedoHistory);
+  document.querySelector("#back-button").setAttribute("disabled", "");
+  showPanelFromLeft("main-panel");
+  state.selected = null;
+}
+function createImage(renderer, scene, camera, { buttonId = "export-image", scaleFactor = 4, filename = "foam-hd.png" } = {}) {
+  const btn = document.getElementById(buttonId);
+  if (!btn) {
+    console.error(`createImage: no button found with id="${buttonId}"`);
+    return;
+  }
+  btn.addEventListener("click", () => {
+    const origSize = renderer.getSize(new Vector2());
+    const origDPR = renderer.getPixelRatio();
+    const width = origSize.x * scaleFactor;
+    const height = origSize.y * scaleFactor;
+    const rt = new WebGLRenderTarget(width, height, {
+      minFilter: LinearFilter,
+      magFilter: LinearFilter,
+      format: RGBAFormat,
+      encoding: renderer.outputEncoding,
+      samples: 0
+    });
+    renderer.setRenderTarget(rt);
+    renderer.setPixelRatio(origDPR);
+    renderer.setSize(width, height, false);
+    if (camera.isPerspectiveCamera) {
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+    }
+    renderer.render(scene, camera);
+    const buffer = new Uint8Array(width * height * 4);
+    renderer.readRenderTargetPixels(rt, 0, 0, width, height, buffer);
+    const rowBytes = width * 4;
+    for (let y = 0; y < height / 2; y++) {
+      const topRowOffset = y * rowBytes;
+      const botRowOffset = (height - y - 1) * rowBytes;
+      for (let i = 0; i < rowBytes; i++) {
+        const tmp2 = buffer[topRowOffset + i];
+        buffer[topRowOffset + i] = buffer[botRowOffset + i];
+        buffer[botRowOffset + i] = tmp2;
+      }
+    }
+    renderer.setRenderTarget(null);
+    rt.dispose();
+    const canvas2d = document.createElement("canvas");
+    canvas2d.width = width;
+    canvas2d.height = height;
+    const ctx = canvas2d.getContext("2d");
+    const imageData = new ImageData(new Uint8ClampedArray(buffer), width, height);
+    ctx.putImageData(imageData, 0, 0);
+    canvas2d.toBlob((blob) => {
+      if (!blob) {
+        console.error("createImage: toBlob returned null");
+        return;
+      }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      renderer.setPixelRatio(origDPR);
+      renderer.setSize(origSize.x, origSize.y, false);
+      if (camera.isPerspectiveCamera) {
+        camera.aspect = origSize.x / origSize.y;
+        camera.updateProjectionMatrix();
+      }
+      renderer.render(scene, camera);
+    }, "image/png");
+  });
+}
+const case1Url = "./models/case1.obj";
+function shapeUnderMouse() {
+  if (state.mouseRayPlaneIntersection) {
+    for (const shape of state.shapesArray.slice().reverse()) {
+      if (mouseOverShape(shape, state.mouseRayPlaneIntersection, pointInsidePolygon)) {
+        return shape;
+      }
+    }
+  }
+  return null;
+}
+function init3D() {
+  state.renderer = new WebGL1Renderer({
+    antialias: true,
+    precision: "highp",
+    preserveDrawingBuffer: true
+  });
+  state.renderer.setPixelRatio(window.devicePixelRatio || 1);
+  state.renderer.domElement.id = "foam-canvas";
+  state.renderer.autoClear = false;
+  state.overlayCanvas = document.createElement("canvas");
+  state.ctx = state.overlayCanvas.getContext("2d");
+  state.ssaaRenderTarget = new WebGLRenderTarget();
+  state.ssaaRenderTarget.texture.minFilter = LinearFilter;
+  state.scene = new Scene();
+  state.topScene = new Scene();
+  state.camera = new PerspectiveCamera(
+    50,
+    window.innerWidth / window.innerHeight,
+    1 * units.millimeters,
+    100 * units.meters
+  );
+  state.camera.position.set(0, -1 * units.meters, 1.5 * units.meters);
+  state.camera.up.set(0, 0, 1);
+  state.controls = new OrbitControls(
+    state.camera,
+    state.renderer.domElement
+  );
+  state.controls.target.set(0, 0, 37 * units.centimeters);
+  state.controls.update();
+  state.controls.mouseButtons.LEFT = MOUSE.ROTATE;
+  state.controls.mouseButtons.MIDDLE = MOUSE.PAN;
+  state.controls.touches = {
+    ONE: TOUCH.ROTATE,
+    TWO: TOUCH.DOLLY_PAN
+  };
+  const aspect2 = window.innerWidth / window.innerHeight;
+  const distance2 = 1 * units.meters;
+  const frustumHeight = 1.7 * distance2 * Math.tan(MathUtils.degToRad(50) / 2);
+  const frustumWidth = frustumHeight * aspect2;
+  state.camera1 = new OrthographicCamera(
+    -frustumWidth / 2,
+    frustumWidth / 2,
+    frustumHeight / 2,
+    -frustumHeight / 2,
+    0.1 * units.meters,
+    100 * units.meters
+  );
+  state.camera1.position.set(0, 0, distance2);
+  state.camera1.up.set(0, 1, 0);
+  state.camera1.lookAt(0, 0, 0);
+  window.addEventListener("resize", onResize);
+  onResize();
+  createImage(state.renderer, state.scene, state.camera1, {
+    buttonId: "export-image",
+    scaleFactor: 4,
+    filename: "foam-hd.png"
+  });
+  state.renderer.domElement.style.position = "fixed";
+  state.renderer.domElement.style.width = window.innerWidth + "px";
+  state.renderer.domElement.style.height = window.innerHeight + "px";
+  state.overlayCanvas.style.position = "fixed";
+  state.overlayCanvas.style.width = window.innerWidth + "px";
+  state.overlayCanvas.style.height = window.innerHeight + "px";
+  state.overlayCanvas.style.pointerEvents = "none";
+  document.body.appendChild(state.renderer.domElement);
+  document.body.appendChild(state.overlayCanvas);
+  doCsg();
+  function recalculateMouse(e) {
+    state.mouseX = e.clientX * (window.devicePixelRatio || 1);
+    state.mouseY = e.clientY * (window.devicePixelRatio || 1);
+    state.mouseNdcX = (state.mouseX / state.renderer.domElement.width - 0.5) * 2;
+    state.mouseNdcY = -((state.mouseY / state.renderer.domElement.height - 0.5) * 2);
+    const raycaster = new Raycaster();
+    raycaster.setFromCamera({ x: state.mouseNdcX, y: state.mouseNdcY }, state.camera);
+    const ray = raycaster.ray;
+    const foamPlane = new Plane$1(
+      new Vector3(0, 0, 1),
+      -37 * units.centimeters
+    );
+    const intersection = ray.intersectPlane(foamPlane, new Vector3());
+    if (intersection) {
+      state.mouseRayPlaneIntersection = new Vector2(
+        intersection.x,
+        intersection.y
+      );
+      if (state.dragging && state.selected) {
+        state.dragged = true;
+        state.selected.x = state.mouseRayPlaneIntersection.x - state.dragOffset.x;
+        state.selected.y = state.mouseRayPlaneIntersection.y - state.dragOffset.y;
+        doCsg();
+      }
+    } else {
+      state.mouseRayPlaneIntersection = null;
+      state.dragging = false;
+    }
+  }
+  state.renderer.domElement.addEventListener("pointermove", (e) => {
+    if (window.__editingPoints)
+      return;
+    recalculateMouse(e);
+  });
+  state.renderer.domElement.addEventListener("pointerdown", (e) => {
+    if (window.__editingPoints)
+      return;
+    recalculateMouse(e);
+    e.preventDefault();
+    state.oldSelected = state.selected;
+    if (state.selected && mouseOverShape(state.selected, state.mouseRayPlaneIntersection, pointInsidePolygon)) {
+      state.dragging = true;
+      state.dragged = false;
+      state.dragOffset = new Vector2().subVectors(
+        state.mouseRayPlaneIntersection,
+        new Vector2(state.selected.x, state.selected.y)
+      );
+      state.controls.enabled = false;
+      return;
+    }
+    state.selected = shapeUnderMouse();
+    if (state.selected) {
+      document.querySelector("#back-button").removeAttribute("disabled");
+      document.querySelector("#back-button").onclick = () => {
+        document.querySelector("#back-button").setAttribute("disabled", "");
+        state.selected = null;
+      };
+      state.dragging = true;
+      state.dragged = false;
+      state.dragOffset = new Vector2().subVectors(
+        state.mouseRayPlaneIntersection,
+        new Vector2(state.selected.x, state.selected.y)
+      );
+      state.controls.enabled = false;
+    } else {
+      state.selected = state.oldSelected;
+    }
+  });
+  state.renderer.domElement.addEventListener("pointerup", () => {
+    if (window.__editingPoints)
+      return;
+    if (!state.dragging)
+      return;
+    if (state.dragged) {
+      commit();
+      if (state.selected) {
+        const otherIdx = state.shapesArray.findIndex(
+          (s) => s !== state.selected && shapesIntersectGeneric(state.selected, s)
+        );
+        if (otherIdx !== -1) {
+          const other = state.shapesArray[otherIdx];
+          confirmMerge(state.selected, other, (shouldMerge) => {
+            if (shouldMerge) {
+              const selIdx = state.shapesArray.indexOf(state.selected);
+              const otherIdx2 = state.shapesArray.indexOf(other);
+              const merged = mergeIntoPolygon(state.selected, other);
+              const [high, low] = [selIdx, otherIdx2].sort((a, b) => b - a);
+              state.shapesArray.splice(high, 1);
+              state.shapesArray.splice(low, 1);
+              state.shapesArray.splice(low, 0, merged);
+              state.selected = merged;
+              doCsg();
+              commit();
+            } else {
+              state.selected.x += 10;
+              state.selected.y += 10;
+              doCsg();
+            }
+          });
+        }
+      }
+    }
+    state.dragging = false;
+    state.controls.enabled = true;
+  });
+  const ground = new Mesh(
+    new PlaneGeometry(100 * units.meters, 100 * units.meters, 1, 1),
+    new LambertMaterial("white")
+  );
+  state.scene.add(ground);
+  const loader = new OBJLoader();
+  loader.load(case1Url, (group) => {
+    group.traverse((object) => {
+      if (object instanceof Mesh) {
+        object.material = new LambertMaterial("cadetblue");
+      }
+    });
+    const caseModel = state.scene.getObjectByName("caseModel");
+    if (caseModel) {
+      state.scene.remove(caseModel);
+    }
+    group.name = "caseModel";
+    state.scene.add(group);
+  });
+  state.postScene = new Scene();
+  state.postCamera = new OrthographicCamera(-1, 1, 1, -1, 0, 1);
+  state.postQuad = new Mesh(
+    new PlaneGeometry(2, 2, 1, 1),
+    new MeshBasicMaterial({ map: state.ssaaRenderTarget.texture })
+  );
+  state.postScene.add(state.postQuad);
+  getValues(state.camera1, state.topScene, state.renderer, (camera1, topScene, renderer) => {
+    state.cameraCopy = camera1;
+    state.sceneCopy = topScene;
+    state.rendererCopy = renderer;
+  });
+  window.requestAnimationFrame(onFrame);
+  onFrame();
+}
+function onResize() {
+  state.overlayCanvas.style.width = window.innerWidth + "px";
+  state.overlayCanvas.style.height = window.innerHeight + "px";
+  state.overlayCanvas.width = window.innerWidth * (window.devicePixelRatio || 1);
+  state.overlayCanvas.height = window.innerHeight * (window.devicePixelRatio || 1);
+  state.ssaaRenderTarget.setSize(window.innerWidth * 2, window.innerHeight * 2);
+  state.renderer.setPixelRatio(window.devicePixelRatio || 1);
+  state.renderer.setSize(window.innerWidth, window.innerHeight, true);
+  state.camera.aspect = window.innerWidth / window.innerHeight;
+  state.camera.updateProjectionMatrix();
+}
+function drawMeasurements(shape) {
+  state.ctx.lineWidth = 1;
+  switch (shape.kind) {
+    case "circle":
+      drawMeasurementsCircle(shape, state.ctx, state.camera, state.currPanel, units.centimeters);
+      break;
+    case "rectangle":
+      drawMeasurementsRectangle(shape, state.ctx, state.camera, state.currPanel, units.centimeters);
+      break;
+    case "polygon":
+      drawMeasurementsPolygon(shape, state.ctx, state.camera, state.currPanel, units.centimeters);
+      break;
+    case "photoshape":
+      drawMeasurementsPhotoshape(shape, state.ctx, state.camera, state.currPanel, units.centimeters);
+      break;
+    case "circleOnClick":
+      drawCircle(shape, state.ctx);
+      break;
+    case "line":
+      drawMeasurementsLine(shape, state.ctx, state.camera, units.centimeters);
+      break;
+  }
+}
+function onFrame() {
+  state.ctx.canvas.width = state.ctx.canvas.width;
+  state.ctx.canvas.height = state.ctx.canvas.height;
+  state.ctx.strokeStyle = "orange";
+  state.renderer.clear(true);
+  state.display2D ? state.renderer.render(state.scene, state.camera1) : state.renderer.render(state.scene, state.camera);
+  state.renderer.clearDepth();
+  state.display2D ? state.renderer.render(state.topScene, state.camera1) : state.renderer.render(state.topScene, state.camera);
+  const baseZ = 37 * units.centimeters;
+  const currentCamera = state.display2D ? state.camera1 : state.camera;
+  const NEAR_THRESHOLD = 1 * units.centimeters;
+  for (const shape of state.shapesArray) {
+    if (state.selected && shape !== state.selected && isNearGeneric(state.selected, shape, NEAR_THRESHOLD)) {
+      state.ctx.setLineDash([5, 5]);
+      drawOutline(
+        shape,
+        "red",
+        2,
+        baseZ,
+        state.ctx,
+        currentCamera,
+        state.display2D,
+        state.renderer,
+        state.selected,
+        state.sceneCopy,
+        false
+      );
+      state.ctx.setLineDash([]);
+      continue;
+    }
+    if (state.display2D) {
+      drawOutline(
+        shape,
+        "black",
+        1,
+        baseZ,
+        state.ctx,
+        currentCamera,
+        state.display2D,
+        state.renderer,
+        state.selected,
+        state.sceneCopy,
+        false
+      );
+    }
+    if (state.selected === shape) {
+      drawOutline(
+        shape,
+        "orange",
+        3,
+        baseZ,
+        state.ctx,
+        currentCamera,
+        state.display2D,
+        state.renderer,
+        state.selected,
+        state.sceneCopy,
+        true
+      );
+      if (state.currPanel && state.currPanel.id.endsWith("depth-panel") && !state.display2D) {
+        state.ctx.setLineDash([5, 5]);
+        drawOutline(
+          shape,
+          "orange",
+          1,
+          baseZ - shape.sizeZ,
+          state.ctx,
+          currentCamera,
+          state.display2D,
+          state.renderer,
+          state.selected,
+          state.sceneCopy,
+          false
+        );
+        state.ctx.setLineDash([]);
+      }
+      drawMeasurements(shape);
+    } else {
+      state.ctx.setLineDash([5, 5]);
+      drawOutline(
+        shape,
+        "gray",
+        1,
+        baseZ,
+        state.ctx,
+        currentCamera,
+        state.display2D,
+        state.renderer,
+        state.selected,
+        state.sceneCopy,
+        false
+      );
+      state.ctx.setLineDash([]);
+    }
+  }
+  getCameraValue(state.camera1, (camera1) => {
+    state.orthoCamera = camera1;
+  });
+  window.requestAnimationFrame(onFrame);
+}
+function updateSelectedShape(index) {
+  state.selected = state.shapesArray[index];
+  state.currentIndex = index;
 }
 /*! *****************************************************************************
 Copyright (c) Microsoft Corporation.
@@ -36836,7 +37374,7 @@ var inflate$3 = {};
 var BAD$1 = 30;
 var TYPE$1 = 12;
 var inffast = function inflate_fast(strm, start) {
-  var state;
+  var state2;
   var _in;
   var last2;
   var _out;
@@ -36860,7 +37398,7 @@ var inffast = function inflate_fast(strm, start) {
   var from;
   var from_source;
   var input, output;
-  state = strm.state;
+  state2 = strm.state;
   _in = strm.next_in;
   input = strm.input;
   last2 = _in + (strm.avail_in - 5);
@@ -36868,17 +37406,17 @@ var inffast = function inflate_fast(strm, start) {
   output = strm.output;
   beg = _out - (start - strm.avail_out);
   end = _out + (strm.avail_out - 257);
-  dmax = state.dmax;
-  wsize = state.wsize;
-  whave = state.whave;
-  wnext = state.wnext;
-  s_window = state.window;
-  hold = state.hold;
-  bits = state.bits;
-  lcode = state.lencode;
-  dcode = state.distcode;
-  lmask = (1 << state.lenbits) - 1;
-  dmask = (1 << state.distbits) - 1;
+  dmax = state2.dmax;
+  wsize = state2.wsize;
+  whave = state2.whave;
+  wnext = state2.wnext;
+  s_window = state2.window;
+  hold = state2.hold;
+  bits = state2.bits;
+  lcode = state2.lencode;
+  dcode = state2.distcode;
+  lmask = (1 << state2.lenbits) - 1;
+  dmask = (1 << state2.distbits) - 1;
   top:
     do {
       if (bits < 15) {
@@ -36935,7 +37473,7 @@ var inffast = function inflate_fast(strm, start) {
                   dist += hold & (1 << op) - 1;
                   if (dist > dmax) {
                     strm.msg = "invalid distance too far back";
-                    state.mode = BAD$1;
+                    state2.mode = BAD$1;
                     break top;
                   }
                   hold >>>= op;
@@ -36944,9 +37482,9 @@ var inffast = function inflate_fast(strm, start) {
                   if (dist > op) {
                     op = dist - op;
                     if (op > whave) {
-                      if (state.sane) {
+                      if (state2.sane) {
                         strm.msg = "invalid distance too far back";
-                        state.mode = BAD$1;
+                        state2.mode = BAD$1;
                         break top;
                       }
                     }
@@ -37024,7 +37562,7 @@ var inffast = function inflate_fast(strm, start) {
                   continue dodist;
                 } else {
                   strm.msg = "invalid distance code";
-                  state.mode = BAD$1;
+                  state2.mode = BAD$1;
                   break top;
                 }
                 break;
@@ -37033,11 +37571,11 @@ var inffast = function inflate_fast(strm, start) {
             here = lcode[(here & 65535) + (hold & (1 << op) - 1)];
             continue dolen;
           } else if (op & 32) {
-            state.mode = TYPE$1;
+            state2.mode = TYPE$1;
             break top;
           } else {
             strm.msg = "invalid literal/length code";
-            state.mode = BAD$1;
+            state2.mode = BAD$1;
             break top;
           }
           break;
@@ -37051,8 +37589,8 @@ var inffast = function inflate_fast(strm, start) {
   strm.next_out = _out;
   strm.avail_in = _in < last2 ? 5 + (last2 - _in) : 5 - (_in - last2);
   strm.avail_out = _out < end ? 257 + (end - _out) : 257 - (_out - end);
-  state.hold = hold;
-  state.bits = bits;
+  state2.hold = hold;
+  state2.bits = bits;
   return;
 };
 var utils$2 = common;
@@ -37460,47 +37998,47 @@ function InflateState() {
   this.was = 0;
 }
 function inflateResetKeep(strm) {
-  var state;
+  var state2;
   if (!strm || !strm.state) {
     return Z_STREAM_ERROR;
   }
-  state = strm.state;
-  strm.total_in = strm.total_out = state.total = 0;
+  state2 = strm.state;
+  strm.total_in = strm.total_out = state2.total = 0;
   strm.msg = "";
-  if (state.wrap) {
-    strm.adler = state.wrap & 1;
+  if (state2.wrap) {
+    strm.adler = state2.wrap & 1;
   }
-  state.mode = HEAD;
-  state.last = 0;
-  state.havedict = 0;
-  state.dmax = 32768;
-  state.head = null;
-  state.hold = 0;
-  state.bits = 0;
-  state.lencode = state.lendyn = new utils$1.Buf32(ENOUGH_LENS);
-  state.distcode = state.distdyn = new utils$1.Buf32(ENOUGH_DISTS);
-  state.sane = 1;
-  state.back = -1;
+  state2.mode = HEAD;
+  state2.last = 0;
+  state2.havedict = 0;
+  state2.dmax = 32768;
+  state2.head = null;
+  state2.hold = 0;
+  state2.bits = 0;
+  state2.lencode = state2.lendyn = new utils$1.Buf32(ENOUGH_LENS);
+  state2.distcode = state2.distdyn = new utils$1.Buf32(ENOUGH_DISTS);
+  state2.sane = 1;
+  state2.back = -1;
   return Z_OK;
 }
 function inflateReset(strm) {
-  var state;
+  var state2;
   if (!strm || !strm.state) {
     return Z_STREAM_ERROR;
   }
-  state = strm.state;
-  state.wsize = 0;
-  state.whave = 0;
-  state.wnext = 0;
+  state2 = strm.state;
+  state2.wsize = 0;
+  state2.whave = 0;
+  state2.wnext = 0;
   return inflateResetKeep(strm);
 }
 function inflateReset2(strm, windowBits) {
   var wrap;
-  var state;
+  var state2;
   if (!strm || !strm.state) {
     return Z_STREAM_ERROR;
   }
-  state = strm.state;
+  state2 = strm.state;
   if (windowBits < 0) {
     wrap = 0;
     windowBits = -windowBits;
@@ -37513,22 +38051,22 @@ function inflateReset2(strm, windowBits) {
   if (windowBits && (windowBits < 8 || windowBits > 15)) {
     return Z_STREAM_ERROR;
   }
-  if (state.window !== null && state.wbits !== windowBits) {
-    state.window = null;
+  if (state2.window !== null && state2.wbits !== windowBits) {
+    state2.window = null;
   }
-  state.wrap = wrap;
-  state.wbits = windowBits;
+  state2.wrap = wrap;
+  state2.wbits = windowBits;
   return inflateReset(strm);
 }
 function inflateInit2(strm, windowBits) {
   var ret;
-  var state;
+  var state2;
   if (!strm) {
     return Z_STREAM_ERROR;
   }
-  state = new InflateState();
-  strm.state = state;
-  state.window = null;
+  state2 = new InflateState();
+  strm.state = state2;
+  state2.window = null;
   ret = inflateReset2(strm, windowBits);
   if (ret !== Z_OK) {
     strm.state = null;
@@ -37540,75 +38078,75 @@ function inflateInit(strm) {
 }
 var virgin = true;
 var lenfix, distfix;
-function fixedtables(state) {
+function fixedtables(state2) {
   if (virgin) {
     var sym;
     lenfix = new utils$1.Buf32(512);
     distfix = new utils$1.Buf32(32);
     sym = 0;
     while (sym < 144) {
-      state.lens[sym++] = 8;
+      state2.lens[sym++] = 8;
     }
     while (sym < 256) {
-      state.lens[sym++] = 9;
+      state2.lens[sym++] = 9;
     }
     while (sym < 280) {
-      state.lens[sym++] = 7;
+      state2.lens[sym++] = 7;
     }
     while (sym < 288) {
-      state.lens[sym++] = 8;
+      state2.lens[sym++] = 8;
     }
-    inflate_table2(LENS, state.lens, 0, 288, lenfix, 0, state.work, { bits: 9 });
+    inflate_table2(LENS, state2.lens, 0, 288, lenfix, 0, state2.work, { bits: 9 });
     sym = 0;
     while (sym < 32) {
-      state.lens[sym++] = 5;
+      state2.lens[sym++] = 5;
     }
-    inflate_table2(DISTS, state.lens, 0, 32, distfix, 0, state.work, { bits: 5 });
+    inflate_table2(DISTS, state2.lens, 0, 32, distfix, 0, state2.work, { bits: 5 });
     virgin = false;
   }
-  state.lencode = lenfix;
-  state.lenbits = 9;
-  state.distcode = distfix;
-  state.distbits = 5;
+  state2.lencode = lenfix;
+  state2.lenbits = 9;
+  state2.distcode = distfix;
+  state2.distbits = 5;
 }
 function updatewindow(strm, src2, end, copy2) {
   var dist;
-  var state = strm.state;
-  if (state.window === null) {
-    state.wsize = 1 << state.wbits;
-    state.wnext = 0;
-    state.whave = 0;
-    state.window = new utils$1.Buf8(state.wsize);
+  var state2 = strm.state;
+  if (state2.window === null) {
+    state2.wsize = 1 << state2.wbits;
+    state2.wnext = 0;
+    state2.whave = 0;
+    state2.window = new utils$1.Buf8(state2.wsize);
   }
-  if (copy2 >= state.wsize) {
-    utils$1.arraySet(state.window, src2, end - state.wsize, state.wsize, 0);
-    state.wnext = 0;
-    state.whave = state.wsize;
+  if (copy2 >= state2.wsize) {
+    utils$1.arraySet(state2.window, src2, end - state2.wsize, state2.wsize, 0);
+    state2.wnext = 0;
+    state2.whave = state2.wsize;
   } else {
-    dist = state.wsize - state.wnext;
+    dist = state2.wsize - state2.wnext;
     if (dist > copy2) {
       dist = copy2;
     }
-    utils$1.arraySet(state.window, src2, end - copy2, dist, state.wnext);
+    utils$1.arraySet(state2.window, src2, end - copy2, dist, state2.wnext);
     copy2 -= dist;
     if (copy2) {
-      utils$1.arraySet(state.window, src2, end - copy2, copy2, 0);
-      state.wnext = copy2;
-      state.whave = state.wsize;
+      utils$1.arraySet(state2.window, src2, end - copy2, copy2, 0);
+      state2.wnext = copy2;
+      state2.whave = state2.wsize;
     } else {
-      state.wnext += dist;
-      if (state.wnext === state.wsize) {
-        state.wnext = 0;
+      state2.wnext += dist;
+      if (state2.wnext === state2.wsize) {
+        state2.wnext = 0;
       }
-      if (state.whave < state.wsize) {
-        state.whave += dist;
+      if (state2.whave < state2.wsize) {
+        state2.whave += dist;
       }
     }
   }
   return 0;
 }
 function inflate$2(strm, flush) {
-  var state;
+  var state2;
   var input, output;
   var next;
   var put;
@@ -37634,9 +38172,9 @@ function inflate$2(strm, flush) {
   if (!strm || !strm.state || !strm.output || !strm.input && strm.avail_in !== 0) {
     return Z_STREAM_ERROR;
   }
-  state = strm.state;
-  if (state.mode === TYPE) {
-    state.mode = TYPEDO;
+  state2 = strm.state;
+  if (state2.mode === TYPE) {
+    state2.mode = TYPEDO;
   }
   put = strm.next_out;
   output = strm.output;
@@ -37644,17 +38182,17 @@ function inflate$2(strm, flush) {
   next = strm.next_in;
   input = strm.input;
   have = strm.avail_in;
-  hold = state.hold;
-  bits = state.bits;
+  hold = state2.hold;
+  bits = state2.bits;
   _in = have;
   _out = left;
   ret = Z_OK;
   inf_leave:
     for (; ; ) {
-      switch (state.mode) {
+      switch (state2.mode) {
         case HEAD:
-          if (state.wrap === 0) {
-            state.mode = TYPEDO;
+          if (state2.wrap === 0) {
+            state2.mode = TYPEDO;
             break;
           }
           while (bits < 16) {
@@ -37665,44 +38203,44 @@ function inflate$2(strm, flush) {
             hold += input[next++] << bits;
             bits += 8;
           }
-          if (state.wrap & 2 && hold === 35615) {
-            state.check = 0;
+          if (state2.wrap & 2 && hold === 35615) {
+            state2.check = 0;
             hbuf[0] = hold & 255;
             hbuf[1] = hold >>> 8 & 255;
-            state.check = crc32(state.check, hbuf, 2, 0);
+            state2.check = crc32(state2.check, hbuf, 2, 0);
             hold = 0;
             bits = 0;
-            state.mode = FLAGS;
+            state2.mode = FLAGS;
             break;
           }
-          state.flags = 0;
-          if (state.head) {
-            state.head.done = false;
+          state2.flags = 0;
+          if (state2.head) {
+            state2.head.done = false;
           }
-          if (!(state.wrap & 1) || /* check if zlib header allowed */
+          if (!(state2.wrap & 1) || /* check if zlib header allowed */
           (((hold & 255) << 8) + (hold >> 8)) % 31) {
             strm.msg = "incorrect header check";
-            state.mode = BAD;
+            state2.mode = BAD;
             break;
           }
           if ((hold & 15) !== Z_DEFLATED) {
             strm.msg = "unknown compression method";
-            state.mode = BAD;
+            state2.mode = BAD;
             break;
           }
           hold >>>= 4;
           bits -= 4;
           len = (hold & 15) + 8;
-          if (state.wbits === 0) {
-            state.wbits = len;
-          } else if (len > state.wbits) {
+          if (state2.wbits === 0) {
+            state2.wbits = len;
+          } else if (len > state2.wbits) {
             strm.msg = "invalid window size";
-            state.mode = BAD;
+            state2.mode = BAD;
             break;
           }
-          state.dmax = 1 << len;
-          strm.adler = state.check = 1;
-          state.mode = hold & 512 ? DICTID : TYPE;
+          state2.dmax = 1 << len;
+          strm.adler = state2.check = 1;
+          state2.mode = hold & 512 ? DICTID : TYPE;
           hold = 0;
           bits = 0;
           break;
@@ -37715,28 +38253,28 @@ function inflate$2(strm, flush) {
             hold += input[next++] << bits;
             bits += 8;
           }
-          state.flags = hold;
-          if ((state.flags & 255) !== Z_DEFLATED) {
+          state2.flags = hold;
+          if ((state2.flags & 255) !== Z_DEFLATED) {
             strm.msg = "unknown compression method";
-            state.mode = BAD;
+            state2.mode = BAD;
             break;
           }
-          if (state.flags & 57344) {
+          if (state2.flags & 57344) {
             strm.msg = "unknown header flags set";
-            state.mode = BAD;
+            state2.mode = BAD;
             break;
           }
-          if (state.head) {
-            state.head.text = hold >> 8 & 1;
+          if (state2.head) {
+            state2.head.text = hold >> 8 & 1;
           }
-          if (state.flags & 512) {
+          if (state2.flags & 512) {
             hbuf[0] = hold & 255;
             hbuf[1] = hold >>> 8 & 255;
-            state.check = crc32(state.check, hbuf, 2, 0);
+            state2.check = crc32(state2.check, hbuf, 2, 0);
           }
           hold = 0;
           bits = 0;
-          state.mode = TIME;
+          state2.mode = TIME;
         case TIME:
           while (bits < 32) {
             if (have === 0) {
@@ -37746,19 +38284,19 @@ function inflate$2(strm, flush) {
             hold += input[next++] << bits;
             bits += 8;
           }
-          if (state.head) {
-            state.head.time = hold;
+          if (state2.head) {
+            state2.head.time = hold;
           }
-          if (state.flags & 512) {
+          if (state2.flags & 512) {
             hbuf[0] = hold & 255;
             hbuf[1] = hold >>> 8 & 255;
             hbuf[2] = hold >>> 16 & 255;
             hbuf[3] = hold >>> 24 & 255;
-            state.check = crc32(state.check, hbuf, 4, 0);
+            state2.check = crc32(state2.check, hbuf, 4, 0);
           }
           hold = 0;
           bits = 0;
-          state.mode = OS;
+          state2.mode = OS;
         case OS:
           while (bits < 16) {
             if (have === 0) {
@@ -37768,20 +38306,20 @@ function inflate$2(strm, flush) {
             hold += input[next++] << bits;
             bits += 8;
           }
-          if (state.head) {
-            state.head.xflags = hold & 255;
-            state.head.os = hold >> 8;
+          if (state2.head) {
+            state2.head.xflags = hold & 255;
+            state2.head.os = hold >> 8;
           }
-          if (state.flags & 512) {
+          if (state2.flags & 512) {
             hbuf[0] = hold & 255;
             hbuf[1] = hold >>> 8 & 255;
-            state.check = crc32(state.check, hbuf, 2, 0);
+            state2.check = crc32(state2.check, hbuf, 2, 0);
           }
           hold = 0;
           bits = 0;
-          state.mode = EXLEN;
+          state2.mode = EXLEN;
         case EXLEN:
-          if (state.flags & 1024) {
+          if (state2.flags & 1024) {
             while (bits < 16) {
               if (have === 0) {
                 break inf_leave;
@@ -37790,35 +38328,35 @@ function inflate$2(strm, flush) {
               hold += input[next++] << bits;
               bits += 8;
             }
-            state.length = hold;
-            if (state.head) {
-              state.head.extra_len = hold;
+            state2.length = hold;
+            if (state2.head) {
+              state2.head.extra_len = hold;
             }
-            if (state.flags & 512) {
+            if (state2.flags & 512) {
               hbuf[0] = hold & 255;
               hbuf[1] = hold >>> 8 & 255;
-              state.check = crc32(state.check, hbuf, 2, 0);
+              state2.check = crc32(state2.check, hbuf, 2, 0);
             }
             hold = 0;
             bits = 0;
-          } else if (state.head) {
-            state.head.extra = null;
+          } else if (state2.head) {
+            state2.head.extra = null;
           }
-          state.mode = EXTRA;
+          state2.mode = EXTRA;
         case EXTRA:
-          if (state.flags & 1024) {
-            copy2 = state.length;
+          if (state2.flags & 1024) {
+            copy2 = state2.length;
             if (copy2 > have) {
               copy2 = have;
             }
             if (copy2) {
-              if (state.head) {
-                len = state.head.extra_len - state.length;
-                if (!state.head.extra) {
-                  state.head.extra = new Array(state.head.extra_len);
+              if (state2.head) {
+                len = state2.head.extra_len - state2.length;
+                if (!state2.head.extra) {
+                  state2.head.extra = new Array(state2.head.extra_len);
                 }
                 utils$1.arraySet(
-                  state.head.extra,
+                  state2.head.extra,
                   input,
                   next,
                   // extra field is limited to 65536 bytes
@@ -37828,70 +38366,70 @@ function inflate$2(strm, flush) {
                   len
                 );
               }
-              if (state.flags & 512) {
-                state.check = crc32(state.check, input, copy2, next);
+              if (state2.flags & 512) {
+                state2.check = crc32(state2.check, input, copy2, next);
               }
               have -= copy2;
               next += copy2;
-              state.length -= copy2;
+              state2.length -= copy2;
             }
-            if (state.length) {
+            if (state2.length) {
               break inf_leave;
             }
           }
-          state.length = 0;
-          state.mode = NAME;
+          state2.length = 0;
+          state2.mode = NAME;
         case NAME:
-          if (state.flags & 2048) {
+          if (state2.flags & 2048) {
             if (have === 0) {
               break inf_leave;
             }
             copy2 = 0;
             do {
               len = input[next + copy2++];
-              if (state.head && len && state.length < 65536) {
-                state.head.name += String.fromCharCode(len);
+              if (state2.head && len && state2.length < 65536) {
+                state2.head.name += String.fromCharCode(len);
               }
             } while (len && copy2 < have);
-            if (state.flags & 512) {
-              state.check = crc32(state.check, input, copy2, next);
+            if (state2.flags & 512) {
+              state2.check = crc32(state2.check, input, copy2, next);
             }
             have -= copy2;
             next += copy2;
             if (len) {
               break inf_leave;
             }
-          } else if (state.head) {
-            state.head.name = null;
+          } else if (state2.head) {
+            state2.head.name = null;
           }
-          state.length = 0;
-          state.mode = COMMENT;
+          state2.length = 0;
+          state2.mode = COMMENT;
         case COMMENT:
-          if (state.flags & 4096) {
+          if (state2.flags & 4096) {
             if (have === 0) {
               break inf_leave;
             }
             copy2 = 0;
             do {
               len = input[next + copy2++];
-              if (state.head && len && state.length < 65536) {
-                state.head.comment += String.fromCharCode(len);
+              if (state2.head && len && state2.length < 65536) {
+                state2.head.comment += String.fromCharCode(len);
               }
             } while (len && copy2 < have);
-            if (state.flags & 512) {
-              state.check = crc32(state.check, input, copy2, next);
+            if (state2.flags & 512) {
+              state2.check = crc32(state2.check, input, copy2, next);
             }
             have -= copy2;
             next += copy2;
             if (len) {
               break inf_leave;
             }
-          } else if (state.head) {
-            state.head.comment = null;
+          } else if (state2.head) {
+            state2.head.comment = null;
           }
-          state.mode = HCRC;
+          state2.mode = HCRC;
         case HCRC:
-          if (state.flags & 512) {
+          if (state2.flags & 512) {
             while (bits < 16) {
               if (have === 0) {
                 break inf_leave;
@@ -37900,20 +38438,20 @@ function inflate$2(strm, flush) {
               hold += input[next++] << bits;
               bits += 8;
             }
-            if (hold !== (state.check & 65535)) {
+            if (hold !== (state2.check & 65535)) {
               strm.msg = "header crc mismatch";
-              state.mode = BAD;
+              state2.mode = BAD;
               break;
             }
             hold = 0;
             bits = 0;
           }
-          if (state.head) {
-            state.head.hcrc = state.flags >> 9 & 1;
-            state.head.done = true;
+          if (state2.head) {
+            state2.head.hcrc = state2.flags >> 9 & 1;
+            state2.head.done = true;
           }
-          strm.adler = state.check = 0;
-          state.mode = TYPE;
+          strm.adler = state2.check = 0;
+          state2.mode = TYPE;
           break;
         case DICTID:
           while (bits < 32) {
@@ -37924,31 +38462,31 @@ function inflate$2(strm, flush) {
             hold += input[next++] << bits;
             bits += 8;
           }
-          strm.adler = state.check = zswap32(hold);
+          strm.adler = state2.check = zswap32(hold);
           hold = 0;
           bits = 0;
-          state.mode = DICT;
+          state2.mode = DICT;
         case DICT:
-          if (state.havedict === 0) {
+          if (state2.havedict === 0) {
             strm.next_out = put;
             strm.avail_out = left;
             strm.next_in = next;
             strm.avail_in = have;
-            state.hold = hold;
-            state.bits = bits;
+            state2.hold = hold;
+            state2.bits = bits;
             return Z_NEED_DICT;
           }
-          strm.adler = state.check = 1;
-          state.mode = TYPE;
+          strm.adler = state2.check = 1;
+          state2.mode = TYPE;
         case TYPE:
           if (flush === Z_BLOCK || flush === Z_TREES) {
             break inf_leave;
           }
         case TYPEDO:
-          if (state.last) {
+          if (state2.last) {
             hold >>>= bits & 7;
             bits -= bits & 7;
-            state.mode = CHECK;
+            state2.mode = CHECK;
             break;
           }
           while (bits < 3) {
@@ -37959,16 +38497,16 @@ function inflate$2(strm, flush) {
             hold += input[next++] << bits;
             bits += 8;
           }
-          state.last = hold & 1;
+          state2.last = hold & 1;
           hold >>>= 1;
           bits -= 1;
           switch (hold & 3) {
             case 0:
-              state.mode = STORED;
+              state2.mode = STORED;
               break;
             case 1:
-              fixedtables(state);
-              state.mode = LEN_;
+              fixedtables(state2);
+              state2.mode = LEN_;
               if (flush === Z_TREES) {
                 hold >>>= 2;
                 bits -= 2;
@@ -37976,11 +38514,11 @@ function inflate$2(strm, flush) {
               }
               break;
             case 2:
-              state.mode = TABLE;
+              state2.mode = TABLE;
               break;
             case 3:
               strm.msg = "invalid block type";
-              state.mode = BAD;
+              state2.mode = BAD;
           }
           hold >>>= 2;
           bits -= 2;
@@ -37998,20 +38536,20 @@ function inflate$2(strm, flush) {
           }
           if ((hold & 65535) !== (hold >>> 16 ^ 65535)) {
             strm.msg = "invalid stored block lengths";
-            state.mode = BAD;
+            state2.mode = BAD;
             break;
           }
-          state.length = hold & 65535;
+          state2.length = hold & 65535;
           hold = 0;
           bits = 0;
-          state.mode = COPY_;
+          state2.mode = COPY_;
           if (flush === Z_TREES) {
             break inf_leave;
           }
         case COPY_:
-          state.mode = COPY;
+          state2.mode = COPY;
         case COPY:
-          copy2 = state.length;
+          copy2 = state2.length;
           if (copy2) {
             if (copy2 > have) {
               copy2 = have;
@@ -38027,10 +38565,10 @@ function inflate$2(strm, flush) {
             next += copy2;
             left -= copy2;
             put += copy2;
-            state.length -= copy2;
+            state2.length -= copy2;
             break;
           }
-          state.mode = TYPE;
+          state2.mode = TYPE;
           break;
         case TABLE:
           while (bits < 14) {
@@ -38041,24 +38579,24 @@ function inflate$2(strm, flush) {
             hold += input[next++] << bits;
             bits += 8;
           }
-          state.nlen = (hold & 31) + 257;
+          state2.nlen = (hold & 31) + 257;
           hold >>>= 5;
           bits -= 5;
-          state.ndist = (hold & 31) + 1;
+          state2.ndist = (hold & 31) + 1;
           hold >>>= 5;
           bits -= 5;
-          state.ncode = (hold & 15) + 4;
+          state2.ncode = (hold & 15) + 4;
           hold >>>= 4;
           bits -= 4;
-          if (state.nlen > 286 || state.ndist > 30) {
+          if (state2.nlen > 286 || state2.ndist > 30) {
             strm.msg = "too many length or distance symbols";
-            state.mode = BAD;
+            state2.mode = BAD;
             break;
           }
-          state.have = 0;
-          state.mode = LENLENS;
+          state2.have = 0;
+          state2.mode = LENLENS;
         case LENLENS:
-          while (state.have < state.ncode) {
+          while (state2.have < state2.ncode) {
             while (bits < 3) {
               if (have === 0) {
                 break inf_leave;
@@ -38067,29 +38605,29 @@ function inflate$2(strm, flush) {
               hold += input[next++] << bits;
               bits += 8;
             }
-            state.lens[order[state.have++]] = hold & 7;
+            state2.lens[order[state2.have++]] = hold & 7;
             hold >>>= 3;
             bits -= 3;
           }
-          while (state.have < 19) {
-            state.lens[order[state.have++]] = 0;
+          while (state2.have < 19) {
+            state2.lens[order[state2.have++]] = 0;
           }
-          state.lencode = state.lendyn;
-          state.lenbits = 7;
-          opts = { bits: state.lenbits };
-          ret = inflate_table2(CODES, state.lens, 0, 19, state.lencode, 0, state.work, opts);
-          state.lenbits = opts.bits;
+          state2.lencode = state2.lendyn;
+          state2.lenbits = 7;
+          opts = { bits: state2.lenbits };
+          ret = inflate_table2(CODES, state2.lens, 0, 19, state2.lencode, 0, state2.work, opts);
+          state2.lenbits = opts.bits;
           if (ret) {
             strm.msg = "invalid code lengths set";
-            state.mode = BAD;
+            state2.mode = BAD;
             break;
           }
-          state.have = 0;
-          state.mode = CODELENS;
+          state2.have = 0;
+          state2.mode = CODELENS;
         case CODELENS:
-          while (state.have < state.nlen + state.ndist) {
+          while (state2.have < state2.nlen + state2.ndist) {
             for (; ; ) {
-              here = state.lencode[hold & (1 << state.lenbits) - 1];
+              here = state2.lencode[hold & (1 << state2.lenbits) - 1];
               here_bits = here >>> 24;
               here_op = here >>> 16 & 255;
               here_val = here & 65535;
@@ -38106,7 +38644,7 @@ function inflate$2(strm, flush) {
             if (here_val < 16) {
               hold >>>= here_bits;
               bits -= here_bits;
-              state.lens[state.have++] = here_val;
+              state2.lens[state2.have++] = here_val;
             } else {
               if (here_val === 16) {
                 n = here_bits + 2;
@@ -38120,12 +38658,12 @@ function inflate$2(strm, flush) {
                 }
                 hold >>>= here_bits;
                 bits -= here_bits;
-                if (state.have === 0) {
+                if (state2.have === 0) {
                   strm.msg = "invalid bit length repeat";
-                  state.mode = BAD;
+                  state2.mode = BAD;
                   break;
                 }
-                len = state.lens[state.have - 1];
+                len = state2.lens[state2.have - 1];
                 copy2 = 3 + (hold & 3);
                 hold >>>= 2;
                 bits -= 2;
@@ -38162,57 +38700,57 @@ function inflate$2(strm, flush) {
                 hold >>>= 7;
                 bits -= 7;
               }
-              if (state.have + copy2 > state.nlen + state.ndist) {
+              if (state2.have + copy2 > state2.nlen + state2.ndist) {
                 strm.msg = "invalid bit length repeat";
-                state.mode = BAD;
+                state2.mode = BAD;
                 break;
               }
               while (copy2--) {
-                state.lens[state.have++] = len;
+                state2.lens[state2.have++] = len;
               }
             }
           }
-          if (state.mode === BAD) {
+          if (state2.mode === BAD) {
             break;
           }
-          if (state.lens[256] === 0) {
+          if (state2.lens[256] === 0) {
             strm.msg = "invalid code -- missing end-of-block";
-            state.mode = BAD;
+            state2.mode = BAD;
             break;
           }
-          state.lenbits = 9;
-          opts = { bits: state.lenbits };
-          ret = inflate_table2(LENS, state.lens, 0, state.nlen, state.lencode, 0, state.work, opts);
-          state.lenbits = opts.bits;
+          state2.lenbits = 9;
+          opts = { bits: state2.lenbits };
+          ret = inflate_table2(LENS, state2.lens, 0, state2.nlen, state2.lencode, 0, state2.work, opts);
+          state2.lenbits = opts.bits;
           if (ret) {
             strm.msg = "invalid literal/lengths set";
-            state.mode = BAD;
+            state2.mode = BAD;
             break;
           }
-          state.distbits = 6;
-          state.distcode = state.distdyn;
-          opts = { bits: state.distbits };
-          ret = inflate_table2(DISTS, state.lens, state.nlen, state.ndist, state.distcode, 0, state.work, opts);
-          state.distbits = opts.bits;
+          state2.distbits = 6;
+          state2.distcode = state2.distdyn;
+          opts = { bits: state2.distbits };
+          ret = inflate_table2(DISTS, state2.lens, state2.nlen, state2.ndist, state2.distcode, 0, state2.work, opts);
+          state2.distbits = opts.bits;
           if (ret) {
             strm.msg = "invalid distances set";
-            state.mode = BAD;
+            state2.mode = BAD;
             break;
           }
-          state.mode = LEN_;
+          state2.mode = LEN_;
           if (flush === Z_TREES) {
             break inf_leave;
           }
         case LEN_:
-          state.mode = LEN;
+          state2.mode = LEN;
         case LEN:
           if (have >= 6 && left >= 258) {
             strm.next_out = put;
             strm.avail_out = left;
             strm.next_in = next;
             strm.avail_in = have;
-            state.hold = hold;
-            state.bits = bits;
+            state2.hold = hold;
+            state2.bits = bits;
             inflate_fast2(strm, _out);
             put = strm.next_out;
             output = strm.output;
@@ -38220,16 +38758,16 @@ function inflate$2(strm, flush) {
             next = strm.next_in;
             input = strm.input;
             have = strm.avail_in;
-            hold = state.hold;
-            bits = state.bits;
-            if (state.mode === TYPE) {
-              state.back = -1;
+            hold = state2.hold;
+            bits = state2.bits;
+            if (state2.mode === TYPE) {
+              state2.back = -1;
             }
             break;
           }
-          state.back = 0;
+          state2.back = 0;
           for (; ; ) {
-            here = state.lencode[hold & (1 << state.lenbits) - 1];
+            here = state2.lencode[hold & (1 << state2.lenbits) - 1];
             here_bits = here >>> 24;
             here_op = here >>> 16 & 255;
             here_val = here & 65535;
@@ -38248,7 +38786,7 @@ function inflate$2(strm, flush) {
             last_op = here_op;
             last_val = here_val;
             for (; ; ) {
-              here = state.lencode[last_val + ((hold & (1 << last_bits + last_op) - 1) >> last_bits)];
+              here = state2.lencode[last_val + ((hold & (1 << last_bits + last_op) - 1) >> last_bits)];
               here_bits = here >>> 24;
               here_op = here >>> 16 & 255;
               here_val = here & 65535;
@@ -38264,31 +38802,31 @@ function inflate$2(strm, flush) {
             }
             hold >>>= last_bits;
             bits -= last_bits;
-            state.back += last_bits;
+            state2.back += last_bits;
           }
           hold >>>= here_bits;
           bits -= here_bits;
-          state.back += here_bits;
-          state.length = here_val;
+          state2.back += here_bits;
+          state2.length = here_val;
           if (here_op === 0) {
-            state.mode = LIT;
+            state2.mode = LIT;
             break;
           }
           if (here_op & 32) {
-            state.back = -1;
-            state.mode = TYPE;
+            state2.back = -1;
+            state2.mode = TYPE;
             break;
           }
           if (here_op & 64) {
             strm.msg = "invalid literal/length code";
-            state.mode = BAD;
+            state2.mode = BAD;
             break;
           }
-          state.extra = here_op & 15;
-          state.mode = LENEXT;
+          state2.extra = here_op & 15;
+          state2.mode = LENEXT;
         case LENEXT:
-          if (state.extra) {
-            n = state.extra;
+          if (state2.extra) {
+            n = state2.extra;
             while (bits < n) {
               if (have === 0) {
                 break inf_leave;
@@ -38297,16 +38835,16 @@ function inflate$2(strm, flush) {
               hold += input[next++] << bits;
               bits += 8;
             }
-            state.length += hold & (1 << state.extra) - 1;
-            hold >>>= state.extra;
-            bits -= state.extra;
-            state.back += state.extra;
+            state2.length += hold & (1 << state2.extra) - 1;
+            hold >>>= state2.extra;
+            bits -= state2.extra;
+            state2.back += state2.extra;
           }
-          state.was = state.length;
-          state.mode = DIST;
+          state2.was = state2.length;
+          state2.mode = DIST;
         case DIST:
           for (; ; ) {
-            here = state.distcode[hold & (1 << state.distbits) - 1];
+            here = state2.distcode[hold & (1 << state2.distbits) - 1];
             here_bits = here >>> 24;
             here_op = here >>> 16 & 255;
             here_val = here & 65535;
@@ -38325,7 +38863,7 @@ function inflate$2(strm, flush) {
             last_op = here_op;
             last_val = here_val;
             for (; ; ) {
-              here = state.distcode[last_val + ((hold & (1 << last_bits + last_op) - 1) >> last_bits)];
+              here = state2.distcode[last_val + ((hold & (1 << last_bits + last_op) - 1) >> last_bits)];
               here_bits = here >>> 24;
               here_op = here >>> 16 & 255;
               here_val = here & 65535;
@@ -38341,22 +38879,22 @@ function inflate$2(strm, flush) {
             }
             hold >>>= last_bits;
             bits -= last_bits;
-            state.back += last_bits;
+            state2.back += last_bits;
           }
           hold >>>= here_bits;
           bits -= here_bits;
-          state.back += here_bits;
+          state2.back += here_bits;
           if (here_op & 64) {
             strm.msg = "invalid distance code";
-            state.mode = BAD;
+            state2.mode = BAD;
             break;
           }
-          state.offset = here_val;
-          state.extra = here_op & 15;
-          state.mode = DISTEXT;
+          state2.offset = here_val;
+          state2.extra = here_op & 15;
+          state2.mode = DISTEXT;
         case DISTEXT:
-          if (state.extra) {
-            n = state.extra;
+          if (state2.extra) {
+            n = state2.extra;
             while (bits < n) {
               if (have === 0) {
                 break inf_leave;
@@ -38365,68 +38903,68 @@ function inflate$2(strm, flush) {
               hold += input[next++] << bits;
               bits += 8;
             }
-            state.offset += hold & (1 << state.extra) - 1;
-            hold >>>= state.extra;
-            bits -= state.extra;
-            state.back += state.extra;
+            state2.offset += hold & (1 << state2.extra) - 1;
+            hold >>>= state2.extra;
+            bits -= state2.extra;
+            state2.back += state2.extra;
           }
-          if (state.offset > state.dmax) {
+          if (state2.offset > state2.dmax) {
             strm.msg = "invalid distance too far back";
-            state.mode = BAD;
+            state2.mode = BAD;
             break;
           }
-          state.mode = MATCH;
+          state2.mode = MATCH;
         case MATCH:
           if (left === 0) {
             break inf_leave;
           }
           copy2 = _out - left;
-          if (state.offset > copy2) {
-            copy2 = state.offset - copy2;
-            if (copy2 > state.whave) {
-              if (state.sane) {
+          if (state2.offset > copy2) {
+            copy2 = state2.offset - copy2;
+            if (copy2 > state2.whave) {
+              if (state2.sane) {
                 strm.msg = "invalid distance too far back";
-                state.mode = BAD;
+                state2.mode = BAD;
                 break;
               }
             }
-            if (copy2 > state.wnext) {
-              copy2 -= state.wnext;
-              from = state.wsize - copy2;
+            if (copy2 > state2.wnext) {
+              copy2 -= state2.wnext;
+              from = state2.wsize - copy2;
             } else {
-              from = state.wnext - copy2;
+              from = state2.wnext - copy2;
             }
-            if (copy2 > state.length) {
-              copy2 = state.length;
+            if (copy2 > state2.length) {
+              copy2 = state2.length;
             }
-            from_source = state.window;
+            from_source = state2.window;
           } else {
             from_source = output;
-            from = put - state.offset;
-            copy2 = state.length;
+            from = put - state2.offset;
+            copy2 = state2.length;
           }
           if (copy2 > left) {
             copy2 = left;
           }
           left -= copy2;
-          state.length -= copy2;
+          state2.length -= copy2;
           do {
             output[put++] = from_source[from++];
           } while (--copy2);
-          if (state.length === 0) {
-            state.mode = LEN;
+          if (state2.length === 0) {
+            state2.mode = LEN;
           }
           break;
         case LIT:
           if (left === 0) {
             break inf_leave;
           }
-          output[put++] = state.length;
+          output[put++] = state2.length;
           left--;
-          state.mode = LEN;
+          state2.mode = LEN;
           break;
         case CHECK:
-          if (state.wrap) {
+          if (state2.wrap) {
             while (bits < 32) {
               if (have === 0) {
                 break inf_leave;
@@ -38437,23 +38975,23 @@ function inflate$2(strm, flush) {
             }
             _out -= left;
             strm.total_out += _out;
-            state.total += _out;
+            state2.total += _out;
             if (_out) {
-              strm.adler = state.check = /*UPDATE(state.check, put - _out, _out);*/
-              state.flags ? crc32(state.check, output, _out, put - _out) : adler32(state.check, output, _out, put - _out);
+              strm.adler = state2.check = /*UPDATE(state.check, put - _out, _out);*/
+              state2.flags ? crc32(state2.check, output, _out, put - _out) : adler32(state2.check, output, _out, put - _out);
             }
             _out = left;
-            if ((state.flags ? hold : zswap32(hold)) !== state.check) {
+            if ((state2.flags ? hold : zswap32(hold)) !== state2.check) {
               strm.msg = "incorrect data check";
-              state.mode = BAD;
+              state2.mode = BAD;
               break;
             }
             hold = 0;
             bits = 0;
           }
-          state.mode = LENGTH;
+          state2.mode = LENGTH;
         case LENGTH:
-          if (state.wrap && state.flags) {
+          if (state2.wrap && state2.flags) {
             while (bits < 32) {
               if (have === 0) {
                 break inf_leave;
@@ -38462,15 +39000,15 @@ function inflate$2(strm, flush) {
               hold += input[next++] << bits;
               bits += 8;
             }
-            if (hold !== (state.total & 4294967295)) {
+            if (hold !== (state2.total & 4294967295)) {
               strm.msg = "incorrect length check";
-              state.mode = BAD;
+              state2.mode = BAD;
               break;
             }
             hold = 0;
             bits = 0;
           }
-          state.mode = DONE;
+          state2.mode = DONE;
         case DONE:
           ret = Z_STREAM_END;
           break inf_leave;
@@ -38488,9 +39026,9 @@ function inflate$2(strm, flush) {
   strm.avail_out = left;
   strm.next_in = next;
   strm.avail_in = have;
-  state.hold = hold;
-  state.bits = bits;
-  if (state.wsize || _out !== strm.avail_out && state.mode < BAD && (state.mode < CHECK || flush !== Z_FINISH)) {
+  state2.hold = hold;
+  state2.bits = bits;
+  if (state2.wsize || _out !== strm.avail_out && state2.mode < BAD && (state2.mode < CHECK || flush !== Z_FINISH)) {
     if (updatewindow(strm, strm.output, strm.next_out, _out - strm.avail_out))
       ;
   }
@@ -38498,12 +39036,12 @@ function inflate$2(strm, flush) {
   _out -= strm.avail_out;
   strm.total_in += _in;
   strm.total_out += _out;
-  state.total += _out;
-  if (state.wrap && _out) {
-    strm.adler = state.check = /*UPDATE(state.check, strm.next_out - _out, _out);*/
-    state.flags ? crc32(state.check, output, _out, strm.next_out - _out) : adler32(state.check, output, _out, strm.next_out - _out);
+  state2.total += _out;
+  if (state2.wrap && _out) {
+    strm.adler = state2.check = /*UPDATE(state.check, strm.next_out - _out, _out);*/
+    state2.flags ? crc32(state2.check, output, _out, strm.next_out - _out) : adler32(state2.check, output, _out, strm.next_out - _out);
   }
-  strm.data_type = state.bits + (state.last ? 64 : 0) + (state.mode === TYPE ? 128 : 0) + (state.mode === LEN_ || state.mode === COPY_ ? 256 : 0);
+  strm.data_type = state2.bits + (state2.last ? 64 : 0) + (state2.mode === TYPE ? 128 : 0) + (state2.mode === LEN_ || state2.mode === COPY_ ? 256 : 0);
   if ((_in === 0 && _out === 0 || flush === Z_FINISH) && ret === Z_OK) {
     ret = Z_BUF_ERROR;
   }
@@ -38513,51 +39051,51 @@ function inflateEnd(strm) {
   if (!strm || !strm.state) {
     return Z_STREAM_ERROR;
   }
-  var state = strm.state;
-  if (state.window) {
-    state.window = null;
+  var state2 = strm.state;
+  if (state2.window) {
+    state2.window = null;
   }
   strm.state = null;
   return Z_OK;
 }
 function inflateGetHeader(strm, head) {
-  var state;
+  var state2;
   if (!strm || !strm.state) {
     return Z_STREAM_ERROR;
   }
-  state = strm.state;
-  if ((state.wrap & 2) === 0) {
+  state2 = strm.state;
+  if ((state2.wrap & 2) === 0) {
     return Z_STREAM_ERROR;
   }
-  state.head = head;
+  state2.head = head;
   head.done = false;
   return Z_OK;
 }
 function inflateSetDictionary(strm, dictionary) {
   var dictLength = dictionary.length;
-  var state;
+  var state2;
   var dictid;
   var ret;
   if (!strm || !strm.state) {
     return Z_STREAM_ERROR;
   }
-  state = strm.state;
-  if (state.wrap !== 0 && state.mode !== DICT) {
+  state2 = strm.state;
+  if (state2.wrap !== 0 && state2.mode !== DICT) {
     return Z_STREAM_ERROR;
   }
-  if (state.mode === DICT) {
+  if (state2.mode === DICT) {
     dictid = 1;
     dictid = adler32(dictid, dictionary, dictLength, 0);
-    if (dictid !== state.check) {
+    if (dictid !== state2.check) {
       return Z_DATA_ERROR;
     }
   }
   ret = updatewindow(strm, dictionary, dictLength, dictLength);
   if (ret) {
-    state.mode = MEM;
+    state2.mode = MEM;
     return Z_MEM_ERROR;
   }
-  state.havedict = 1;
+  state2.havedict = 1;
   return Z_OK;
 }
 inflate$3.inflateReset = inflateReset;
@@ -46115,8 +46653,8 @@ var PDFAnnotation = (
         return AS;
       return void 0;
     };
-    PDFAnnotation2.prototype.setAppearanceState = function(state) {
-      this.dict.set(PDFName.of("AS"), state);
+    PDFAnnotation2.prototype.setAppearanceState = function(state2) {
+      this.dict.set(PDFName.of("AS"), state2);
     };
     PDFAnnotation2.prototype.setAppearances = function(appearances) {
       this.dict.set(PDFName.of("AP"), appearances);
@@ -46562,8 +47100,8 @@ var PDFAcroCheckBox = (
       var widgets = this.getWidgets();
       for (var idx = 0, len = widgets.length; idx < len; idx++) {
         var widget = widgets[idx];
-        var state = widget.getOnValue() === value ? value : PDFName.of("Off");
-        widget.setAppearanceState(state);
+        var state2 = widget.getOnValue() === value ? value : PDFName.of("Off");
+        widget.setAppearanceState(state2);
       }
     };
     PDFAcroCheckBox2.prototype.getValue = function() {
@@ -46904,8 +47442,8 @@ var PDFAcroRadioButton = (
       var widgets = this.getWidgets();
       for (var idx = 0, len = widgets.length; idx < len; idx++) {
         var widget = widgets[idx];
-        var state = widget.getOnValue() === value ? value : PDFName.of("Off");
-        widget.setAppearanceState(state);
+        var state2 = widget.getOnValue() === value ? value : PDFName.of("Off");
+        widget.setAppearanceState(state2);
       }
     };
     PDFAcroRadioButton2.prototype.getValue = function() {
@@ -48372,8 +48910,8 @@ var LineJoinStyle;
   LineJoinStyle2[LineJoinStyle2["Round"] = 1] = "Round";
   LineJoinStyle2[LineJoinStyle2["Bevel"] = 2] = "Bevel";
 })(LineJoinStyle || (LineJoinStyle = {}));
-var setGraphicsState = function(state) {
-  return PDFOperator.of(Ops.SetGraphicsStateParams, [asPDFName(state)]);
+var setGraphicsState = function(state2) {
+  return PDFOperator.of(Ops.SetGraphicsStateParams, [asPDFName(state2)]);
 };
 var pushGraphicsState = function() {
   return PDFOperator.of(Ops.PushGraphicsState);
@@ -50031,7 +50569,7 @@ var defaultOptionListAppearanceProvider = function(optionList, widget, font) {
   var borderColor = componentsToColor(ap === null || ap === void 0 ? void 0 : ap.getBorderColor());
   var normalBackgroundColor = componentsToColor(ap === null || ap === void 0 ? void 0 : ap.getBackgroundColor());
   var options = optionList.getOptions();
-  var selected2 = optionList.getSelected();
+  var selected = optionList.getSelected();
   if (optionList.isSorted())
     options.sort();
   var text2 = "";
@@ -50056,7 +50594,7 @@ var defaultOptionListAppearanceProvider = function(optionList, widget, font) {
   var selectedLines = [];
   for (var idx = 0, len = lines.length; idx < len; idx++) {
     var line4 = lines[idx];
-    if (selected2.includes(line4.text))
+    if (selected.includes(line4.text))
       selectedLines.push(idx);
   }
   var blue = rgb(153 / 255, 193 / 255, 218 / 255);
@@ -50548,11 +51086,11 @@ var PDFCheckBox = (
       var widgets = this.acroField.getWidgets();
       for (var idx = 0, len = widgets.length; idx < len; idx++) {
         var widget = widgets[idx];
-        var state = widget.getAppearanceState();
+        var state2 = widget.getAppearanceState();
         var normal2 = (_a = widget.getAppearances()) === null || _a === void 0 ? void 0 : _a.normal;
         if (!(normal2 instanceof PDFDict))
           return true;
-        if (state && !normal2.has(state))
+        if (state2 && !normal2.has(state2))
           return true;
       }
       return false;
@@ -50607,11 +51145,11 @@ var PDFDropdown = (
     };
     PDFDropdown2.prototype.getSelected = function() {
       var values2 = this.acroField.getValues();
-      var selected2 = new Array(values2.length);
+      var selected = new Array(values2.length);
       for (var idx = 0, len = values2.length; idx < len; idx++) {
-        selected2[idx] = values2[idx].decodeText();
+        selected[idx] = values2[idx].decodeText();
       }
-      return selected2;
+      return selected;
     };
     PDFDropdown2.prototype.setOptions = function(options) {
       assertIs(options, "options", [Array]);
@@ -50805,11 +51343,11 @@ var PDFOptionList = (
     };
     PDFOptionList2.prototype.getSelected = function() {
       var values2 = this.acroField.getValues();
-      var selected2 = new Array(values2.length);
+      var selected = new Array(values2.length);
       for (var idx = 0, len = values2.length; idx < len; idx++) {
-        selected2[idx] = values2[idx].decodeText();
+        selected[idx] = values2[idx].decodeText();
       }
-      return selected2;
+      return selected;
     };
     PDFOptionList2.prototype.setOptions = function(options) {
       assertIs(options, "options", [Array]);
@@ -51076,11 +51614,11 @@ var PDFRadioGroup = (
       var widgets = this.acroField.getWidgets();
       for (var idx = 0, len = widgets.length; idx < len; idx++) {
         var widget = widgets[idx];
-        var state = widget.getAppearanceState();
+        var state2 = widget.getAppearanceState();
         var normal2 = (_a = widget.getAppearances()) === null || _a === void 0 ? void 0 : _a.normal;
         if (!(normal2 instanceof PDFDict))
           return true;
-        if (state && !normal2.has(state))
+        if (state2 && !normal2.has(state2))
           return true;
       }
       return false;
@@ -53367,7 +53905,7 @@ var PDFButton = (
 );
 const PDFButton$1 = PDFButton;
 const templateUrl = "/assets/pdf-template-ca673507.pdf";
-const createPdf = (foam2, shapesArray2, shapeToGeom22, rightestPoint2, leftestPoint2, highestPoint2, lowestPoint2) => {
+const createPdf = (foam, shapesArray, shapeToGeom22, rightestPoint2, leftestPoint2, highestPoint2, lowestPoint2) => {
   document.querySelector("#pdf-button").onclick = async () => {
     const templateBytes = await fetch(templateUrl).then(
       (res) => res.arrayBuffer()
@@ -53416,7 +53954,7 @@ const createPdf = (foam2, shapesArray2, shapeToGeom22, rightestPoint2, leftestPo
       top: [],
       bottom: []
     };
-    shapesArray2.forEach((shape) => {
+    shapesArray.forEach((shape) => {
       const l = leftestPoint2(shape, shapeToGeom22);
       const r = rightestPoint2(shape, shapeToGeom22);
       const t = highestPoint2(shape, shapeToGeom22);
@@ -53454,8 +53992,8 @@ const createPdf = (foam2, shapesArray2, shapeToGeom22, rightestPoint2, leftestPo
       }
       measurements2[dir] = sets;
     });
-    shapesArray2.forEach((shape) => drawShape(shape));
-    shapesArray2.forEach((shape) => drawDepthMeasurement(shape));
+    shapesArray.forEach((shape) => drawShape(shape));
+    shapesArray.forEach((shape) => drawDepthMeasurement(shape));
     const drawMeasurements2 = (sets, getMargin, setMargin, drawOffset, rotate2 = false) => {
       sets.forEach((group) => {
         let margin = getMargin();
@@ -53574,7 +54112,7 @@ const createPdf = (foam2, shapesArray2, shapeToGeom22, rightestPoint2, leftestPo
     window.open(url, "_blank");
   };
 };
-const createPdfIso = (foam2, shapesArray2, shapeToGeom22, opts = {}) => {
+const createPdfIso = (foam, shapesArray, shapeToGeom22, opts = {}) => {
   const cfg = {
     originMode: opts.originMode || "auto",
     // "auto" | "min" | "center"
@@ -53587,7 +54125,6 @@ const createPdfIso = (foam2, shapesArray2, shapeToGeom22, opts = {}) => {
     fontSize: opts.fontSize ?? 10,
     showDepthInside: opts.showDepthInside ?? true
   };
-  const safeText = (s) => String(s).replace(/[\u2010-\u2015\u2212]/g, "-");
   const absmm = (v) => `${Math.round(Math.abs(v))} ${cfg.labelUnit}`;
   const bbox2 = (pts) => {
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -53746,7 +54283,7 @@ const createPdfIso = (foam2, shapesArray2, shapeToGeom22, opts = {}) => {
       font
     });
     const allTopXY = [];
-    for (const s of shapesArray2) {
+    for (const s of shapesArray) {
       for (const pr of extrudeShape(s)) {
         allTopXY.push(...pr.top.map(([x, y]) => [x, y]));
       }
@@ -53756,18 +54293,18 @@ const createPdfIso = (foam2, shapesArray2, shapeToGeom22, opts = {}) => {
     const candidateMin = {
       minX: origin2.x,
       minY: origin2.y,
-      maxX: origin2.x + foam2.sizeX,
-      maxY: origin2.y + foam2.sizeY,
-      w: foam2.sizeX,
-      h: foam2.sizeY
+      maxX: origin2.x + foam.sizeX,
+      maxY: origin2.y + foam.sizeY,
+      w: foam.sizeX,
+      h: foam.sizeY
     };
     const candidateCenter = {
-      minX: origin2.x - foam2.sizeX / 2,
-      minY: origin2.y - foam2.sizeY / 2,
-      maxX: origin2.x + foam2.sizeX / 2,
-      maxY: origin2.y + foam2.sizeY / 2,
-      w: foam2.sizeX,
-      h: foam2.sizeY
+      minX: origin2.x - foam.sizeX / 2,
+      minY: origin2.y - foam.sizeY / 2,
+      maxX: origin2.x + foam.sizeX / 2,
+      maxY: origin2.y + foam.sizeY / 2,
+      w: foam.sizeX,
+      h: foam.sizeY
     };
     const overflowCost = (rect) => {
       const ox = Math.max(0, rect.minX - bbShapes.minX) + Math.max(0, bbShapes.maxX - rect.maxX);
@@ -53800,7 +54337,7 @@ const createPdfIso = (foam2, shapesArray2, shapeToGeom22, opts = {}) => {
         foamRect = cMin < cCtr ? candidateMin : candidateCenter;
       }
     }
-    const pockets = shapesArray2.map((s, i) => {
+    const pockets = shapesArray.map((s, i) => {
       const ex = extrudeShape(s)[0];
       const top2 = ex.top.map(([x, y]) => [x, y]);
       const bb = bbox2(top2);
@@ -53838,29 +54375,20 @@ const createPdfIso = (foam2, shapesArray2, shapeToGeom22, opts = {}) => {
       w: viewW,
       h: viewH
     };
-    const pocketColors = [
+    [
       rgb(0.89, 0.1, 0.11),
-      // #e41a1c
       rgb(0.22, 0.49, 0.73),
-      // #377eb8
       rgb(0.31, 0.68, 0.31),
-      // #4daf4a
       rgb(0.6, 0.31, 0.64),
-      // #984ea3
       rgb(1, 0.5, 0),
-      // #ff7f00
       rgb(1, 1, 0.2),
-      // #ffff33
       rgb(0.65, 0.34, 0.16),
-      // #a65628
       rgb(0.97, 0.13, 0.75),
-      // #f781bf
       rgb(0.6, 0.6, 0.6),
-      // #999999
       rgb(0.4, 0.76, 0.65)
-      // #66c2a5
     ];
     const drawTop = () => {
+      var _a, _b, _c, _d;
       const foamCorners = [
         [foamRect.minX, foamRect.minY],
         [foamRect.maxX, foamRect.minY],
@@ -53874,103 +54402,232 @@ const createPdfIso = (foam2, shapesArray2, shapeToGeom22, opts = {}) => {
         color: rgb(0, 0, 0),
         thickness: cfg.strokeThickness || 1
       });
-      const foamCenterX = (foamRect.minX + foamRect.maxX) / 2;
-      const dimH = (x1, x2, y, color, txtBelow = false) => {
-        const A = T([x1, y]), B = T([x2, y]);
-        line4(page, A, B, { color, thickness: cfg.dimStroke });
-        const ah = cfg.arrow;
-        const dir = Math.sign(B[0] - A[0]) || 1;
-        line4(page, A, [A[0] + ah * dir, A[1] + ah / 2], {
-          color,
-          thickness: cfg.dimStroke
-        });
-        line4(page, A, [A[0] + ah * dir, A[1] - ah / 2], {
-          color,
-          thickness: cfg.dimStroke
-        });
-        line4(page, B, [B[0] - ah * dir, B[1] + ah / 2], {
-          color,
-          thickness: cfg.dimStroke
-        });
-        line4(page, B, [B[0] - ah * dir, B[1] - ah / 2], {
-          color,
-          thickness: cfg.dimStroke
-        });
-        const midX = (A[0] + B[0]) / 2;
-        const ty = A[1] + (txtBelow ? -10 : 4);
-        const label = absmm(x2 - x1);
+      const RED = rgb(1, 0, 0);
+      const EXT = 10 / (fit.s || 1);
+      const AH = 2 / (fit.s || 1);
+      const AHV = 3 / (fit.s || 1);
+      const topLaneRight = [-Infinity, -Infinity];
+      const bottomLaneRight = [-Infinity, -Infinity];
+      const placeDimLabel = (midX, y, label, isTop) => {
+        const tp = T([midX, y]);
+        const w = font.widthOfTextAtSize(label, cfg.fontSize);
+        const gap = 4;
+        const lanes = isTop ? topLaneRight : bottomLaneRight;
+        const left = tp[0] - w / 2;
+        let lane = 0;
+        if (left < lanes[0] + gap && left >= lanes[1] + gap)
+          lane = 1;
+        else if (left < lanes[0] + gap && left < lanes[1] + gap)
+          lane = lanes[0] <= lanes[1] ? 0 : 1;
+        const offset2 = (cfg.fontSize + 2) * lane;
+        const ty = isTop ? tp[1] + 6 + offset2 : tp[1] - 10 - offset2;
+        lanes[lane] = Math.max(lanes[lane], left + w);
         page.drawText(label, {
-          x: midX - font.widthOfTextAtSize(label, cfg.fontSize) / 2,
+          x: left,
           y: ty,
           size: cfg.fontSize,
           font,
+          color: RED
+        });
+      };
+      const drawLine2 = (A, B, color) => {
+        page.drawLine({
+          start: { x: A[0], y: A[1] },
+          end: { x: B[0], y: B[1] },
+          thickness: cfg.dimStroke,
           color
         });
       };
-      const dimV = (x, y1, y2, color, txtRight = false) => {
-        const A = T([x, y1]), B = T([x, y2]);
-        line4(page, A, B, { color, thickness: cfg.dimStroke });
-        const ah = cfg.arrow;
-        const dir = Math.sign(B[1] - A[1]) || 1;
-        line4(page, A, [A[0] + ah / 2, A[1] + ah * dir], {
-          color,
-          thickness: cfg.dimStroke
-        });
-        line4(page, A, [A[0] - ah / 2, A[1] + ah * dir], {
-          color,
-          thickness: cfg.dimStroke
-        });
-        line4(page, B, [B[0] + ah / 2, B[1] - ah * dir], {
-          color,
-          thickness: cfg.dimStroke
-        });
-        line4(page, B, [B[0] - ah / 2, B[1] - ah * dir], {
-          color,
-          thickness: cfg.dimStroke
-        });
-        const midY = (A[1] + B[1]) / 2;
-        const tx = txtRight ? A[0] + 4 : A[0] - 4 - font.widthOfTextAtSize("0000", cfg.fontSize);
-        const label = absmm(y2 - y1);
-        page.drawText(label, {
-          x: tx,
-          y: midY - cfg.fontSize / 2,
-          size: cfg.fontSize,
-          font,
-          color
-        });
+      const lineV = (x, y1, y2, color) => drawLine2(T([x, y1]), T([x, y2]), color);
+      const lineH = (x1, x2, y, color) => drawLine2(T([x1, y]), T([x2, y]), color);
+      const arrowH = (x1, x2, y, textAbove) => {
+        lineH(x1, x2, y, RED);
+        const L = T([x1, y]);
+        drawLine2([L[0], L[1]], [L[0] + AH, L[1] + AH / 2], RED);
+        drawLine2([L[0], L[1]], [L[0] + AH, L[1] - AH / 2], RED);
+        const R = T([x2, y]);
+        drawLine2([R[0], R[1]], [R[0] - AH, R[1] + AH / 2], RED);
+        drawLine2([R[0], R[1]], [R[0] - AH, R[1] - AH / 2], RED);
+        const label = absmm(x2 - x1);
+        const midX = (x1 + x2) / 2;
+        placeDimLabel(midX, y, label, textAbove);
       };
+      const arrowVRed = (x, y1, y2) => {
+        lineV(x, y1, y2, RED);
+        const T1 = T([x, y2]);
+        drawLine2([T1[0], T1[1]], [T1[0] + AHV / 2, T1[1] - AHV], RED);
+        drawLine2([T1[0], T1[1]], [T1[0] - AHV / 2, T1[1] - AHV], RED);
+        const B1 = T([x, y1]);
+        drawLine2([B1[0], B1[1]], [B1[0] + AHV / 2, B1[1] + AHV], RED);
+        drawLine2([B1[0], B1[1]], [B1[0] - AHV / 2, B1[1] + AHV], RED);
+      };
+      const xRangeAtY = (pts, y) => {
+        const xs = [];
+        for (let i = 0; i < pts.length; i++) {
+          const a = pts[i];
+          const b = pts[(i + 1) % pts.length];
+          const y1 = a[1], y2 = b[1];
+          if (y < Math.min(y1, y2) || y > Math.max(y1, y2))
+            continue;
+          if (Math.abs(y2 - y1) < 1e-6) {
+            xs.push(a[0], b[0]);
+            continue;
+          }
+          const t = (y - y1) / (y2 - y1);
+          if (t >= 0 && t <= 1) {
+            xs.push(a[0] + t * (b[0] - a[0]));
+          }
+        }
+        if (xs.length < 2)
+          return null;
+        return { minX: Math.min(...xs), maxX: Math.max(...xs), width: Math.max(...xs) - Math.min(...xs) };
+      };
+      const yRangeAtX = (pts, x) => {
+        const ys = [];
+        for (let i = 0; i < pts.length; i++) {
+          const a = pts[i];
+          const b = pts[(i + 1) % pts.length];
+          const x1 = a[0], x2 = b[0];
+          if (x < Math.min(x1, x2) || x > Math.max(x1, x2))
+            continue;
+          if (Math.abs(x2 - x1) < 1e-6) {
+            ys.push(a[1], b[1]);
+            continue;
+          }
+          const t = (x - x1) / (x2 - x1);
+          if (t >= 0 && t <= 1) {
+            ys.push(a[1] + t * (b[1] - a[1]));
+          }
+        }
+        if (ys.length < 2)
+          return null;
+        return { minY: Math.min(...ys), maxY: Math.max(...ys) };
+      };
+      const uniqSorted = (arr) => {
+        const out = [];
+        const sorted = [...arr].sort((a, b) => a - b);
+        const EPS2 = 1e-4;
+        for (let i = 0; i < sorted.length; i++) {
+          if (out.length === 0 || Math.abs(sorted[i] - out[out.length - 1]) > EPS2) {
+            out.push(sorted[i]);
+          }
+        }
+        return out;
+      };
+      const topXs = [foamRect.minX, foamRect.maxX];
+      const bottomXs = [foamRect.minX, foamRect.maxX];
       for (let i = 0; i < pockets.length; i++) {
         const p = pockets[i];
-        const color = pocketColors[i % pocketColors.length];
         drawLoop(page, p.top2.map(T), {
-          color,
+          color: rgb(0, 0, 0),
           thickness: cfg.strokeThickness || 1
         });
-        const { minX, maxX, minY, maxY } = p.bb;
-        const OUT = 14 / (fit.s || 1);
-        const pocketCenter = (minX + maxX) / 2;
-        dimH(minX, maxX, maxY + OUT + OUT, color);
-        if (pocketCenter < foamCenterX) {
-          dimH(foamRect.minX, minX, maxY + OUT, color, false);
-        } else {
-          dimH(maxX, foamRect.maxX, maxY + OUT, color, false);
+        const { minY, maxY } = p.bb;
+        const h = maxY - minY;
+        const inset = h * 0.06;
+        const topRange = xRangeAtY(p.top2, maxY - inset);
+        let bestBottom = null;
+        const yStart = minY + inset;
+        const yEnd = minY + h * 0.5;
+        const steps = 20;
+        for (let s = 0; s <= steps; s++) {
+          const y = yStart + (yEnd - yStart) * s / steps;
+          const r = xRangeAtY(p.top2, y);
+          if (!r)
+            continue;
+          if (!bestBottom || r.width > bestBottom.width)
+            bestBottom = r;
         }
-        dimV(minX - OUT, foamRect.minY, minY, color, false);
-        dimV(maxX + OUT, maxY, foamRect.maxY, color, true);
-        const c2 = T([(minX + maxX) / 2, (minY + maxY) / 2]);
-        const lbl = safeText(p.name);
-        page.drawText(lbl, {
-          x: c2[0] - font.widthOfTextAtSize(lbl, cfg.fontSize) / 2,
-          y: c2[1] - cfg.fontSize / 2,
+        if (!topRange || !bestBottom)
+          continue;
+        const topLeftY = ((_a = yRangeAtX(p.top2, topRange.minX)) == null ? void 0 : _a.maxY) ?? maxY - inset;
+        const topRightY = ((_b = yRangeAtX(p.top2, topRange.maxX)) == null ? void 0 : _b.maxY) ?? maxY - inset;
+        const botLeftY = ((_c = yRangeAtX(p.top2, bestBottom.minX)) == null ? void 0 : _c.minY) ?? minY + inset;
+        const botRightY = ((_d = yRangeAtX(p.top2, bestBottom.maxX)) == null ? void 0 : _d.minY) ?? minY + inset;
+        lineV(topRange.minX, foamRect.maxY + EXT, topLeftY, RED);
+        lineV(topRange.maxX, foamRect.maxY + EXT, topRightY, RED);
+        lineV(bestBottom.minX, botLeftY, foamRect.minY - EXT, RED);
+        lineV(bestBottom.maxX, botRightY, foamRect.minY - EXT, RED);
+        topXs.push(topRange.minX, topRange.maxX);
+        bottomXs.push(bestBottom.minX, bestBottom.maxX);
+        const heightX = p.bb.minX - 10 / (fit.s || 1);
+        const yHit = yRangeAtX(p.top2, heightX);
+        const heightTopY = yHit ? yHit.maxY : p.bb.maxY;
+        const heightBotY = yHit ? yHit.minY : p.bb.minY;
+        arrowVRed(heightX, heightBotY, heightTopY);
+        const topEdge = xRangeAtY(p.top2, heightTopY);
+        const botEdge = xRangeAtY(p.top2, heightBotY);
+        if (topEdge)
+          lineH(heightX, topEdge.minX, heightTopY, RED);
+        if (botEdge)
+          lineH(heightX, botEdge.minX, heightBotY, RED);
+        const hLabel = absmm(heightTopY - heightBotY);
+        const midY = (heightTopY + heightBotY) / 2;
+        const pMid = T([heightX, midY]);
+        const w = font.widthOfTextAtSize(hLabel, cfg.fontSize);
+        page.drawText(hLabel, {
+          x: pMid[0] + 11,
+          y: pMid[1] - w / 2,
           size: cfg.fontSize,
           font,
-          color
+          color: RED,
+          rotate: degrees(90)
+        });
+        const GAP_AH = 3 / (fit.s || 1);
+        const drawGapArrow = (x, y1, y2) => {
+          lineV(x, y1, y2, RED);
+          const T1 = T([x, y2]);
+          drawLine2([T1[0], T1[1]], [T1[0] + GAP_AH / 2, T1[1] - GAP_AH], RED);
+          drawLine2([T1[0], T1[1]], [T1[0] - GAP_AH / 2, T1[1] - GAP_AH], RED);
+          const B1 = T([x, y1]);
+          drawLine2([B1[0], B1[1]], [B1[0] + GAP_AH / 2, B1[1] + GAP_AH], RED);
+          drawLine2([B1[0], B1[1]], [B1[0] - GAP_AH / 2, B1[1] + GAP_AH], RED);
+        };
+        drawGapArrow(heightX, heightTopY, foamRect.maxY);
+        const topGapLabel = absmm(foamRect.maxY - heightTopY);
+        const topGapMid = (foamRect.maxY + heightTopY) / 2;
+        const tg = T([heightX, topGapMid]);
+        page.drawText(topGapLabel, {
+          x: tg[0] + 4,
+          y: tg[1] - cfg.fontSize / 2,
+          size: cfg.fontSize,
+          font,
+          color: RED
+        });
+        drawGapArrow(heightX, foamRect.minY, heightBotY);
+        const botGapLabel = absmm(heightBotY - foamRect.minY);
+        const botGapMid = (foamRect.minY + heightBotY) / 2;
+        const bg = T([heightX, botGapMid]);
+        page.drawText(botGapLabel, {
+          x: bg[0] + 4,
+          y: bg[1] - cfg.fontSize / 2,
+          size: cfg.fontSize,
+          font,
+          color: RED
         });
       }
+      const topY = foamRect.maxY + EXT;
+      const bottomY = foamRect.minY - EXT;
+      const tx = uniqSorted(topXs);
+      for (let i = 0; i < tx.length - 1; i++) {
+        arrowH(tx[i], tx[i + 1], topY, true);
+      }
+      const bx = uniqSorted(bottomXs);
+      for (let i = 0; i < bx.length - 1; i++) {
+        arrowH(bx[i], bx[i + 1], bottomY, false);
+      }
+      lineV(foamRect.minX, foamRect.maxY, foamRect.maxY + EXT, RED);
+      lineH(foamRect.minX - EXT, foamRect.minX, foamRect.maxY, RED);
+      lineV(foamRect.maxX, foamRect.maxY, foamRect.maxY + EXT, RED);
+      lineH(foamRect.maxX, foamRect.maxX + EXT, foamRect.maxY, RED);
+      lineV(foamRect.minX, foamRect.minY - EXT, foamRect.minY, RED);
+      lineH(foamRect.minX - EXT, foamRect.minX, foamRect.minY, RED);
+      lineV(foamRect.maxX, foamRect.minY - EXT, foamRect.minY, RED);
+      lineH(foamRect.maxX, foamRect.maxX + EXT, foamRect.minY, RED);
       const cap = "Top View";
       page.drawText(cap, {
         x: boxTop.cx - font.widthOfTextAtSize(cap, cfg.fontSize) / 2,
-        y: boxTop.cy - boxTop.h / 2 + 4,
+        y: boxTop.cy - boxTop.h / 2 - 23,
         size: cfg.fontSize,
         font
       });
@@ -53978,7 +54635,7 @@ const createPdfIso = (foam2, shapesArray2, shapeToGeom22, opts = {}) => {
     const drawFront = () => {
       const all = [
         [foamRect.minX, 0],
-        [foamRect.maxX, foam2.sizeZ],
+        [foamRect.maxX, foam.sizeZ],
         ...pockets.flatMap((p) => [
           [p.bb.minX, p.depth || 0],
           [p.bb.maxX, p.depth || 0]
@@ -54002,8 +54659,8 @@ const createPdfIso = (foam2, shapesArray2, shapeToGeom22, opts = {}) => {
         [
           [foamRect.minX, 0],
           [foamRect.maxX, 0],
-          [foamRect.maxX, foam2.sizeZ],
-          [foamRect.minX, foam2.sizeZ]
+          [foamRect.maxX, foam.sizeZ],
+          [foamRect.minX, foam.sizeZ]
         ].map(T),
         cfg.stroke,
         rgb(0, 0, 0)
@@ -54043,7 +54700,7 @@ const createPdfIso = (foam2, shapesArray2, shapeToGeom22, opts = {}) => {
     const drawSide = () => {
       const all = [
         [foamRect.minY, 0],
-        [foamRect.maxY, foam2.sizeZ],
+        [foamRect.maxY, foam.sizeZ],
         ...pockets.flatMap((p) => [
           [p.bb.minY, p.depth || 0],
           [p.bb.maxY, p.depth || 0]
@@ -54067,8 +54724,8 @@ const createPdfIso = (foam2, shapesArray2, shapeToGeom22, opts = {}) => {
         [
           [foamRect.minY, 0],
           [foamRect.maxY, 0],
-          [foamRect.maxY, foam2.sizeZ],
-          [foamRect.minY, foam2.sizeZ]
+          [foamRect.maxY, foam.sizeZ],
+          [foamRect.minY, foam.sizeZ]
         ].map(T),
         cfg.stroke,
         rgb(0, 0, 0)
@@ -54137,13 +54794,13 @@ const createPdfIso = (foam2, shapesArray2, shapeToGeom22, opts = {}) => {
         [foamRect.maxX, foamRect.minY, 0],
         [foamRect.maxX, foamRect.maxY, 0],
         [foamRect.minX, foamRect.maxY, 0],
-        [foamRect.minX, foamRect.minY, foam2.sizeZ],
-        [foamRect.maxX, foamRect.minY, foam2.sizeZ],
-        [foamRect.maxX, foamRect.maxY, foam2.sizeZ],
-        [foamRect.minX, foamRect.maxY, foam2.sizeZ]
+        [foamRect.minX, foamRect.minY, foam.sizeZ],
+        [foamRect.maxX, foamRect.minY, foam.sizeZ],
+        [foamRect.maxX, foamRect.maxY, foam.sizeZ],
+        [foamRect.minX, foamRect.maxY, foam.sizeZ]
       ].map(projIso);
       const shapesIso = [];
-      for (const s of shapesArray2) {
+      for (const s of shapesArray) {
         for (const pr of extrudeShape(s)) {
           shapesIso.push(...pr.top.map(projIso), ...pr.bottom.map(projIso));
         }
@@ -54167,7 +54824,7 @@ const createPdfIso = (foam2, shapesArray2, shapeToGeom22, opts = {}) => {
       ];
       for (const [a, b] of edges)
         line4(page, F[a], F[b], 0.7);
-      for (const s of shapesArray2) {
+      for (const s of shapesArray) {
         for (const pr of extrudeShape(s)) {
           const top = pr.top.map(projIso).map(T);
           const bot = pr.bottom.map(projIso).map(T);
@@ -54195,30 +54852,28 @@ const createPdfIso = (foam2, shapesArray2, shapeToGeom22, opts = {}) => {
     window.open(url, "_blank");
   };
 };
-const createShapeCircle = (millimeters2, selected2, shapesArray2, commit2, showPanelFromLeft2, showPanelFromRight2, doCsg2, callback) => {
+const createShapeCircle = (millimeters, selected, shapesArray, commit2, showPanelFromLeft2, showPanelFromRight2, doCsg2, callback) => {
   document.querySelector("#create-circle").onclick = () => {
     document.querySelector("#back-button").removeAttribute("disabled");
     document.querySelector("#back-button").onclick = () => {
       document.querySelector("#back-button").setAttribute("disabled", "");
       showPanelFromLeft2("main-panel");
-      selected2 = null;
+      selected = null;
     };
     let shape = {
       id: generateId(),
       kind: "circle",
       x: 0,
-      // mouseRayPlaneIntersection.x,
       y: 0,
-      // mouseRayPlaneIntersection.y,
-      sizeZ: 250 * millimeters2,
-      radius: 100 * millimeters2
+      sizeZ: 250 * millimeters,
+      radius: 100 * millimeters
     };
-    shapesArray2.push(shape);
+    shapesArray.push(shape);
     commit2();
-    selected2 = shape;
-    showPanelFromRight2(selected2.kind + "-panel");
+    selected = shape;
+    showPanelFromRight2(selected.kind + "-panel");
     doCsg2();
-    callback(selected2);
+    callback(selected);
   };
 };
 function displayLineXY() {
@@ -54227,14 +54882,14 @@ function displayLineXY() {
   const xCoordinates = document.querySelector(".x-coordinates");
   const yCoordinates = document.querySelector(".y-coordinates");
   document.addEventListener("mousemove", (event) => {
-    const mouseX2 = event.clientX;
-    const mouseY2 = event.clientY;
-    xLine.style.top = `${mouseY2}px`;
-    xCoordinates.textContent = `X: ${mouseX2}px`;
-    xCoordinates.style.top = `${mouseY2}px`;
-    yLine.style.left = `${mouseX2}px`;
-    yCoordinates.textContent = `Y: ${mouseY2}px`;
-    yCoordinates.style.left = `${mouseX2}px`;
+    const mouseX = event.clientX;
+    const mouseY = event.clientY;
+    xLine.style.top = `${mouseY}px`;
+    xCoordinates.textContent = `X: ${mouseX}px`;
+    xCoordinates.style.top = `${mouseY}px`;
+    yLine.style.left = `${mouseX}px`;
+    yCoordinates.textContent = `Y: ${mouseY}px`;
+    yCoordinates.style.left = `${mouseX}px`;
   });
 }
 function lineFunction(name1, name2, boolValue) {
@@ -54246,12 +54901,85 @@ function lineFunction(name1, name2, boolValue) {
   document.querySelector(".x-coordinates").style.display = `${name1}`;
   document.querySelector(".y-coordinates").style.display = `${name1}`;
 }
-const createShapeFreehand = (millimeters2, selected2, shapesArray2, commit2, showPanelFromLeft2, showPanelFromRight2, doCsg2, orthoCamera2, sceneCopy2, rendererCopy2, display2D2, callback1, callback, foamMesh) => {
+const buttonClick = (buttonName, panelLeft, panelRight, selected, showPanelFromLeft2, showPanelFromRight2, additionalCallback = () => {
+}) => {
+  const btn = document.querySelector(`#${buttonName}`);
+  if (!btn)
+    return;
+  btn.onclick = () => {
+    document.querySelector("#back-button").removeAttribute("disabled");
+    document.querySelector("#back-button").onclick = () => {
+      document.querySelector("#back-button").setAttribute("disabled", "");
+      showPanelFromLeft2(`${panelLeft}`);
+    };
+    showPanelFromRight2(`${panelRight}`);
+    additionalCallback();
+  };
+};
+const deleteButtonClick = (buttonName, shapesArray, commit2, doCsg2, selected, showPanelFromLeft2) => {
+  const btn = document.querySelector(`#${buttonName}`);
+  if (!btn)
+    return;
+  btn.onclick = () => {
+    shapesArray.splice(shapesArray.indexOf(selected), 1);
+    commit2();
+    doCsg2();
+    document.querySelector("#back-button").setAttribute("disabled", "");
+    showPanelFromLeft2("main-panel");
+    selected = null;
+  };
+};
+const depthButtonClick = (buttonName, panelLeft, panelRight, selected, showPanelFromLeft2, showPanelFromRight2, additionalCallback = () => {
+}) => {
+  const btn = document.querySelector(`#${buttonName}`);
+  if (!btn)
+    return;
+  btn.onclick = () => {
+    document.querySelector("#back-button").removeAttribute("disabled");
+    document.querySelector("#back-button").onclick = () => {
+      document.querySelector("#back-button").setAttribute("disabled", "");
+      showPanelFromLeft2(`${panelLeft}`);
+      if (selected) {
+        selected.kind = null;
+      }
+    };
+    showPanelFromRight2(`${panelRight}`);
+    additionalCallback();
+  };
+};
+const sliderButtonClick = (sliderName, sliderInput, doCsg2, callback) => {
+  const slider = document.querySelector(`#${sliderName}`);
+  const input = document.querySelector(`#${sliderInput}`);
+  if (!slider || !input)
+    return;
+  slider.oninput = (e) => {
+    input.value = e.target.value;
+    callback(Number(e.target.value));
+    doCsg2();
+  };
+};
+const disableButton = (boolValue) => {
+  const depthBtn = document.querySelector("#polygon-depth-button");
+  const rotateBtn = document.querySelector("#polygon-rotate-button");
+  const deleteBtn = document.querySelector("#polygon-delete-button");
+  if (!depthBtn || !rotateBtn || !deleteBtn)
+    return;
+  if (boolValue) {
+    depthBtn.removeAttribute("disabled");
+    rotateBtn.removeAttribute("disabled");
+    deleteBtn.removeAttribute("disabled");
+  } else {
+    depthBtn.setAttribute("disabled", "");
+    rotateBtn.setAttribute("disabled", "");
+    deleteBtn.setAttribute("disabled", "");
+  }
+};
+const createShapeFreehand = (millimeters, selected, shapesArray, commit2, showPanelFromLeft2, showPanelFromRight2, doCsg2, orthoCamera, sceneCopy, rendererCopy, display2D, callback1, callback, foamMesh) => {
   document.querySelector("#create-polygon").onclick = () => {
     let newPoints;
     lineFunction("block", "flex", true);
     disableButton(false);
-    display2D2 = true;
+    display2D = true;
     const foamBox = (() => {
       foamMesh.geometry.computeBoundingBox();
       const box = foamMesh.geometry.boundingBox.clone();
@@ -54271,11 +54999,11 @@ const createShapeFreehand = (millimeters2, selected2, shapesArray2, commit2, sho
       lineFunction("none", "none", true);
       document.querySelector("#back-button").setAttribute("disabled", "");
       showPanelFromLeft2("main-panel");
-      selected2 = null;
+      selected = null;
       points.length = 0;
-      sceneCopy2.remove(mesh);
-      circles.map((circle2) => sceneCopy2.remove(circle2));
-      lines.map((line5) => sceneCopy2.remove(line5));
+      sceneCopy.remove(mesh);
+      circles.map((circle2) => sceneCopy.remove(circle2));
+      lines.map((line5) => sceneCopy.remove(line5));
       callback1(false);
       document.removeEventListener("pointerdown", pointerDown);
     };
@@ -54285,35 +55013,35 @@ const createShapeFreehand = (millimeters2, selected2, shapesArray2, commit2, sho
       document.body.style.cursor = "default";
       distanceText.textContent = "";
       registering = false;
-      sceneCopy2.remove(line4);
+      sceneCopy.remove(line4);
       lineFunction("none", "none", true);
       document.querySelector("#back-button").setAttribute("disabled", "");
       showPanelFromLeft2("main-panel");
       points.length = 0;
       callback1(false);
       document.removeEventListener("pointerdown", pointerDown);
-      sceneCopy2.remove(mesh);
-      circles.map((circle2) => sceneCopy2.remove(circle2));
-      lines.map((line5) => sceneCopy2.remove(line5));
+      sceneCopy.remove(mesh);
+      circles.map((circle2) => sceneCopy.remove(circle2));
+      lines.map((line5) => sceneCopy.remove(line5));
       newPoints = finalPoints == null ? void 0 : finalPoints.map((point2) => [point2.x, point2.y]);
       let shape = {
         id: generateId(),
         kind: "polygon",
         x: 0,
         y: 0,
-        sizeZ: 300 * millimeters2,
-        sizeX: 200 * millimeters2,
-        sizeY: 200 * millimeters2,
+        sizeZ: 300 * millimeters,
+        sizeX: 200 * millimeters,
+        sizeY: 200 * millimeters,
         points: newPoints,
         rotation: 0,
         free: true
       };
-      shapesArray2.push(shape);
+      shapesArray.push(shape);
       commit2();
-      selected2 = shape;
-      showPanelFromRight2(selected2.kind + "-panel");
+      selected = shape;
+      showPanelFromRight2(selected.kind + "-panel");
       doCsg2();
-      callback(selected2);
+      callback(selected);
     };
     const saveButton = document.getElementById("saveButtonContainer");
     saveButton.onclick = () => {
@@ -54323,9 +55051,9 @@ const createShapeFreehand = (millimeters2, selected2, shapesArray2, commit2, sho
         kind: "polygon",
         x: 0,
         y: 0,
-        sizeZ: 300 * millimeters2,
-        sizeX: 200 * millimeters2,
-        sizeY: 200 * millimeters2,
+        sizeZ: 300 * millimeters,
+        sizeX: 200 * millimeters,
+        sizeY: 200 * millimeters,
         points: newPoints,
         rotation: 0,
         free: true
@@ -54373,7 +55101,7 @@ const createShapeFreehand = (millimeters2, selected2, shapesArray2, commit2, sho
     let drawingActive = true;
     displayLineXY();
     function getMouseIntersection(event) {
-      raycaster.setFromCamera(mouse, orthoCamera2);
+      raycaster.setFromCamera(mouse, orthoCamera);
       const intersect2 = new Vector3();
       raycaster.ray.intersectPlane(plane2, intersect2);
       return intersect2;
@@ -54382,11 +55110,11 @@ const createShapeFreehand = (millimeters2, selected2, shapesArray2, commit2, sho
       mouse.x = event.clientX / window.innerWidth * 2 - 1;
       mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
       const intersect2 = getMouseIntersection();
-      document.body.style.cursor = display2D2 && drawingActive && isInsideFoam(intersect2) ? "crosshair" : originalCursor;
+      document.body.style.cursor = display2D && drawingActive && isInsideFoam(intersect2) ? "crosshair" : originalCursor;
       if (registering && isInsideFoam(intersect2)) {
         const endPoint = intersect2.clone();
         const midpoint = new Vector3().lerpVectors(point, endPoint, 0.5);
-        sceneCopy2.add(line4);
+        sceneCopy.add(line4);
         line4.geometry.attributes.position.setXYZ(1, endPoint.x, endPoint.y, endPoint.z);
         line4.geometry.attributes.position.needsUpdate = true;
         distanceText.style.top = `${midpoint.y + window.innerHeight / 2 - 20}px`;
@@ -54399,7 +55127,7 @@ const createShapeFreehand = (millimeters2, selected2, shapesArray2, commit2, sho
       const rect = event.target.getBoundingClientRect();
       mouse.x = (event.clientX - rect.left) / rect.width * 2 - 1;
       mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-      raycaster.setFromCamera(mouse, orthoCamera2);
+      raycaster.setFromCamera(mouse, orthoCamera);
       raycaster.ray.intersectPlane(plane2, intersection);
       const intersect2 = getMouseIntersection();
       if (!isInsideFoam(intersect2))
@@ -54428,7 +55156,7 @@ const createShapeFreehand = (millimeters2, selected2, shapesArray2, commit2, sho
             const material2 = new MeshBasicMaterial({ color: 16777215, side: DoubleSide });
             mesh = new Mesh(geometry2, material2);
             mesh.position.z = objectZCoordinate;
-            sceneCopy2.add(mesh);
+            sceneCopy.add(mesh);
             points = [];
             return;
           }
@@ -54440,13 +55168,13 @@ const createShapeFreehand = (millimeters2, selected2, shapesArray2, commit2, sho
         const material = new MeshBasicMaterial({ color: 16711680 });
         const circle2 = new Mesh(geometry, material);
         circle2.position.copy(unprojectedPoint);
-        sceneCopy2.add(circle2);
+        sceneCopy.add(circle2);
         circles.push(circle2);
         if (points.length > 1) {
           const lineGeometry2 = new BufferGeometry().setFromPoints(points);
           const lineMaterial2 = new LineBasicMaterial({ color: 16753920, linewidth: 15 });
           const line5 = new Line(lineGeometry2, lineMaterial2);
-          sceneCopy2.add(line5);
+          sceneCopy.add(line5);
           lines.push(line5);
         }
       } else {
@@ -54457,45 +55185,68 @@ const createShapeFreehand = (millimeters2, selected2, shapesArray2, commit2, sho
         const material = new MeshBasicMaterial({ color: 16711680 });
         const circle2 = new Mesh(geometry, material);
         circle2.position.copy(unprojectedPoint);
-        sceneCopy2.add(circle2);
+        sceneCopy.add(circle2);
         circles.push(circle2);
         points.push(unprojectedPoint.clone());
       }
     }
     showPanelFromRight2("polygon-panel");
     doCsg2();
-    callback(selected2, display2D2);
+    callback(selected, display2D);
   };
 };
-const createShapeRectangle = (millimeters2, selected2, shapesArray2, commit2, showPanelFromLeft2, showPanelFromRight2, doCsg2, callback) => {
+const createShapeRectangle = (millimeters, selected, shapesArray, commit2, showPanelFromLeft2, showPanelFromRight2, doCsg2, callback) => {
   document.querySelector("#create-rectangle").onclick = () => {
     document.querySelector("#back-button").removeAttribute("disabled");
     document.querySelector("#back-button").onclick = () => {
       document.querySelector("#back-button").setAttribute("disabled", "");
       showPanelFromLeft2("main-panel");
-      selected2 = null;
+      selected = null;
     };
     let shape = {
       id: generateId(),
       kind: "rectangle",
       x: 0,
-      // mouseRayPlaneIntersection.x,
       y: 0,
-      //mouseRayPlaneIntersection.y,
-      sizeZ: 250 * millimeters2,
-      sizeX: 200 * millimeters2,
-      sizeY: 200 * millimeters2,
+      sizeZ: 250 * millimeters,
+      sizeX: 200 * millimeters,
+      sizeY: 200 * millimeters,
       rotation: 0
     };
-    shapesArray2.push(shape);
+    shapesArray.push(shape);
     commit2();
-    selected2 = shape;
-    showPanelFromRight2(selected2.kind + "-panel");
+    selected = shape;
+    showPanelFromRight2(selected.kind + "-panel");
     doCsg2();
-    callback(selected2);
+    callback(selected);
   };
 };
-const createShapePhotoShape = (millimeters2, selected2, shapesArray2, commit2, showPanelFromLeft2, showPanelFromRight2, doCsg2, display2D2, callback, callback1, camera2, renderer2, scene2) => {
+function distanceSquaredToLineSegment2(lx1, ly1, ldx, ldy, lineLengthSquared, px2, py2) {
+  var t;
+  if (!lineLengthSquared) {
+    t = 0;
+  } else {
+    t = ((px2 - lx1) * ldx + (py2 - ly1) * ldy) / lineLengthSquared;
+    if (t < 0)
+      t = 0;
+    else if (t > 1)
+      t = 1;
+  }
+  var lx = lx1 + t * ldx, ly = ly1 + t * ldy, dx = px2 - lx, dy = py2 - ly;
+  return dx * dx + dy * dy;
+}
+function distanceSquaredToLineSegment(lx1, ly1, lx2, ly2, px2, py2) {
+  var ldx = lx2 - lx1, ldy = ly2 - ly1, lineLengthSquared = ldx * ldx + ldy * ldy;
+  return distanceSquaredToLineSegment2(lx1, ly1, ldx, ldy, lineLengthSquared, px2, py2);
+}
+function distanceToLineSegment(lx1, ly1, lx2, ly2, px2, py2) {
+  return Math.sqrt(distanceSquaredToLineSegment(lx1, ly1, lx2, ly2, px2, py2));
+}
+distanceToLineSegment.squared = distanceSquaredToLineSegment;
+distanceToLineSegment.squaredWithPrecalc = distanceSquaredToLineSegment2;
+var distanceToLineSegment_1 = distanceToLineSegment;
+distanceToLineSegment_1.squaredWithPrecalc;
+const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, showPanelFromLeft2, showPanelFromRight2, doCsg2, display2D, callback, callback1, camera, renderer, scene) => {
   const stepUI = {
     container: document.querySelector("#photoshape-stepper"),
     steps: Array.from(document.querySelectorAll("[data-photoshape-step]")),
@@ -54539,6 +55290,10 @@ const createShapePhotoShape = (millimeters2, selected2, shapesArray2, commit2, s
       });
     }
   };
+  const setEditing = (on) => {
+    window.__editingPoints = on;
+    callback1(on);
+  };
   const photoshapeSession = {
     ids: [],
     index: 0
@@ -54547,12 +55302,12 @@ const createShapePhotoShape = (millimeters2, selected2, shapesArray2, commit2, s
     if (!photoshapeSession.ids.length)
       return;
     const id = photoshapeSession.ids[idx];
-    const nextShape = shapesArray2.find((s) => s.id === id);
+    const nextShape = shapesArray.find((s) => s.id === id);
     if (!nextShape)
       return;
-    selected2 = nextShape;
-    callback(selected2);
-    showPanelFromRight2(selected2.kind + "-panel");
+    selected = nextShape;
+    callback(selected);
+    showPanelFromRight2(selected.kind + "-panel");
   };
   const getPhotoshapeNextLabel = () => {
     if (!photoshapeSession.ids.length)
@@ -54565,8 +55320,8 @@ const createShapePhotoShape = (millimeters2, selected2, shapesArray2, commit2, s
     photoshapeSession.visited.clear();
     photoshapeSession.remaining = photoshapeSession.ids.length;
     let startIdx = 0;
-    if (selected2 && selected2.id) {
-      const idx = photoshapeSession.ids.indexOf(selected2.id);
+    if (selected && selected.id) {
+      const idx = photoshapeSession.ids.indexOf(selected.id);
       if (idx !== -1)
         startIdx = idx;
     }
@@ -54615,7 +55370,7 @@ const createShapePhotoShape = (millimeters2, selected2, shapesArray2, commit2, s
       if (!photoshapeFlowActive)
         return;
       if (photoshapeStep === 3) {
-        callback1(false);
+        setEditing(false);
         setPhotoshapeStep(2, {
           note: "Outline ready. Click Edit to adjust points.",
           canBack: true,
@@ -54639,7 +55394,7 @@ const createShapePhotoShape = (millimeters2, selected2, shapesArray2, commit2, s
       if (photoshapeStep === 3 && photoshapeSession.ids.length) {
         const moved = advanceToNextUnvisited();
         if (moved) {
-          callback1(true);
+          setEditing(true);
           setPhotoshapeStep(3, {
             note: `Edit outline: shape ${photoshapeSession.index + 1} of ${photoshapeSession.ids.length}`,
             canBack: true,
@@ -54653,7 +55408,7 @@ const createShapePhotoShape = (millimeters2, selected2, shapesArray2, commit2, s
       if (photoshapeStep === 3 && photoshapeSession.ids.length > 0 && photoshapeSession.index < photoshapeSession.ids.length - 1) {
         photoshapeSession.index += 1;
         selectPhotoshapeByIndex(photoshapeSession.index);
-        callback1(true);
+        setEditing(true);
         setPhotoshapeStep(3, {
           note: `Edit outline: shape ${photoshapeSession.index + 1} of ${photoshapeSession.ids.length}`,
           canBack: true,
@@ -54664,7 +55419,7 @@ const createShapePhotoShape = (millimeters2, selected2, shapesArray2, commit2, s
         return;
       }
       if (photoshapeStep === 2) {
-        callback1(true);
+        setEditing(true);
         setPhotoshapeStep(3, {
           note: `Edit outline: shape ${photoshapeSession.index + 1} of ${photoshapeSession.ids.length}`,
           canBack: true,
@@ -54680,7 +55435,7 @@ const createShapePhotoShape = (millimeters2, selected2, shapesArray2, commit2, s
         });
         showPanelFromLeft2("upload-photo-panel");
       } else if (photoshapeStep === 3) {
-        callback1(false);
+        setEditing(false);
         setPhotoshapeStep(2, {
           note: "Outline ready. Click Edit to adjust again.",
           canBack: true,
@@ -54690,8 +55445,8 @@ const createShapePhotoShape = (millimeters2, selected2, shapesArray2, commit2, s
         setPhotoshapeFlowActive(false);
         document.getElementById("photoshape-step-note").style.display = `none`;
         document.getElementById("photoshape-button").style.display = `none`;
-        if (selected2) {
-          showPanelFromRight2(selected2.kind + "-panel");
+        if (selected) {
+          showPanelFromRight2(selected.kind + "-panel");
         }
       }
     });
@@ -54737,15 +55492,15 @@ const createShapePhotoShape = (millimeters2, selected2, shapesArray2, commit2, s
     photoshapeFlowReady = false;
     document.getElementById("photoshape-step-note").style.display = `flex`;
     document.getElementById("photoshape-button").style.display = `flex`;
-    callback1(false);
+    setEditing(false);
     document.querySelector("#back-button").removeAttribute("disabled");
     document.querySelector("#back-button").onclick = () => {
       document.querySelector("#back-button").setAttribute("disabled", "");
       document.getElementById("photoshape-step-note").style.display = `none`;
       document.getElementById("photoshape-button").style.display = `none`;
       showPanelFromLeft2("main-panel");
-      callback1(false);
-      selected2 = null;
+      setEditing(false);
+      selected = null;
       setPhotoshapeFlowActive(false);
       photoshapeFlowReady = false;
       setPhotoshapeStep(1, {
@@ -54756,7 +55511,7 @@ const createShapePhotoShape = (millimeters2, selected2, shapesArray2, commit2, s
       });
     };
     document.querySelector("#edit-shape").onclick = () => {
-      callback1(true);
+      setEditing(true);
     };
     const file = e.target.files[0];
     if (file) {
@@ -54786,7 +55541,6 @@ const createShapePhotoShape = (millimeters2, selected2, shapesArray2, commit2, s
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            // "X-API-Key": "ivUjq457ecL51sn2vzD2umUw",
             "X-API-Key": "y7X524wbiR3cUWL9AinkUAqq"
           },
           body: JSON.stringify({
@@ -54801,8 +55555,7 @@ const createShapePhotoShape = (millimeters2, selected2, shapesArray2, commit2, s
       }).then((blob) => {
         const formData = new FormData();
         formData.append("image", blob, "image.png");
-        return fetch("http://localhost:5000/detect_contours", {
-          // return fetch("https://fm24api.com/detect_contours", {
+        return fetch("https://fm24api.com/detect_contours", {
           method: "POST",
           body: formData
         });
@@ -54827,24 +55580,21 @@ const createShapePhotoShape = (millimeters2, selected2, shapesArray2, commit2, s
             id: generateId(),
             kind: "polygon",
             x: -225,
-            // Update x based on requirements
             y: -225,
-            // Update y based on requirements
-            sizeZ: 300 * millimeters2,
-            sizeX: 200 * millimeters2,
-            sizeY: 250 * millimeters2,
+            sizeZ: 300 * millimeters,
+            sizeX: 200 * millimeters,
+            sizeY: 250 * millimeters,
             points: contour,
-            // Each contour as the polygon
             rotation: 0,
             free: true
           };
-          shapesArray2.push(shape);
+          shapesArray.push(shape);
           photoshapeSession.ids.push(shape.id);
           if (index === 0) {
-            selected2 = shape;
-            showPanelFromRight2(selected2.kind + "-panel");
+            selected = shape;
+            showPanelFromRight2(selected.kind + "-panel");
             doCsg2();
-            callback(selected2);
+            callback(selected);
           }
         });
         commit2();
@@ -54864,111 +55614,18 @@ const createShapePhotoShape = (millimeters2, selected2, shapesArray2, commit2, s
     }
   };
 };
-class FoamMaterial extends ShaderMaterial {
-  constructor(color, topLayerColor, topLayerThickness, foamHeight) {
-    color = new Color(color);
-    topLayerColor = new Color(topLayerColor);
-    super({
-      vertexShader: `
-              varying vec3 vWorldPosition;
-              varying vec3 vViewPosition;
-              varying vec3 vViewNormal;
-  
-              void main() {
-                 vWorldPosition = vec3(modelMatrix * vec4(position, 1.0));
-                 vViewPosition = vec3(modelViewMatrix * vec4(position, 1.0));
-                 vViewNormal = normalMatrix * normal;
-                 gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-              }
-           `,
-      fragmentShader: `
-              varying vec3 vWorldPosition;
-              varying vec3 vViewPosition;
-              varying vec3 vViewNormal;
-              uniform vec3 color;
-              uniform vec3 topLayerColor;
-              uniform float topLayerThickness;
-              uniform float foamHeight;
-  
-              void main() {
-                 float lambertFactor = dot(-normalize(vViewPosition), normalize(vViewNormal));
-                 float heightFactor = vWorldPosition.z / foamHeight;
-                 float factor = lambertFactor * heightFactor;
-                 float minLight = 0.1;
-                 factor = factor*(1.0-minLight) + (minLight);
-                 
-                 if (vWorldPosition.z < foamHeight - topLayerThickness) {
-                    gl_FragColor.rgb = color.rgb;
-                 } else {
-                    gl_FragColor.rgb = topLayerColor.rgb;
-                 }
-  
-                 gl_FragColor.rgb *= factor;
-                 gl_FragColor.a = 1.0;
-              }
-           `,
-      uniforms: {
-        color: { value: new Vector3(color.r, color.g, color.b) },
-        topLayerColor: {
-          value: new Vector3(
-            topLayerColor.r,
-            topLayerColor.g,
-            topLayerColor.b
-          )
-        },
-        topLayerThickness: { value: topLayerThickness },
-        foamHeight: { value: foamHeight }
-      }
-    });
-  }
-}
-class LambertMaterial extends ShaderMaterial {
-  constructor(color) {
-    color = new Color(color);
-    super({
-      vertexShader: `
-            varying vec3 vViewPosition;
-            varying vec3 vViewNormal;
-
-            void main() {
-               vViewPosition = vec3(modelViewMatrix * vec4(position, 1.0));
-               vViewNormal = normalMatrix * normal;
-               gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-            }
-         `,
-      fragmentShader: `
-            varying vec3 vViewPosition;
-            varying vec3 vViewNormal;
-            uniform vec3 color;
-
-            void main() {
-               float factor = dot(-normalize(vViewPosition), normalize(vViewNormal));
-               float minLight = 0.1;
-               factor = factor*(1.0-minLight) + (minLight);
-               
-               gl_FragColor.rgb = color.rgb;
-               gl_FragColor.rgb *= factor;
-               gl_FragColor.a = 1.0;
-            }
-         `,
-      uniforms: {
-        color: { value: new Vector3(color.r, color.g, color.b) }
-      }
-    });
-  }
-}
-const createDFX = (foam2, shapesArray2, shapeToGeom22, filename = "foam_shapes.dxf", buttonSelector = "#dfx-button") => {
+const createDFX = (foam, shapesArray, shapeToGeom22, filename = "foam_shapes.dxf", buttonSelector = "#dfx-button") => {
   const btn = document.querySelector(buttonSelector);
   if (!btn) {
     console.error(`Button not found: ${buttonSelector}`);
     return;
   }
   btn.onclick = async () => {
-    const foamGeom = shapeToGeom22(foam2);
+    const foamGeom = shapeToGeom22(foam);
     const foamPts = foamGeom.sides.map((side) => side[0]);
     if (foamPts.length && (foamPts[0][0] !== foamPts[foamPts.length - 1][0] || foamPts[0][1] !== foamPts[foamPts.length - 1][1]))
       foamPts.push(foamPts[0]);
-    const others = shapesArray2.map((shape) => {
+    const others = shapesArray.map((shape) => {
       const geom = shapeToGeom22(shape);
       const pts = geom.sides.map((side) => side[0]);
       if (pts.length && (pts[0][0] !== pts[pts.length - 1][0] || pts[0][1] !== pts[pts.length - 1][1]))
@@ -55112,108 +55769,32 @@ const createDFX = (foam2, shapesArray2, shapeToGeom22, filename = "foam_shapes.d
     URL.revokeObjectURL(url);
   };
 };
-function createImage(renderer2, scene2, camera2, { buttonId = "export-image", scaleFactor = 4, filename = "foam-hd.png" } = {}) {
-  const btn = document.getElementById(buttonId);
-  if (!btn) {
-    console.error(`createImage: no button found with id="${buttonId}"`);
-    return;
-  }
-  btn.addEventListener("click", () => {
-    const origSize = renderer2.getSize(new Vector2());
-    const origDPR = renderer2.getPixelRatio();
-    const width = origSize.x * scaleFactor;
-    const height = origSize.y * scaleFactor;
-    const rt = new WebGLRenderTarget(width, height, {
-      minFilter: LinearFilter,
-      magFilter: LinearFilter,
-      format: RGBAFormat,
-      encoding: renderer2.outputEncoding,
-      samples: 0
-    });
-    renderer2.setRenderTarget(rt);
-    renderer2.setPixelRatio(origDPR);
-    renderer2.setSize(width, height, false);
-    if (camera2.isPerspectiveCamera) {
-      camera2.aspect = width / height;
-      camera2.updateProjectionMatrix();
-    }
-    renderer2.render(scene2, camera2);
-    const buffer = new Uint8Array(width * height * 4);
-    renderer2.readRenderTargetPixels(rt, 0, 0, width, height, buffer);
-    const rowBytes = width * 4;
-    for (let y = 0; y < height / 2; y++) {
-      const topRowOffset = y * rowBytes;
-      const botRowOffset = (height - y - 1) * rowBytes;
-      for (let i = 0; i < rowBytes; i++) {
-        const tmp2 = buffer[topRowOffset + i];
-        buffer[topRowOffset + i] = buffer[botRowOffset + i];
-        buffer[botRowOffset + i] = tmp2;
-      }
-    }
-    renderer2.setRenderTarget(null);
-    rt.dispose();
-    const canvas2d = document.createElement("canvas");
-    canvas2d.width = width;
-    canvas2d.height = height;
-    const ctx2 = canvas2d.getContext("2d");
-    const imageData = new ImageData(new Uint8ClampedArray(buffer), width, height);
-    ctx2.putImageData(imageData, 0, 0);
-    canvas2d.toBlob((blob) => {
-      if (!blob) {
-        console.error("createImage: toBlob returned null");
-        return;
-      }
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      renderer2.setPixelRatio(origDPR);
-      renderer2.setSize(origSize.x, origSize.y, false);
-      if (camera2.isPerspectiveCamera) {
-        camera2.aspect = origSize.x / origSize.y;
-        camera2.updateProjectionMatrix();
-      }
-      renderer2.render(scene2, camera2);
-    }, "image/png");
-  });
-}
-const case1Url = "./models/case1.obj";
-let panels;
-let currPanel;
-let orthoCamera;
-let sceneCopy;
-let rendererCopy;
-let display2D = false;
 function initUI() {
   initPanels();
-  currPanel = getCurrentPanel();
+  state.currPanel = getCurrentPanel();
   document.querySelectorAll("button").forEach((button) => {
-    let { icon } = button.dataset;
+    const { icon } = button.dataset;
     if (icon) {
-      let i = document.createElement("i");
+      const i = document.createElement("i");
       i.innerText = icon;
       i.classList.add("material-symbols-outlined");
       button.prepend(i);
     }
   });
-  panels = document.querySelectorAll(".panel");
-  panels.forEach((panel) => {
+  state.panels = document.querySelectorAll(".panel");
+  state.panels.forEach((panel) => {
     panel.style.opacity = 0;
     panel.style.pointerEvents = "none";
   });
-  currPanel = panels[0];
-  currPanel.style.opacity = 1;
-  currPanel.style.pointerEvents = "auto";
-  document.querySelector("#sidebar");
+  state.currPanel = state.panels[0];
+  state.currPanel.style.opacity = 1;
+  state.currPanel.style.pointerEvents = "auto";
+  state.sidebar = document.querySelector("#sidebar");
   buttonClick(
     "shapes-button",
     "main-panel",
     "shapes-panel",
-    selected,
+    state.selected,
     showPanelFromLeft,
     showPanelFromRight
   );
@@ -55221,7 +55802,7 @@ function initUI() {
     "foam-button",
     "main-panel",
     "foam-panel",
-    selected,
+    state.selected,
     showPanelFromLeft,
     showPanelFromRight
   );
@@ -55229,7 +55810,7 @@ function initUI() {
     "case-button",
     "main-panel",
     "case-panel",
-    selected,
+    state.selected,
     showPanelFromLeft,
     showPanelFromRight
   );
@@ -55237,7 +55818,7 @@ function initUI() {
     "create-photoshape",
     "main-panel",
     "upload-photo-panel",
-    selected,
+    state.selected,
     showPanelFromLeft,
     showPanelFromRight,
     () => {
@@ -55246,228 +55827,187 @@ function initUI() {
   );
   setTimeout(() => {
     createShapePhotoShape(
-      millimeters,
-      selected,
-      shapesArray,
+      units.millimeters,
+      state.selected,
+      state.shapesArray,
       commit,
       showPanelFromLeft,
       showPanelFromRight,
       doCsg,
-      display2D,
+      state.display2D,
       (modifiedSelected) => {
-        selected = modifiedSelected;
+        state.selected = modifiedSelected;
       },
       (modifiedDisplay) => {
-        display2D = modifiedDisplay;
+        state.display2D = modifiedDisplay;
       }
     );
   }, 100);
   createShapeRectangle(
-    millimeters,
-    selected,
-    shapesArray,
+    units.millimeters,
+    state.selected,
+    state.shapesArray,
     commit,
     showPanelFromLeft,
     showPanelFromRight,
     doCsg,
     (modifiedSelected) => {
-      selected = modifiedSelected;
+      state.selected = modifiedSelected;
     }
   );
   depthButtonClick(
     "rectangle-resize-button",
     "main-panel",
     "rectangle-resize-panel",
-    selected,
+    state.selected,
     showPanelFromLeft,
     showPanelFromRight,
     () => {
-      document.querySelector("#rectangle-width-input").value = selected.sizeX;
-      document.querySelector("#rectangle-width-slider").value = selected.sizeX;
-      document.querySelector("#rectangle-height-input").value = selected.sizeY;
-      document.querySelector("#rectangle-height-slider").value = selected.sizeY;
+      document.querySelector("#rectangle-width-input").value = state.selected.sizeX;
+      document.querySelector("#rectangle-width-slider").value = state.selected.sizeX;
+      document.querySelector("#rectangle-height-input").value = state.selected.sizeY;
+      document.querySelector("#rectangle-height-slider").value = state.selected.sizeY;
     }
   );
   depthButtonClick(
     "rectangle-depth-button",
     "main-panel",
     "rectangle-depth-panel",
-    selected,
+    state.selected,
     showPanelFromLeft,
     showPanelFromRight,
     () => {
-      document.querySelector("#rectangle-depth-input").value = selected.sizeZ;
-      document.querySelector("#rectangle-depth-slider").value = selected.sizeZ;
+      document.querySelector("#rectangle-depth-input").value = state.selected.sizeZ;
+      document.querySelector("#rectangle-depth-slider").value = state.selected.sizeZ;
     }
   );
   depthButtonClick(
     "rectangle-rotate-button",
     "main-panel",
     "rectangle-rotate-panel",
-    selected,
+    state.selected,
     showPanelFromLeft,
     showPanelFromRight,
     () => {
-      document.querySelector("#rectangle-rotate-input").value = selected.rotation;
-      document.querySelector("#rectangle-rotate-slider").value = selected.rotation;
+      document.querySelector("#rectangle-rotate-input").value = state.selected.rotation;
+      document.querySelector("#rectangle-rotate-slider").value = state.selected.rotation;
     }
   );
-  sliderButtonClick(
-    "rectangle-width-slider",
-    "rectangle-width-input",
-    doCsg,
-    (sizeX) => {
-      selected.sizeX = sizeX;
-    }
-  );
-  sliderButtonClick(
-    "rectangle-width-input",
-    "rectangle-width-slider",
-    doCsg,
-    (sizeX) => {
-      selected.sizeX = sizeX;
-    }
-  );
+  sliderButtonClick("rectangle-width-slider", "rectangle-width-input", doCsg, (sizeX) => {
+    state.selected.sizeX = sizeX;
+  });
+  sliderButtonClick("rectangle-width-input", "rectangle-width-slider", doCsg, (sizeX) => {
+    state.selected.sizeX = sizeX;
+  });
   document.querySelector("#rectangle-width-slider").onchange = commit;
   document.querySelector("#rectangle-width-input").onchange = commit;
-  sliderButtonClick(
-    "rectangle-height-slider",
-    "rectangle-height-input",
-    doCsg,
-    (sizeY) => {
-      selected.sizeY = sizeY;
-    }
-  );
-  sliderButtonClick(
-    "rectangle-height-input",
-    "rectangle-height-slider",
-    doCsg,
-    (sizeY) => {
-      selected.sizeY = sizeY;
-    }
-  );
+  sliderButtonClick("rectangle-height-slider", "rectangle-height-input", doCsg, (sizeY) => {
+    state.selected.sizeY = sizeY;
+  });
+  sliderButtonClick("rectangle-height-input", "rectangle-height-slider", doCsg, (sizeY) => {
+    state.selected.sizeY = sizeY;
+  });
   document.querySelector("#rectangle-height-slider").onchange = commit;
   document.querySelector("#rectangle-height-input").onchange = commit;
-  sliderButtonClick(
-    "rectangle-rotate-input",
-    "rectangle-rotate-slider",
-    doCsg,
-    (rotation) => {
-      selected.rotation = rotation;
-    }
-  );
-  sliderButtonClick(
-    "rectangle-rotate-slider",
-    "rectangle-rotate-input",
-    doCsg,
-    (rotation) => {
-      selected.rotation = rotation;
-    }
-  );
+  sliderButtonClick("rectangle-rotate-input", "rectangle-rotate-slider", doCsg, (rotation) => {
+    state.selected.rotation = rotation;
+  });
+  sliderButtonClick("rectangle-rotate-slider", "rectangle-rotate-input", doCsg, (rotation) => {
+    state.selected.rotation = rotation;
+  });
   document.querySelector("#rectangle-rotate-slider").onchange = commit;
   document.querySelector("#rectangle-rotate-input").onchange = commit;
-  sliderButtonClick(
-    "rectangle-depth-slider",
-    "rectangle-depth-input",
-    doCsg,
-    (sizeZ) => {
-      selected.sizeZ = sizeZ;
-    }
-  );
-  sliderButtonClick(
-    "rectangle-depth-input",
-    "rectangle-depth-slider",
-    doCsg,
-    (sizeZ) => {
-      selected.sizeZ = sizeZ;
-    }
-  );
+  sliderButtonClick("rectangle-depth-slider", "rectangle-depth-input", doCsg, (sizeZ) => {
+    state.selected.sizeZ = sizeZ;
+  });
+  sliderButtonClick("rectangle-depth-input", "rectangle-depth-slider", doCsg, (sizeZ) => {
+    state.selected.sizeZ = sizeZ;
+  });
   document.querySelector("#rectangle-depth-slider").onchange = commit;
   document.querySelector("#rectangle-depth-input").onchange = commit;
   deleteButtonClick(
     "rectangle-delete-button",
-    shapesArray,
+    state.shapesArray,
     commit,
     doCsg,
-    selected,
+    state.selected,
     showPanelFromLeft
   );
   createShapeCircle(
-    millimeters,
-    selected,
-    shapesArray,
+    units.millimeters,
+    state.selected,
+    state.shapesArray,
     commit,
     showPanelFromLeft,
     showPanelFromRight,
     doCsg,
     (modifiedSelected) => {
-      selected = modifiedSelected;
+      state.selected = modifiedSelected;
     }
   );
   depthButtonClick(
     "radius-button",
     "main-panel",
     "radius-panel",
-    selected,
+    state.selected,
     showPanelFromLeft,
     showPanelFromRight,
     () => {
-      document.querySelector("#radius-input").value = selected.radius;
-      document.querySelector("#radius-slider").value = selected.radius;
+      document.querySelector("#radius-input").value = state.selected.radius;
+      document.querySelector("#radius-slider").value = state.selected.radius;
     }
   );
   depthButtonClick(
     "depth-button",
     "main-panel",
     "depth-panel",
-    selected,
+    state.selected,
     showPanelFromLeft,
     showPanelFromRight,
     () => {
-      document.querySelector("#depth-input").value = selected.sizeZ;
-      document.querySelector("#depth-slider").value = selected.sizeZ;
+      document.querySelector("#depth-input").value = state.selected.sizeZ;
+      document.querySelector("#depth-slider").value = state.selected.sizeZ;
     }
   );
   sliderButtonClick("radius-slider", "radius-input", doCsg, (radius) => {
-    selected.radius = radius;
+    state.selected.radius = radius;
   });
   sliderButtonClick("radius-input", "radius-slider", doCsg, (radius) => {
-    selected.radius = radius;
+    state.selected.radius = radius;
   });
   document.querySelector("#radius-slider").onchange = commit;
   document.querySelector("#radius-input").onchange = commit;
   sliderButtonClick("depth-slider", "depth-input", doCsg, (sizeZ) => {
-    selected.sizeZ = sizeZ;
+    state.selected.sizeZ = sizeZ;
   });
   sliderButtonClick("depth-input", "depth-slider", doCsg, (sizeZ) => {
-    selected.sizeZ = sizeZ;
+    state.selected.sizeZ = sizeZ;
   });
   document.querySelector("#depth-slider").onchange = commit;
   document.querySelector("#depth-input").onchange = commit;
   function waitForFoamAndInitFreehand() {
-    const foamMesh = scene.getObjectByName("csgModel");
+    const foamMesh = state.scene.getObjectByName("csgModel");
     if (foamMesh) {
       createShapeFreehand(
-        millimeters,
-        selected,
-        shapesArray,
+        units.millimeters,
+        state.selected,
+        state.shapesArray,
         commit,
         showPanelFromLeft,
         showPanelFromRight,
         doCsg,
-        orthoCamera,
-        sceneCopy,
-        rendererCopy,
-        display2D,
+        state.orthoCamera,
+        state.sceneCopy,
+        state.rendererCopy,
+        state.display2D,
         (modifiedDisplay) => {
-          display2D = modifiedDisplay;
+          state.display2D = modifiedDisplay;
         },
         (modifiedSelected, modifiedDisplay) => {
-          selected = modifiedSelected;
-          display2D = modifiedDisplay;
+          state.selected = modifiedSelected;
+          state.display2D = modifiedDisplay;
         },
         foamMesh
-        // ✅ pass foam here
       );
     } else {
       setTimeout(waitForFoamAndInitFreehand, 100);
@@ -55478,88 +56018,68 @@ function initUI() {
     "polygon-depth-button",
     "main-panel",
     "polygon-depth-panel",
-    selected,
+    state.selected,
     showPanelFromLeft,
     showPanelFromRight,
     () => {
-      document.querySelector("#polygon-depth-input").value = selected.sizeZ;
-      document.querySelector("#polygon-depth-slider").value = selected.sizeZ;
+      document.querySelector("#polygon-depth-input").value = state.selected.sizeZ;
+      document.querySelector("#polygon-depth-slider").value = state.selected.sizeZ;
     }
   );
   depthButtonClick(
     "polygon-rotate-button",
     "main-panel",
     "polygon-rotate-panel",
-    selected,
+    state.selected,
     showPanelFromLeft,
     showPanelFromRight,
     () => {
-      document.querySelector("#polygon-rotate-input").value = selected.rotation;
-      document.querySelector("#polygon-rotate-slider").value = selected.rotation;
+      document.querySelector("#polygon-rotate-input").value = state.selected.rotation;
+      document.querySelector("#polygon-rotate-slider").value = state.selected.rotation;
     }
   );
-  sliderButtonClick(
-    "polygon-rotate-input",
-    "polygon-rotate-slider",
-    doCsg,
-    (rotation) => {
-      selected.rotation = rotation;
-    }
-  );
-  sliderButtonClick(
-    "polygon-rotate-slider",
-    "polygon-rotate-input",
-    doCsg,
-    (rotation) => {
-      selected.rotation = rotation;
-    }
-  );
+  sliderButtonClick("polygon-rotate-input", "polygon-rotate-slider", doCsg, (rotation) => {
+    state.selected.rotation = rotation;
+  });
+  sliderButtonClick("polygon-rotate-slider", "polygon-rotate-input", doCsg, (rotation) => {
+    state.selected.rotation = rotation;
+  });
   document.querySelector("#polygon-rotate-slider").onchange = commit;
   document.querySelector("#polygon-rotate-input").onchange = commit;
-  sliderButtonClick(
-    "polygon-depth-slider",
-    "polygon-depth-input",
-    doCsg,
-    (sizeZ) => {
-      selected.sizeZ = sizeZ;
-    }
-  );
-  sliderButtonClick(
-    "polygon-depth-input",
-    "polygon-depth-slider",
-    doCsg,
-    (sizeZ) => {
-      selected.sizeZ = sizeZ;
-    }
-  );
+  sliderButtonClick("polygon-depth-slider", "polygon-depth-input", doCsg, (sizeZ) => {
+    state.selected.sizeZ = sizeZ;
+  });
+  sliderButtonClick("polygon-depth-input", "polygon-depth-slider", doCsg, (sizeZ) => {
+    state.selected.sizeZ = sizeZ;
+  });
   document.querySelector("#polygon-depth-slider").onchange = commit;
   document.querySelector("#polygon-depth-input").onchange = commit;
   deleteButtonClick(
     "polygon-delete-button",
-    shapesArray,
+    state.shapesArray,
     commit,
     doCsg,
-    selected,
+    state.selected,
     showPanelFromLeft
   );
   deleteButtonClick(
     "delete-button",
-    shapesArray,
+    state.shapesArray,
     commit,
     doCsg,
-    selected,
+    state.selected,
     showPanelFromLeft
   );
   depthButtonClick(
     "photoshape-depth-button",
     "main-panel",
     "photoshape-depth-panel",
-    selected,
+    state.selected,
     showPanelFromLeft,
     showPanelFromRight,
     () => {
-      document.querySelector("#photoshape-depth-input").value = selected.sizeZ;
-      document.querySelector("#photoshape-depth-slider").value = selected.sizeZ;
+      document.querySelector("#photoshape-depth-input").value = state.selected.sizeZ;
+      document.querySelector("#photoshape-depth-slider").value = state.selected.sizeZ;
     }
   );
   document.querySelector("#photoshape-rotate-button").onclick = () => {
@@ -55568,63 +56088,43 @@ function initUI() {
       document.querySelector("#back-button").onclick = () => {
         document.querySelector("#back-button").setAttribute("disabled", "");
         showPanelFromLeft("main-panel");
-        selected = null;
+        state.selected = null;
       };
-      showPanelFromLeft(selected.kind + "-panel");
+      showPanelFromLeft(state.selected.kind + "-panel");
     };
     showPanelFromRight("photoshape-rotate-panel");
-    document.querySelector("#photoshape-rotate-input").value = selected.rotation;
-    document.querySelector("#photoshape-rotate-slider").value = selected.rotation;
+    document.querySelector("#photoshape-rotate-input").value = state.selected.rotation;
+    document.querySelector("#photoshape-rotate-slider").value = state.selected.rotation;
   };
-  sliderButtonClick(
-    "photoshape-rotate-input",
-    "photoshape-rotate-slider",
-    doCsg,
-    (rotation) => {
-      selected.rotation = rotation;
-    }
-  );
-  sliderButtonClick(
-    "photoshape-rotate-slider",
-    "photoshape-rotate-input",
-    doCsg,
-    (rotation) => {
-      selected.rotation = rotation;
-    }
-  );
+  sliderButtonClick("photoshape-rotate-input", "photoshape-rotate-slider", doCsg, (rotation) => {
+    state.selected.rotation = rotation;
+  });
+  sliderButtonClick("photoshape-rotate-slider", "photoshape-rotate-input", doCsg, (rotation) => {
+    state.selected.rotation = rotation;
+  });
   document.querySelector("#photoshape-rotate-slider").onchange = commit;
   document.querySelector("#photoshape-rotate-input").onchange = commit;
-  sliderButtonClick(
-    "photoshape-depth-slider",
-    "photoshape-depth-input",
-    doCsg,
-    (sizeZ) => {
-      selected.sizeZ = sizeZ;
-    }
-  );
-  sliderButtonClick(
-    "photoshape-depth-input",
-    "photoshape-depth-slider",
-    doCsg,
-    (sizeZ) => {
-      selected.sizeZ = sizeZ;
-    }
-  );
+  sliderButtonClick("photoshape-depth-slider", "photoshape-depth-input", doCsg, (sizeZ) => {
+    state.selected.sizeZ = sizeZ;
+  });
+  sliderButtonClick("photoshape-depth-input", "photoshape-depth-slider", doCsg, (sizeZ) => {
+    state.selected.sizeZ = sizeZ;
+  });
   document.querySelector("#photoshape-depth-slider").onchange = commit;
   document.querySelector("#photoshape-depth-input").onchange = commit;
   deleteButtonClick(
     "photoshape-delete-button",
-    shapesArray,
+    state.shapesArray,
     commit,
     doCsg,
-    selected,
+    state.selected,
     showPanelFromLeft
   );
   document.querySelector("#undo-button").onclick = undo;
   document.querySelector("#redo-button").onclick = redo;
   createPdf(
-    foam,
-    shapesArray,
+    state.foam,
+    state.shapesArray,
     shapeToGeom2,
     rightestPoint,
     leftestPoint,
@@ -55632,477 +56132,21 @@ function initUI() {
     lowestPoint
   );
   createPdfIso(
-    foam,
-    shapesArray,
+    state.foam,
+    state.shapesArray,
     shapeToGeom2,
     rightestPoint
   );
-  createDFX(foam, shapesArray, shapeToGeom2, "my_foam_shapes.dxf");
+  createDFX(state.foam, state.shapesArray, shapeToGeom2, "my_foam_shapes.dxf");
   document.getElementById("nextBtn").addEventListener("click", () => {
-    currentIndex = (currentIndex + 1) % shapesArray.length;
-    updateSelectedShape(currentIndex);
+    state.currentIndex = (state.currentIndex + 1) % state.shapesArray.length;
+    updateSelectedShape(state.currentIndex);
   });
   document.getElementById("prevBtn").addEventListener("click", () => {
-    currentIndex = (currentIndex - 1 + shapesArray.length) % shapesArray.length;
-    updateSelectedShape(currentIndex);
+    state.currentIndex = (state.currentIndex - 1 + state.shapesArray.length) % state.shapesArray.length;
+    updateSelectedShape(state.currentIndex);
   });
-}
-let renderer;
-let overlayCanvas;
-let ctx;
-let ssaaRenderTarget;
-let scene;
-let camera;
-let camera1;
-let controls;
-let millimeters = 1;
-let centimeters = 10 * millimeters;
-let meters = 100 * centimeters;
-let mouseX = 0;
-let mouseY = 0;
-let mouseNdcX = 0;
-let mouseNdcY = 0;
-let mouseRayPlaneIntersection = null;
-let selected = null;
-let oldSelected = null;
-let dragOffset = null;
-let dragging = false;
-let dragged = false;
-let postScene;
-let postQuad;
-let topScene;
-let currentIndex = 0;
-function shapeUnderMouse() {
-  if (mouseRayPlaneIntersection) {
-    for (let shape of shapesArray.slice().reverse()) {
-      if (mouseOverShape(shape, mouseRayPlaneIntersection, pointInsidePolygon)) {
-        return shape;
-      }
-    }
-  }
-  return null;
-}
-function init3D() {
-  renderer = new WebGL1Renderer({
-    antialias: true,
-    precision: "highp",
-    preserveDrawingBuffer: true
-  });
-  renderer.setPixelRatio(window.devicePixelRatio || 1);
-  renderer.domElement.id = "foam-canvas";
-  renderer.autoClear = false;
-  overlayCanvas = document.createElement("canvas");
-  ctx = overlayCanvas.getContext("2d");
-  ssaaRenderTarget = new WebGLRenderTarget();
-  ssaaRenderTarget.texture.minFilter = LinearFilter;
-  scene = new Scene();
-  topScene = new Scene();
-  camera = new PerspectiveCamera(
-    50,
-    window.innerWidth / window.innerHeight,
-    1 * millimeters,
-    100 * meters
-  );
-  camera.position.set(0, -1 * meters, 1.5 * meters);
-  camera.up.set(0, 0, 1);
-  controls = new OrbitControls(camera, renderer.domElement);
-  controls.target.set(0, 0, 37 * centimeters);
-  controls.update();
-  controls.mouseButtons.LEFT = MOUSE.ROTATE;
-  controls.mouseButtons.MIDDLE = MOUSE.PAN;
-  controls.touches = {
-    ONE: TOUCH.ROTATE,
-    TWO: TOUCH.DOLLY_PAN
-  };
-  const aspect2 = window.innerWidth / window.innerHeight;
-  const distance2 = 1 * meters;
-  const frustumHeight = 1.7 * distance2 * Math.tan(MathUtils.degToRad(50) / 2);
-  const frustumWidth = frustumHeight * aspect2;
-  camera1 = new OrthographicCamera(
-    -frustumWidth / 2,
-    frustumWidth / 2,
-    // left, right
-    frustumHeight / 2,
-    -frustumHeight / 2,
-    // top, bottom
-    0.1 * meters,
-    100 * meters
-    // near, far (adjusted near plane)
-  );
-  camera1.position.set(0, 0, distance2);
-  camera1.up.set(0, 1, 0);
-  camera1.lookAt(0, 0, 0);
-  window.addEventListener("resize", onResize);
-  onResize();
-  createImage(renderer, scene, camera1, {
-    buttonId: "export-image",
-    scaleFactor: 4,
-    filename: "foam-hd.png"
-  });
-  renderer.domElement.style.position = "fixed";
-  renderer.domElement.style.width = window.innerWidth + "px";
-  renderer.domElement.style.height = window.innerHeight + "px";
-  overlayCanvas.style.position = "fixed";
-  overlayCanvas.style.width = window.innerWidth + "px";
-  overlayCanvas.style.height = window.innerHeight + "px";
-  overlayCanvas.style.pointerEvents = "none";
-  document.body.appendChild(renderer.domElement);
-  document.body.appendChild(overlayCanvas);
-  doCsg();
-  function recalculateMouse(e) {
-    mouseX = e.clientX * (window.devicePixelRatio || 1);
-    mouseY = e.clientY * (window.devicePixelRatio || 1);
-    mouseNdcX = (mouseX / renderer.domElement.width - 0.5) * 2;
-    mouseNdcY = -((mouseY / renderer.domElement.height - 0.5) * 2);
-    let raycaster = new Raycaster();
-    raycaster.setFromCamera({ x: mouseNdcX, y: mouseNdcY }, camera);
-    let ray = raycaster.ray;
-    let foamPlane = new Plane$1(
-      new Vector3(0, 0, 1),
-      -37 * centimeters
-    );
-    let intersection = ray.intersectPlane(foamPlane, new Vector3());
-    if (intersection) {
-      mouseRayPlaneIntersection = new Vector2(
-        intersection.x,
-        intersection.y
-      );
-      if (dragging && selected) {
-        dragged = true;
-        selected.x = mouseRayPlaneIntersection.x - dragOffset.x;
-        selected.y = mouseRayPlaneIntersection.y - dragOffset.y;
-        doCsg();
-      }
-    } else {
-      mouseRayPlaneIntersection = null;
-      dragging = false;
-    }
-  }
-  renderer.domElement.addEventListener("pointermove", (e) => {
-    recalculateMouse(e);
-  });
-  renderer.domElement.addEventListener("pointerdown", (e) => {
-    recalculateMouse(e);
-    e.preventDefault();
-    oldSelected = selected;
-    if (selected && mouseOverShape(selected, mouseRayPlaneIntersection, pointInsidePolygon)) {
-      dragging = true;
-      dragged = false;
-      dragOffset = new Vector2().subVectors(
-        mouseRayPlaneIntersection,
-        new Vector2(selected.x, selected.y)
-      );
-      controls.enabled = false;
-      return;
-    }
-    selected = shapeUnderMouse();
-    if (selected) {
-      document.querySelector("#back-button").removeAttribute("disabled");
-      document.querySelector("#back-button").onclick = () => {
-        document.querySelector("#back-button").setAttribute("disabled", "");
-        showPanelFromLeft("main-panel");
-        selected = null;
-      };
-      showPanelFromRight(selected.kind + "-panel");
-      dragging = true;
-      dragged = false;
-      dragOffset = new Vector2().subVectors(
-        mouseRayPlaneIntersection,
-        new Vector2(selected.x, selected.y)
-      );
-      controls.enabled = false;
-    } else {
-      selected = oldSelected;
-    }
-  });
-  renderer.domElement.addEventListener("pointerup", (e) => {
-    if (!dragging)
-      return;
-    if (dragged) {
-      commit();
-      if (selected) {
-        const otherIdx = shapesArray.findIndex(
-          (s) => s !== selected && shapesIntersectGeneric(selected, s)
-        );
-        if (otherIdx !== -1) {
-          const other = shapesArray[otherIdx];
-          confirmMerge(selected, other, (shouldMerge) => {
-            if (shouldMerge) {
-              const selIdx = shapesArray.indexOf(selected);
-              const otherIdx2 = shapesArray.indexOf(other);
-              const merged = mergeIntoPolygon(selected, other);
-              const [high, low] = [selIdx, otherIdx2].sort((a, b) => b - a);
-              shapesArray.splice(high, 1);
-              shapesArray.splice(low, 1);
-              shapesArray.splice(low, 0, merged);
-              selected = merged;
-              doCsg();
-              commit();
-            } else {
-              selected.x += 10;
-              selected.y += 10;
-              doCsg();
-            }
-          });
-        }
-      }
-    }
-    dragging = false;
-    controls.enabled = true;
-  });
-  let ground = new Mesh(
-    new PlaneGeometry(100 * meters, 100 * meters, 1, 1),
-    new LambertMaterial("white")
-  );
-  scene.add(ground);
-  let loader = new OBJLoader();
-  loader.load(case1Url, (group) => {
-    group.traverse((object) => {
-      if (object instanceof Mesh) {
-        let mesh = object;
-        mesh.material = new LambertMaterial("cadetblue");
-      }
-    });
-    let caseModel = scene.getObjectByName("caseModel");
-    if (caseModel) {
-      scene.remove(caseModel);
-    }
-    group.name = "caseModel";
-    scene.add(group);
-  });
-  postScene = new Scene();
-  new OrthographicCamera(-1, 1, 1, -1, 0, 1);
-  postQuad = new Mesh(
-    new PlaneGeometry(2, 2, 1, 1),
-    new MeshBasicMaterial({ map: ssaaRenderTarget.texture })
-  );
-  postScene.add(postQuad);
-  getValues(camera1, topScene, renderer, (camera12, topScene2, renderer2) => {
-    sceneCopy = topScene2;
-    rendererCopy = renderer2;
-  });
-  window.requestAnimationFrame(onFrame);
-  onFrame();
-}
-function onResize() {
-  overlayCanvas.style.width = window.innerWidth + "px";
-  overlayCanvas.style.height = window.innerHeight + "px";
-  overlayCanvas.width = window.innerWidth * (window.devicePixelRatio || 1);
-  overlayCanvas.height = window.innerHeight * (window.devicePixelRatio || 1);
-  ssaaRenderTarget.setSize(window.innerWidth * 2, window.innerHeight * 2);
-  renderer.setPixelRatio(window.devicePixelRatio || 1);
-  renderer.setSize(window.innerWidth, window.innerHeight, true);
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-}
-let foam = {
-  kind: "rectangle",
-  x: 0,
-  y: 0,
-  sizeX: 70 * centimeters,
-  sizeY: 50 * centimeters,
-  sizeZ: 37 * centimeters,
-  rotation: 0
-};
-let shapesArray = [];
-let worker = null;
-let undoRedoHistory = [];
-let undoRedoPosition = 0;
-function commit() {
-  if (undoRedoPosition != undoRedoHistory.length - 1) {
-    undoRedoHistory.splice(undoRedoPosition + 1);
-  }
-  undoRedoHistory.push(structuredClone(shapesArray));
-  undoRedoPosition = undoRedoHistory.length - 1;
-  updateUndoRedoButtons(undoRedoPosition, undoRedoHistory);
-}
-function undo() {
-  if (undoRedoPosition > 0) {
-    undoRedoPosition -= 1;
-    shapesArray = structuredClone(undoRedoHistory[undoRedoPosition]);
-    doCsg();
-  }
-  updateUndoRedoButtons(undoRedoPosition, undoRedoHistory);
-  document.querySelector("#back-button").setAttribute("disabled", "");
-  showPanelFromLeft("main-panel");
-  selected = null;
-}
-function redo() {
-  if (undoRedoPosition < undoRedoHistory.length - 1) {
-    undoRedoPosition += 1;
-    shapesArray = structuredClone(undoRedoHistory[undoRedoPosition]);
-    doCsg();
-  }
-  updateUndoRedoButtons(undoRedoPosition, undoRedoHistory);
-  document.querySelector("#back-button").setAttribute("disabled", "");
-  showPanelFromLeft("main-panel");
-  selected = null;
-}
-function doCsg() {
-  if (worker) {
-    worker.terminate();
-  }
-  worker = new Worker(new URL("/assets/csg-0bd089ce.js", self.location), { type: "module" });
-  worker.onmessage = (e) => {
-    let csgModel = scene.getObjectByName("csgModel");
-    if (csgModel) {
-      if (csgModel.material) {
-        csgModel.material.dispose();
-      }
-      if (csgModel instanceof Mesh) {
-        csgModel.geometry.dispose();
-      }
-      scene.remove(csgModel);
-    }
-    let mesh = geom3ToMesh(e.data);
-    mesh.material = new FoamMaterial(
-      "red",
-      "#333",
-      2 * centimeters,
-      37 * centimeters
-    );
-    mesh.name = "csgModel";
-    scene.add(mesh);
-  };
-  worker.postMessage({ foam, shapesArray });
-}
-function drawMeasurements(shape) {
-  ctx.lineWidth = 1;
-  switch (shape.kind) {
-    case "circle":
-      drawMeasurementsCircle(shape, ctx, camera, currPanel, centimeters);
-      break;
-    case "rectangle":
-      drawMeasurementsRectangle(shape, ctx, camera, currPanel, centimeters);
-      break;
-    case "polygon":
-      drawMeasurementsPolygon(shape, ctx, camera, currPanel, centimeters);
-      break;
-    case "photoshape":
-      drawMeasurementsPhotoshape(shape, ctx, camera, currPanel, centimeters);
-      break;
-    case "circleOnClick":
-      drawCircle(shape, ctx);
-    case "line":
-      drawMeasurementsLine(shape, ctx, camera, centimeters);
-      break;
-  }
-}
-function updateSelectedShape(index) {
-  selected = shapesArray[index];
-  currentIndex = index;
-}
-function onFrame() {
-  ctx.canvas.width = ctx.canvas.width;
-  ctx.canvas.height = ctx.canvas.height;
-  ctx.strokeStyle = "orange";
-  renderer.clear(true);
-  display2D ? renderer.render(scene, camera1) : renderer.render(scene, camera);
-  renderer.clearDepth();
-  display2D ? renderer.render(topScene, camera1) : renderer.render(topScene, camera);
-  const baseZ = 37 * centimeters;
-  const currentCamera = display2D ? camera1 : camera;
-  const NEAR_THRESHOLD = 1 * centimeters;
-  for (let shape of shapesArray) {
-    if (selected && shape !== selected && isNearGeneric(selected, shape, NEAR_THRESHOLD)) {
-      ctx.setLineDash([5, 5]);
-      drawOutline(
-        shape,
-        "red",
-        2,
-        baseZ,
-        ctx,
-        currentCamera,
-        display2D,
-        renderer,
-        selected,
-        sceneCopy,
-        false
-        // numSamples
-      );
-      ctx.setLineDash([]);
-      continue;
-    }
-    if (display2D) {
-      drawOutline(
-        shape,
-        "black",
-        1,
-        baseZ,
-        ctx,
-        currentCamera,
-        display2D,
-        renderer,
-        selected,
-        sceneCopy,
-        false
-        // numSamples
-      );
-    }
-    if (selected === shape) {
-      drawOutline(
-        shape,
-        "orange",
-        3,
-        baseZ,
-        ctx,
-        currentCamera,
-        display2D,
-        renderer,
-        selected,
-        sceneCopy,
-        true
-        // numSamples
-      );
-      if (currPanel.id.endsWith("depth-panel") && !display2D) {
-        ctx.setLineDash([5, 5]);
-        drawOutline(
-          shape,
-          "orange",
-          1,
-          baseZ - shape.sizeZ,
-          ctx,
-          currentCamera,
-          display2D,
-          renderer,
-          selected,
-          sceneCopy,
-          false
-          // numSamples
-        );
-        ctx.setLineDash([]);
-      }
-      drawMeasurements(shape);
-    } else {
-      ctx.setLineDash([5, 5]);
-      drawOutline(
-        shape,
-        "gray",
-        1,
-        baseZ,
-        ctx,
-        currentCamera,
-        display2D,
-        renderer,
-        selected,
-        sceneCopy,
-        false
-        // numSamples
-      );
-      ctx.setLineDash([]);
-    }
-  }
-  getCameraValue(camera1, (camera12) => {
-    orthoCamera = camera12;
-  });
-  window.requestAnimationFrame(onFrame);
-}
-if (typeof window === "object") {
-  init3D();
-  initUI();
-  commit();
-}
-document.addEventListener("DOMContentLoaded", function() {
+  let resizeHandler;
   const myShapesButton = document.getElementById("my-shapes-button");
   const myShapesContainer = document.getElementById("my-shapes-container");
   let appendedDiv;
@@ -56146,5 +56190,10 @@ document.addEventListener("DOMContentLoaded", function() {
       appendedDiv.style.height = remainingHeight + "px";
     }
   }
-});
-//# sourceMappingURL=index-87d204ab.js.map
+}
+if (typeof window === "object") {
+  init3D();
+  initUI();
+  commit();
+}
+//# sourceMappingURL=index-e097006e.js.map

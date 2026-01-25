@@ -1,4 +1,3 @@
-// modules/ui/panels.js
 let panels = null;
 let currPanel = null;
 

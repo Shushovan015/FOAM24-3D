@@ -112,10 +112,9 @@ export function shapeToGeom2(shape) {
       });
   }
 }
-// delete from here is any problem
+
 export function getGeom2Points(shape) {
   const geom = shapeToGeom2(shape);
-  // jscad.geometries.geom2.toPoints handles both single‐ and multi‐contour
   return Array.isArray(geom)
     ? geom.flatMap((g) => jscad.geometries.geom2.toPoints(g))
     : jscad.geometries.geom2.toPoints(geom);
@@ -126,7 +125,6 @@ export function getBoundingBox(shape) {
   try {
     pts = jscad.geometries.geom2.toPoints(shapeToGeom2(shape));
   } catch (_) {
-    /* ignore */
   }
   if (!pts.length && Array.isArray(shape.points)) {
     pts = shape.points;
@@ -161,7 +159,6 @@ export function isNearGeneric(a, b, t) {
 export function shapesIntersectGeneric(a, b) {
   const A = getBoundingBox(a);
   const B = getBoundingBox(b);
-  // if boxes don’t overlap, no shape intersection
   if (
     A.maxX < B.minX ||
     A.minX > B.maxX ||
@@ -170,7 +167,6 @@ export function shapesIntersectGeneric(a, b) {
   ) {
     return false;
   }
-  // perform real 2D intersection
   let inter = jscad.booleans.intersect(shapeToGeom2(a), shapeToGeom2(b));
   if (Array.isArray(inter)) {
     return inter.some((g) => jscad.geometries.geom2.toPoints(g).length > 0);
@@ -179,11 +175,9 @@ export function shapesIntersectGeneric(a, b) {
 }
 
 export function mergeIntoPolygon(a, b) {
-  // 1) Union their 2D geoms
   let u = jscad.booleans.union(shapeToGeom2(a), shapeToGeom2(b));
   if (Array.isArray(u)) u = u[0];
 
-  // 2) Build adjacency & coordinate maps
   const adj = {},
     coord = {};
   const keyOf = (p) => `${p[0].toFixed(6)},${p[1].toFixed(6)}`;
@@ -210,7 +204,6 @@ export function mergeIntoPolygon(a, b) {
     };
   }
 
-  // 3) Pick a start: top-most (smallest Y, then X)
   keys.sort((k1, k2) => {
     const [x1, y1] = coord[k1],
       [x2, y2] = coord[k2];
@@ -219,7 +212,6 @@ export function mergeIntoPolygon(a, b) {
   let start = keys[0],
     prev = null,
     cur = start;
-  // initial direction: point rightwards
   let dir = [1, 0];
   const loop = [cur];
 
@@ -227,7 +219,6 @@ export function mergeIntoPolygon(a, b) {
     const neighbors = Array.from(adj[cur]).filter((k) => k !== prev);
     if (neighbors.length === 0) break;
 
-    // choose the neighbor with the smallest left‐turn angle from dir
     let best = null,
       bestAngle = Infinity;
     const [cx, cy] = coord[cur];
@@ -239,7 +230,6 @@ export function mergeIntoPolygon(a, b) {
       if (mag === 0) continue;
       vx /= mag;
       vy /= mag;
-      // cross & dot for signed angle
       const cross = dir[0] * vy - dir[1] * vx;
       const dot = dir[0] * vx + dir[1] * vy;
       let angle = Math.atan2(cross, dot);
@@ -251,11 +241,9 @@ export function mergeIntoPolygon(a, b) {
     }
     if (!best || best === start) break;
 
-    // advance
     prev = cur;
     cur = best;
     loop.push(cur);
-    // update dir
     const [px, py] = coord[prev],
       [cx2, cy2] = coord[cur];
     const dx = cx2 - px,
@@ -264,10 +252,8 @@ export function mergeIntoPolygon(a, b) {
     dir = dmag ? [dx / dmag, dy / dmag] : dir;
   }
 
-  // 4) Convert the keyed loop back to point array
   const pts = loop.map((k) => coord[k]);
 
-  // 5) Compute sizeX/sizeY
   const xs = pts.map((p) => p[0]),
     ys = pts.map((p) => p[1]);
   const minX = Math.min(...xs),
@@ -290,19 +276,15 @@ export function mergeIntoPolygon(a, b) {
   };
 }
 
-/** Helper: get a shape’s AABB from its geom2 points */
 
 export function shapesIntersect(a, b) {
-  // first cheap‐out: if AABBs don't overlap, no intersection
   if (!isOverlapping(a, b)) return false;
 
-  // now true geometry intersect
   let inter = jscad.booleans.intersect(shapeToGeom2(a), shapeToGeom2(b));
   if (Array.isArray(inter)) return inter.length > 0;
   return !!inter;
 }
 
-// delete till here
 export function shapeToGeom3(shape) {
   let geom2 = shapeToGeom2(shape);
   return jscad.extrusions.extrudeLinear(
@@ -330,27 +312,22 @@ export function geom2ToLineSegments(geom2) {
   return new THREE.LineSegments(geo, new THREE.LineBasicMaterial());
 }
 
-//New Geom 2 mesh function(updated)
 export function geom2ToMesh(geom2) {
   let positions = [];
   let indices = [];
 
   if (Array.isArray(geom2)) {
-    // Handle array of geometries
     let indexOffset = 0;
     for (let geometry of geom2) {
       let geoData = processGeometry(geometry);
       positions.push(...geoData.positions);
 
-      // Adjust indices for each geometry in the array
       let geoIndices = geoData.indices.map((idx) => idx + indexOffset);
       indices.push(...geoIndices);
 
-      // Update index offset for the next geometry
       indexOffset += geoData.positions.length / 3;
     }
   } else {
-    // Handle single geometry object
     let geoData = processGeometry(geom2);
     positions = geoData.positions;
     indices = geoData.indices;
@@ -391,7 +368,6 @@ function processGeometry(geometry) {
 
   return { positions, indices };
 }
-// end of new Geom 2 mesh function
 
 export function geom3ToMesh(geom3) {
   geom3 = jscad.modifiers.generalize(
@@ -418,9 +394,6 @@ export function geom3ToMesh(geom3) {
     normals.push(normal, normal, normal);
   }
 
-  // slow
-  //normals = smoothNormals(points);
-
   let flatNormals = [];
   for (let normal of normals) {
     flatNormals.push(...normal.toArray());
@@ -434,74 +407,6 @@ export function geom3ToMesh(geom3) {
   );
   return new THREE.Mesh(geo, new THREE.MeshBasicMaterial());
 }
-
-// if in future get any error regarding array of object try this function instead
-
-// export function geom3ToMesh(geom3) {
-//   let points = [];
-//   let normals = [];
-
-//   // Check if geom3 is an array or a single object
-//   if (Array.isArray(geom3)) {
-//     // If it's an array, process each object in the array
-//     for (let geometry of geom3) {
-//       let { geoPoints, geoNormals } = processGeom3(geometry);
-//       points.push(...geoPoints);
-//       normals.push(...geoNormals);
-//     }
-//   } else {
-//     // If it's a single object, process it directly
-//     let { geoPoints, geoNormals } = processGeom3(geom3);
-//     points = geoPoints;
-//     normals = geoNormals;
-//   }
-
-//   // Flatten normals for buffer attribute
-//   let flatNormals = [];
-//   for (let normal of normals) {
-//     flatNormals.push(...normal.toArray());
-//   }
-
-//   let geo = new THREE.BufferGeometry();
-//   geo.setFromPoints(points);
-//   geo.setAttribute(
-//     "normal",
-//     new THREE.BufferAttribute(new Float32Array(flatNormals), 3, false)
-//   );
-//   return new THREE.Mesh(geo, new THREE.MeshBasicMaterial());
-// }
-
-// // Helper function to process individual geom3 object
-// function processGeom3(geometry) {
-//   let points = [];
-//   let normals = [];
-
-//   // Generalize the geometry with triangulation
-//   geometry = jscad.modifiers.generalize(
-//     {
-//       triangulate: true,
-//     },
-//     geometry
-//   );
-
-//   // Process each triangle and calculate points and normals
-//   for (let triangle of geometry.polygons) {
-//     let p0 = new THREE.Vector3(...triangle.vertices[0]);
-//     let p1 = new THREE.Vector3(...triangle.vertices[1]);
-//     let p2 = new THREE.Vector3(...triangle.vertices[2]);
-//     let normal = new THREE.Vector3().crossVectors(
-//       new THREE.Vector3().subVectors(p1, p0),
-//       new THREE.Vector3().subVectors(p2, p0)
-//     );
-//     if (normal.lengthSq() > 0.001) {
-//       normal = normal.normalize();
-//     }
-//     points.push(p0, p1, p2);
-//     normals.push(normal, normal, normal);
-//   }
-
-//   return { geoPoints: points, geoNormals: normals };
-// }
 
 export function mouseOverShape(
   shape,
@@ -562,58 +467,7 @@ export function mouseOverShape(
   return false;
 }
 
-// draw outline function before converting to 2d
-// export function drawOutline(shape, style, width, z, ctx, camera, display2D) {
-//   ctx.lineWidth = width;
-//   ctx.strokeStyle = style;
 
-//   let geom2 = shapeToGeom2(shape);
-
-//   // Check if geom2 is an array or a single object
-//   if (Array.isArray(geom2)) {
-//     // Handle array of geometries
-//     for (let geom of geom2) {
-//       drawGeometry(geom, z, ctx, camera);
-//     }
-//   } else {
-//     // Handle single geometry object
-//     drawGeometry(geom2, z, ctx, camera);
-//   }
-
-//   function drawGeometry(geometry, z, ctx, camera) {
-//     ctx.beginPath();
-//     let line = geometry?.sides[0];
-//     if (line) {
-//       let p0 = project(
-//         new THREE.Vector3(line[0][0], line[0][1], z),
-//         camera,
-//         ctx
-//       );
-//       ctx.moveTo(p0.x, p0.y);
-
-//       for (let line of geometry.sides) {
-//         let p1 = project(
-//           new THREE.Vector3(line[1][0], line[1][1], z),
-//           camera,
-//           ctx
-//         );
-//         ctx.lineTo(p1.x, p1.y);
-//       }
-
-//       // Close the path by connecting to the first point
-//       let firstLine = geometry.sides[0];
-//       let p0x = project(
-//         new THREE.Vector3(firstLine[0][0], firstLine[0][1], z),
-//         camera,
-//         ctx
-//       );
-//       ctx.lineTo(p0x.x, p0x.y);
-
-//       ctx.stroke();
-//     }
-//   }
-// }
-// Modified drawOutline function
 export function drawOutline(
   shape,
   style,
@@ -632,7 +486,6 @@ export function drawOutline(
 
   const showControlPoints = display2D && displayDot;
 
-  // Fast path while editing: draw directly from points (no jscad)
   if (showControlPoints && shape.kind === "polygon" && Array.isArray(shape.points)) {
     drawPolygonFromPoints(shape.points, shape, z, ctx, camera, renderer);
   } else {
@@ -822,6 +675,7 @@ function setupControlPointInteractions(
     shape._controlPointHandlersInitialized = false;
   };
 }
+
 function drawPolygonFromPoints(points, shape, z, ctx, camera, renderer) {
   if (!points || points.length < 2) return;
 
@@ -842,7 +696,6 @@ function drawPolygonFromPoints(points, shape, z, ctx, camera, renderer) {
   ctx.stroke();
 }
 
-// Unified projection function
 function projectPoint(x, y, z, camera, renderer) {
   const vector = new THREE.Vector3(x, y, z);
   vector.project(camera);
@@ -852,6 +705,7 @@ function projectPoint(x, y, z, camera, renderer) {
     y: ((1 - vector.y) * renderer.domElement.height) / 2,
   };
 }
+
 export function drawMeasurementsPhotoshape(
   shape,
   ctx,
@@ -861,15 +715,11 @@ export function drawMeasurementsPhotoshape(
 ) {
   ctx.fillStyle = "orange";
 
-  // Calculate canvas center
   const canvasCenterX = ctx.canvas.width / 2;
   const canvasCenterY = ctx.canvas.height / 2;
 
-  // Calculate the shape's bounding box center
   const shapeCenterX = shape.sizeX / 2;
   const shapeCenterY = shape.sizeY / 2;
-
-  // Offset to move the shape's center to the canvas center
   const offsetX = canvasCenterX - shapeCenterX;
   const offsetY = canvasCenterY - shapeCenterY;
 
@@ -891,7 +741,6 @@ export function drawMeasurementsPhotoshape(
     return project(clonedV, camera, ctx);
   }
 
-  // Draw depth line if it's a depth panel
   if (currPanel.id.endsWith("-depth-panel")) {
     ctx.beginPath();
     let p0 = transform(new THREE.Vector3(shape.x, shape.y, 37 * centimeters));
@@ -903,7 +752,6 @@ export function drawMeasurementsPhotoshape(
     ctx.stroke();
   }
 
-  // Draw depth text if it's a depth panel
   if (currPanel.id.endsWith("-depth-panel")) {
     let p0 = transform(new THREE.Vector3(shape.x, shape.y, 37 * centimeters));
     let p1 = transform(
@@ -943,7 +791,6 @@ export function drawMeasurementsRectangle(
     );
   }
 
-  // depth line
   if (currPanel.id.endsWith("-depth-panel")) {
     ctx.beginPath();
     let p0 = transform(
@@ -966,7 +813,6 @@ export function drawMeasurementsRectangle(
     ctx.lineTo(p1.x, p1.y);
     ctx.stroke();
   }
-  // width line
   if (currPanel.id.endsWith("-resize-panel")) {
     ctx.beginPath();
     let p0 = transform(
@@ -989,7 +835,6 @@ export function drawMeasurementsRectangle(
     ctx.lineTo(p1.x, p1.y);
     ctx.stroke();
   }
-  // height line
   if (currPanel.id.endsWith("-resize-panel")) {
     ctx.beginPath();
     let p0 = transform(
@@ -1013,7 +858,6 @@ export function drawMeasurementsRectangle(
     ctx.stroke();
   }
 
-  // depth text
   if (currPanel.id.endsWith("-depth-panel")) {
     let p0 = transform(
       new THREE.Vector3(
@@ -1040,7 +884,6 @@ export function drawMeasurementsRectangle(
     ctx.strokeText(shape.sizeZ.toFixed(0) + "mm", pMid.x, pMid.y);
     ctx.strokeStyle = "orange";
   }
-  // width text
   if (currPanel.id.endsWith("-resize-panel")) {
     let p0 = transform(
       new THREE.Vector3(
@@ -1067,7 +910,6 @@ export function drawMeasurementsRectangle(
     ctx.strokeText(shape.sizeX.toFixed(0) + "mm", pMid.x, pMid.y);
     ctx.strokeStyle = "orange";
   }
-  // height text
   if (currPanel.id.endsWith("-resize-panel")) {
     let p0 = transform(
       new THREE.Vector3(
@@ -1119,7 +961,6 @@ export function drawMeasurementsPolygon(
     );
   }
 
-  // depth line
   if (currPanel.id.endsWith("-depth-panel")) {
     ctx.beginPath();
     let p0 = transform(
@@ -1135,7 +976,6 @@ export function drawMeasurementsPolygon(
     ctx.stroke();
   }
 
-  // depth text
   if (currPanel.id.endsWith("-depth-panel")) {
     let p0 = transform(
       new THREE.Vector3(shape.x, shape.y, 37 * centimeters),
@@ -1164,7 +1004,6 @@ export function drawMeasurementsCircle(
   centimeters
 ) {
   ctx.fillStyle = "orange";
-  // points
   {
     let p0 = project(
       new THREE.Vector3(shape.x, shape.y, 37 * centimeters),
@@ -1202,7 +1041,6 @@ export function drawMeasurementsCircle(
     }
   }
 
-  // depth line
   if (currPanel.id.endsWith("depth-panel")) {
     ctx.beginPath();
     let p0 = project(
@@ -1219,7 +1057,6 @@ export function drawMeasurementsCircle(
     ctx.lineTo(p1.x, p1.y);
     ctx.stroke();
   }
-  // radius line
   if (currPanel.id.endsWith("radius-panel")) {
     ctx.beginPath();
     let p0 = project(
@@ -1237,7 +1074,6 @@ export function drawMeasurementsCircle(
     ctx.stroke();
   }
 
-  // depth text
   if (currPanel.id.endsWith("depth-panel")) {
     let p0 = project(
       new THREE.Vector3(shape.x, shape.y, 37 * centimeters),
@@ -1259,7 +1095,6 @@ export function drawMeasurementsCircle(
     ctx.strokeStyle = "orange";
   }
 
-  // radius text
   if (currPanel.id.endsWith("radius-panel")) {
     let p0 = project(
       new THREE.Vector3(shape.x, shape.y, 37 * centimeters),
@@ -1352,12 +1187,9 @@ export function worldToWindow(world, ctx, camera) {
     );
 }
 
-// Selectively smooth normals
 function smoothNormals(points) {
-  // Triangle count
   let n = points.length / 3;
 
-  // Calculate face normals for each vertex
   let faceNormals = [];
   for (let i = 0; i < n; i++) {
     let p0 = points[i * 3 + 0];
@@ -1370,8 +1202,6 @@ function smoothNormals(points) {
     faceNormals.push(normal, normal, normal);
   }
 
-  // Calculate face normal weights for each vertex
-  // (https://stackoverflow.com/a/45496726)
   let faceNormalWeights = [];
   for (let i = 0; i < n; i++) {
     let p0 = points[i * 3 + 0];
@@ -1389,7 +1219,6 @@ function smoothNormals(points) {
     faceNormalWeights.push(a0, a1, a2);
   }
 
-  // For each vertex store list of normals to later average
   let smoothNormals = [];
   for (let i = 0; i < n * 3; i++) {
     smoothNormals.push([
@@ -1397,10 +1226,8 @@ function smoothNormals(points) {
     ]);
   }
 
-  // For every pair of vertices
   for (let i = 0; i < n * 3 - 1; i++) {
     for (let j = i + 1; j < n * 3; j++) {
-      // Skip if angle between their faces too big
       let angleLimit = 30;
       if (
         faceNormals[i]
@@ -1411,11 +1238,9 @@ function smoothNormals(points) {
       ) {
         continue;
       }
-      // Skip if not same position
       if (points[i].distanceTo(points[j]) > 0.001) {
         continue;
       }
-      // Add the face normal of one to the smooth list of the other
       smoothNormals[i].push(
         faceNormals[j].clone().multiplyScalar(faceNormalWeights[j])
       );
@@ -1425,7 +1250,6 @@ function smoothNormals(points) {
     }
   }
 
-  // Add up and normalize the normals from the smooth lists
   return smoothNormals.map((ns) => {
     let nn = new THREE.Vector3(0, 0, 0);
     ns.forEach((n) => nn.add(n));
@@ -1439,7 +1263,6 @@ export function createEditor(shape, camera, renderer, onUpdate) {
   let selectedPoint = null;
   let isDragging = false;
 
-  // Create overlay canvas for control points
   const overlay = document.createElement("canvas");
   overlay.style.position = "absolute";
   overlay.style.top = "0";
@@ -1450,7 +1273,6 @@ export function createEditor(shape, camera, renderer, onUpdate) {
   renderer.domElement.parentElement.appendChild(overlay);
   const ctx = overlay.getContext("2d");
 
-  // Same projection as drawOutline
   const projectPoint = (x, y, z) => {
     const vector = new THREE.Vector3(x, y, z);
     vector.project(camera);
@@ -1460,7 +1282,6 @@ export function createEditor(shape, camera, renderer, onUpdate) {
     };
   };
 
-  // Convert screen to world coordinates
   const unprojectPoint = (screenX, screenY) => {
     const vector = new THREE.Vector3(
       (screenX / overlay.width) * 2 - 1,
@@ -1470,7 +1291,6 @@ export function createEditor(shape, camera, renderer, onUpdate) {
     return vector.unproject(camera);
   };
 
-  // Draw all control points
   const drawControlPoints = () => {
     ctx.clearRect(0, 0, overlay.width, overlay.height);
 
@@ -1480,19 +1300,16 @@ export function createEditor(shape, camera, renderer, onUpdate) {
     geometries.forEach((geometry) => {
       if (!geometry?.sides?.length) return;
 
-      // Store all unique points
       const points = new Set();
       geometry.sides.forEach((side) => {
         points.add(JSON.stringify(side[0]));
         points.add(JSON.stringify(side[1]));
       });
 
-      // Draw each point
       Array.from(points).forEach((pointStr, i) => {
         const point = JSON.parse(pointStr);
         const screenPos = projectPoint(point[0], point[1], 0);
 
-        // Store in controlPoints array
         if (!controlPoints[i]) {
           controlPoints[i] = {
             worldPos: [point[0], point[1]],
@@ -1504,7 +1321,6 @@ export function createEditor(shape, camera, renderer, onUpdate) {
           controlPoints[i].screenPos = screenPos;
         }
 
-        // Draw red dot
         ctx.beginPath();
         ctx.arc(screenPos.x, screenPos.y, 5, 0, Math.PI * 2);
         ctx.fillStyle = "rgba(255, 0, 0, 0.9)";
@@ -1513,10 +1329,8 @@ export function createEditor(shape, camera, renderer, onUpdate) {
     });
   };
 
-  // Initial draw
   drawControlPoints();
 
-  // Mouse event handlers
   const getMousePos = (canvas, evt) => {
     const rect = canvas.getBoundingClientRect();
     return {
@@ -1528,11 +1342,10 @@ export function createEditor(shape, camera, renderer, onUpdate) {
   const handleMouseDown = (e) => {
     const mousePos = getMousePos(overlay, e);
 
-    // Find clicked point
     selectedPoint = controlPoints.find((point) => {
       const dx = point.screenPos.x - mousePos.x;
       const dy = point.screenPos.y - mousePos.y;
-      return Math.sqrt(dx * dx + dy * dy) < 10; // 10px hit radius
+      return Math.sqrt(dx * dx + dy * dy) < 10; 
     });
 
     if (selectedPoint) {
@@ -1546,13 +1359,10 @@ export function createEditor(shape, camera, renderer, onUpdate) {
 
     const mousePos = getMousePos(overlay, e);
 
-    // Convert screen to world coordinates
     const worldPos = unprojectPoint(mousePos.x, mousePos.y);
 
-    // Update shape point
     selectedPoint.worldPos = [worldPos.x, worldPos.y];
 
-    // Update the actual shape data
     const geom2 = shapeToGeom2(shape);
     const geometries = Array.isArray(geom2) ? geom2 : [geom2];
 
@@ -1571,10 +1381,8 @@ export function createEditor(shape, camera, renderer, onUpdate) {
       });
     });
 
-    // Redraw
     drawControlPoints();
 
-    // Notify parent of changes
     if (onUpdate) onUpdate(shape);
   };
 
@@ -1584,20 +1392,17 @@ export function createEditor(shape, camera, renderer, onUpdate) {
     document.body.style.cursor = "";
   };
 
-  // Handle window resize
   const handleResize = () => {
     overlay.width = renderer.domElement.width;
     overlay.height = renderer.domElement.height;
     drawControlPoints();
   };
 
-  // Add event listeners
   overlay.addEventListener("mousedown", handleMouseDown);
   overlay.addEventListener("mousemove", handleMouseMove);
   overlay.addEventListener("mouseup", handleMouseUp);
   window.addEventListener("resize", handleResize);
 
-  // Cleanup function
   return () => {
     overlay.removeEventListener("mousedown", handleMouseDown);
     overlay.removeEventListener("mousemove", handleMouseMove);

@@ -19,14 +19,11 @@ export const createPdf = (
     let pdf = await PDF.PDFDocument.create();
     let font = await pdf.embedFont(PDF.StandardFonts.Helvetica);
 
-    //PDF.PDFDocument.create().then((pdf) => {
     const [templatePage] = await pdf.copyPages(templatePdf, [0]);
     pdf.addPage(templatePage);
     const page = templatePage;
     const w = page.getWidth();
     const h = page.getHeight();
-
-    //page.drawText("Hello, world!")
 
     function drawShape(shape) {
       let geom2 = shapeToGeom2(shape);
@@ -57,7 +54,6 @@ export const createPdf = (
       let text = "T=" + shape.sizeZ.toFixed(2);
       let textw = font.widthOfTextAtSize(text, fontSize);
       let texth = font.heightAtSize(fontSize);
-      //let texth = font.heightOfTextAtSize(text, fontSize)
       page.drawText(text, {
         x: centroidx + w / 2 - textw / 2,
         y: centroidy + h / 2 - texth / 2,
@@ -95,7 +91,6 @@ export const createPdf = (
       let text = (highestP[1] - lowestP[1]).toFixed(2);
       let textw = font.widthOfTextAtSize(text, fontSize);
       let texth = font.heightAtSize(fontSize);
-      //let texth = font.heightOfTextAtSize(text, fontSize)
       page.drawText(text, {
         x: margin + w / 2 - texth / 2,
         y: midY + h / 2 - textw / 2,
@@ -131,7 +126,6 @@ export const createPdf = (
       let text = (rightestP[0] - leftestP[0]).toFixed(2);
       let textw = font.widthOfTextAtSize(text, fontSize);
       let texth = font.heightAtSize(fontSize);
-      //let texth = font.heightOfTextAtSize(text, fontSize)
       page.drawText(text, {
         x: midX + w / 2 - textw / 2,
         y: margin + h / 2 - texth / 2,
@@ -146,7 +140,6 @@ export const createPdf = (
       bottom: [],
     };
 
-    // Calculate all the measurements we want for each of the shapes
     shapesArray.forEach((shape) => {
       const l = leftestPoint(shape, shapeToGeom2);
       const r = rightestPoint(shape, shapeToGeom2);
@@ -154,13 +147,11 @@ export const createPdf = (
       const b = lowestPoint(shape, shapeToGeom2);
       const c = [(l[0] + r[0]) / 2, (t[1] + b[1]) / 2];
 
-      // width
       const wm = { points: [l, r], values: [l[0], r[0]] };
       wm.magnitude = r[0] - l[0];
       wm.overlaps = [];
       (c[1] < 0 ? measurements.bottom : measurements.top).push(wm);
 
-      // height
       const hm = { points: [b, t], values: [b[1], t[1]] };
       hm.magnitude = t[1] - b[1];
       hm.overlaps = [];
@@ -196,13 +187,8 @@ export const createPdf = (
       measurements[dir] = sets;
     });
 
-    // drawShape(foam);
     shapesArray.forEach((shape) => drawShape(shape));
     shapesArray.forEach((shape) => drawDepthMeasurement(shape));
-    // shapesArray.forEach((shape) => drawHeightMeasurement(shape))
-    // shapesArray.forEach((shape) => drawWidthMeasurement(shape))
-
-    // Draw each set of measurements
 
     const drawMeasurements = (
       sets,
@@ -266,7 +252,6 @@ export const createPdf = (
       });
     };
     const SAFE_MARGIN = 20;
-    // let lMargin = -w / 2 - 15;
     let lMargin = -w / 2 + SAFE_MARGIN;
     drawMeasurements(
       measurements.left,
@@ -276,7 +261,6 @@ export const createPdf = (
       true
     );
 
-    // let rMargin = w / 2 + 15;
     let rMargin = w / 2 - SAFE_MARGIN;
     drawMeasurements(
       measurements.right,
@@ -286,7 +270,6 @@ export const createPdf = (
       true
     );
 
-    // let tMargin = h / 2 + 15;
     let tMargin = h / 2 - SAFE_MARGIN;
     drawMeasurements(
       measurements.top,
@@ -296,7 +279,6 @@ export const createPdf = (
       false
     );
 
-    // let bMargin = -h / 2 - 15;
     let bMargin = -h / 2 + SAFE_MARGIN;
     drawMeasurements(
       measurements.bottom,
@@ -315,7 +297,6 @@ export const createPdf = (
       gewicht: "245g",
     };
 
-    // Adjusted Y positions (shifted up slightly)
     drawResponsiveText(page, font, formData.kunde, 920, 115 + OFFSET_Y, 200);
     drawResponsiveText(
       page,
@@ -344,7 +325,6 @@ export const createPdf = (
     // link.download = "custom_drawing.pdf";
     // link.click();
 
-    // Save PDF and open in a new tab for preview
     const bytes = await pdf.save();
     const blob = new Blob([bytes], { type: "application/pdf" });
     const url = URL.createObjectURL(blob);

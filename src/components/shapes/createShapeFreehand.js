@@ -1,4 +1,3 @@
-// Updated createShapeFreehand with foam boundary restriction and pen cursor
 import * as THREE from "three";
 import { displayLineXY, lineFunction } from "../../utils/displayLinesXY";
 import { disableButton } from "../../utils/buttonClick";

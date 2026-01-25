@@ -7,7 +7,7 @@ export const createShapeRectangle = (
   showPanelFromLeft,
   showPanelFromRight,
   doCsg,
-  callback // Add a callback parameter to handle the modified selected variable
+  callback 
 ) => {
   document.querySelector("#create-rectangle").onclick = () => {
     document.querySelector("#back-button").removeAttribute("disabled");
@@ -19,8 +19,8 @@ export const createShapeRectangle = (
     let shape = {
       id: generateId(),
       kind: "rectangle",
-      x: 0, // mouseRayPlaneIntersection.x,
-      y: 0, //mouseRayPlaneIntersection.y,
+      x: 0,
+      y: 0,
       sizeZ: 250 * millimeters,
       sizeX: 200 * millimeters,
       sizeY: 200 * millimeters,
@@ -32,7 +32,6 @@ export const createShapeRectangle = (
     showPanelFromRight(selected.kind + "-panel");
     doCsg();
 
-    // Call the callback with the modified selected variable
     callback(selected);
   };
 };

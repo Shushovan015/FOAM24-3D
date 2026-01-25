@@ -1,386 +1,6 @@
-// import * as PDF from "pdf-lib";
-// import templateUrl from "../assets/pdf-template.pdf";
-// import { drawResponsiveText } from "../utils/common"; // keep if you still use it elsewhere
-
-// /**
-//  * Create an orthographic (top/front/side) + isometric PDF from extruded 2D shapes.
-//  * shapesArray[i] must have:
-//  *   - sizeZ: number (height)
-//  *   - shapeToGeom2(shape) -> { sides: [ [ [x,y], [x,y] ], ... ] }
-//  */
-// export const createPdfIso = (foam, shapesArray, shapeToGeom2, opts = {}) => {
-//   const { elevationZScale = 1 } = opts;
-
-//   document.querySelector("#pdf-iso-button").onclick = async () => {
-//     // --- load template & page ---
-//     const templateBytes = await fetch(templateUrl).then((r) => r.arrayBuffer());
-//     const templatePdf = await PDF.PDFDocument.load(templateBytes);
-//     const pdf = await PDF.PDFDocument.create();
-//     const font = await pdf.embedFont(PDF.StandardFonts.Helvetica);
-
-//     const [templatePage] = await pdf.copyPages(templatePdf, [0]);
-//     pdf.addPage(templatePage);
-//     const page = templatePage;
-//     const w = page.getWidth();
-//     const h = page.getHeight();
-
-//     // ====== MASK THE TITLE BLOCK (paint white over it) ======
-//     // Tweak these numbers to match your template exactly.
-//     // This mask hides the bottom-right table (approx. A3 German title block area).
-//     page.drawRectangle({
-//       x: w - 330, // left edge of mask
-//       y: 0, // bottom
-//       width: 330, // mask width
-//       height: 185, // mask height
-//       color: PDF.rgb(1, 1, 1),
-//       borderWidth: 0,
-//     });
-//     // (Optional) If there’s a bottom strip with arrows/labels you also want gone, uncomment below:
-//     // page.drawRectangle({ x: 0, y: 0, width: w, height: 40, color: PDF.rgb(1,1,1), borderWidth: 0 });
-
-//     // --- utils ---
-//     const ansiSafe = (s) =>
-//       String(s).replace(/[\u2010\u2011\u2012\u2013\u2014\u2212]/g, "-");
-
-//     // Build ordered polygon loops from geom2.sides (outer + holes)
-//     function buildLoops(geom2) {
-//       const key = (p) => `${p[0].toFixed(6)},${p[1].toFixed(6)}`;
-//       const unkey = (k) => k.split(",").map(Number);
-
-//       const adj = new Map();
-//       for (const e of geom2.sides || []) {
-//         if (!Array.isArray(e) || e.length < 2) continue;
-//         const [a, b] = e;
-//         const ka = key(a),
-//           kb = key(b);
-//         if (!adj.has(ka)) adj.set(ka, new Set());
-//         if (!adj.has(kb)) adj.set(kb, new Set());
-//         adj.get(ka).add(kb);
-//         adj.get(kb).add(ka);
-//       }
-
-//       const visitedEdge = new Set();
-//       const loops = [];
-
-//       for (const startK of adj.keys()) {
-//         for (const nxtK of adj.get(startK)) {
-//           const edgeK = `${startK}->${nxtK}`;
-//           if (visitedEdge.has(edgeK)) continue;
-
-//           const loop = [unkey(startK)];
-//           let prev = startK,
-//             curr = nxtK;
-//           visitedEdge.add(edgeK);
-
-//           while (curr !== startK) {
-//             loop.push(unkey(curr));
-//             const nbrs = Array.from(adj.get(curr) || []);
-//             let choice = nbrs.find((k) => k !== prev);
-//             if (nbrs.length > 2) {
-//               // choose the left-most turn for consistent orientation
-//               const P = unkey(prev),
-//                 C = unkey(curr);
-//               let best = null,
-//                 bestAngle = Infinity;
-//               for (const cand of nbrs) {
-//                 if (cand === prev) continue;
-//                 const N = unkey(cand);
-//                 const v1 = [C[0] - P[0], C[1] - P[1]];
-//                 const v2 = [N[0] - C[0], N[1] - C[1]];
-//                 const ang = Math.atan2(
-//                   v1[0] * v2[1] - v1[1] * v2[0],
-//                   v1[0] * v2[0] + v1[1] * v2[1]
-//                 );
-//                 const leftTurn = ang <= 0 ? ang + 2 * Math.PI : ang;
-//                 if (leftTurn < bestAngle) {
-//                   bestAngle = leftTurn;
-//                   best = cand;
-//                 }
-//               }
-//               if (best) choice = best;
-//             }
-//             const eK = `${curr}->${choice}`;
-//             if (visitedEdge.has(eK)) break;
-//             visitedEdge.add(eK);
-//             prev = curr;
-//             curr = choice;
-//           }
-
-//           if (loop.length >= 3) {
-//             // orient CCW for outer, CW for holes
-//             const area = loop.reduce((s, p, i) => {
-//               const q = loop[(i + 1) % loop.length];
-//               return s + (p[0] * q[1] - p[1] * q[0]);
-//             }, 0);
-//             if (area < 0) loop.reverse();
-//             loops.push(loop);
-//           }
-//         }
-//       }
-
-//       const absArea = (L) =>
-//         Math.abs(
-//           L.reduce((s, p, i) => {
-//             const q = L[(i + 1) % L.length];
-//             return s + (p[0] * q[1] - p[1] * q[0]);
-//           }, 0)
-//         );
-//       loops.sort((A, B) => absArea(B) - absArea(A));
-//       return loops;
-//     }
-
-//     // Extrude ordered loops to prisms (may include holes)
-//     function extrude(shape) {
-//       const geom2 = shapeToGeom2(shape);
-//       const loops = buildLoops(geom2);
-//       const z0 = 0;
-//       const z1 = shape.sizeZ ?? 0;
-//       return loops.map((loop) => ({
-//         bottom: loop.map(([x, y]) => [x, y, z0]),
-//         top: loop.map(([x, y]) => [x, y, z1]),
-//       }));
-//     }
-
-//     // projections
-//     const projTop = ([x, y]) => [x, y];
-//     const projFront = ([x, , z]) => [x, z * elevationZScale];
-//     const projSide = ([, y, z]) => [y, z * elevationZScale];
-//     const projIso = ([x, y, z]) => {
-//       const a = Math.PI / 6;
-//       const X = (x - y) * Math.cos(a);
-//       const Y = (x + y) * Math.sin(a) - z;
-//       return [X, Y];
-//     };
-
-//     // 2D helpers
-//     function bbox2(pts) {
-//       let minX = Infinity,
-//         minY = Infinity,
-//         maxX = -Infinity,
-//         maxY = -Infinity;
-//       for (const [x, y] of pts) {
-//         if (x < minX) minX = x;
-//         if (y < minY) minY = y;
-//         if (x > maxX) maxX = x;
-//         if (y > maxY) maxY = y;
-//       }
-//       return { minX, minY, maxX, maxY, w: maxX - minX, h: maxY - minY };
-//     }
-
-//     function fit2rect(pts, rect, pad = 8) {
-//       if (!pts.length) return { transform: (p) => p, s: 1, tx: 0, ty: 0 };
-//       const bb = bbox2(pts);
-//       const sx = (rect.w - 2 * pad) / (bb.w || 1);
-//       const sy = (rect.h - 2 * pad) / (bb.h || 1);
-//       const s = Math.min(sx, sy);
-//       const tx = rect.cx - (bb.minX + bb.w / 2) * s;
-//       const ty = rect.cy - (bb.minY + bb.h / 2) * s;
-//       return { s, tx, ty, transform: (p) => [p[0] * s + tx, p[1] * s + ty] };
-//     }
-
-//     function drawLoop2D(pts, thickness = 1) {
-//       if (pts.length < 2) return;
-//       for (let i = 0; i < pts.length; i++) {
-//         const a = pts[i],
-//           b = pts[(i + 1) % pts.length];
-//         page.drawLine({
-//           start: { x: a[0], y: a[1] },
-//           end: { x: b[0], y: b[1] },
-//           thickness,
-//         });
-//       }
-//     }
-
-//     function convexHull2D(points) {
-//       if (points.length <= 1) return points.slice();
-//       const pts = points
-//         .map((p) => [p[0], p[1]])
-//         .sort((a, b) => a[0] - b[0] || a[1] - b[1]);
-//       const cross = (o, a, b) =>
-//         (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
-//       const lower = [];
-//       for (const p of pts) {
-//         while (
-//           lower.length >= 2 &&
-//           cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0
-//         )
-//           lower.pop();
-//         lower.push(p);
-//       }
-//       const upper = [];
-//       for (let i = pts.length - 1; i >= 0; i--) {
-//         const p = pts[i];
-//         while (
-//           upper.length >= 2 &&
-//           cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0
-//         )
-//           upper.pop();
-//         upper.push(p);
-//       }
-//       upper.pop();
-//       lower.pop();
-//       return lower.concat(upper);
-//     }
-
-//     // --- layout rects (adjust if your template differs) ---
-//     const margin = 36;
-//     const viewW = (w - margin * 3) / 2;
-//     const viewH = (h - margin * 3) / 2;
-
-//     const boxTop = {
-//       cx: margin + viewW / 2,
-//       cy: h - margin - viewH / 2,
-//       w: viewW,
-//       h: viewH,
-//     };
-//     const boxIso = {
-//       cx: margin * 2 + viewW + viewW / 2,
-//       cy: h - margin - viewH / 2,
-//       w: viewW,
-//       h: viewH,
-//     };
-//     const boxFront = {
-//       cx: margin + viewW / 2,
-//       cy: margin + viewH / 2,
-//       w: viewW,
-//       h: viewH,
-//     };
-//     const boxSide = {
-//       cx: margin * 2 + viewW + viewW / 2,
-//       cy: margin + viewH / 2,
-//       w: viewW,
-//       h: viewH,
-//     };
-
-//     function gatherProjected2D(projFn) {
-//       const all = [];
-//       for (const shape of shapesArray) {
-//         const prisms = extrude(shape);
-//         for (const pr of prisms) {
-//           all.push(...pr.top.map(projFn), ...pr.bottom.map(projFn));
-//         }
-//       }
-//       return all;
-//     }
-
-//     // ---- TOP (true outline) ----
-//     function drawTopView(box) {
-//       const all2D = [];
-//       for (const shape of shapesArray) {
-//         const prisms = extrude(shape);
-//         for (const pr of prisms) all2D.push(...pr.top.map(([x, y]) => [x, y]));
-//       }
-//       const fit = fit2rect(all2D, box, 16);
-
-//       for (const shape of shapesArray) {
-//         const prisms = extrude(shape);
-//         for (const pr of prisms) {
-//           const top2 = pr.top.map(([x, y]) => fit.transform([x, y]));
-//           drawLoop2D(top2, 1.4);
-//         }
-//       }
-
-//       const label = "top view";
-//       page.drawText(ansiSafe(label), {
-//         x: box.cx - font.widthOfTextAtSize(label, 12) / 2,
-//         y: box.cy - box.h / 2 + 6,
-//         size: 12,
-//         font,
-//       });
-//     }
-
-//     // ---- FRONT/SIDE (silhouette via hull) ----
-//     function drawOrthographic(projFn, box, label) {
-//       const allPts = gatherProjected2D(projFn);
-//       const fit = fit2rect(allPts, box, 16);
-
-//       for (const shape of shapesArray) {
-//         const prisms = extrude(shape);
-//         const pts = [];
-//         for (const pr of prisms) {
-//           pts.push(...pr.top.map(projFn), ...pr.bottom.map(projFn));
-//         }
-//         const hull = convexHull2D(pts).map(fit.transform);
-//         drawLoop2D(hull, 1.4);
-//       }
-
-//       page.drawText(ansiSafe(label), {
-//         x: box.cx - font.widthOfTextAtSize(label, 12) / 2,
-//         y: box.cy - box.h / 2 + 6,
-//         size: 12,
-//         font,
-//       });
-//     }
-
-//     // ---- ISOMETRIC (ordered; clean wireframe) ----
-//     function drawIsometric(box) {
-//       const allPts = gatherProjected2D(projIso);
-//       const fit = fit2rect(allPts, box, 18);
-
-//       for (const shape of shapesArray) {
-//         const prisms = extrude(shape);
-//         for (const pr of prisms) {
-//           const top2 = pr.top.map(projIso).map(fit.transform);
-//           const bot2 = pr.bottom.map(projIso).map(fit.transform);
-
-//           drawLoop2D(bot2, 0.9);
-//           for (let i = 0; i < bot2.length; i++) {
-//             page.drawLine({
-//               start: { x: bot2[i][0], y: bot2[i][1] },
-//               end: { x: top2[i][0], y: top2[i][1] },
-//               thickness: 1.0,
-//             });
-//           }
-//           drawLoop2D(top2, 1.5);
-//         }
-//       }
-
-//       const label = "3-dimensional isometric projection";
-//       page.drawText(ansiSafe(label), {
-//         x: box.cx - font.widthOfTextAtSize(label, 12) / 2,
-//         y: box.cy - box.h / 2 + 6,
-//         size: 12,
-//         font,
-//       });
-//     }
-
-//     // ---- header text (keep) ----
-//     page.drawText(
-//       ansiSafe("Orthographic and isometric projections of an object"),
-//       { x: 36, y: h - 36 + 8, size: 14, font }
-//     );
-
-//     // ---- draw views ----
-//     drawTopView(boxTop);
-//     drawIsometric(boxIso);
-//     drawOrthographic(projFront, boxFront, "front view");
-//     drawOrthographic(projSide, boxSide, "side view");
-
-//     // ---- save ----
-//     const bytes = await pdf.save();
-//     const blob = new Blob([bytes], { type: "application/pdf" });
-//     const link = document.createElement("a");
-//     link.href = URL.createObjectURL(blob);
-//     link.download = "projection_drawing.pdf";
-//     link.click();
-//   };
-// };
-
 import * as PDF from "pdf-lib";
 import templateUrl from "../assets/pdf-template.pdf";
 
-/**
- * createPdfIso(foam, shapesArray, shapeToGeom2, opts?)
- *
- * foam: { sizeX, sizeY, sizeZ }
- * shapesArray: [ { sizeZ, name?, ... } ]
- * shapeToGeom2(shape) -> { sides: [ [[x,y],[x,y]], ... ] }  // same XY system as foam
- *
- * opts:
- *  - originMode: "auto" | "min" | "center"  (default "auto")
- *  - foamOrigin: { x, y }  // only if you want to offset both modes
- *  - elevationZScale, labelUnit, stroke, dimStroke, arrow, fontSize, showDepthInside
- */
 export const createPdfIso = (foam, shapesArray, shapeToGeom2, opts = {}) => {
   const cfg = {
     originMode: opts.originMode || "auto", // "auto" | "min" | "center"
@@ -395,7 +15,6 @@ export const createPdfIso = (foam, shapesArray, shapeToGeom2, opts = {}) => {
     showDepthInside: opts.showDepthInside ?? true,
   };
 
-  // ---------- helpers ----------
   const safeText = (s) => String(s).replace(/[\u2010-\u2015\u2212]/g, "-");
   const absmm = (v) => `${Math.round(Math.abs(v))} ${cfg.labelUnit}`;
 
@@ -424,7 +43,6 @@ export const createPdfIso = (foam, shapesArray, shapeToGeom2, opts = {}) => {
     return { s, tx, ty, transform: (p) => [p[0] * s + tx, p[1] * s + ty] };
   };
 
-  // build polygon loops from geom2 edges (outer first)
   const loopsFromGeom2 = (geom2) => {
     const key = (p) => `${p[0].toFixed(6)},${p[1].toFixed(6)}`;
     const un = (k) => k.split(",").map(Number);
@@ -511,7 +129,6 @@ export const createPdfIso = (foam, shapesArray, shapeToGeom2, opts = {}) => {
     }));
   };
 
-  // orthographic projections
   const projFront = ([x, , z]) => [x, z * cfg.elevationZScale];
   const projSide = ([, y, z]) => [y, z * cfg.elevationZScale];
   const projIso = ([x, y, z]) => {
@@ -522,7 +139,6 @@ export const createPdfIso = (foam, shapesArray, shapeToGeom2, opts = {}) => {
     const num = Number(th);
     return isNaN(num) ? 1 : num;
   };
-  // draw helpers
   const drawLoop = (page, pts, th) => {
     for (let i = 0; i < pts.length; i++) {
       const a = pts[i],
@@ -542,7 +158,6 @@ export const createPdfIso = (foam, shapesArray, shapeToGeom2, opts = {}) => {
     });
 
   document.querySelector("#pdf-iso-button").onclick = async () => {
-    // 0) page size from template
     const tplBytes = await fetch(templateUrl).then((r) => r.arrayBuffer());
     const tplPdf = await PDF.PDFDocument.load(tplBytes);
     const [tplPage] = await tplPdf.getPages();
@@ -553,7 +168,6 @@ export const createPdfIso = (foam, shapesArray, shapeToGeom2, opts = {}) => {
     const page = pdf.addPage([W, H]);
     const font = await pdf.embedFont(PDF.StandardFonts.Helvetica);
 
-    // 1) frame
     const FRAME = { inset: 18, thick: 1.5 };
     const fx = FRAME.inset,
       fy = FRAME.inset;
@@ -574,7 +188,6 @@ export const createPdfIso = (foam, shapesArray, shapeToGeom2, opts = {}) => {
       font,
     });
 
-    // 2) collect all top XY points (as-is)
     const allTopXY = [];
     for (const s of shapesArray) {
       for (const pr of extrudeShape(s)) {
@@ -585,7 +198,6 @@ export const createPdfIso = (foam, shapesArray, shapeToGeom2, opts = {}) => {
       ? bbox2(allTopXY)
       : { minX: 0, minY: 0, maxX: 0, maxY: 0 };
 
-    // 3) dynamically pick foam rect (auto center vs min)
     const origin = cfg.foamOrigin || { x: 0, y: 0 };
     const candidateMin = {
       minX: origin.x,
@@ -643,7 +255,6 @@ export const createPdfIso = (foam, shapesArray, shapeToGeom2, opts = {}) => {
       }
     }
 
-    // 4) prepare pockets (no shifting — use your exact positions)
     const pockets = shapesArray.map((s, i) => {
       const ex = extrudeShape(s)[0]; // outer loop first
       const top2 = ex.top.map(([x, y]) => [x, y]);
@@ -656,7 +267,6 @@ export const createPdfIso = (foam, shapesArray, shapeToGeom2, opts = {}) => {
       };
     });
 
-    // 5) layout areas
     const margin = FRAME.inset + 28;
     const viewW = (W - margin * 3) / 2;
     const viewH = (H - margin * 3) / 2;
@@ -685,7 +295,20 @@ export const createPdfIso = (foam, shapesArray, shapeToGeom2, opts = {}) => {
       h: viewH,
     };
 
-    // 6) draw TOP with edge dimensions
+    const pocketColors = [
+      PDF.rgb(0.89, 0.1, 0.11),
+      PDF.rgb(0.22, 0.49, 0.73),
+      PDF.rgb(0.31, 0.68, 0.31),
+      PDF.rgb(0.6, 0.31, 0.64),
+      PDF.rgb(1, 0.5, 0),
+      PDF.rgb(1, 1, 0.2),
+      PDF.rgb(0.65, 0.34, 0.16),
+      PDF.rgb(0.97, 0.13, 0.75),
+      PDF.rgb(0.6, 0.6, 0.6),
+      PDF.rgb(0.4, 0.76, 0.65),
+    ];
+
+    // main drawTop
     // const drawTop = () => {
     //   const foamCorners = [
     //     [foamRect.minX, foamRect.minY],
@@ -693,64 +316,126 @@ export const createPdfIso = (foam, shapesArray, shapeToGeom2, opts = {}) => {
     //     [foamRect.maxX, foamRect.maxY],
     //     [foamRect.minX, foamRect.maxY],
     //   ];
+
     //   const all = [...foamCorners, ...pockets.flatMap((p) => p.top2)];
     //   const fit = fit2rect(all, boxTop, 18);
     //   const T = (p) => fit.transform(p);
 
-    //   drawLoop(page, foamCorners.map(T), cfg.stroke);
-    //   for (const p of pockets) drawLoop(page, p.top2.map(T), cfg.stroke);
+    //   // Draw foam outline
+    //   drawLoop(page, foamCorners.map(T), {
+    //     color: PDF.rgb(0, 0, 0),
+    //     thickness: cfg.strokeThickness || 1,
+    //   });
 
-    //   const dimH = (x1, x2, y, txtBelow = false) => {
+    //   const foamCenterX = (foamRect.minX + foamRect.maxX) / 2;
+
+    //   // Dimension helpers
+    //   const dimH = (x1, x2, y, color, txtBelow = false) => {
     //     const A = T([x1, y]),
     //       B = T([x2, y]);
-    //     line(page, A, B, cfg.dimStroke);
-    //     const ah = cfg.arrow,
-    //       dir = Math.sign(B[0] - A[0]) || 1;
-    //     line(page, A, [A[0] + ah * dir, A[1] + ah / 2], cfg.dimStroke);
-    //     line(page, A, [A[0] + ah * dir, A[1] - ah / 2], cfg.dimStroke);
-    //     line(page, B, [B[0] - ah * dir, B[1] + ah / 2], cfg.dimStroke);
-    //     line(page, B, [B[0] - ah * dir, B[1] - ah / 2], cfg.dimStroke);
-    //     const midX = (A[0] + B[0]) / 2,
-    //       ty = A[1] + (txtBelow ? -10 : 4);
+    //     line(page, A, B, { color, thickness: cfg.dimStroke });
+
+    //     const ah = cfg.arrow;
+    //     const dir = Math.sign(B[0] - A[0]) || 1;
+
+    //     line(page, A, [A[0] + ah * dir, A[1] + ah / 2], {
+    //       color,
+    //       thickness: cfg.dimStroke,
+    //     });
+    //     line(page, A, [A[0] + ah * dir, A[1] - ah / 2], {
+    //       color,
+    //       thickness: cfg.dimStroke,
+    //     });
+    //     line(page, B, [B[0] - ah * dir, B[1] + ah / 2], {
+    //       color,
+    //       thickness: cfg.dimStroke,
+    //     });
+    //     line(page, B, [B[0] - ah * dir, B[1] - ah / 2], {
+    //       color,
+    //       thickness: cfg.dimStroke,
+    //     });
+
+    //     const midX = (A[0] + B[0]) / 2;
+    //     const ty = A[1] + (txtBelow ? -10 : 4);
     //     const label = absmm(x2 - x1);
+
     //     page.drawText(label, {
     //       x: midX - font.widthOfTextAtSize(label, cfg.fontSize) / 2,
     //       y: ty,
     //       size: cfg.fontSize,
     //       font,
+    //       color,
     //     });
     //   };
-    //   const dimV = (x, y1, y2, txtRight = false) => {
+
+    //   const dimV = (x, y1, y2, color, txtRight = false) => {
     //     const A = T([x, y1]),
     //       B = T([x, y2]);
-    //     line(page, A, B, cfg.dimStroke);
-    //     const ah = cfg.arrow,
-    //       dir = Math.sign(B[1] - A[1]) || 1;
-    //     line(page, A, [A[0] + ah / 2, A[1] + ah * dir], cfg.dimStroke);
-    //     line(page, A, [A[0] - ah / 2, A[1] + ah * dir], cfg.dimStroke);
-    //     line(page, B, [B[0] + ah / 2, B[1] - ah * dir], cfg.dimStroke);
-    //     line(page, B, [B[0] - ah / 2, B[1] - ah * dir], cfg.dimStroke);
+    //     line(page, A, B, { color, thickness: cfg.dimStroke });
+
+    //     const ah = cfg.arrow;
+    //     const dir = Math.sign(B[1] - A[1]) || 1;
+
+    //     line(page, A, [A[0] + ah / 2, A[1] + ah * dir], {
+    //       color,
+    //       thickness: cfg.dimStroke,
+    //     });
+    //     line(page, A, [A[0] - ah / 2, A[1] + ah * dir], {
+    //       color,
+    //       thickness: cfg.dimStroke,
+    //     });
+    //     line(page, B, [B[0] + ah / 2, B[1] - ah * dir], {
+    //       color,
+    //       thickness: cfg.dimStroke,
+    //     });
+    //     line(page, B, [B[0] - ah / 2, B[1] - ah * dir], {
+    //       color,
+    //       thickness: cfg.dimStroke,
+    //     });
+
     //     const midY = (A[1] + B[1]) / 2;
-    //     const tx =
-    //       A[0] +
-    //       (txtRight ? 4 : -4 - font.widthOfTextAtSize("0000", cfg.fontSize));
+    //     const tx = txtRight
+    //       ? A[0] + 4
+    //       : A[0] - 4 - font.widthOfTextAtSize("0000", cfg.fontSize);
+
     //     const label = absmm(y2 - y1);
+
     //     page.drawText(label, {
     //       x: tx,
     //       y: midY - cfg.fontSize / 2,
     //       size: cfg.fontSize,
     //       font,
+    //       color,
     //     });
     //   };
 
-    //   for (const p of pockets) {
+    //   // Draw pockets
+    //   for (let i = 0; i < pockets.length; i++) {
+    //     const p = pockets[i];
+    //     const color = pocketColors[i % pocketColors.length];
+
+    //     drawLoop(page, p.top2.map(T), {
+    //       color,
+    //       thickness: cfg.strokeThickness || 1,
+    //     });
+
     //     const { minX, maxX, minY, maxY } = p.bb;
     //     const OUT = 14 / (fit.s || 1);
-    //     dimH(foamRect.minX, minX, minY - OUT, true); // left gap
-    //     dimH(maxX, foamRect.maxX, maxY + OUT, false); // right gap
-    //     dimV(minX - OUT, foamRect.minY, minY, false); // bottom gap
-    //     dimV(maxX + OUT, maxY, foamRect.maxY, true); // top gap
+    //     const pocketCenter = (minX + maxX) / 2;
 
+    //     // Horizontal dimensions
+    //     dimH(minX, maxX, maxY + OUT + OUT, color);
+    //     if (pocketCenter < foamCenterX) {
+    //       dimH(foamRect.minX, minX, maxY + OUT, color, false);
+    //     } else {
+    //       dimH(maxX, foamRect.maxX, maxY + OUT, color, false);
+    //     }
+
+    //     // Vertical dimensions
+    //     dimV(minX - OUT, foamRect.minY, minY, color, false);
+    //     dimV(maxX + OUT, maxY, foamRect.maxY, color, true);
+
+    //     // Pocket label
     //     const c = T([(minX + maxX) / 2, (minY + maxY) / 2]);
     //     const lbl = safeText(p.name);
     //     page.drawText(lbl, {
@@ -758,9 +443,11 @@ export const createPdfIso = (foam, shapesArray, shapeToGeom2, opts = {}) => {
     //       y: c[1] - cfg.fontSize / 2,
     //       size: cfg.fontSize,
     //       font,
+    //       color,
     //     });
     //   }
 
+    //   // Caption
     //   const cap = "Top View";
     //   page.drawText(cap, {
     //     x: boxTop.cx - font.widthOfTextAtSize(cap, cfg.fontSize) / 2,
@@ -770,20 +457,7 @@ export const createPdfIso = (foam, shapesArray, shapeToGeom2, opts = {}) => {
     //   });
     // };
 
-    const pocketColors = [
-      PDF.rgb(0.89, 0.1, 0.11), // #e41a1c
-      PDF.rgb(0.22, 0.49, 0.73), // #377eb8
-      PDF.rgb(0.31, 0.68, 0.31), // #4daf4a
-      PDF.rgb(0.6, 0.31, 0.64), // #984ea3
-      PDF.rgb(1, 0.5, 0), // #ff7f00
-      PDF.rgb(1, 1, 0.2), // #ffff33
-      PDF.rgb(0.65, 0.34, 0.16), // #a65628
-      PDF.rgb(0.97, 0.13, 0.75), // #f781bf
-      PDF.rgb(0.6, 0.6, 0.6), // #999999
-      PDF.rgb(0.4, 0.76, 0.65), // #66c2a5
-    ];
-
-    let here1//draw top measurement inside
+    let here;
     const drawTop = () => {
       const foamCorners = [
         [foamRect.minX, foamRect.minY],
@@ -796,546 +470,293 @@ export const createPdfIso = (foam, shapesArray, shapeToGeom2, opts = {}) => {
       const fit = fit2rect(all, boxTop, 18);
       const T = (p) => fit.transform(p);
 
-      // Draw foam outline
       drawLoop(page, foamCorners.map(T), {
         color: PDF.rgb(0, 0, 0),
         thickness: cfg.strokeThickness || 1,
       });
 
-      const foamCenterX = (foamRect.minX + foamRect.maxX) / 2;
+      const RED = PDF.rgb(1, 0, 0);
+      const EXT = 10 / (fit.s || 1);
+      const AH = 2 / (fit.s || 1);
+      const AHV = 3 / (fit.s || 1);
 
-      // Dimension helpers
-      const dimH = (x1, x2, y, color, txtBelow = false) => {
-        const A = T([x1, y]),
-          B = T([x2, y]);
-        line(page, A, B, { color, thickness: cfg.dimStroke });
+      const topLaneRight = [-Infinity, -Infinity];
+      const bottomLaneRight = [-Infinity, -Infinity];
 
-        const ah = cfg.arrow;
-        const dir = Math.sign(B[0] - A[0]) || 1;
+      const placeDimLabel = (midX, y, label, isTop) => {
+        const tp = T([midX, y]);
+        const w = font.widthOfTextAtSize(label, cfg.fontSize);
+        const gap = 4;
+        const lanes = isTop ? topLaneRight : bottomLaneRight;
 
-        line(page, A, [A[0] + ah * dir, A[1] + ah / 2], {
-          color,
-          thickness: cfg.dimStroke,
-        });
-        line(page, A, [A[0] + ah * dir, A[1] - ah / 2], {
-          color,
-          thickness: cfg.dimStroke,
-        });
-        line(page, B, [B[0] - ah * dir, B[1] + ah / 2], {
-          color,
-          thickness: cfg.dimStroke,
-        });
-        line(page, B, [B[0] - ah * dir, B[1] - ah / 2], {
-          color,
-          thickness: cfg.dimStroke,
-        });
+        const left = tp[0] - w / 2;
 
-        const midX = (A[0] + B[0]) / 2;
-        const ty = A[1] + (txtBelow ? -10 : 4);
-        const label = absmm(x2 - x1);
+        let lane = 0;
+        if (left < lanes[0] + gap && left >= lanes[1] + gap) lane = 1;
+        else if (left < lanes[0] + gap && left < lanes[1] + gap) lane = lanes[0] <= lanes[1] ? 0 : 1;
+
+        const offset = (cfg.fontSize + 2) * lane;
+        const ty = isTop ? tp[1] + 6 + offset : tp[1] - 10 - offset;
+
+        lanes[lane] = Math.max(lanes[lane], left + w);
 
         page.drawText(label, {
-          x: midX - font.widthOfTextAtSize(label, cfg.fontSize) / 2,
+          x: left,
           y: ty,
           size: cfg.fontSize,
           font,
+          color: RED,
+        });
+      };
+
+      const drawLine = (A, B, color) => {
+        page.drawLine({
+          start: { x: A[0], y: A[1] },
+          end: { x: B[0], y: B[1] },
+          thickness: cfg.dimStroke,
           color,
         });
       };
 
-      const dimV = (x, y1, y2, color, txtRight = false) => {
-        const A = T([x, y1]),
-          B = T([x, y2]);
-        line(page, A, B, { color, thickness: cfg.dimStroke });
+      const lineV = (x, y1, y2, color) => drawLine(T([x, y1]), T([x, y2]), color);
+      const lineH = (x1, x2, y, color) => drawLine(T([x1, y]), T([x2, y]), color);
 
-        const ah = cfg.arrow;
-        const dir = Math.sign(B[1] - A[1]) || 1;
+      const arrowH = (x1, x2, y, textAbove) => {
+        lineH(x1, x2, y, RED);
 
-        line(page, A, [A[0] + ah / 2, A[1] + ah * dir], {
-          color,
-          thickness: cfg.dimStroke,
-        });
-        line(page, A, [A[0] - ah / 2, A[1] + ah * dir], {
-          color,
-          thickness: cfg.dimStroke,
-        });
-        line(page, B, [B[0] + ah / 2, B[1] - ah * dir], {
-          color,
-          thickness: cfg.dimStroke,
-        });
-        line(page, B, [B[0] - ah / 2, B[1] - ah * dir], {
-          color,
-          thickness: cfg.dimStroke,
-        });
+        const L = T([x1, y]);
+        drawLine([L[0], L[1]], [L[0] + AH, L[1] + AH / 2], RED);
+        drawLine([L[0], L[1]], [L[0] + AH, L[1] - AH / 2], RED);
 
-        const midY = (A[1] + B[1]) / 2;
-        const tx = txtRight
-          ? A[0] + 4
-          : A[0] - 4 - font.widthOfTextAtSize("0000", cfg.fontSize);
+        const R = T([x2, y]);
+        drawLine([R[0], R[1]], [R[0] - AH, R[1] + AH / 2], RED);
+        drawLine([R[0], R[1]], [R[0] - AH, R[1] - AH / 2], RED);
 
-        const label = absmm(y2 - y1);
-
-        page.drawText(label, {
-          x: tx,
-          y: midY - cfg.fontSize / 2,
-          size: cfg.fontSize,
-          font,
-          color,
-        });
+        const label = absmm(x2 - x1);
+        const midX = (x1 + x2) / 2;
+        placeDimLabel(midX, y, label, textAbove);
       };
 
-      // Draw pockets
+      const arrowVRed = (x, y1, y2) => {
+        lineV(x, y1, y2, RED);
+
+        const T1 = T([x, y2]);
+        drawLine([T1[0], T1[1]], [T1[0] + AHV / 2, T1[1] - AHV], RED);
+        drawLine([T1[0], T1[1]], [T1[0] - AHV / 2, T1[1] - AHV], RED);
+
+        const B1 = T([x, y1]);
+        drawLine([B1[0], B1[1]], [B1[0] + AHV / 2, B1[1] + AHV], RED);
+        drawLine([B1[0], B1[1]], [B1[0] - AHV / 2, B1[1] + AHV], RED);
+      };
+
+      const xRangeAtY = (pts, y) => {
+        const xs = [];
+        for (let i = 0; i < pts.length; i++) {
+          const a = pts[i];
+          const b = pts[(i + 1) % pts.length];
+          const y1 = a[1],
+            y2 = b[1];
+
+          if (y < Math.min(y1, y2) || y > Math.max(y1, y2)) continue;
+
+          if (Math.abs(y2 - y1) < 1e-6) {
+            xs.push(a[0], b[0]);
+            continue;
+          }
+
+          const t = (y - y1) / (y2 - y1);
+          if (t >= 0 && t <= 1) {
+            xs.push(a[0] + t * (b[0] - a[0]));
+          }
+        }
+
+        if (xs.length < 2) return null;
+        return { minX: Math.min(...xs), maxX: Math.max(...xs), width: Math.max(...xs) - Math.min(...xs) };
+      };
+
+      const yRangeAtX = (pts, x) => {
+        const ys = [];
+        for (let i = 0; i < pts.length; i++) {
+          const a = pts[i];
+          const b = pts[(i + 1) % pts.length];
+          const x1 = a[0],
+            x2 = b[0];
+
+          if (x < Math.min(x1, x2) || x > Math.max(x1, x2)) continue;
+
+          if (Math.abs(x2 - x1) < 1e-6) {
+            ys.push(a[1], b[1]);
+            continue;
+          }
+
+          const t = (x - x1) / (x2 - x1);
+          if (t >= 0 && t <= 1) {
+            ys.push(a[1] + t * (b[1] - a[1]));
+          }
+        }
+
+        if (ys.length < 2) return null;
+        return { minY: Math.min(...ys), maxY: Math.max(...ys) };
+      };
+
+      const uniqSorted = (arr) => {
+        const out = [];
+        const sorted = [...arr].sort((a, b) => a - b);
+        const EPS = 1e-4;
+        for (let i = 0; i < sorted.length; i++) {
+          if (out.length === 0 || Math.abs(sorted[i] - out[out.length - 1]) > EPS) {
+            out.push(sorted[i]);
+          }
+        }
+        return out;
+      };
+
+      const topXs = [foamRect.minX, foamRect.maxX];
+      const bottomXs = [foamRect.minX, foamRect.maxX];
+
       for (let i = 0; i < pockets.length; i++) {
         const p = pockets[i];
-        const color = pocketColors[i % pocketColors.length];
 
         drawLoop(page, p.top2.map(T), {
-          color,
+          color: PDF.rgb(0, 0, 0),
           thickness: cfg.strokeThickness || 1,
         });
 
-        const { minX, maxX, minY, maxY } = p.bb;
-        const OUT = 14 / (fit.s || 1);
-        const pocketCenter = (minX + maxX) / 2;
+        const { minY, maxY } = p.bb;
+        const h = maxY - minY;
+        const inset = h * 0.06;
 
-        // Horizontal dimensions
-        dimH(minX, maxX, maxY + OUT + OUT, color);
-        if (pocketCenter < foamCenterX) {
-          dimH(foamRect.minX, minX, maxY + OUT, color, false);
-        } else {
-          dimH(maxX, foamRect.maxX, maxY + OUT, color, false);
+        const topRange = xRangeAtY(p.top2, maxY - inset);
+
+        let bestBottom = null;
+        const yStart = minY + inset;
+        const yEnd = minY + h * 0.5;
+        const steps = 20;
+
+        for (let s = 0; s <= steps; s++) {
+          const y = yStart + ((yEnd - yStart) * s) / steps;
+          const r = xRangeAtY(p.top2, y);
+          if (!r) continue;
+          if (!bestBottom || r.width > bestBottom.width) bestBottom = r;
         }
 
-        // Vertical dimensions
-        dimV(minX - OUT, foamRect.minY, minY, color, false);
-        dimV(maxX + OUT, maxY, foamRect.maxY, color, true);
+        if (!topRange || !bestBottom) continue;
 
-        // Pocket label
-        const c = T([(minX + maxX) / 2, (minY + maxY) / 2]);
-        const lbl = safeText(p.name);
-        page.drawText(lbl, {
-          x: c[0] - font.widthOfTextAtSize(lbl, cfg.fontSize) / 2,
-          y: c[1] - cfg.fontSize / 2,
+        const topLeftY = yRangeAtX(p.top2, topRange.minX)?.maxY ?? (maxY - inset);
+        const topRightY = yRangeAtX(p.top2, topRange.maxX)?.maxY ?? (maxY - inset);
+
+        const botLeftY = yRangeAtX(p.top2, bestBottom.minX)?.minY ?? (minY + inset);
+        const botRightY = yRangeAtX(p.top2, bestBottom.maxX)?.minY ?? (minY + inset);
+
+        lineV(topRange.minX, foamRect.maxY + EXT, topLeftY, RED);
+        lineV(topRange.maxX, foamRect.maxY + EXT, topRightY, RED);
+
+        lineV(bestBottom.minX, botLeftY, foamRect.minY - EXT, RED);
+        lineV(bestBottom.maxX, botRightY, foamRect.minY - EXT, RED);
+
+        topXs.push(topRange.minX, topRange.maxX);
+        bottomXs.push(bestBottom.minX, bestBottom.maxX);
+
+        const heightX = p.bb.minX - (10 / (fit.s || 1));
+        const yHit = yRangeAtX(p.top2, heightX);
+        const heightTopY = yHit ? yHit.maxY : p.bb.maxY;
+        const heightBotY = yHit ? yHit.minY : p.bb.minY;
+
+        arrowVRed(heightX, heightBotY, heightTopY);
+
+        const topEdge = xRangeAtY(p.top2, heightTopY);
+        const botEdge = xRangeAtY(p.top2, heightBotY);
+
+        if (topEdge) lineH(heightX, topEdge.minX, heightTopY, RED);
+        if (botEdge) lineH(heightX, botEdge.minX, heightBotY, RED);
+
+        const hLabel = absmm(heightTopY - heightBotY);
+        const midY = (heightTopY + heightBotY) / 2;
+        const pMid = T([heightX, midY]);
+        const w = font.widthOfTextAtSize(hLabel, cfg.fontSize);
+        page.drawText(hLabel, {
+          x: pMid[0] + 11,
+          y: pMid[1] - w / 2,
           size: cfg.fontSize,
           font,
-          color,
+          color: RED,
+          rotate: PDF.degrees(90),
+        });
+
+        const GAP_AH = 3 / (fit.s || 1);
+
+        const drawGapArrow = (x, y1, y2) => {
+          lineV(x, y1, y2, RED);
+
+          const T1 = T([x, y2]);
+          drawLine([T1[0], T1[1]], [T1[0] + GAP_AH / 2, T1[1] - GAP_AH], RED);
+          drawLine([T1[0], T1[1]], [T1[0] - GAP_AH / 2, T1[1] - GAP_AH], RED);
+
+          const B1 = T([x, y1]);
+          drawLine([B1[0], B1[1]], [B1[0] + GAP_AH / 2, B1[1] + GAP_AH], RED);
+          drawLine([B1[0], B1[1]], [B1[0] - GAP_AH / 2, B1[1] + GAP_AH], RED);
+        };
+
+        drawGapArrow(heightX, heightTopY, foamRect.maxY);
+        const topGapLabel = absmm(foamRect.maxY - heightTopY);
+        const topGapMid = (foamRect.maxY + heightTopY) / 2;
+        const tg = T([heightX, topGapMid]);
+        page.drawText(topGapLabel, {
+          x: tg[0] + 4,
+          y: tg[1] - cfg.fontSize / 2,
+          size: cfg.fontSize,
+          font,
+          color: RED,
+        });
+
+        drawGapArrow(heightX, foamRect.minY, heightBotY);
+        const botGapLabel = absmm(heightBotY - foamRect.minY);
+        const botGapMid = (foamRect.minY + heightBotY) / 2;
+        const bg = T([heightX, botGapMid]);
+        page.drawText(botGapLabel, {
+          x: bg[0] + 4,
+          y: bg[1] - cfg.fontSize / 2,
+          size: cfg.fontSize,
+          font,
+          color: RED,
         });
       }
 
-      // Caption
+      const topY = foamRect.maxY + EXT;
+      const bottomY = foamRect.minY - EXT;
+
+      const tx = uniqSorted(topXs);
+      for (let i = 0; i < tx.length - 1; i++) {
+        arrowH(tx[i], tx[i + 1], topY, true);
+      }
+
+      const bx = uniqSorted(bottomXs);
+      for (let i = 0; i < bx.length - 1; i++) {
+        arrowH(bx[i], bx[i + 1], bottomY, false);
+      }
+
+      lineV(foamRect.minX, foamRect.maxY, foamRect.maxY + EXT, RED);
+      lineH(foamRect.minX - EXT, foamRect.minX, foamRect.maxY, RED);
+
+      lineV(foamRect.maxX, foamRect.maxY, foamRect.maxY + EXT, RED);
+      lineH(foamRect.maxX, foamRect.maxX + EXT, foamRect.maxY, RED);
+
+      lineV(foamRect.minX, foamRect.minY - EXT, foamRect.minY, RED);
+      lineH(foamRect.minX - EXT, foamRect.minX, foamRect.minY, RED);
+
+      lineV(foamRect.maxX, foamRect.minY - EXT, foamRect.minY, RED);
+      lineH(foamRect.maxX, foamRect.maxX + EXT, foamRect.minY, RED);
+
       const cap = "Top View";
       page.drawText(cap, {
         x: boxTop.cx - font.widthOfTextAtSize(cap, cfg.fontSize) / 2,
-        y: boxTop.cy - boxTop.h / 2 + 4,
+        y: boxTop.cy - boxTop.h / 2 - 23,
         size: cfg.fontSize,
         font,
       });
     };
 
-    let here; //draw top measurement outside
-    // const drawTop = () => {
-    //   const foamCorners = [
-    //     [foamRect.minX, foamRect.minY],
-    //     [foamRect.maxX, foamRect.minY],
-    //     [foamRect.maxX, foamRect.maxY],
-    //     [foamRect.minX, foamRect.maxY],
-    //   ];
-
-    //   const all = [...foamCorners, ...pockets.flatMap((p) => p.top2)];
-    //   const fit = fit2rect(all, boxTop, 18);
-    //   const s = fit.s,
-    //     tx = fit.tx,
-    //     ty = fit.ty;
-    //   const X = (x) => x * s + tx;
-    //   const Y = (y) => y * s + ty;
-
-    //   const foamCenterX = (foamRect.minX + foamRect.maxX) / 2;
-
-    //   const lineStyled = (a, b, style = {}) => {
-    //     const { color = PDF.rgb(0, 0, 0), thickness = cfg.dimStroke } = style;
-    //     page.drawLine({
-    //       start: { x: a[0], y: a[1] },
-    //       end: { x: b[0], y: b[1] },
-    //       thickness: safeThickness(thickness),
-    //       color,
-    //     });
-    //   };
-    //   const drawLoopStyled = (pts, color, thickness) => {
-    //     for (let i = 0; i < pts.length; i++) {
-    //       const a = pts[i],
-    //         b = pts[(i + 1) % pts.length];
-    //       lineStyled(a, b, { color, thickness });
-    //     }
-    //   };
-    //   const tick = (p, dir, color) => {
-    //     const len = 4;
-    //     const [dx, dy] = dir;
-    //     const mag = Math.hypot(dx, dy) || 1;
-    //     const ux = (dx / mag) * len,
-    //       uy = (dy / mag) * len;
-    //     const perp = [-uy, ux];
-    //     lineStyled(
-    //       [p[0] - perp[0], p[1] - perp[1]],
-    //       [p[0] + perp[0], p[1] + perp[1]],
-    //       { color, thickness: cfg.dimStroke }
-    //     );
-    //   };
-    //   const drawLabel = (txt, x, y, color) => {
-    //     const w = font.widthOfTextAtSize(txt, cfg.fontSize);
-    //     const h = cfg.fontSize;
-    //     const pad = 2;
-    //     page.drawRectangle({
-    //       x: x - w / 2 - pad,
-    //       y: y - h / 2 - pad / 2,
-    //       width: w + 2 * pad,
-    //       height: h + pad,
-    //       color: PDF.rgb(1, 1, 1),
-    //       borderColor: PDF.rgb(1, 1, 1),
-    //       borderWidth: 0,
-    //     });
-    //     page.drawText(txt, {
-    //       x: x - w / 2,
-    //       y: y - h / 2,
-    //       size: cfg.fontSize,
-    //       font,
-    //       color,
-    //     });
-    //   };
-
-    //   // Draw foam outline
-    //   drawLoopStyled(
-    //     foamCorners.map(([x, y]) => [X(x), Y(y)]),
-    //     PDF.rgb(0, 0, 0),
-    //     cfg.strokeThickness || 1
-    //   );
-
-    //   // Group pockets by foam center (left/right halves)
-    //   const leftGroup = pockets
-    //     .filter((p) => (p.bb.minX + p.bb.maxX) / 2 <= foamCenterX)
-    //     .sort((a, b) => a.bb.minX + a.bb.maxX - (b.bb.minX + b.bb.maxX));
-    //   const rightGroup = pockets
-    //     .filter((p) => (p.bb.minX + p.bb.maxX) / 2 > foamCenterX)
-    //     .sort((a, b) => a.bb.minX + a.bb.maxX - (b.bb.minX + b.bb.maxX));
-
-    //   // Spacing for stacked dimensions (top rows extend upward, bottom rows downward)
-    //   const H_BASE_TOP_L = Y(foamRect.maxY) + 14;
-    //   const H_BASE_TOP_R = Y(foamRect.maxY) + 14;
-    //   const H_BASE_BOTTOM_L = Y(foamRect.minY) - 14;
-    //   const H_BASE_BOTTOM_R = Y(foamRect.minY) - 14;
-    //   const H_STEP = 16;
-    //   const V_BASE_L = X(foamRect.minX) - 18;
-    //   const V_BASE_R = X(foamRect.maxX) + 18;
-    //   const V_STEP = 16;
-    //   const V_LABEL_Y_STEP = 22; // bigger stagger between pockets
-    //   const V_LABEL_SIDE_OFFSET = 8; // slight side-based offset to avoid mirroring
-
-    //   const dimH = (x1, x2, yPx, color, label, labelOffset = 3) => {
-    //     const A = [X(x1), yPx],
-    //       B = [X(x2), yPx];
-    //     lineStyled(A, B, { color, thickness: cfg.dimStroke });
-    //     tick(A, [B[0] - A[0], B[1] - A[1]], color);
-    //     tick(B, [A[0] - B[0], A[1] - B[1]], color);
-    //     const midX = (A[0] + B[0]) / 2;
-    //     drawLabel(label, midX, yPx + labelOffset, color);
-    //   };
-
-    //   const dimV = (xPx, y1, y2, color, label, labelYOffset = 0) => {
-    //     const A = [xPx, Y(y1)],
-    //       B = [xPx, Y(y2)];
-    //     lineStyled(A, B, { color, thickness: cfg.dimStroke });
-    //     tick(A, [A[0] - B[0], A[1] - B[1]], color);
-    //     tick(B, [B[0] - A[0], B[1] - A[1]], color);
-    //     const midY = (A[1] + B[1]) / 2;
-    //     drawLabel(label, xPx, midY + labelYOffset, color);
-    //   };
-
-    //   const drawPocketDims = (
-    //     p,
-    //     color,
-    //     hIdx,
-    //     vIdx,
-    //     isLeftSide,
-    //     isTopRow
-    //   ) => {
-    //     const { minX, maxX, minY, maxY } = p.bb;
-    //     const width = maxX - minX;
-    //     const height = maxY - minY;
-    //     const gapL = minX - foamRect.minX;
-    //     const gapR = foamRect.maxX - maxX;
-    //     const gapB = minY - foamRect.minY;
-    //     const gapT = foamRect.maxY - maxY;
-
-    //     const yDimBase = isTopRow
-    //       ? isLeftSide
-    //         ? H_BASE_TOP_L
-    //         : H_BASE_TOP_R
-    //       : isLeftSide
-    //         ? H_BASE_BOTTOM_L
-    //         : H_BASE_BOTTOM_R;
-    //     const yDir = isTopRow ? 1 : -1;
-    //     const yDim = yDimBase + yDir * hIdx * H_STEP;
-    //     const yDim2 = yDim + yDir * 7; // slight separation between two stacked dims
-    //     const labelOffsetH = isTopRow ? 3 : -3;
-
-    //     if (isLeftSide) {
-    //       dimH(foamRect.minX, minX, yDim, color, absmm(gapL), labelOffsetH);
-    //       dimH(minX, maxX, yDim2, color, absmm(width), labelOffsetH);
-    //     } else {
-    //       dimH(minX, maxX, yDim, color, absmm(width), labelOffsetH);
-    //       dimH(maxX, foamRect.maxX, yDim2, color, absmm(gapR), labelOffsetH);
-    //     }
-
-    //     // Stagger vertical labels by pocket index and side
-    //     const baseYOffset = vIdx * V_LABEL_Y_STEP;
-    //     const sideOffset = isLeftSide ? -V_LABEL_SIDE_OFFSET : V_LABEL_SIDE_OFFSET;
-    //     const offsets = [
-    //       baseYOffset - 10 + sideOffset,
-    //       baseYOffset + sideOffset,
-    //       baseYOffset + 10 + sideOffset,
-    //     ];
-
-    //     const xDim = isLeftSide ? V_BASE_L - vIdx * V_STEP : V_BASE_R + vIdx * V_STEP;
-    //     dimV(xDim, foamRect.minY, minY, color, absmm(gapB), offsets[0]);
-    //     dimV(xDim, minY, maxY, color, absmm(height), offsets[1]);
-    //     dimV(xDim, maxY, foamRect.maxY, color, absmm(gapT), offsets[2]);
-    //   };
-
-    //   const renderGroup = (group, isLeftSide) => {
-    //     const annotated = group.map((p, idx) => ({
-    //       pocket: p,
-    //       color: pocketColors[idx % pocketColors.length],
-    //       originalIdx: idx,
-    //     }));
-
-    //     // Draw outlines and labels first
-    //     annotated.forEach(({ pocket, color }) => {
-    //       drawLoopStyled(
-    //         pocket.top2.map(([x, y]) => [X(x), Y(y)]),
-    //         color,
-    //         cfg.strokeThickness || 1
-    //       );
-    //       const cx = X((pocket.bb.minX + pocket.bb.maxX) / 2);
-    //       const cy = Y((pocket.bb.minY + pocket.bb.maxY) / 2);
-    //       const lbl = safeText(pocket.name);
-    //       drawLabel(lbl, cx, cy, color);
-    //     });
-
-    //     // Split dims across top/bottom rows to reduce overlaps
-    //     const half = Math.ceil(annotated.length / 2);
-    //     const topRow = annotated.slice(0, half);
-    //     const bottomRow = annotated.slice(half);
-
-    //     const renderDims = (list, isTopRow) => {
-    //       list.forEach(({ pocket, color, originalIdx }, localIdx) => {
-    //         drawPocketDims(
-    //           pocket,
-    //           color,
-    //           localIdx,
-    //           originalIdx,
-    //           isLeftSide,
-    //           isTopRow
-    //         );
-    //       });
-    //     };
-
-    //     renderDims(topRow, true);
-    //     renderDims(bottomRow, false);
-    //   };
-
-    //   renderGroup(leftGroup, true);
-    //   renderGroup(rightGroup, false);
-
-    //   const cap = "Top View";
-    //   page.drawText(cap, {
-    //     x: boxTop.cx - font.widthOfTextAtSize(cap, cfg.fontSize) / 2,
-    //     y: boxTop.cy - boxTop.h / 2 + 4,
-    //     size: cfg.fontSize,
-    //     font,
-    //   });
-    // };
-
-    let here3; //drawTop with labels and dimensions
-    // const drawTop = () => {
-    //   const foamCorners = [
-    //     [foamRect.minX, foamRect.minY],
-    //     [foamRect.maxX, foamRect.minY],
-    //     [foamRect.maxX, foamRect.maxY],
-    //     [foamRect.minX, foamRect.maxY],
-    //   ];
-
-    //   const all = [...foamCorners, ...pockets.flatMap((p) => p.top2)];
-    //   const fit = fit2rect(all, boxTop, 18);
-    //   const s = fit.s,
-    //     tx = fit.tx,
-    //     ty = fit.ty;
-    //   const X = (x) => x * s + tx;
-    //   const Y = (y) => y * s + ty;
-
-    //   const lineStyled = (a, b, style = {}) => {
-    //     const { color = PDF.rgb(0, 0, 0), thickness = cfg.dimStroke } = style;
-    //     page.drawLine({
-    //       start: { x: a[0], y: a[1] },
-    //       end: { x: b[0], y: b[1] },
-    //       thickness: safeThickness(thickness),
-    //       color,
-    //     });
-    //   };
-    //   const drawLoopStyled = (pts, color, thickness) => {
-    //     for (let i = 0; i < pts.length; i++) {
-    //       const a = pts[i],
-    //         b = pts[(i + 1) % pts.length];
-    //       lineStyled(a, b, { color, thickness });
-    //     }
-    //   };
-    //   const drawLabel = (txt, x, y, color, size = cfg.fontSize) => {
-    //     const w = font.widthOfTextAtSize(txt, size);
-    //     const h = size;
-    //     const pad = 2;
-    //     page.drawRectangle({
-    //       x: x - w / 2 - pad,
-    //       y: y - h / 2 - pad / 2,
-    //       width: w + 2 * pad,
-    //       height: h + pad,
-    //       color: PDF.rgb(1, 1, 1),
-    //       borderColor: PDF.rgb(1, 1, 1),
-    //       borderWidth: 0,
-    //     });
-    //     page.drawText(txt, { x: x - w / 2, y: y - h / 2, size, font, color });
-    //   };
-
-    //   // Draw foam outline
-    //   drawLoopStyled(
-    //     foamCorners.map(([x, y]) => [X(x), Y(y)]),
-    //     PDF.rgb(0, 0, 0),
-    //     cfg.strokeThickness || 1
-    //   );
-
-    //   // Draw pockets with inside labels; collect legend rows
-    //   const legendRows = [];
-    //   pockets.forEach((p, i) => {
-    //     const color = pocketColors[i % pocketColors.length];
-    //     const { minX, maxX, minY, maxY } = p.bb;
-    //     const widthVal = maxX - minX;
-    //     const heightVal = maxY - minY;
-    //     const leftOff = minX - foamRect.minX;
-    //     const rightOff = foamRect.maxX - maxX;
-    //     const bottomOff = minY - foamRect.minY;
-    //     const topOff = foamRect.maxY - maxY;
-
-    //     drawLoopStyled(
-    //       p.top2.map(([x, y]) => [X(x), Y(y)]),
-    //       color,
-    //       cfg.strokeThickness || 1
-    //     );
-
-    //     const cx = X((minX + maxX) / 2);
-    //     const cy = Y((minY + maxY) / 2);
-    //     drawLabel(safeText(p.name || `Pocket ${i + 1}`), cx, cy, color);
-    //     const whLabel = `${absmm(widthVal)} × ${absmm(heightVal)}`;
-    //     drawLabel(whLabel, cx, cy - cfg.fontSize - 2, color, cfg.fontSize - 1);
-
-    //     legendRows.push({
-    //       name: safeText(p.name || `Pocket ${i + 1}`),
-    //       w: absmm(widthVal),
-    //       h: absmm(heightVal),
-    //       left: absmm(leftOff),
-    //       right: absmm(rightOff),
-    //       bottom: absmm(bottomOff),
-    //       top: absmm(topOff),
-    //       color,
-    //     });
-    //   });
-
-    //   // Legend table to the right of the top view
-    //   const legendFont = cfg.fontSize - 1;
-    //   const legendRowH = legendFont + 4;
-    //   const colHeaders = [
-    //     "Pocket",
-    //     "Width",
-    //     "Height",
-    //     "Left",
-    //     "Right",
-    //     "Bottom",
-    //     "Top",
-    //   ];
-    //   const colWidths = [70, 55, 55, 55, 55, 60, 55];
-    //   const tableWidth = colWidths.reduce((a, b) => a + b, 0) + 8;
-    //   const tableX = boxTop.cx + boxTop.w / 2 + 16;
-    //   const tableY = boxTop.cy + boxTop.h / 2 - 8;
-
-    //   const drawCell = (
-    //     txt,
-    //     x,
-    //     y,
-    //     w,
-    //     align = "left",
-    //     color = PDF.rgb(0, 0, 0)
-    //   ) => {
-    //     const tw = font.widthOfTextAtSize(txt, legendFont);
-    //     let tx = x + 4;
-    //     if (align === "right") tx = x + w - tw - 4;
-    //     if (align === "center") tx = x + (w - tw) / 2;
-    //     page.drawText(txt, { x: tx, y, size: legendFont, font, color });
-    //   };
-
-    //   // Header background
-    //   page.drawRectangle({
-    //     x: tableX,
-    //     y: tableY,
-    //     width: tableWidth,
-    //     height: legendRowH,
-    //     color: PDF.rgb(0.95, 0.95, 0.95),
-    //   });
-
-    //   // Headers
-    //   let cxAccum = tableX + 4;
-    //   colHeaders.forEach((h, idx) => {
-    //     drawCell(h, cxAccum - 4, tableY + 2, colWidths[idx], "left");
-    //     cxAccum += colWidths[idx];
-    //   });
-
-    //   // Rows
-    //   legendRows.forEach((row, rIdx) => {
-    //     const y = tableY - legendRowH * (rIdx + 1) + 2;
-    //     let x = tableX;
-    //     drawCell(row.name, x, y, colWidths[0], "left", row.color);
-    //     x += colWidths[0];
-    //     drawCell(row.w, x, y, colWidths[1], "right", row.color);
-    //     x += colWidths[1];
-    //     drawCell(row.h, x, y, colWidths[2], "right", row.color);
-    //     x += colWidths[2];
-    //     drawCell(row.left, x, y, colWidths[3], "right", row.color);
-    //     x += colWidths[3];
-    //     drawCell(row.right, x, y, colWidths[4], "right", row.color);
-    //     x += colWidths[4];
-    //     drawCell(row.bottom, x, y, colWidths[5], "right", row.color);
-    //     x += colWidths[5];
-    //     drawCell(row.top, x, y, colWidths[6], "right", row.color);
-    //   });
-
-    //   // Caption
-    //   const cap = "Top View";
-    //   page.drawText(cap, {
-    //     x: boxTop.cx - font.widthOfTextAtSize(cap, cfg.fontSize) / 2,
-    //     y: boxTop.cy - boxTop.h / 2 + 4,
-    //     size: cfg.fontSize,
-    //     font,
-    //   });
-
-    //   // Units note
-    //   const unitNote = `Dimensions: ${cfg.labelUnit}`;
-    //   page.drawText(unitNote, {
-    //     x: tableX,
-    //     y: boxTop.cy - boxTop.h / 2 + 6,
-    //     size: legendFont,
-    //     font,
-    //     color: PDF.rgb(0.2, 0.2, 0.2),
-    //   });
-    // };
-    let here2
-    // 7) Front (X–Z) and Side (Y–Z)
     const drawFront = () => {
-      // Fit includes foam height and pocket depths
       const all = [
         [foamRect.minX, 0],
         [foamRect.maxX, foam.sizeZ],
@@ -1360,7 +781,6 @@ export const createPdfIso = (foam, shapesArray, shapeToGeom2, opts = {}) => {
         }
       };
 
-      // Foam outline (black)
       drawLoopStyled(
         [
           [foamRect.minX, 0],
@@ -1372,7 +792,6 @@ export const createPdfIso = (foam, shapesArray, shapeToGeom2, opts = {}) => {
         PDF.rgb(0, 0, 0)
       );
 
-      // Pockets: black outline + single depth label
       pockets.forEach((p) => {
         const depth = p.depth || 0;
         const rect = [
@@ -1410,7 +829,6 @@ export const createPdfIso = (foam, shapesArray, shapeToGeom2, opts = {}) => {
     };
 
     const drawSide = () => {
-      // Fit includes foam height and all pocket depths
       const all = [
         [foamRect.minY, 0],
         [foamRect.maxY, foam.sizeZ],
@@ -1435,7 +853,6 @@ export const createPdfIso = (foam, shapesArray, shapeToGeom2, opts = {}) => {
         }
       };
 
-      // Foam outline (black)
       drawLoopStyled(
         [
           [foamRect.minY, 0],
@@ -1447,7 +864,6 @@ export const createPdfIso = (foam, shapesArray, shapeToGeom2, opts = {}) => {
         PDF.rgb(0, 0, 0)
       );
 
-      // Pockets: black outline + depth label + dimension line
       pockets.forEach((p) => {
         const depth = p.depth || 0;
         const rect = [
@@ -1473,7 +889,6 @@ export const createPdfIso = (foam, shapesArray, shapeToGeom2, opts = {}) => {
             color: PDF.rgb(0, 0, 0),
           });
 
-          // Depth dimension line to the right of the pocket
           const dimX = rect[1][0] + 10;
           page.drawLine({
             start: { x: dimX, y: rect[0][1] },
@@ -1481,7 +896,6 @@ export const createPdfIso = (foam, shapesArray, shapeToGeom2, opts = {}) => {
             thickness: safeThickness(cfg.dimStroke),
             color: PDF.rgb(0, 0, 0),
           });
-          // ticks
           page.drawLine({
             start: { x: dimX - 4, y: rect[0][1] },
             end: { x: dimX + 4, y: rect[0][1] },
@@ -1513,8 +927,6 @@ export const createPdfIso = (foam, shapesArray, shapeToGeom2, opts = {}) => {
       });
     };
 
-
-    // 8) Isometric
     const drawIso = () => {
       const foamPrism = [
         [foamRect.minX, foamRect.minY, 0],
@@ -1573,14 +985,11 @@ export const createPdfIso = (foam, shapesArray, shapeToGeom2, opts = {}) => {
       });
     };
 
-
-    // 9) Draw all
     drawTop();
     drawIso();
     drawFront();
     drawSide();
 
-    // 10) Save
     // const bytes = await pdf.save();
     // const blob = new Blob([bytes], { type: "application/pdf" });
     // const a = document.createElement("a");
@@ -1592,7 +1001,6 @@ export const createPdfIso = (foam, shapesArray, shapeToGeom2, opts = {}) => {
     const blob = new Blob([bytes], { type: "application/pdf" });
     const url = URL.createObjectURL(blob);
 
-    // Open the PDF in a new browser tab
     window.open(url, "_blank");
   };
 };

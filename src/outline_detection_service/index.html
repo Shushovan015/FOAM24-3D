@@ -13,11 +13,10 @@
     <div id="result"></div>
 
     <script>
-      // Helper function to convert file to base64
       function getBase64(file) {
         return new Promise((resolve, reject) => {
           const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result.split(',')[1]); // Get only the base64 string
+          reader.onloadend = () => resolve(reader.result.split(',')[1]); 
           reader.onerror = error => reject(error);
           reader.readAsDataURL(file);
         });
@@ -25,7 +24,7 @@
 
       async function uploadImage() {
         const input = document.getElementById("imageInput");
-        const photoFile = input.files[0]; // Get the selected file
+        const photoFile = input.files[0]; 
 
         if (!photoFile) {
           alert("Please select an image.");
@@ -33,15 +32,13 @@
         }
 
         try {
-          // Convert the image file to base64
           const base64Image = await getBase64(photoFile);
 
-          // Send the image to Remove.bg API using fetch
           const removeBgResponse = await fetch("https://api.remove.bg/v1.0/removebg", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              "X-API-Key": "ivUjq457ecL51sn2vzD2umUw",  // Replace with your actual API key
+              "X-API-Key": "ivUjq457ecL51sn2vzD2umUw",  
             },
             body: JSON.stringify({
               image_file_b64: base64Image,
@@ -52,10 +49,8 @@
             throw new Error("Failed to remove background");
           }
 
-          // The response will be a blob (binary image data)
           const blob = await removeBgResponse.blob();
 
-          // Convert the blob back to a file and send it to the contour detection API
           const formData = new FormData();
           formData.append("image", blob, "image.png");
 

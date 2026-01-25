@@ -21,30 +21,6 @@ export const buttonClick = (
   };
 };
 
-// export const depthButtonClick = (
-//   buttonName,
-//   panelLeft,
-//   panelRight,
-//   selected,
-//   showPanelFromLeft,
-//   showPanelFromRight,
-//   additionalCallback = () => {}
-// ) => {
-//   document.querySelector(`#${buttonName}`).onclick = () => {
-//     document.querySelector("#back-button").removeAttribute("disabled");
-//     document.querySelector("#back-button").onclick = () => {
-//       document.querySelector("#back-button").onclick = () => {
-//         document.querySelector("#back-button").setAttribute("disabled", "");
-//         showPanelFromLeft(`${panelLeft}`);
-//         selected = null;
-//       };
-//       showPanelFromLeft(selected.kind + "-panel");
-//     };
-//     showPanelFromRight(`${panelRight}`);
-//     additionalCallback();
-//   };
-// };
-
 export const deleteButtonClick = (
   buttonName,
   shapesArray,
@@ -81,7 +57,6 @@ export const depthButtonClick = (
     document.querySelector("#back-button").onclick = () => {
       document.querySelector("#back-button").setAttribute("disabled", "");
       showPanelFromLeft(`${panelLeft}`);
-      // Check if selected is not null before modifying its properties
       if (selected) {
         selected.kind = null;
       }

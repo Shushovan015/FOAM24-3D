@@ -27,7 +27,6 @@ export function createImage(
       samples: 0,
     });
 
-    // 4) render scene into the RT
     renderer.setRenderTarget(rt);
     renderer.setPixelRatio(origDPR);
     renderer.setSize(width, height, false);

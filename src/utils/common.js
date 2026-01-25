@@ -4,9 +4,6 @@ export function structuredClone(val) {
 }
 
 export function pointInsidePolygon(point, vs) {
-  // ray-casting algorithm based on
-  // https://wrf.ecse.rpi.edu/Research/Short_Notes/pnpoly.html/pnpoly.html
-
   var x = point[0],
     y = point[1];
 
@@ -160,79 +157,6 @@ export function getBase64(file) {
 export function generateId() {
   return `shape-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
 }
-
-/* between 786 and 790
-function draw3dLine(p0, p1, camera) {
-    let p0_ = p0.project(camera).multiply(new THREE.Vector3(1,-1,1)).addScalar(1.0).multiplyScalar(0.5).multiply(new THREE.Vector3(ctx.canvas.width, ctx.canvas.height, 1))
-    let p1_ = p1.project(camera).multiply(new THREE.Vector3(1,-1,1)).addScalar(1.0).multiplyScalar(0.5).multiply(new THREE.Vector3(ctx.canvas.width, ctx.canvas.height, 1))
-    ctx.moveTo(p0_.x, p0_.y);
-    ctx.lineTo(p1_.x, p1_.y);
-    ctx.stroke()
-}
-*/
-
-// between 439 and 442
-// document.querySelector("#photoshape-depth-button").onclick = () => {
-//   document.querySelector("#back-button").removeAttribute("disabled");
-//   document.querySelector("#back-button").onclick = () => {
-//     document.querySelector("#back-button").onclick = () => {
-//       document.querySelector("#back-button").setAttribute("disabled", "");
-//       showPanelFromLeft("main-panel");
-//       selected = null;
-//     };
-//     showPanelFromLeft(selected.kind + "-panel");
-//   };
-//   showPanelFromRight("photoshape-depth-panel");
-//   document.querySelector("#photoshape-depth-input").value = selected.sizeZ;
-//   document.querySelector("#photoshape-depth-slider").value = selected.sizeZ;
-// };
-
-// between 277 and 279
-// document.querySelector("#radius-slider").oninput = (e) => {
-//   document.querySelector("#radius-input").value = e.target.value;
-//   selected.radius = Number(e.target.value);
-//   doCsg();
-// };
-
-// between 257 259
-// document.querySelector("#depth-button").onclick = () => {
-//   document.querySelector("#back-button").removeAttribute("disabled");
-//   document.querySelector("#back-button").onclick = () => {
-//     document.querySelector("#back-button").onclick = () => {
-//       document.querySelector("#back-button").setAttribute("disabled", "");
-//       showPanelFromLeft("main-panel");
-//       selected = null;
-//     };
-//     showPanelFromLeft(selected.kind + "-panel");
-//   };
-//   showPanelFromRight("depth-panel");
-//   document.querySelector("#depth-input").value = selected.sizeZ;
-//   document.querySelector("#depth-slider").value = selected.sizeZ;
-// };
-
-/* between 140 and 142
-    ["#create-rectangle", "#create-polygon", "#create-circle"].forEach((id) => {
-          document.querySelector(id).onclick = () => {
-             document.querySelector("#back-button").removeAttribute("disabled");
-             showPanelFromRight("shape-panel")
-          }
-       })
-    */
-
-/* between 832 and 833
-    let p0 = project(new THREE.Vector3(shape.x, shape.y, 37*centimeters), camera)
-    
-    ctx.font = "bold " + (20 * window.devicePixelRatio) + "px sans-serif";
-    ctx.textAlign = "left";
-    ctx.fillText(shapesArray.indexOf(shape), p0.x, p0.y)
-    ctx.strokeStyle = "black";
-    ctx.strokeText(shapesArray.indexOf(shape), p0.x, p0.y)        
-    ctx.strokeStyle = "orange";
-        
-    ctx.beginPath();
-    ctx.arc(p0.x, p0.y, 4, 0, 2*Math.PI);
-    ctx.fill();      
-    */
 
 export function drawResponsiveText(
   page,

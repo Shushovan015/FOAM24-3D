@@ -8,12 +8,10 @@ export function displayLineXY() {
     const mouseX = event.clientX;
     const mouseY = event.clientY;
 
-    // Update X line position and X coordinates text
     xLine.style.top = `${mouseY}px`;
     xCoordinates.textContent = `X: ${mouseX}px`;
     xCoordinates.style.top = `${mouseY}px`;
 
-    // Update Y line position and Y coordinates text
     yLine.style.left = `${mouseX}px`;
     yCoordinates.textContent = `Y: ${mouseY}px`;
     yCoordinates.style.left = `${mouseX}px`;
