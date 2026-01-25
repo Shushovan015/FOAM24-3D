@@ -5,7 +5,7 @@ export const buttonClick = (
   selected,
   showPanelFromLeft,
   showPanelFromRight,
-  additionalCallback = () => {}
+  additionalCallback = () => { }
 ) => {
   const btn = document.querySelector(`#${buttonName}`);
   if (!btn) return; // element may not exist in current UI
@@ -26,20 +26,26 @@ export const deleteButtonClick = (
   shapesArray,
   commit,
   doCsg,
-  selected,
+  getSelected,
   showPanelFromLeft
 ) => {
   const btn = document.querySelector(`#${buttonName}`);
   if (!btn) return;
   btn.onclick = () => {
-    shapesArray.splice(shapesArray.indexOf(selected), 1);
+    const selected = typeof getSelected === "function" ? getSelected() : null;
+    if (!selected) return;
+
+    const idx = shapesArray.indexOf(selected);
+    if (idx === -1) return;
+
+    shapesArray.splice(idx, 1);
     commit();
     doCsg();
     document.querySelector("#back-button").setAttribute("disabled", "");
     showPanelFromLeft("main-panel");
-    selected = null;
   };
 };
+
 
 export const depthButtonClick = (
   buttonName,
@@ -48,7 +54,7 @@ export const depthButtonClick = (
   selected,
   showPanelFromLeft,
   showPanelFromRight,
-  additionalCallback = () => {}
+  additionalCallback = () => { }
 ) => {
   const btn = document.querySelector(`#${buttonName}`);
   if (!btn) return;

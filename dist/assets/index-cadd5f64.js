@@ -34278,6 +34278,25 @@ function shapeUnderMouse() {
   }
   return null;
 }
+const deleteButtonsByKind = {
+  circle: "delete-button",
+  rectangle: "rectangle-delete-button",
+  polygon: "polygon-delete-button",
+  photoshape: "photoshape-delete-button"
+};
+const updateDeleteButtons = (selected) => {
+  Object.values(deleteButtonsByKind).forEach((id2) => {
+    const btn2 = document.querySelector(`#${id2}`);
+    if (btn2)
+      btn2.setAttribute("disabled", "");
+  });
+  if (!selected)
+    return;
+  const id = deleteButtonsByKind[selected.kind];
+  const btn = id ? document.querySelector(`#${id}`) : null;
+  if (btn)
+    btn.removeAttribute("disabled");
+};
 function init3D() {
   state.renderer = new WebGL1Renderer({
     antialias: true,
@@ -34397,10 +34416,14 @@ function init3D() {
     }
     state.selected = shapeUnderMouse();
     if (state.selected) {
+      showPanelFromRight(state.selected.kind + "-panel");
+      updateDeleteButtons(state.selected);
       document.querySelector("#back-button").removeAttribute("disabled");
       document.querySelector("#back-button").onclick = () => {
         document.querySelector("#back-button").setAttribute("disabled", "");
         state.selected = null;
+        updateDeleteButtons(null);
+        showPanelFromLeft("main-panel");
       };
       state.dragging = true;
       state.dragged = false;
@@ -34522,6 +34545,7 @@ function onFrame() {
   state.ctx.canvas.width = state.ctx.canvas.width;
   state.ctx.canvas.height = state.ctx.canvas.height;
   state.ctx.strokeStyle = "orange";
+  state.currPanel = getCurrentPanel();
   state.renderer.clear(true);
   state.display2D ? state.renderer.render(state.scene, state.camera1) : state.renderer.render(state.scene, state.camera);
   state.renderer.clearDepth();
@@ -34621,6 +34645,7 @@ function onFrame() {
 function updateSelectedShape(index) {
   state.selected = state.shapesArray[index];
   state.currentIndex = index;
+  updateDeleteButtons(state.selected);
 }
 /*! *****************************************************************************
 Copyright (c) Microsoft Corporation.
@@ -54916,17 +54941,22 @@ const buttonClick = (buttonName, panelLeft, panelRight, selected, showPanelFromL
     additionalCallback();
   };
 };
-const deleteButtonClick = (buttonName, shapesArray, commit2, doCsg2, selected, showPanelFromLeft2) => {
+const deleteButtonClick = (buttonName, shapesArray, commit2, doCsg2, getSelected, showPanelFromLeft2) => {
   const btn = document.querySelector(`#${buttonName}`);
   if (!btn)
     return;
   btn.onclick = () => {
-    shapesArray.splice(shapesArray.indexOf(selected), 1);
+    const selected = typeof getSelected === "function" ? getSelected() : null;
+    if (!selected)
+      return;
+    const idx = shapesArray.indexOf(selected);
+    if (idx === -1)
+      return;
+    shapesArray.splice(idx, 1);
     commit2();
     doCsg2();
     document.querySelector("#back-button").setAttribute("disabled", "");
     showPanelFromLeft2("main-panel");
-    selected = null;
   };
 };
 const depthButtonClick = (buttonName, panelLeft, panelRight, selected, showPanelFromLeft2, showPanelFromRight2, additionalCallback = () => {
@@ -55255,7 +55285,6 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
     next: document.querySelector("#photoshape-step-next")
   };
   let photoshapeFlowActive = false;
-  let photoshapeFlowReady = false;
   let photoshapeStep = 1;
   const setPhotoshapeFlowActive = (active) => {
     photoshapeFlowActive = active;
@@ -55294,69 +55323,80 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
     window.__editingPoints = on;
     callback1(on);
   };
+  const syncDepthInputs = () => {
+    if (!selected)
+      return;
+    const depthInput = document.querySelector("#polygon-depth-input") || document.querySelector("#photoshape-depth-input");
+    const depthSlider = document.querySelector("#polygon-depth-slider") || document.querySelector("#photoshape-depth-slider");
+    if (depthInput)
+      depthInput.value = selected.sizeZ;
+    if (depthSlider)
+      depthSlider.value = selected.sizeZ;
+  };
+  const getDepthPanelId = () => {
+    if (!selected)
+      return "polygon-depth-panel";
+    return selected.kind === "photoshape" ? "photoshape-depth-panel" : "polygon-depth-panel";
+  };
   const photoshapeSession = {
     ids: [],
+    order: [],
     index: 0
   };
   const selectPhotoshapeByIndex = (idx) => {
-    if (!photoshapeSession.ids.length)
-      return;
-    const id = photoshapeSession.ids[idx];
+    if (!photoshapeSession.order.length)
+      return false;
+    if (idx < 0 || idx >= photoshapeSession.order.length)
+      return false;
+    const id = photoshapeSession.order[idx];
     const nextShape = shapesArray.find((s) => s.id === id);
     if (!nextShape)
-      return;
+      return false;
     selected = nextShape;
+    photoshapeSession.index = idx;
     callback(selected);
     showPanelFromRight2(selected.kind + "-panel");
-  };
-  const getPhotoshapeNextLabel = () => {
-    if (!photoshapeSession.ids.length)
-      return "Finish";
-    return photoshapeSession.index < photoshapeSession.ids.length - 1 ? "Next" : "Finish";
+    return true;
   };
   photoshapeSession.visited = /* @__PURE__ */ new Set();
   photoshapeSession.remaining = 0;
   const beginPhotoshapeEditSession = () => {
-    photoshapeSession.visited.clear();
-    photoshapeSession.remaining = photoshapeSession.ids.length;
-    let startIdx = 0;
+    rebuildOrderAndIndex();
+  };
+  const startPhotoshapeEditFlow = () => {
+    if (!photoshapeSession.ids.length)
+      return;
+    document.getElementById("photoshape-step-note").style.display = "flex";
+    document.getElementById("photoshape-button").style.display = "flex";
+    setPhotoshapeFlowActive(true);
+    beginPhotoshapeEditSession();
+    setEditing(true);
+    setPhotoshapeStep(3, {
+      note: `Edit outline: shape ${photoshapeSession.index + 1} of ${photoshapeSession.order.length || photoshapeSession.ids.length}`,
+      canBack: true,
+      canNext: true,
+      nextLabel: "Depth"
+    });
+    showPanelFromLeft2("upload-photo-panel");
+  };
+  const rebuildOrderAndIndex = () => {
+    photoshapeSession.order = photoshapeSession.ids.map((id) => shapesArray.find((s) => s.id === id)).filter(Boolean).sort((a, b) => getBoundingBox(a).minX - getBoundingBox(b).minX).map((s) => s.id);
     if (selected && selected.id) {
-      const idx = photoshapeSession.ids.indexOf(selected.id);
-      if (idx !== -1)
-        startIdx = idx;
+      const idx = photoshapeSession.order.indexOf(selected.id);
+      photoshapeSession.index = idx !== -1 ? idx : 0;
+    } else {
+      photoshapeSession.index = 0;
     }
-    photoshapeSession.index = startIdx;
-  };
-  const markCurrentAsVisited = () => {
-    const id = photoshapeSession.ids[photoshapeSession.index];
-    if (id && !photoshapeSession.visited.has(id)) {
-      photoshapeSession.visited.add(id);
-      photoshapeSession.remaining = Math.max(0, photoshapeSession.remaining - 1);
-    }
-  };
-  const findNextUnvisitedIndex = () => {
-    const total = photoshapeSession.ids.length;
-    for (let step = 1; step <= total; step++) {
-      const idx = (photoshapeSession.index + step) % total;
-      const id = photoshapeSession.ids[idx];
-      if (!photoshapeSession.visited.has(id))
-        return idx;
-    }
-    return -1;
   };
   const advanceToNextUnvisited = () => {
-    markCurrentAsVisited();
-    if (photoshapeSession.remaining <= 0)
+    rebuildOrderAndIndex();
+    const nextIdx = photoshapeSession.index + 1;
+    if (nextIdx >= photoshapeSession.order.length)
       return false;
-    const nextIdx = findNextUnvisitedIndex();
-    if (nextIdx === -1)
-      return false;
-    photoshapeSession.index = nextIdx;
-    selectPhotoshapeByIndex(nextIdx);
-    return true;
+    return selectPhotoshapeByIndex(nextIdx);
   };
-  const getPhotoshapeNextLabelCycle = () => {
-    return photoshapeSession.remaining > 1 ? "Next" : "Finish";
+  const getPhotoshapeDepthLabel = () => {
+    return photoshapeSession.index < photoshapeSession.order.length - 1 ? "Next Shape" : "Finish";
   };
   setPhotoshapeFlowActive(false);
   setPhotoshapeStep(1, {
@@ -55369,7 +55409,16 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
     stepUI.back.addEventListener("click", () => {
       if (!photoshapeFlowActive)
         return;
-      if (photoshapeStep === 3) {
+      if (photoshapeStep === 4) {
+        setEditing(true);
+        setPhotoshapeStep(3, {
+          note: `Edit outline: shape ${photoshapeSession.index + 1} of ${photoshapeSession.order.length || photoshapeSession.ids.length}`,
+          canBack: true,
+          canNext: true,
+          nextLabel: "Depth"
+        });
+        showPanelFromLeft2("upload-photo-panel");
+      } else if (photoshapeStep === 3) {
         setEditing(false);
         setPhotoshapeStep(2, {
           note: "Outline ready. Click Edit to adjust points.",
@@ -55391,50 +55440,43 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
     stepUI.next.addEventListener("click", () => {
       if (!photoshapeFlowActive)
         return;
-      if (photoshapeStep === 3 && photoshapeSession.ids.length) {
-        const moved = advanceToNextUnvisited();
-        if (moved) {
-          setEditing(true);
-          setPhotoshapeStep(3, {
-            note: `Edit outline: shape ${photoshapeSession.index + 1} of ${photoshapeSession.ids.length}`,
-            canBack: true,
-            canNext: true,
-            nextLabel: getPhotoshapeNextLabelCycle()
-          });
-          showPanelFromLeft2("upload-photo-panel");
-          return;
-        }
-      }
-      if (photoshapeStep === 3 && photoshapeSession.ids.length > 0 && photoshapeSession.index < photoshapeSession.ids.length - 1) {
-        photoshapeSession.index += 1;
-        selectPhotoshapeByIndex(photoshapeSession.index);
+      if (photoshapeStep === 2) {
+        beginPhotoshapeEditSession();
         setEditing(true);
         setPhotoshapeStep(3, {
-          note: `Edit outline: shape ${photoshapeSession.index + 1} of ${photoshapeSession.ids.length}`,
+          note: `Edit outline: shape ${photoshapeSession.index + 1} of ${photoshapeSession.order.length || photoshapeSession.ids.length}`,
           canBack: true,
           canNext: true,
-          nextLabel: getPhotoshapeNextLabel()
+          nextLabel: "Depth"
         });
         showPanelFromLeft2("upload-photo-panel");
         return;
       }
-      if (photoshapeStep === 2) {
-        setEditing(true);
-        setPhotoshapeStep(3, {
-          note: `Edit outline: shape ${photoshapeSession.index + 1} of ${photoshapeSession.ids.length}`,
+      if (photoshapeStep === 3) {
+        setEditing(false);
+        syncDepthInputs();
+        setPhotoshapeStep(4, {
+          note: `Adjust depth: shape ${photoshapeSession.index + 1} of ${photoshapeSession.order.length || photoshapeSession.ids.length}`,
           canBack: true,
           canNext: true,
-          nextLabel: getPhotoshapeNextLabel()
+          nextLabel: getPhotoshapeDepthLabel()
         });
-        beginPhotoshapeEditSession();
-        setPhotoshapeStep(3, {
-          note: `Edit outline: shape ${photoshapeSession.index + 1} of ${photoshapeSession.ids.length}`,
-          canBack: true,
-          canNext: true,
-          nextLabel: getPhotoshapeNextLabelCycle()
-        });
-        showPanelFromLeft2("upload-photo-panel");
-      } else if (photoshapeStep === 3) {
+        showPanelFromRight2(getDepthPanelId());
+        return;
+      }
+      if (photoshapeStep === 4) {
+        const moved = advanceToNextUnvisited();
+        if (moved) {
+          setEditing(true);
+          setPhotoshapeStep(3, {
+            note: `Edit outline: shape ${photoshapeSession.index + 1} of ${photoshapeSession.order.length || photoshapeSession.ids.length}`,
+            canBack: true,
+            canNext: true,
+            nextLabel: "Depth"
+          });
+          showPanelFromLeft2("upload-photo-panel");
+          return;
+        }
         setEditing(false);
         setPhotoshapeStep(2, {
           note: "Outline ready. Click Edit to adjust again.",
@@ -55454,29 +55496,7 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
   const editShapeButton = document.querySelector("#edit-shape");
   if (editShapeButton) {
     editShapeButton.addEventListener("click", () => {
-      if (!photoshapeFlowReady)
-        return;
-      setPhotoshapeFlowActive(true);
-      setPhotoshapeStep(3, {
-        note: "Edit outline: drag the red points.",
-        canBack: true,
-        canNext: true,
-        nextLabel: "Finish"
-      });
-      setPhotoshapeStep(3, {
-        note: `Edit outline: shape ${photoshapeSession.index + 1} of ${photoshapeSession.ids.length}`,
-        canBack: true,
-        canNext: true,
-        nextLabel: getPhotoshapeNextLabel()
-      });
-      beginPhotoshapeEditSession();
-      setPhotoshapeStep(3, {
-        note: `Edit outline: shape ${photoshapeSession.index + 1} of ${photoshapeSession.ids.length}`,
-        canBack: true,
-        canNext: true,
-        nextLabel: getPhotoshapeNextLabelCycle()
-      });
-      showPanelFromLeft2("upload-photo-panel");
+      startPhotoshapeEditFlow();
     });
   }
   document.querySelector("#upload-photo-input").onchange = (e) => {
@@ -55489,7 +55509,6 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
       canNext: false,
       nextLabel: "Edit"
     });
-    photoshapeFlowReady = false;
     document.getElementById("photoshape-step-note").style.display = `flex`;
     document.getElementById("photoshape-button").style.display = `flex`;
     setEditing(false);
@@ -55502,7 +55521,6 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
       setEditing(false);
       selected = null;
       setPhotoshapeFlowActive(false);
-      photoshapeFlowReady = false;
       setPhotoshapeStep(1, {
         note: "Upload an image to start.",
         canBack: false,
@@ -55511,7 +55529,7 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
       });
     };
     document.querySelector("#edit-shape").onclick = () => {
-      setEditing(true);
+      startPhotoshapeEditFlow();
     };
     const file = e.target.files[0];
     if (file) {
@@ -55600,7 +55618,6 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
         commit2();
         photoshapeSession.index = 0;
         beginPhotoshapeEditSession();
-        photoshapeFlowReady = true;
         setPhotoshapeFlowActive(true);
         setPhotoshapeStep(2, {
           note: "Outline ready. Click Edit to adjust points.",
@@ -55930,7 +55947,7 @@ function initUI() {
     state.shapesArray,
     commit,
     doCsg,
-    state.selected,
+    () => state.selected,
     showPanelFromLeft
   );
   createShapeCircle(
@@ -56059,7 +56076,7 @@ function initUI() {
     state.shapesArray,
     commit,
     doCsg,
-    state.selected,
+    () => state.selected,
     showPanelFromLeft
   );
   deleteButtonClick(
@@ -56067,7 +56084,7 @@ function initUI() {
     state.shapesArray,
     commit,
     doCsg,
-    state.selected,
+    () => state.selected,
     showPanelFromLeft
   );
   depthButtonClick(
@@ -56117,7 +56134,7 @@ function initUI() {
     state.shapesArray,
     commit,
     doCsg,
-    state.selected,
+    () => state.selected,
     showPanelFromLeft
   );
   document.querySelector("#undo-button").onclick = undo;
@@ -56196,4 +56213,4 @@ if (typeof window === "object") {
   initUI();
   commit();
 }
-//# sourceMappingURL=index-e097006e.js.map
+//# sourceMappingURL=index-cadd5f64.js.map

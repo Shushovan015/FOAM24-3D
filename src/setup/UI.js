@@ -204,7 +204,7 @@ export function initUI() {
     state.shapesArray,
     commit,
     doCsg,
-    state.selected,
+    () => state.selected,
     showPanelFromLeft
   );
 
@@ -343,7 +343,7 @@ export function initUI() {
     state.shapesArray,
     commit,
     doCsg,
-    state.selected,
+    () => state.selected,
     showPanelFromLeft
   );
 
@@ -352,7 +352,7 @@ export function initUI() {
     state.shapesArray,
     commit,
     doCsg,
-    state.selected,
+    () => state.selected,
     showPanelFromLeft
   );
 
@@ -406,7 +406,7 @@ export function initUI() {
     state.shapesArray,
     commit,
     doCsg,
-    state.selected,
+    () => state.selected,
     showPanelFromLeft
   );
 

@@ -22,6 +22,8 @@ import {
 import { pointInsidePolygon, confirmMerge, getValues, getCameraValue } from "../utils/common";
 import { LambertMaterial } from "../components/Material";
 import { createImage } from "../components/createImage";
+import { getCurrentPanel, showPanelFromRight, showPanelFromLeft } from "./panels";
+
 
 const case1Url = "./models/case1.obj";
 
@@ -35,6 +37,25 @@ function shapeUnderMouse() {
   }
   return null;
 }
+
+const deleteButtonsByKind = {
+  circle: "delete-button",
+  rectangle: "rectangle-delete-button",
+  polygon: "polygon-delete-button",
+  photoshape: "photoshape-delete-button",
+};
+
+const updateDeleteButtons = (selected) => {
+  Object.values(deleteButtonsByKind).forEach((id) => {
+    const btn = document.querySelector(`#${id}`);
+    if (btn) btn.setAttribute("disabled", "");
+  });
+  if (!selected) return;
+  const id = deleteButtonsByKind[selected.kind];
+  const btn = id ? document.querySelector(`#${id}`) : null;
+  if (btn) btn.removeAttribute("disabled");
+};
+
 
 export function init3D() {
   state.renderer = new THREE.WebGL1Renderer({
@@ -177,11 +198,16 @@ export function init3D() {
     }
     state.selected = shapeUnderMouse();
     if (state.selected) {
+      showPanelFromRight(state.selected.kind + "-panel");
+      updateDeleteButtons(state.selected);
       document.querySelector("#back-button").removeAttribute("disabled");
       document.querySelector("#back-button").onclick = () => {
         document.querySelector("#back-button").setAttribute("disabled", "");
         state.selected = null;
+        updateDeleteButtons(null);
+        showPanelFromLeft("main-panel");
       };
+
       state.dragging = true;
       state.dragged = false;
       state.dragOffset = new THREE.Vector2().subVectors(
@@ -309,6 +335,8 @@ export function onFrame() {
   state.ctx.canvas.width = state.ctx.canvas.width;
   state.ctx.canvas.height = state.ctx.canvas.height;
   state.ctx.strokeStyle = "orange";
+  state.currPanel = getCurrentPanel();
+
 
   state.renderer.clear(true);
   state.display2D
@@ -424,4 +452,6 @@ export function onFrame() {
 export function updateSelectedShape(index) {
   state.selected = state.shapesArray[index];
   state.currentIndex = index;
+  updateDeleteButtons(state.selected);
 }
+
