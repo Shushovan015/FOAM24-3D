@@ -126,7 +126,7 @@ export function initUI() {
 
   depthButtonClick(
     "rectangle-resize-button",
-    "main-panel",
+    "rectangle-panel",
     "rectangle-resize-panel",
     state.selected,
     showPanelFromLeft,
@@ -140,7 +140,7 @@ export function initUI() {
   );
   depthButtonClick(
     "rectangle-depth-button",
-    "main-panel",
+    "rectangle-panel",
     "rectangle-depth-panel",
     state.selected,
     showPanelFromLeft,
@@ -152,7 +152,7 @@ export function initUI() {
   );
   depthButtonClick(
     "rectangle-rotate-button",
-    "main-panel",
+    "rectangle-panel",
     "rectangle-rotate-panel",
     state.selected,
     showPanelFromLeft,
@@ -216,7 +216,7 @@ export function initUI() {
 
   depthButtonClick(
     "radius-button",
-    "main-panel",
+    "circle-panel",
     "radius-panel",
     state.selected,
     showPanelFromLeft,
@@ -229,7 +229,7 @@ export function initUI() {
 
   depthButtonClick(
     "depth-button",
-    "main-panel",
+    "circle-panel",
     "depth-panel",
     state.selected,
     showPanelFromLeft,
@@ -290,7 +290,7 @@ export function initUI() {
 
   depthButtonClick(
     "polygon-depth-button",
-    "main-panel",
+    "polygon-panel",
     "polygon-depth-panel",
     state.selected,
     showPanelFromLeft,
@@ -302,7 +302,7 @@ export function initUI() {
   );
   depthButtonClick(
     "polygon-rotate-button",
-    "main-panel",
+    "polygon-panel",
     "polygon-rotate-panel",
     state.selected,
     showPanelFromLeft,
@@ -336,7 +336,7 @@ export function initUI() {
 
   depthButtonClick(
     "photoshape-depth-button",
-    "main-panel",
+    "photoshape-panel",
     "photoshape-depth-panel",
     state.selected,
     showPanelFromLeft,
