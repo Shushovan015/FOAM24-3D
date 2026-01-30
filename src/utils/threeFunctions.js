@@ -1138,6 +1138,59 @@ export function drawMeasurementsLine(shape, ctx, camera, centimeters) {
   ctx.stroke();
 }
 
+export function drawEdgeToFoamMeasurements(shape, foam, ctx, camera) {
+  if (!shape || !foam) return;
+
+  const { minX, maxY } = getBoundingBox(shape);
+
+  const foamLeft = foam.x - foam.sizeX / 2;
+  const foamTop = foam.y + foam.sizeY / 2;
+  const baseZ = foam.sizeZ;
+
+  const leftDist = minX - foamLeft;
+  const topDist = foamTop - maxY;
+
+  if (leftDist < 0 || topDist < 0) return;
+
+  const pLeftEdge = project(new THREE.Vector3(foamLeft, maxY, baseZ), camera, ctx);
+  const pLeftVertex = project(new THREE.Vector3(minX, maxY, baseZ), camera, ctx);
+
+  const pTopEdge = project(new THREE.Vector3(minX, foamTop, baseZ), camera, ctx);
+  const pTopVertex = project(new THREE.Vector3(minX, maxY, baseZ), camera, ctx);
+
+  ctx.save();
+  ctx.strokeStyle = "orange";
+  ctx.fillStyle = "orange";
+  ctx.lineWidth = 1;
+
+  // left measurement line
+  ctx.beginPath();
+  ctx.moveTo(pLeftEdge.x, pLeftEdge.y);
+  ctx.lineTo(pLeftVertex.x, pLeftVertex.y);
+  ctx.stroke();
+
+  // top measurement line
+  ctx.beginPath();
+  ctx.moveTo(pTopEdge.x, pTopEdge.y);
+  ctx.lineTo(pTopVertex.x, pTopVertex.y);
+  ctx.stroke();
+
+  // labels
+  ctx.font = "bold " + 16 * window.devicePixelRatio + "px sans-serif";
+  ctx.textAlign = "center";
+
+  const leftMidX = (pLeftEdge.x + pLeftVertex.x) / 2;
+  const leftMidY = (pLeftEdge.y + pLeftVertex.y) / 2;
+  ctx.fillText(leftDist.toFixed(0) + "mm", leftMidX, leftMidY - 6);
+
+  const topMidX = (pTopEdge.x + pTopVertex.x) / 2;
+  const topMidY = (pTopEdge.y + pTopVertex.y) / 2;
+  ctx.fillText(topDist.toFixed(0) + "mm", topMidX + 6, topMidY);
+
+  ctx.restore();
+}
+
+
 export function drawCircle(shape, ctx, camera, centimeters) {
   ctx.fillStyle = "red";
 
@@ -1345,7 +1398,7 @@ export function createEditor(shape, camera, renderer, onUpdate) {
     selectedPoint = controlPoints.find((point) => {
       const dx = point.screenPos.x - mousePos.x;
       const dy = point.screenPos.y - mousePos.y;
-      return Math.sqrt(dx * dx + dy * dy) < 10; 
+      return Math.sqrt(dx * dx + dy * dy) < 10;
     });
 
     if (selectedPoint) {

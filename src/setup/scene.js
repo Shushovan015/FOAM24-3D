@@ -18,6 +18,7 @@ import {
   mergeIntoPolygon,
   shapesIntersectGeneric,
   isNearGeneric,
+  drawEdgeToFoamMeasurements
 } from "../utils/threeFunctions";
 import { pointInsidePolygon, confirmMerge, getValues, getCameraValue } from "../utils/common";
 import { LambertMaterial } from "../components/Material";
@@ -429,6 +430,7 @@ export function onFrame() {
         state.ctx.setLineDash([]);
       }
       drawMeasurements(shape);
+      drawEdgeToFoamMeasurements(shape, state.foam, state.ctx, currentCamera);
     } else {
       state.ctx.setLineDash([5, 5]);
       drawOutline(
