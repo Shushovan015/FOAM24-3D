@@ -11057,14 +11057,15 @@ ${nonManifold.join("\n")}`);
     );
   }
   onmessage = (e) => {
-    let { foam, shapesArray } = e.data;
+    let { id, foam, shapesArray } = e.data;
     let geom3s = [shapeToGeom3(foam)];
     for (let shape of shapesArray) {
       let geom32 = shapeToGeom3(shape);
       geom32 = src.transforms.translateZ(foam.sizeZ - shape.sizeZ, geom32);
       geom3s.push(geom32);
     }
-    postMessage(src.booleans.subtract(geom3s));
+    const result = src.booleans.subtract(geom3s);
+    postMessage({ id, geom: result });
   };
 })();
-//# sourceMappingURL=csg-0bd089ce.js.map
+//# sourceMappingURL=csg-0387ebd0.js.map

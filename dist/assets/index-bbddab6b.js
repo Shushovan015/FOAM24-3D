@@ -7608,10 +7608,10 @@ function WebGLAnimation() {
   let context = null;
   let isAnimating = false;
   let animationLoop = null;
-  let requestId = null;
+  let requestId2 = null;
   function onAnimationFrame(time, frame) {
     animationLoop(time, frame);
-    requestId = context.requestAnimationFrame(onAnimationFrame);
+    requestId2 = context.requestAnimationFrame(onAnimationFrame);
   }
   return {
     start: function() {
@@ -7619,11 +7619,11 @@ function WebGLAnimation() {
         return;
       if (animationLoop === null)
         return;
-      requestId = context.requestAnimationFrame(onAnimationFrame);
+      requestId2 = context.requestAnimationFrame(onAnimationFrame);
       isAnimating = true;
     },
     stop: function() {
-      context.cancelAnimationFrame(requestId);
+      context.cancelAnimationFrame(requestId2);
       isAnimating = false;
     },
     setAnimationLoop: function(callback) {
@@ -33814,6 +33814,43 @@ function drawMeasurementsLine(shape, ctx, camera, centimeters) {
   ctx.lineTo(p1.x, p1.y);
   ctx.stroke();
 }
+function drawEdgeToFoamMeasurements(shape, foam, ctx, camera) {
+  if (!shape || !foam)
+    return;
+  const { minX, maxY } = getBoundingBox(shape);
+  const foamLeft = foam.x - foam.sizeX / 2;
+  const foamTop = foam.y + foam.sizeY / 2;
+  const baseZ = foam.sizeZ;
+  const leftDist = minX - foamLeft;
+  const topDist = foamTop - maxY;
+  if (leftDist < 0 || topDist < 0)
+    return;
+  const pLeftEdge = project(new Vector3(foamLeft, maxY, baseZ), camera, ctx);
+  const pLeftVertex = project(new Vector3(minX, maxY, baseZ), camera, ctx);
+  const pTopEdge = project(new Vector3(minX, foamTop, baseZ), camera, ctx);
+  const pTopVertex = project(new Vector3(minX, maxY, baseZ), camera, ctx);
+  ctx.save();
+  ctx.strokeStyle = "orange";
+  ctx.fillStyle = "orange";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(pLeftEdge.x, pLeftEdge.y);
+  ctx.lineTo(pLeftVertex.x, pLeftVertex.y);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(pTopEdge.x, pTopEdge.y);
+  ctx.lineTo(pTopVertex.x, pTopVertex.y);
+  ctx.stroke();
+  ctx.font = "bold " + 16 * window.devicePixelRatio + "px sans-serif";
+  ctx.textAlign = "center";
+  const leftMidX = (pLeftEdge.x + pLeftVertex.x) / 2;
+  const leftMidY = (pLeftEdge.y + pLeftVertex.y) / 2;
+  ctx.fillText(leftDist.toFixed(0) + "mm", leftMidX, leftMidY - 6);
+  const topMidX = (pTopEdge.x + pTopVertex.x) / 2;
+  const topMidY = (pTopEdge.y + pTopVertex.y) / 2;
+  ctx.fillText(topDist.toFixed(0) + "mm", topMidX + 6, topMidY);
+  ctx.restore();
+}
 function drawCircle(shape, ctx, camera, centimeters) {
   ctx.fillStyle = "red";
   ctx.beginPath();
@@ -34089,37 +34126,63 @@ function confirmMerge(shapeA, shapeB, callback) {
     callback(false);
   };
 }
-function doCsg() {
-  if (state.worker) {
-    state.worker.terminate();
-  }
-  state.worker = new Worker(new URL("/assets/csg-0bd089ce.js", self.location), {
+let worker = null;
+let inFlight = false;
+let pending = null;
+let requestId = 0;
+let latestId = 0;
+function ensureWorker() {
+  if (worker)
+    return;
+  worker = new Worker(new URL("/assets/csg-0387ebd0.js", self.location), {
     type: "module"
   });
-  state.worker.onmessage = (e) => {
-    const csgModel = state.scene.getObjectByName("csgModel");
-    if (csgModel) {
-      if (csgModel.material) {
-        csgModel.material.dispose();
+  worker.onmessage = (e) => {
+    const { id, geom } = e.data || {};
+    if (typeof id === "number" && id < latestId)
+      ;
+    else {
+      const csgModel = state.scene.getObjectByName("csgModel");
+      if (csgModel) {
+        if (csgModel.material)
+          csgModel.material.dispose();
+        if (csgModel instanceof Mesh)
+          csgModel.geometry.dispose();
+        state.scene.remove(csgModel);
       }
-      if (csgModel instanceof Mesh) {
-        csgModel.geometry.dispose();
-      }
-      state.scene.remove(csgModel);
+      const mesh = geom3ToMesh(geom);
+      mesh.material = new FoamMaterial(
+        "red",
+        "#333",
+        2 * units.centimeters,
+        37 * units.centimeters
+      );
+      mesh.name = "csgModel";
+      state.scene.add(mesh);
     }
-    const mesh = geom3ToMesh(e.data);
-    mesh.material = new FoamMaterial(
-      "red",
-      "#333",
-      2 * units.centimeters,
-      37 * units.centimeters
-    );
-    mesh.name = "csgModel";
-    state.scene.add(mesh);
+    inFlight = false;
+    if (pending) {
+      const next = pending;
+      pending = null;
+      sendToWorker(next);
+    }
   };
+}
+function sendToWorker(payload) {
+  inFlight = true;
+  latestId = payload.id;
+  worker.postMessage(payload);
+}
+function doCsg() {
+  ensureWorker();
   const foamForWorker = structuredClone(state.foam);
   const shapesForWorker = structuredClone(state.shapesArray);
-  state.worker.postMessage({ foam: foamForWorker, shapesArray: shapesForWorker });
+  const payload = { id: ++requestId, foam: foamForWorker, shapesArray: shapesForWorker };
+  if (inFlight) {
+    pending = payload;
+    return;
+  }
+  sendToWorker(payload);
 }
 let panels = null;
 let currPanel = null;
@@ -34172,12 +34235,14 @@ function commit() {
   state.undoRedoPosition = state.undoRedoHistory.length - 1;
   updateUndoRedoButtons(state.undoRedoPosition, state.undoRedoHistory);
 }
+function replaceShapesArray(nextShapes) {
+  state.shapesArray.length = 0;
+  state.shapesArray.push(...nextShapes);
+}
 function undo() {
   if (state.undoRedoPosition > 0) {
     state.undoRedoPosition -= 1;
-    state.shapesArray = structuredClone(
-      state.undoRedoHistory[state.undoRedoPosition]
-    );
+    replaceShapesArray(structuredClone(state.undoRedoHistory[state.undoRedoPosition]));
     doCsg();
   }
   updateUndoRedoButtons(state.undoRedoPosition, state.undoRedoHistory);
@@ -34188,9 +34253,7 @@ function undo() {
 function redo() {
   if (state.undoRedoPosition < state.undoRedoHistory.length - 1) {
     state.undoRedoPosition += 1;
-    state.shapesArray = structuredClone(
-      state.undoRedoHistory[state.undoRedoPosition]
-    );
+    replaceShapesArray(structuredClone(state.undoRedoHistory[state.undoRedoPosition]));
     doCsg();
   }
   updateUndoRedoButtons(state.undoRedoPosition, state.undoRedoHistory);
@@ -34398,6 +34461,19 @@ function init3D() {
       return;
     recalculateMouse(e);
   });
+  const openSelectedPanel = () => {
+    if (!state.selected)
+      return;
+    showPanelFromRight(state.selected.kind + "-panel");
+    updateDeleteButtons(state.selected);
+    document.querySelector("#back-button").removeAttribute("disabled");
+    document.querySelector("#back-button").onclick = () => {
+      document.querySelector("#back-button").setAttribute("disabled", "");
+      state.selected = null;
+      updateDeleteButtons(null);
+      showPanelFromLeft("main-panel");
+    };
+  };
   state.renderer.domElement.addEventListener("pointerdown", (e) => {
     if (window.__editingPoints)
       return;
@@ -34405,6 +34481,7 @@ function init3D() {
     e.preventDefault();
     state.oldSelected = state.selected;
     if (state.selected && mouseOverShape(state.selected, state.mouseRayPlaneIntersection, pointInsidePolygon)) {
+      openSelectedPanel();
       state.dragging = true;
       state.dragged = false;
       state.dragOffset = new Vector2().subVectors(
@@ -34416,15 +34493,7 @@ function init3D() {
     }
     state.selected = shapeUnderMouse();
     if (state.selected) {
-      showPanelFromRight(state.selected.kind + "-panel");
-      updateDeleteButtons(state.selected);
-      document.querySelector("#back-button").removeAttribute("disabled");
-      document.querySelector("#back-button").onclick = () => {
-        document.querySelector("#back-button").setAttribute("disabled", "");
-        state.selected = null;
-        updateDeleteButtons(null);
-        showPanelFromLeft("main-panel");
-      };
+      openSelectedPanel();
       state.dragging = true;
       state.dragged = false;
       state.dragOffset = new Vector2().subVectors(
@@ -34619,6 +34688,7 @@ function onFrame() {
         state.ctx.setLineDash([]);
       }
       drawMeasurements(shape);
+      drawEdgeToFoamMeasurements(shape, state.foam, state.ctx, currentCamera);
     } else {
       state.ctx.setLineDash([5, 5]);
       drawOutline(
@@ -34641,11 +34711,6 @@ function onFrame() {
     state.orthoCamera = camera1;
   });
   window.requestAnimationFrame(onFrame);
-}
-function updateSelectedShape(index) {
-  state.selected = state.shapesArray[index];
-  state.currentIndex = index;
-  updateDeleteButtons(state.selected);
 }
 /*! *****************************************************************************
 Copyright (c) Microsoft Corporation.
@@ -54941,15 +55006,22 @@ const buttonClick = (buttonName, panelLeft, panelRight, selected, showPanelFromL
     additionalCallback();
   };
 };
-const deleteButtonClick = (buttonName, shapesArray, commit2, doCsg2, getSelected, showPanelFromLeft2) => {
+const deleteButtonClick = (buttonName, getShapesArray, commit2, doCsg2, getSelected, showPanelFromLeft2) => {
   const btn = document.querySelector(`#${buttonName}`);
   if (!btn)
     return;
   btn.onclick = () => {
+    const shapesArray = typeof getShapesArray === "function" ? getShapesArray() : [];
     const selected = typeof getSelected === "function" ? getSelected() : null;
     if (!selected)
       return;
-    const idx = shapesArray.indexOf(selected);
+    let idx = -1;
+    if (selected.id) {
+      idx = shapesArray.findIndex((s) => s.id === selected.id);
+    }
+    if (idx === -1) {
+      idx = shapesArray.indexOf(selected);
+    }
     if (idx === -1)
       return;
     shapesArray.splice(idx, 1);
@@ -54969,9 +55041,6 @@ const depthButtonClick = (buttonName, panelLeft, panelRight, selected, showPanel
     document.querySelector("#back-button").onclick = () => {
       document.querySelector("#back-button").setAttribute("disabled", "");
       showPanelFromLeft2(`${panelLeft}`);
-      if (selected) {
-        selected.kind = null;
-      }
     };
     showPanelFromRight2(`${panelRight}`);
     additionalCallback();
@@ -55874,7 +55943,7 @@ function initUI() {
   );
   depthButtonClick(
     "rectangle-resize-button",
-    "main-panel",
+    "rectangle-panel",
     "rectangle-resize-panel",
     state.selected,
     showPanelFromLeft,
@@ -55888,7 +55957,7 @@ function initUI() {
   );
   depthButtonClick(
     "rectangle-depth-button",
-    "main-panel",
+    "rectangle-panel",
     "rectangle-depth-panel",
     state.selected,
     showPanelFromLeft,
@@ -55900,7 +55969,7 @@ function initUI() {
   );
   depthButtonClick(
     "rectangle-rotate-button",
-    "main-panel",
+    "rectangle-panel",
     "rectangle-rotate-panel",
     state.selected,
     showPanelFromLeft,
@@ -55942,14 +56011,7 @@ function initUI() {
   });
   document.querySelector("#rectangle-depth-slider").onchange = commit;
   document.querySelector("#rectangle-depth-input").onchange = commit;
-  deleteButtonClick(
-    "rectangle-delete-button",
-    state.shapesArray,
-    commit,
-    doCsg,
-    () => state.selected,
-    showPanelFromLeft
-  );
+  deleteButtonClick("rectangle-delete-button", () => state.shapesArray, commit, doCsg, () => state.selected, showPanelFromLeft);
   createShapeCircle(
     units.millimeters,
     state.selected,
@@ -55964,7 +56026,7 @@ function initUI() {
   );
   depthButtonClick(
     "radius-button",
-    "main-panel",
+    "circle-panel",
     "radius-panel",
     state.selected,
     showPanelFromLeft,
@@ -55976,7 +56038,7 @@ function initUI() {
   );
   depthButtonClick(
     "depth-button",
-    "main-panel",
+    "circle-panel",
     "depth-panel",
     state.selected,
     showPanelFromLeft,
@@ -56033,7 +56095,7 @@ function initUI() {
   waitForFoamAndInitFreehand();
   depthButtonClick(
     "polygon-depth-button",
-    "main-panel",
+    "polygon-panel",
     "polygon-depth-panel",
     state.selected,
     showPanelFromLeft,
@@ -56045,7 +56107,7 @@ function initUI() {
   );
   depthButtonClick(
     "polygon-rotate-button",
-    "main-panel",
+    "polygon-panel",
     "polygon-rotate-panel",
     state.selected,
     showPanelFromLeft,
@@ -56071,25 +56133,11 @@ function initUI() {
   });
   document.querySelector("#polygon-depth-slider").onchange = commit;
   document.querySelector("#polygon-depth-input").onchange = commit;
-  deleteButtonClick(
-    "polygon-delete-button",
-    state.shapesArray,
-    commit,
-    doCsg,
-    () => state.selected,
-    showPanelFromLeft
-  );
-  deleteButtonClick(
-    "delete-button",
-    state.shapesArray,
-    commit,
-    doCsg,
-    () => state.selected,
-    showPanelFromLeft
-  );
+  deleteButtonClick("polygon-delete-button", () => state.shapesArray, commit, doCsg, () => state.selected, showPanelFromLeft);
+  deleteButtonClick("delete-button", () => state.shapesArray, commit, doCsg, () => state.selected, showPanelFromLeft);
   depthButtonClick(
     "photoshape-depth-button",
-    "main-panel",
+    "photoshape-panel",
     "photoshape-depth-panel",
     state.selected,
     showPanelFromLeft,
@@ -56129,14 +56177,7 @@ function initUI() {
   });
   document.querySelector("#photoshape-depth-slider").onchange = commit;
   document.querySelector("#photoshape-depth-input").onchange = commit;
-  deleteButtonClick(
-    "photoshape-delete-button",
-    state.shapesArray,
-    commit,
-    doCsg,
-    () => state.selected,
-    showPanelFromLeft
-  );
+  deleteButtonClick("photoshape-delete-button", () => state.shapesArray, commit, doCsg, () => state.selected, showPanelFromLeft);
   document.querySelector("#undo-button").onclick = undo;
   document.querySelector("#redo-button").onclick = redo;
   createPdf(
@@ -56155,14 +56196,6 @@ function initUI() {
     rightestPoint
   );
   createDFX(state.foam, state.shapesArray, shapeToGeom2, "my_foam_shapes.dxf");
-  document.getElementById("nextBtn").addEventListener("click", () => {
-    state.currentIndex = (state.currentIndex + 1) % state.shapesArray.length;
-    updateSelectedShape(state.currentIndex);
-  });
-  document.getElementById("prevBtn").addEventListener("click", () => {
-    state.currentIndex = (state.currentIndex - 1 + state.shapesArray.length) % state.shapesArray.length;
-    updateSelectedShape(state.currentIndex);
-  });
   let resizeHandler;
   const myShapesButton = document.getElementById("my-shapes-button");
   const myShapesContainer = document.getElementById("my-shapes-container");
@@ -56213,4 +56246,4 @@ if (typeof window === "object") {
   initUI();
   commit();
 }
-//# sourceMappingURL=index-cadd5f64.js.map
+//# sourceMappingURL=index-bbddab6b.js.map

@@ -28,7 +28,6 @@ function shapeToGeom2(shape) {
       return rect;
     case "photoshape":
       if (Array.isArray(shape.polygon) && Array.isArray(shape.polygon[0])) {
-        // Process each contour (polygon) individually
         let polygons = shape.polygon
           .map((contour, index) => {
             if (!Array.isArray(contour)) {
@@ -54,7 +53,7 @@ function shapeToGeom2(shape) {
 
             return jscad.geometries.geom2.fromPoints(polygon);
           })
-          .filter(Boolean); // Remove any null values from error handling
+          .filter(Boolean); 
 
         return polygons;
       } else {
@@ -62,7 +61,7 @@ function shapeToGeom2(shape) {
           "Expected an array of arrays for shape.polygon, but got:",
           shape.polygon
         );
-        return []; // Return an empty array if the format is incorrect
+        return []; 
       }
     case "polygon":
       let newShape = shape.free ? shape.points.slice().reverse() : shape.points;
@@ -92,14 +91,16 @@ function shapeToGeom3(shape) {
 }
 
 onmessage = (e) => {
-  let { foam, shapesArray } = e.data;
+  let { id, foam, shapesArray } = e.data;
   let geom3s = [shapeToGeom3(foam)];
   for (let shape of shapesArray) {
     let geom3 = shapeToGeom3(shape);
     geom3 = jscad.transforms.translateZ(foam.sizeZ - shape.sizeZ, geom3);
     geom3s.push(geom3);
   }
-  postMessage(jscad.booleans.subtract(geom3s));
+  const result = jscad.booleans.subtract(geom3s);
+  postMessage({ id, geom: result });
 };
+
 
 export {};
