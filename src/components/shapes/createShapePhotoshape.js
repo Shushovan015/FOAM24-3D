@@ -115,9 +115,6 @@ export const createShapePhotoShape = (
     return true;
   };
 
-
-
-
   const getPhotoshapeNextLabel = () => {
     return photoshapeSession.index < photoshapeSession.order.length - 1
       ? "Next"
@@ -379,9 +376,8 @@ export const createShapePhotoShape = (
           const formData = new FormData();
           formData.append("image", blob, "image.png");
 
-          // return fetch("http://localhost:5000/detect_contours", {
-            return fetch("https://fm24api.com/detect_contours", {
-
+          return fetch("http://localhost:5000/detect_contours", {
+            // return fetch("https://fm24api.com/detect_contours", {
             method: "POST",
             body: formData,
           });

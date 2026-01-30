@@ -63,14 +63,12 @@ export const depthButtonClick = (
     document.querySelector("#back-button").onclick = () => {
       document.querySelector("#back-button").setAttribute("disabled", "");
       showPanelFromLeft(`${panelLeft}`);
-      if (selected) {
-        selected.kind = null;
-      }
     };
     showPanelFromRight(`${panelRight}`);
     additionalCallback();
   };
 };
+
 
 export const sliderButtonClick = (sliderName, sliderInput, doCsg, callback) => {
   const slider = document.querySelector(`#${sliderName}`);

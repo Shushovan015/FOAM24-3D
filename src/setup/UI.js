@@ -433,17 +433,17 @@ export function initUI() {
   );
   createDFX(state.foam, state.shapesArray, shapeToGeom2, "my_foam_shapes.dxf");
 
-  document.getElementById("nextBtn").addEventListener("click", () => {
-    state.currentIndex = (state.currentIndex + 1) % state.shapesArray.length;
-    updateSelectedShape(state.currentIndex);
-  });
+  // document.getElementById("nextBtn").addEventListener("click", () => {
+  //   state.currentIndex = (state.currentIndex + 1) % state.shapesArray.length;
+  //   updateSelectedShape(state.currentIndex);
+  // });
 
-  document.getElementById("prevBtn").addEventListener("click", () => {
-    state.currentIndex =
-      (state.currentIndex - 1 + state.shapesArray.length) %
-      state.shapesArray.length;
-    updateSelectedShape(state.currentIndex);
-  });
+  // document.getElementById("prevBtn").addEventListener("click", () => {
+  //   state.currentIndex =
+  //     (state.currentIndex - 1 + state.shapesArray.length) %
+  //     state.shapesArray.length;
+  //   updateSelectedShape(state.currentIndex);
+  // });
 
   let resizeHandler;
   const myShapesButton = document.getElementById("my-shapes-button");

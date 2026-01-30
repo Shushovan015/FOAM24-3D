@@ -178,6 +178,19 @@ export function init3D() {
     recalculateMouse(e);
   });
 
+  const openSelectedPanel = () => {
+    if (!state.selected) return;
+    showPanelFromRight(state.selected.kind + "-panel");
+    updateDeleteButtons(state.selected);
+    document.querySelector("#back-button").removeAttribute("disabled");
+    document.querySelector("#back-button").onclick = () => {
+      document.querySelector("#back-button").setAttribute("disabled", "");
+      state.selected = null;
+      updateDeleteButtons(null);
+      showPanelFromLeft("main-panel");
+    };
+  };
+
   state.renderer.domElement.addEventListener("pointerdown", (e) => {
     if (window.__editingPoints) return;
     recalculateMouse(e);
@@ -187,6 +200,7 @@ export function init3D() {
       state.selected &&
       mouseOverShape(state.selected, state.mouseRayPlaneIntersection, pointInsidePolygon)
     ) {
+      openSelectedPanel();
       state.dragging = true;
       state.dragged = false;
       state.dragOffset = new THREE.Vector2().subVectors(
@@ -198,16 +212,7 @@ export function init3D() {
     }
     state.selected = shapeUnderMouse();
     if (state.selected) {
-      showPanelFromRight(state.selected.kind + "-panel");
-      updateDeleteButtons(state.selected);
-      document.querySelector("#back-button").removeAttribute("disabled");
-      document.querySelector("#back-button").onclick = () => {
-        document.querySelector("#back-button").setAttribute("disabled", "");
-        state.selected = null;
-        updateDeleteButtons(null);
-        showPanelFromLeft("main-panel");
-      };
-
+      openSelectedPanel();
       state.dragging = true;
       state.dragged = false;
       state.dragOffset = new THREE.Vector2().subVectors(
@@ -219,6 +224,7 @@ export function init3D() {
       state.selected = state.oldSelected;
     }
   });
+
 
   state.renderer.domElement.addEventListener("pointerup", () => {
     if (window.__editingPoints) return;

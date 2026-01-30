@@ -1,47 +1,81 @@
-# FOAM24-3D
-FOAM24-3D
-FOAM24-3D Shape Editor is a web application built using Three.js, allowing users to create and manipulate 3D shapes in a 3D environment. It provides a user-friendly interface to draw circles, rectangles, and freehand shapes. Users can modify the dimensions, depth, and rotation of shapes and visualize the changes in real-time. The application supports features like undo, redo, and exporting shapes to PDF.
+# FOAM24-3D Shape Editor
 
-About
-FOAM24-3DShape Editor is a versatile tool for creating and visualizing 3D shapes interactively. It utilizes the Three.js library to render shapes in a 3D space, providing an intuitive interface for users to design and modify shapes.
+FOAM24-3D Shape Editor is a web-based 3D design application built using **Three.js**. It allows users to create, manipulate, and visualize 3D shapes in real time through an intuitive and interactive interface. The tool supports drawing basic and freehand shapes, modifying dimensions and rotations, and exporting designs.
 
-Getting Started
-Prerequisites
-Before you begin, ensure you have the following software installed on your machine:
+---
 
-Node.js (v14.0.0 or higher)
-npm (v6.0.0 or higher)
-Three.js (v0.0.0 or higher)
-Installation
-Clone the repository:
+## 🚀 Features
 
-git clone https://github.com/username/FOAM24-3D-V3-Shakya-.git
+- Create circles, rectangles, and freehand 3D shapes
+- Modify width, height, depth, and rotation in real time
+- Undo and redo actions
+- Export 3D designs to PDF
+- Clean and intuitive user interface
 
-Navigate to the project directory:
+---
+
+## 🧰 Tech Stack
+
+- **Three.js**
+- **JavaScript / HTML / CSS**
+- **Node.js & npm**
+
+---
+
+## 📦 Prerequisites
+
+Make sure you have the following installed:
+
+- **Node.js** v14.0.0 or higher
+- **npm** v6.0.0 or higher
+
+---
+
+## 🏁 Getting Started
+
+Follow the steps below to run the project locally:
+
+```bash
+# Clone the repository
+git clone https://github.com/MA-INDUSTRIE/FOAM24-3D-V3-Shakya-
+
+# Navigate to the project directory
 cd FOAM24-3D-V3-Shakya-
 
-Install dependencies:
+# Install dependencies
 npm install
 
-Usage
-To start the application, run the following command:
-npm start
-Once the server is running, open your browser and visit http://localhost:3000 to access the FOAM24-3D-V3-Shakya- Shape Editor. Use the intuitive UI to create, modify, and visualize 3D shapes interactively.
+# Run the development server
+npm run dev
 
-Features
-Shape Creation: Draw circles, rectangles, and freehand shapes.
-Dimension Modification: Modify width, height, and depth of shapes.
-Real-time Visualization: See changes in shapes in real-time as you modify them.
-Undo and Redo: Easily undo or redo your actions.
-Export to PDF: Export your 3D shapes to PDF format.
-Intuitive Interface: User-friendly interface for effortless shape manipulation.
-Contributing
-Contributions are welcome! Here's how you can contribute to 3D Shape Editor:
 
-Fork the repository.
-Create a new branch (git checkout -b feature/awesome-feature).
-Make your changes and commit them (git commit -am 'Add some awesome feature').
-Push to the branch (git push origin feature/awesome-feature).
-Create a new Pull Request.
-License
-This project is licensed under the MIT License - see the LICENSE file for details.
+Once running, open **http://localhost:5174** in your browser.
+
+
+## 🏗️ Build for Production
+
+To create a production build:
+
+```bash
+npm run build
+
+
+## 📁 Project Structure
+
+```text
+FOAM24-3D-V3-Shakya-
+│
+├── public/                 # Static files and assets
+│   └── index.html
+│
+├── src/                    # Application source code
+│   ├── components/         # Reusable UI and 3D components
+│   ├── utils/              # Helper functions and utilities
+│   ├── styles/             # Global and component styles
+│   ├── main.js             # Application entry point
+│   └── scene.js            # Three.js scene setup and rendering
+│
+├── package.json            # Project metadata and dependencies
+├── package-lock.json       # Dependency lock file
+├── README.md               # Project documentation
+└── LICENSE                 # License information
