@@ -12,12 +12,15 @@ export function commit() {
   updateUndoRedoButtons(state.undoRedoPosition, state.undoRedoHistory);
 }
 
+function replaceShapesArray(nextShapes) {
+  state.shapesArray.length = 0;
+  state.shapesArray.push(...nextShapes);
+}
+
 export function undo() {
   if (state.undoRedoPosition > 0) {
     state.undoRedoPosition -= 1;
-    state.shapesArray = structuredClone(
-      state.undoRedoHistory[state.undoRedoPosition]
-    );
+    replaceShapesArray(structuredClone(state.undoRedoHistory[state.undoRedoPosition]));
     doCsg();
   }
   updateUndoRedoButtons(state.undoRedoPosition, state.undoRedoHistory);
@@ -29,9 +32,7 @@ export function undo() {
 export function redo() {
   if (state.undoRedoPosition < state.undoRedoHistory.length - 1) {
     state.undoRedoPosition += 1;
-    state.shapesArray = structuredClone(
-      state.undoRedoHistory[state.undoRedoPosition]
-    );
+    replaceShapesArray(structuredClone(state.undoRedoHistory[state.undoRedoPosition]));
     doCsg();
   }
   updateUndoRedoButtons(state.undoRedoPosition, state.undoRedoHistory);
@@ -39,3 +40,4 @@ export function redo() {
   showPanelFromLeft("main-panel");
   state.selected = null;
 }
+

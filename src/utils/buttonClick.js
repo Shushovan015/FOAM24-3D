@@ -23,7 +23,7 @@ export const buttonClick = (
 
 export const deleteButtonClick = (
   buttonName,
-  shapesArray,
+  getShapesArray,
   commit,
   doCsg,
   getSelected,
@@ -32,10 +32,17 @@ export const deleteButtonClick = (
   const btn = document.querySelector(`#${buttonName}`);
   if (!btn) return;
   btn.onclick = () => {
+    const shapesArray = typeof getShapesArray === "function" ? getShapesArray() : [];
     const selected = typeof getSelected === "function" ? getSelected() : null;
     if (!selected) return;
 
-    const idx = shapesArray.indexOf(selected);
+    let idx = -1;
+    if (selected.id) {
+      idx = shapesArray.findIndex((s) => s.id === selected.id);
+    }
+    if (idx === -1) {
+      idx = shapesArray.indexOf(selected);
+    }
     if (idx === -1) return;
 
     shapesArray.splice(idx, 1);

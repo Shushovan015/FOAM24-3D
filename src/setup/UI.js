@@ -199,14 +199,7 @@ export function initUI() {
   document.querySelector("#rectangle-depth-slider").onchange = commit;
   document.querySelector("#rectangle-depth-input").onchange = commit;
 
-  deleteButtonClick(
-    "rectangle-delete-button",
-    state.shapesArray,
-    commit,
-    doCsg,
-    () => state.selected,
-    showPanelFromLeft
-  );
+  deleteButtonClick("rectangle-delete-button", () => state.shapesArray, commit, doCsg, () => state.selected, showPanelFromLeft);
 
   createShapeCircle(
     units.millimeters,
@@ -338,23 +331,8 @@ export function initUI() {
   document.querySelector("#polygon-depth-slider").onchange = commit;
   document.querySelector("#polygon-depth-input").onchange = commit;
 
-  deleteButtonClick(
-    "polygon-delete-button",
-    state.shapesArray,
-    commit,
-    doCsg,
-    () => state.selected,
-    showPanelFromLeft
-  );
-
-  deleteButtonClick(
-    "delete-button",
-    state.shapesArray,
-    commit,
-    doCsg,
-    () => state.selected,
-    showPanelFromLeft
-  );
+  deleteButtonClick("polygon-delete-button", () => state.shapesArray, commit, doCsg, () => state.selected, showPanelFromLeft);
+  deleteButtonClick("delete-button", () => state.shapesArray, commit, doCsg, () => state.selected, showPanelFromLeft);
 
   depthButtonClick(
     "photoshape-depth-button",
@@ -401,14 +379,7 @@ export function initUI() {
   document.querySelector("#photoshape-depth-slider").onchange = commit;
   document.querySelector("#photoshape-depth-input").onchange = commit;
 
-  deleteButtonClick(
-    "photoshape-delete-button",
-    state.shapesArray,
-    commit,
-    doCsg,
-    () => state.selected,
-    showPanelFromLeft
-  );
+  deleteButtonClick("photoshape-delete-button", () => state.shapesArray, commit, doCsg, () => state.selected, showPanelFromLeft);
 
   document.querySelector("#undo-button").onclick = undo;
   document.querySelector("#redo-button").onclick = redo;
