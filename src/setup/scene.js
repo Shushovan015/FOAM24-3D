@@ -29,6 +29,8 @@ import { getCurrentPanel, showPanelFromRight, showPanelFromLeft } from "./panels
 
 
 const case1Url = "./models/case1.obj";
+const MAX_DPR = 1.5;
+const SSAA_SCALE = 1.5;
 
 function shapeUnderMouse() {
   if (state.mouseRayPlaneIntersection) {
@@ -91,7 +93,9 @@ export function init3D() {
     precision: "highp",
     preserveDrawingBuffer: true,
   });
-  state.renderer.setPixelRatio(window.devicePixelRatio || 1);
+
+  const getDpr = () => Math.min(window.devicePixelRatio || 1, MAX_DPR);
+  state.renderer.setPixelRatio(getDpr());
   state.renderer.domElement.id = "foam-canvas";
   state.renderer.autoClear = false;
 
@@ -169,8 +173,9 @@ export function init3D() {
   doCsg();
 
   function recalculateMouse(e) {
-    state.mouseX = e.clientX * (window.devicePixelRatio || 1);
-    state.mouseY = e.clientY * (window.devicePixelRatio || 1);
+    const dpr = getDpr();
+    state.mouseX = e.clientX * dpr;
+    state.mouseY = e.clientY * dpr;
     state.mouseNdcX = (state.mouseX / state.renderer.domElement.width - 0.5) * 2;
     state.mouseNdcY = -((state.mouseY / state.renderer.domElement.height - 0.5) * 2);
 
@@ -310,7 +315,7 @@ export function init3D() {
       }
     }
     restoreAfterDrag(state.selected);
-    doCsg(); 
+    doCsg();
     state.dragging = false;
     state.controls.enabled = true;
   });
@@ -357,10 +362,14 @@ export function init3D() {
 export function onResize() {
   state.overlayCanvas.style.width = window.innerWidth + "px";
   state.overlayCanvas.style.height = window.innerHeight + "px";
-  state.overlayCanvas.width = window.innerWidth * (window.devicePixelRatio || 1);
-  state.overlayCanvas.height = window.innerHeight * (window.devicePixelRatio || 1);
-  state.ssaaRenderTarget.setSize(window.innerWidth * 2, window.innerHeight * 2);
-  state.renderer.setPixelRatio(window.devicePixelRatio || 1);
+  const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+  state.overlayCanvas.width = window.innerWidth * dpr;
+  state.overlayCanvas.height = window.innerHeight * dpr;
+  state.ssaaRenderTarget.setSize(
+    window.innerWidth * SSAA_SCALE,
+    window.innerHeight * SSAA_SCALE
+  );
+  state.renderer.setPixelRatio(dpr);
   state.renderer.setSize(window.innerWidth, window.innerHeight, true);
   state.camera.aspect = window.innerWidth / window.innerHeight;
   state.camera.updateProjectionMatrix();
@@ -391,8 +400,7 @@ function drawMeasurements(shape) {
 }
 
 export function onFrame() {
-  state.ctx.canvas.width = state.ctx.canvas.width;
-  state.ctx.canvas.height = state.ctx.canvas.height;
+  state.ctx.clearRect(0, 0, state.ctx.canvas.width, state.ctx.canvas.height);
   state.ctx.strokeStyle = "orange";
   state.currPanel = getCurrentPanel();
 

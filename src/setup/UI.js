@@ -368,6 +368,15 @@ export function initUI() {
       commit();
 
       if (state.selected) {
+        const backBtn = document.querySelector("#back-button");
+        if (backBtn) {
+          backBtn.removeAttribute("disabled");
+          backBtn.onclick = () => {
+            backBtn.setAttribute("disabled", "");
+            showPanelFromLeft("main-panel");
+            state.selected = null;
+          };
+        }
         showPanelFromRight(state.selected.kind + "-panel");
       } else {
         showPanelFromLeft("main-panel");

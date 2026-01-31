@@ -137,8 +137,26 @@ export const createShapePhotoShape = (
     selected = nextShape;
     photoshapeSession.index = idx;
     callback(selected);
+
+    backBtn.onclick = () => {
+      backBtn.setAttribute("disabled", "");
+      hidePhotoshapeUI();
+      setEditing(false);
+      photoshapeFlowReady = false;
+      setPhotoshapeStep(1, {
+        note: "Upload an image to start.",
+        canBack: false,
+        canNext: false,
+        nextLabel: "Edit",
+      });
+      showPanelFromLeft("main-panel");
+      selected = null;
+    };
+
+
     showPanelFromRight(selected.kind + "-panel");
     return true;
+
   };
 
   const getPhotoshapeNextLabel = () => {
