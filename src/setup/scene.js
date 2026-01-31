@@ -371,6 +371,7 @@ export function onResize() {
   );
   state.renderer.setPixelRatio(dpr);
   state.renderer.setSize(window.innerWidth, window.innerHeight, true);
+
   state.camera.aspect = window.innerWidth / window.innerHeight;
   state.camera.updateProjectionMatrix();
 }

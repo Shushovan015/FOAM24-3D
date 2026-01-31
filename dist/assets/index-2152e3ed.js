@@ -33057,6 +33057,11 @@ function simplifyPointsForDrag(points, targetCount = 200) {
   }
   return simplified.length >= 3 ? simplified : points;
 }
+function measurementFont(basePx) {
+  const dpr = window.devicePixelRatio || 1;
+  const scale2 = window.innerWidth <= 768 ? 0.5 : 1;
+  return "bold " + basePx * dpr * scale2 + "px sans-serif";
+}
 function getBoundingBox(shape) {
   let pts = [];
   try {
@@ -33495,7 +33500,7 @@ function drawMeasurementsPhotoshape(shape, ctx, camera, currPanel2, centimeters)
       new Vector3(shape.x, shape.y, 37 * centimeters - shape.sizeZ)
     );
     let pMid = new Vector3().addVectors(p0, p1).divideScalar(2);
-    ctx.font = "bold " + 20 * window.devicePixelRatio + "px sans-serif";
+    ctx.font = measurementFont(20);
     ctx.textAlign = "left";
     ctx.fillText(shape.sizeZ.toFixed(0) + "mm", pMid.x, pMid.y);
     ctx.strokeStyle = "black";
@@ -33599,7 +33604,7 @@ function drawMeasurementsRectangle(shape, ctx, camera, currPanel2, centimeters) 
       camera
     );
     let pMid = new Vector3().addVectors(p0, p1).divideScalar(2);
-    ctx.font = "bold " + 20 * window.devicePixelRatio + "px sans-serif";
+    ctx.font = measurementFont(20);
     ctx.textAlign = "left";
     ctx.fillText(shape.sizeZ.toFixed(0) + "mm", pMid.x, pMid.y);
     ctx.strokeStyle = "black";
@@ -33624,7 +33629,7 @@ function drawMeasurementsRectangle(shape, ctx, camera, currPanel2, centimeters) 
       camera
     );
     let pMid = new Vector3().addVectors(p0, p1).divideScalar(2);
-    ctx.font = "bold " + 20 * window.devicePixelRatio + "px sans-serif";
+    ctx.font = measurementFont(20);
     ctx.textAlign = "left";
     ctx.fillText(shape.sizeX.toFixed(0) + "mm", pMid.x, pMid.y);
     ctx.strokeStyle = "black";
@@ -33649,7 +33654,7 @@ function drawMeasurementsRectangle(shape, ctx, camera, currPanel2, centimeters) 
       camera
     );
     let pMid = new Vector3().addVectors(p0, p1).divideScalar(2);
-    ctx.font = "bold " + 20 * window.devicePixelRatio + "px sans-serif";
+    ctx.font = measurementFont(20);
     ctx.textAlign = "left";
     ctx.fillText(shape.sizeY.toFixed(0) + "mm", pMid.x, pMid.y);
     ctx.strokeStyle = "black";
@@ -33693,7 +33698,7 @@ function drawMeasurementsPolygon(shape, ctx, camera, currPanel2, centimeters) {
       camera
     );
     let pMid = new Vector3().addVectors(p0, p1).divideScalar(2);
-    ctx.font = "bold " + 20 * window.devicePixelRatio + "px sans-serif";
+    ctx.font = measurementFont(20);
     ctx.textAlign = "left";
     ctx.fillText(shape.sizeZ.toFixed(0) + "mm", pMid.x, pMid.y);
     ctx.strokeStyle = "black";
@@ -33779,7 +33784,7 @@ function drawMeasurementsCircle(shape, ctx, camera, currPanel2, centimeters) {
       ctx
     );
     let pMid = new Vector3().addVectors(p0, p1).divideScalar(2);
-    ctx.font = "bold " + 20 * window.devicePixelRatio + "px sans-serif";
+    ctx.font = measurementFont(20);
     ctx.textAlign = "left";
     ctx.fillText(shape.sizeZ.toFixed(0) + "mm", pMid.x, pMid.y);
     ctx.strokeStyle = "black";
@@ -33798,7 +33803,7 @@ function drawMeasurementsCircle(shape, ctx, camera, currPanel2, centimeters) {
       ctx
     );
     let pMid = new Vector3().addVectors(p0, p1).divideScalar(2);
-    ctx.font = "bold " + 20 * window.devicePixelRatio + "px sans-serif";
+    ctx.font = measurementFont(20);
     ctx.textAlign = "center";
     ctx.fillText(shape.radius.toFixed(0) + "mm", pMid.x, pMid.y);
     ctx.strokeStyle = "black";
@@ -33851,7 +33856,7 @@ function drawEdgeToFoamMeasurements(shape, foam, ctx, camera) {
   ctx.moveTo(pTopEdge.x, pTopEdge.y);
   ctx.lineTo(pTopVertex.x, pTopVertex.y);
   ctx.stroke();
-  ctx.font = "bold " + 16 * window.devicePixelRatio + "px sans-serif";
+  ctx.font = measurementFont(20);
   ctx.textAlign = "center";
   const leftMidX = (pLeftEdge.x + pLeftVertex.x) / 2;
   const leftMidY = (pLeftEdge.y + pLeftVertex.y) / 2;
@@ -34341,6 +34346,8 @@ function createImage(renderer, scene, camera, { buttonId = "export-image", scale
   });
 }
 const case1Url = "./models/case1.obj";
+const MAX_DPR = 1.5;
+const SSAA_SCALE = 1.5;
 function shapeUnderMouse() {
   if (state.mouseRayPlaneIntersection) {
     for (const shape of state.shapesArray.slice().reverse()) {
@@ -34382,7 +34389,8 @@ function init3D() {
     precision: "highp",
     preserveDrawingBuffer: true
   });
-  state.renderer.setPixelRatio(window.devicePixelRatio || 1);
+  const getDpr = () => Math.min(window.devicePixelRatio || 1, MAX_DPR);
+  state.renderer.setPixelRatio(getDpr());
   state.renderer.domElement.id = "foam-canvas";
   state.renderer.autoClear = false;
   state.overlayCanvas = document.createElement("canvas");
@@ -34444,8 +34452,9 @@ function init3D() {
   document.body.appendChild(state.overlayCanvas);
   doCsg();
   function recalculateMouse(e) {
-    state.mouseX = e.clientX * (window.devicePixelRatio || 1);
-    state.mouseY = e.clientY * (window.devicePixelRatio || 1);
+    const dpr = getDpr();
+    state.mouseX = e.clientX * dpr;
+    state.mouseY = e.clientY * dpr;
     state.mouseNdcX = (state.mouseX / state.renderer.domElement.width - 0.5) * 2;
     state.mouseNdcY = -((state.mouseY / state.renderer.domElement.height - 0.5) * 2);
     const raycaster = new Raycaster();
@@ -34619,10 +34628,14 @@ function init3D() {
 function onResize() {
   state.overlayCanvas.style.width = window.innerWidth + "px";
   state.overlayCanvas.style.height = window.innerHeight + "px";
-  state.overlayCanvas.width = window.innerWidth * (window.devicePixelRatio || 1);
-  state.overlayCanvas.height = window.innerHeight * (window.devicePixelRatio || 1);
-  state.ssaaRenderTarget.setSize(window.innerWidth * 2, window.innerHeight * 2);
-  state.renderer.setPixelRatio(window.devicePixelRatio || 1);
+  const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+  state.overlayCanvas.width = window.innerWidth * dpr;
+  state.overlayCanvas.height = window.innerHeight * dpr;
+  state.ssaaRenderTarget.setSize(
+    window.innerWidth * SSAA_SCALE,
+    window.innerHeight * SSAA_SCALE
+  );
+  state.renderer.setPixelRatio(dpr);
   state.renderer.setSize(window.innerWidth, window.innerHeight, true);
   state.camera.aspect = window.innerWidth / window.innerHeight;
   state.camera.updateProjectionMatrix();
@@ -34651,8 +34664,7 @@ function drawMeasurements(shape) {
   }
 }
 function onFrame() {
-  state.ctx.canvas.width = state.ctx.canvas.width;
-  state.ctx.canvas.height = state.ctx.canvas.height;
+  state.ctx.clearRect(0, 0, state.ctx.canvas.width, state.ctx.canvas.height);
   state.ctx.strokeStyle = "orange";
   state.currPanel = getCurrentPanel();
   state.renderer.clear(true);
@@ -55487,6 +55499,23 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
     selected = nextShape;
     photoshapeSession.index = idx;
     callback(selected);
+    const backBtn = document.querySelector("#back-button");
+    if (backBtn) {
+      backBtn.removeAttribute("disabled");
+      backBtn.onclick = () => {
+        backBtn.setAttribute("disabled", "");
+        hidePhotoshapeUI();
+        setEditing(false);
+        setPhotoshapeStep(1, {
+          note: "Upload an image to start.",
+          canBack: false,
+          canNext: false,
+          nextLabel: "Edit"
+        });
+        showPanelFromLeft2("main-panel");
+        selected = null;
+      };
+    }
     showPanelFromRight2(selected.kind + "-panel");
     return true;
   };
@@ -56229,6 +56258,15 @@ function initUI() {
       doCsg();
       commit();
       if (state.selected) {
+        const backBtn = document.querySelector("#back-button");
+        if (backBtn) {
+          backBtn.removeAttribute("disabled");
+          backBtn.onclick = () => {
+            backBtn.setAttribute("disabled", "");
+            showPanelFromLeft("main-panel");
+            state.selected = null;
+          };
+        }
         showPanelFromRight(state.selected.kind + "-panel");
       } else {
         showPanelFromLeft("main-panel");
@@ -56334,4 +56372,4 @@ if (typeof window === "object") {
   initUI();
   commit();
 }
-//# sourceMappingURL=index-c287aede.js.map
+//# sourceMappingURL=index-2152e3ed.js.map

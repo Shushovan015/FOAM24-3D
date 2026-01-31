@@ -130,6 +130,11 @@ export function simplifyPointsForDrag(points, targetCount = 200) {
   return simplified.length >= 3 ? simplified : points;
 }
 
+function measurementFont(basePx) {
+  const dpr = window.devicePixelRatio || 1;
+  const scale = window.innerWidth <= 768 ? 0.5 : 1;
+  return "bold " + basePx * dpr * scale + "px sans-serif";
+}
 
 export function getBoundingBox(shape) {
   let pts = [];
@@ -769,7 +774,7 @@ export function drawMeasurementsPhotoshape(
       new THREE.Vector3(shape.x, shape.y, 37 * centimeters - shape.sizeZ)
     );
     let pMid = new THREE.Vector3().addVectors(p0, p1).divideScalar(2);
-    ctx.font = "bold " + 20 * window.devicePixelRatio + "px sans-serif";
+    ctx.font = measurementFont(20);
 
     ctx.textAlign = "left";
     ctx.fillText(shape.sizeZ.toFixed(0) + "mm", pMid.x, pMid.y);
@@ -887,7 +892,7 @@ export function drawMeasurementsRectangle(
       camera
     );
     let pMid = new THREE.Vector3().addVectors(p0, p1).divideScalar(2);
-    ctx.font = "bold " + 20 * window.devicePixelRatio + "px sans-serif";
+    ctx.font = measurementFont(20);
 
     ctx.textAlign = "left";
     ctx.fillText(shape.sizeZ.toFixed(0) + "mm", pMid.x, pMid.y);
@@ -913,7 +918,7 @@ export function drawMeasurementsRectangle(
       camera
     );
     let pMid = new THREE.Vector3().addVectors(p0, p1).divideScalar(2);
-    ctx.font = "bold " + 20 * window.devicePixelRatio + "px sans-serif";
+    ctx.font = measurementFont(20);
 
     ctx.textAlign = "left";
     ctx.fillText(shape.sizeX.toFixed(0) + "mm", pMid.x, pMid.y);
@@ -939,7 +944,7 @@ export function drawMeasurementsRectangle(
       camera
     );
     let pMid = new THREE.Vector3().addVectors(p0, p1).divideScalar(2);
-    ctx.font = "bold " + 20 * window.devicePixelRatio + "px sans-serif";
+    ctx.font = measurementFont(20);
 
     ctx.textAlign = "left";
     ctx.fillText(shape.sizeY.toFixed(0) + "mm", pMid.x, pMid.y);
@@ -997,7 +1002,7 @@ export function drawMeasurementsPolygon(
       camera
     );
     let pMid = new THREE.Vector3().addVectors(p0, p1).divideScalar(2);
-    ctx.font = "bold " + 20 * window.devicePixelRatio + "px sans-serif";
+    ctx.font = measurementFont(20);
 
     ctx.textAlign = "left";
     ctx.fillText(shape.sizeZ.toFixed(0) + "mm", pMid.x, pMid.y);
@@ -1097,7 +1102,7 @@ export function drawMeasurementsCircle(
       ctx
     );
     let pMid = new THREE.Vector3().addVectors(p0, p1).divideScalar(2);
-    ctx.font = "bold " + 20 * window.devicePixelRatio + "px sans-serif";
+    ctx.font = measurementFont(20);
 
     ctx.textAlign = "left";
     ctx.fillText(shape.sizeZ.toFixed(0) + "mm", pMid.x, pMid.y);
@@ -1118,7 +1123,7 @@ export function drawMeasurementsCircle(
       ctx
     );
     let pMid = new THREE.Vector3().addVectors(p0, p1).divideScalar(2);
-    ctx.font = "bold " + 20 * window.devicePixelRatio + "px sans-serif";
+    ctx.font = measurementFont(20);
 
     ctx.textAlign = "center";
     ctx.fillText(shape.radius.toFixed(0) + "mm", pMid.x, pMid.y);
@@ -1186,8 +1191,7 @@ export function drawEdgeToFoamMeasurements(shape, foam, ctx, camera) {
   ctx.lineTo(pTopVertex.x, pTopVertex.y);
   ctx.stroke();
 
-  // labels
-  ctx.font = "bold " + 16 * window.devicePixelRatio + "px sans-serif";
+  ctx.font = measurementFont(20);
   ctx.textAlign = "center";
 
   const leftMidX = (pLeftEdge.x + pLeftVertex.x) / 2;

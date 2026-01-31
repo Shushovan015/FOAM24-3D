@@ -121,10 +121,7 @@ export const createShapePhotoShape = (
     }
   };
 
-  // make it accessible for delete button flow
   window.__photoshapeCleanup = cleanupPhotoshapeUI;
-
-
 
   const selectPhotoshapeByIndex = (idx) => {
     if (!photoshapeSession.order.length) return false;
@@ -138,26 +135,29 @@ export const createShapePhotoShape = (
     photoshapeSession.index = idx;
     callback(selected);
 
-    backBtn.onclick = () => {
-      backBtn.setAttribute("disabled", "");
-      hidePhotoshapeUI();
-      setEditing(false);
-      photoshapeFlowReady = false;
-      setPhotoshapeStep(1, {
-        note: "Upload an image to start.",
-        canBack: false,
-        canNext: false,
-        nextLabel: "Edit",
-      });
-      showPanelFromLeft("main-panel");
-      selected = null;
-    };
-
+    const backBtn = document.querySelector("#back-button");
+    if (backBtn) {
+      backBtn.removeAttribute("disabled");
+      backBtn.onclick = () => {
+        backBtn.setAttribute("disabled", "");
+        hidePhotoshapeUI();
+        setEditing(false);
+        photoshapeFlowReady = false;
+        setPhotoshapeStep(1, {
+          note: "Upload an image to start.",
+          canBack: false,
+          canNext: false,
+          nextLabel: "Edit",
+        });
+        showPanelFromLeft("main-panel");
+        selected = null;
+      };
+    }
 
     showPanelFromRight(selected.kind + "-panel");
     return true;
-
   };
+
 
   const getPhotoshapeNextLabel = () => {
     return photoshapeSession.index < photoshapeSession.order.length - 1
