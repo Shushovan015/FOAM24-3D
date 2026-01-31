@@ -99,6 +99,32 @@ export const createShapePhotoShape = (
     index: 0,
   };
 
+  const hidePhotoshapeUI = () => {
+    document.getElementById("photoshape-step-note").style.display = "none";
+    document.getElementById("photoshape-button").style.display = "none";
+    setPhotoshapeFlowActive(false);
+    photoshapeFlowReady = false;
+  };
+
+  const cleanupPhotoshapeUI = () => {
+    const remaining = shapesArray.some((s) => s?.source === "photoshape");
+    if (!remaining) {
+      photoshapeSession.ids = [];
+      photoshapeSession.index = 0;
+      setPhotoshapeStep(1, {
+        note: "Upload an image to start.",
+        canBack: false,
+        canNext: false,
+        nextLabel: "Edit",
+      });
+      hidePhotoshapeUI();
+    }
+  };
+
+  // make it accessible for delete button flow
+  window.__photoshapeCleanup = cleanupPhotoshapeUI;
+
+
 
   const selectPhotoshapeByIndex = (idx) => {
     if (!photoshapeSession.order.length) return false;
@@ -355,6 +381,7 @@ export const createShapePhotoShape = (
 
       getBase64(file)
         .then((base64Image) => {
+          const REMOVE_BG_KEY = import.meta.env.VITE_REMOVE_BG_KEY || "";
           return fetch("https://api.remove.bg/v1.0/removebg", {
             method: "POST",
             headers: {
@@ -376,8 +403,9 @@ export const createShapePhotoShape = (
           const formData = new FormData();
           formData.append("image", blob, "image.png");
 
-          // return fetch("http://localhost:5000/detect_contours", {
-          return fetch("https://fm24api.com/detect_contours", {
+          const CONTOUR_API_BASE = import.meta.env.VITE_CONTOUR_API_BASE || "http://localhost:5000";
+
+          return fetch(`${CONTOUR_API_BASE}/detect_contours`, {
             method: "POST",
             body: formData,
           });
@@ -431,6 +459,7 @@ export const createShapePhotoShape = (
             points: contour,
             rotation: 0,
             free: true,
+            source: "photoshape"
           };
 
           shapesArray.push(shape);

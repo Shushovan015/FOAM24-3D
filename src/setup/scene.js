@@ -18,9 +18,11 @@ import {
   mergeIntoPolygon,
   shapesIntersectGeneric,
   isNearGeneric,
+  simplifyPointsForDrag,
   drawEdgeToFoamMeasurements
 } from "../utils/threeFunctions";
-import { pointInsidePolygon, confirmMerge, getValues, getCameraValue } from "../utils/common";
+// src/setup/scene.js
+import { pointInsidePolygon, confirmMerge, getValues, getCameraValue, structuredClone } from "../utils/common";
 import { LambertMaterial } from "../components/Material";
 import { createImage } from "../components/createImage";
 import { getCurrentPanel, showPanelFromRight, showPanelFromLeft } from "./panels";
@@ -46,15 +48,40 @@ const deleteButtonsByKind = {
   photoshape: "photoshape-delete-button",
 };
 
-const updateDeleteButtons = (selected) => {
+// const updateDeleteButtons = (selected) => {
+//   Object.values(deleteButtonsByKind).forEach((id) => {
+//     const btn = document.querySelector(`#${id}`);
+//     if (btn) btn.setAttribute("disabled", "");
+//   });
+//   if (!selected) return;
+//   const id = deleteButtonsByKind[selected.kind];
+//   const btn = id ? document.querySelector(`#${id}`) : null;
+//   if (btn) btn.removeAttribute("disabled");
+// };
+
+export const updateDeleteButtons = (selected) => {
   Object.values(deleteButtonsByKind).forEach((id) => {
     const btn = document.querySelector(`#${id}`);
     if (btn) btn.setAttribute("disabled", "");
   });
+
+  const unmergeBtn = document.querySelector("#polygon-unmerge-button");
+  if (unmergeBtn) unmergeBtn.setAttribute("disabled", "");
+
   if (!selected) return;
+
   const id = deleteButtonsByKind[selected.kind];
   const btn = id ? document.querySelector(`#${id}`) : null;
   if (btn) btn.removeAttribute("disabled");
+
+  if (
+    unmergeBtn &&
+    selected.kind === "polygon" &&
+    Array.isArray(selected.mergedFrom) &&
+    selected.mergedFrom.length
+  ) {
+    unmergeBtn.removeAttribute("disabled");
+  }
 };
 
 
@@ -192,6 +219,23 @@ export function init3D() {
     };
   };
 
+  const maybeSimplifyForDrag = (shape) => {
+    if (!shape || shape.kind !== "polygon" || !Array.isArray(shape.points)) return;
+    if (shape.points.length <= 200) return;
+    if (!shape._dragOriginalPoints) {
+      shape._dragOriginalPoints = shape.points;
+      shape.points = simplifyPointsForDrag(shape.points, 200);
+    }
+  };
+
+  const restoreAfterDrag = (shape) => {
+    if (shape && shape._dragOriginalPoints) {
+      shape.points = shape._dragOriginalPoints;
+      delete shape._dragOriginalPoints;
+    }
+  };
+
+
   state.renderer.domElement.addEventListener("pointerdown", (e) => {
     if (window.__editingPoints) return;
     recalculateMouse(e);
@@ -202,6 +246,7 @@ export function init3D() {
       mouseOverShape(state.selected, state.mouseRayPlaneIntersection, pointInsidePolygon)
     ) {
       openSelectedPanel();
+      maybeSimplifyForDrag(state.selected);
       state.dragging = true;
       state.dragged = false;
       state.dragOffset = new THREE.Vector2().subVectors(
@@ -214,6 +259,7 @@ export function init3D() {
     state.selected = shapeUnderMouse();
     if (state.selected) {
       openSelectedPanel();
+      maybeSimplifyForDrag(state.selected);
       state.dragging = true;
       state.dragged = false;
       state.dragOffset = new THREE.Vector2().subVectors(
@@ -243,6 +289,10 @@ export function init3D() {
               const selIdx = state.shapesArray.indexOf(state.selected);
               const otherIdx2 = state.shapesArray.indexOf(other);
               const merged = mergeIntoPolygon(state.selected, other);
+              merged.mergedFrom = [
+                structuredClone(state.selected),
+                structuredClone(other),
+              ];
               const [high, low] = [selIdx, otherIdx2].sort((a, b) => b - a);
               state.shapesArray.splice(high, 1);
               state.shapesArray.splice(low, 1);
@@ -259,6 +309,8 @@ export function init3D() {
         }
       }
     }
+    restoreAfterDrag(state.selected);
+    doCsg(); 
     state.dragging = false;
     state.controls.enabled = true;
   });

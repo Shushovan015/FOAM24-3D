@@ -20,14 +20,9 @@ import {
   depthButtonClick,
   sliderButtonClick,
 } from "../utils/buttonClick";
-import {
-  rightestPoint,
-  leftestPoint,
-  highestPoint,
-  lowestPoint,
-} from "../utils/common";
+import { updateSelectedShape, updateDeleteButtons } from "./scene";
+import { rightestPoint, leftestPoint, highestPoint, lowestPoint, structuredClone } from "../utils/common";
 import { shapeToGeom2 } from "../utils/threeFunctions";
-import { updateSelectedShape } from "./scene";
 
 export function initUI() {
   initPanels();
@@ -346,6 +341,39 @@ export function initUI() {
       document.querySelector("#photoshape-depth-slider").value = state.selected.sizeZ;
     }
   );
+
+  const unmergeBtn = document.querySelector("#polygon-unmerge-button");
+  if (unmergeBtn) {
+    unmergeBtn.onclick = () => {
+      const selected = state.selected;
+      if (
+        !selected ||
+        selected.kind !== "polygon" ||
+        !Array.isArray(selected.mergedFrom) ||
+        selected.mergedFrom.length === 0
+      ) {
+        return;
+      }
+
+      const idx = state.shapesArray.indexOf(selected);
+      if (idx === -1) return;
+
+      const originals = selected.mergedFrom.map((s) => structuredClone(s));
+      state.shapesArray.splice(idx, 1, ...originals);
+
+      state.selected = originals[0] || null;
+      updateDeleteButtons(state.selected);
+
+      doCsg();
+      commit();
+
+      if (state.selected) {
+        showPanelFromRight(state.selected.kind + "-panel");
+      } else {
+        showPanelFromLeft("main-panel");
+      }
+    };
+  }
 
   document.querySelector("#photoshape-rotate-button").onclick = () => {
     document.querySelector("#back-button").removeAttribute("disabled");

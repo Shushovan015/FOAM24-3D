@@ -33047,6 +33047,16 @@ function shapeToGeom2(shape) {
       });
   }
 }
+function simplifyPointsForDrag(points, targetCount = 200) {
+  if (!Array.isArray(points) || points.length <= targetCount)
+    return points;
+  const step = Math.ceil(points.length / targetCount);
+  const simplified = [];
+  for (let i = 0; i < points.length; i += step) {
+    simplified.push(points[i]);
+  }
+  return simplified.length >= 3 ? simplified : points;
+}
 function getBoundingBox(shape) {
   let pts = [];
   try {
@@ -34353,12 +34363,18 @@ const updateDeleteButtons = (selected) => {
     if (btn2)
       btn2.setAttribute("disabled", "");
   });
+  const unmergeBtn = document.querySelector("#polygon-unmerge-button");
+  if (unmergeBtn)
+    unmergeBtn.setAttribute("disabled", "");
   if (!selected)
     return;
   const id = deleteButtonsByKind[selected.kind];
   const btn = id ? document.querySelector(`#${id}`) : null;
   if (btn)
     btn.removeAttribute("disabled");
+  if (unmergeBtn && selected.kind === "polygon" && Array.isArray(selected.mergedFrom) && selected.mergedFrom.length) {
+    unmergeBtn.removeAttribute("disabled");
+  }
 };
 function init3D() {
   state.renderer = new WebGL1Renderer({
@@ -34474,6 +34490,22 @@ function init3D() {
       showPanelFromLeft("main-panel");
     };
   };
+  const maybeSimplifyForDrag = (shape) => {
+    if (!shape || shape.kind !== "polygon" || !Array.isArray(shape.points))
+      return;
+    if (shape.points.length <= 200)
+      return;
+    if (!shape._dragOriginalPoints) {
+      shape._dragOriginalPoints = shape.points;
+      shape.points = simplifyPointsForDrag(shape.points, 200);
+    }
+  };
+  const restoreAfterDrag = (shape) => {
+    if (shape && shape._dragOriginalPoints) {
+      shape.points = shape._dragOriginalPoints;
+      delete shape._dragOriginalPoints;
+    }
+  };
   state.renderer.domElement.addEventListener("pointerdown", (e) => {
     if (window.__editingPoints)
       return;
@@ -34482,6 +34514,7 @@ function init3D() {
     state.oldSelected = state.selected;
     if (state.selected && mouseOverShape(state.selected, state.mouseRayPlaneIntersection, pointInsidePolygon)) {
       openSelectedPanel();
+      maybeSimplifyForDrag(state.selected);
       state.dragging = true;
       state.dragged = false;
       state.dragOffset = new Vector2().subVectors(
@@ -34494,6 +34527,7 @@ function init3D() {
     state.selected = shapeUnderMouse();
     if (state.selected) {
       openSelectedPanel();
+      maybeSimplifyForDrag(state.selected);
       state.dragging = true;
       state.dragged = false;
       state.dragOffset = new Vector2().subVectors(
@@ -34523,6 +34557,10 @@ function init3D() {
               const selIdx = state.shapesArray.indexOf(state.selected);
               const otherIdx2 = state.shapesArray.indexOf(other);
               const merged = mergeIntoPolygon(state.selected, other);
+              merged.mergedFrom = [
+                structuredClone(state.selected),
+                structuredClone(other)
+              ];
               const [high, low] = [selIdx, otherIdx2].sort((a, b) => b - a);
               state.shapesArray.splice(high, 1);
               state.shapesArray.splice(low, 1);
@@ -34539,6 +34577,8 @@ function init3D() {
         }
       }
     }
+    restoreAfterDrag(state.selected);
+    doCsg();
     state.dragging = false;
     state.controls.enabled = true;
   });
@@ -55029,6 +55069,9 @@ const deleteButtonClick = (buttonName, getShapesArray, commit2, doCsg2, getSelec
     doCsg2();
     document.querySelector("#back-button").setAttribute("disabled", "");
     showPanelFromLeft2("main-panel");
+    if (window.__photoshapeCleanup) {
+      window.__photoshapeCleanup();
+    }
   };
 };
 const depthButtonClick = (buttonName, panelLeft, panelRight, selected, showPanelFromLeft2, showPanelFromRight2, additionalCallback = () => {
@@ -55412,6 +55455,26 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
     order: [],
     index: 0
   };
+  const hidePhotoshapeUI = () => {
+    document.getElementById("photoshape-step-note").style.display = "none";
+    document.getElementById("photoshape-button").style.display = "none";
+    setPhotoshapeFlowActive(false);
+  };
+  const cleanupPhotoshapeUI = () => {
+    const remaining = shapesArray.some((s) => (s == null ? void 0 : s.source) === "photoshape");
+    if (!remaining) {
+      photoshapeSession.ids = [];
+      photoshapeSession.index = 0;
+      setPhotoshapeStep(1, {
+        note: "Upload an image to start.",
+        canBack: false,
+        canNext: false,
+        nextLabel: "Edit"
+      });
+      hidePhotoshapeUI();
+    }
+  };
+  window.__photoshapeCleanup = cleanupPhotoshapeUI;
   const selectPhotoshapeByIndex = (idx) => {
     if (!photoshapeSession.order.length)
       return false;
@@ -55642,7 +55705,8 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
       }).then((blob) => {
         const formData = new FormData();
         formData.append("image", blob, "image.png");
-        return fetch("https://fm24api.com/detect_contours", {
+        const CONTOUR_API_BASE = "https://fm24api.com";
+        return fetch(`${CONTOUR_API_BASE}/detect_contours`, {
           method: "POST",
           body: formData
         });
@@ -55673,7 +55737,8 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
             sizeY: 250 * millimeters,
             points: contour,
             rotation: 0,
-            free: true
+            free: true,
+            source: "photoshape"
           };
           shapesArray.push(shape);
           photoshapeSession.ids.push(shape.id);
@@ -56147,6 +56212,29 @@ function initUI() {
       document.querySelector("#photoshape-depth-slider").value = state.selected.sizeZ;
     }
   );
+  const unmergeBtn = document.querySelector("#polygon-unmerge-button");
+  if (unmergeBtn) {
+    unmergeBtn.onclick = () => {
+      const selected = state.selected;
+      if (!selected || selected.kind !== "polygon" || !Array.isArray(selected.mergedFrom) || selected.mergedFrom.length === 0) {
+        return;
+      }
+      const idx = state.shapesArray.indexOf(selected);
+      if (idx === -1)
+        return;
+      const originals = selected.mergedFrom.map((s) => structuredClone(s));
+      state.shapesArray.splice(idx, 1, ...originals);
+      state.selected = originals[0] || null;
+      updateDeleteButtons(state.selected);
+      doCsg();
+      commit();
+      if (state.selected) {
+        showPanelFromRight(state.selected.kind + "-panel");
+      } else {
+        showPanelFromLeft("main-panel");
+      }
+    };
+  }
   document.querySelector("#photoshape-rotate-button").onclick = () => {
     document.querySelector("#back-button").removeAttribute("disabled");
     document.querySelector("#back-button").onclick = () => {
@@ -56246,4 +56334,4 @@ if (typeof window === "object") {
   initUI();
   commit();
 }
-//# sourceMappingURL=index-bbddab6b.js.map
+//# sourceMappingURL=index-c287aede.js.map

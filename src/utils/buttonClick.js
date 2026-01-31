@@ -50,8 +50,14 @@ export const deleteButtonClick = (
     doCsg();
     document.querySelector("#back-button").setAttribute("disabled", "");
     showPanelFromLeft("main-panel");
+
+    // NEW: clean up photoshape UI if nothing left
+    if (window.__photoshapeCleanup) {
+      window.__photoshapeCleanup();
+    }
   };
 };
+
 
 
 export const depthButtonClick = (

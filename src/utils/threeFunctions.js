@@ -120,6 +120,17 @@ export function getGeom2Points(shape) {
     : jscad.geometries.geom2.toPoints(geom);
 }
 
+export function simplifyPointsForDrag(points, targetCount = 200) {
+  if (!Array.isArray(points) || points.length <= targetCount) return points;
+  const step = Math.ceil(points.length / targetCount);
+  const simplified = [];
+  for (let i = 0; i < points.length; i += step) {
+    simplified.push(points[i]);
+  }
+  return simplified.length >= 3 ? simplified : points;
+}
+
+
 export function getBoundingBox(shape) {
   let pts = [];
   try {
