@@ -55375,31 +55375,48 @@ const createShapeRectangle = (millimeters, selected, shapesArray, commit2, showP
     callback(selected);
   };
 };
-function distanceSquaredToLineSegment2(lx1, ly1, ldx, ldy, lineLengthSquared, px2, py2) {
-  var t;
-  if (!lineLengthSquared) {
-    t = 0;
+const getPhotoshapeDepthLabel = (session) => session.index < session.order.length - 1 ? "Next Shape" : "Finish";
+const rebuildOrderAndIndex = (session, shapesArray, selected) => {
+  session.order = session.ids.map((id) => shapesArray.find((s) => s.id === id)).filter(Boolean).sort((a, b) => getBoundingBox(a).minX - getBoundingBox(b).minX).map((s) => s.id);
+  if (selected && selected.id) {
+    const idx = session.order.indexOf(selected.id);
+    session.index = idx !== -1 ? idx : 0;
   } else {
-    t = ((px2 - lx1) * ldx + (py2 - ly1) * ldy) / lineLengthSquared;
-    if (t < 0)
-      t = 0;
-    else if (t > 1)
-      t = 1;
+    session.index = 0;
   }
-  var lx = lx1 + t * ldx, ly = ly1 + t * ldy, dx = px2 - lx, dy = py2 - ly;
-  return dx * dx + dy * dy;
-}
-function distanceSquaredToLineSegment(lx1, ly1, lx2, ly2, px2, py2) {
-  var ldx = lx2 - lx1, ldy = ly2 - ly1, lineLengthSquared = ldx * ldx + ldy * ldy;
-  return distanceSquaredToLineSegment2(lx1, ly1, ldx, ldy, lineLengthSquared, px2, py2);
-}
-function distanceToLineSegment(lx1, ly1, lx2, ly2, px2, py2) {
-  return Math.sqrt(distanceSquaredToLineSegment(lx1, ly1, lx2, ly2, px2, py2));
-}
-distanceToLineSegment.squared = distanceSquaredToLineSegment;
-distanceToLineSegment.squaredWithPrecalc = distanceSquaredToLineSegment2;
-var distanceToLineSegment_1 = distanceToLineSegment;
-distanceToLineSegment_1.squaredWithPrecalc;
+};
+const beginPhotoshapeEditSession = (session, shapesArray, selected) => {
+  rebuildOrderAndIndex(session, shapesArray, selected);
+};
+const selectPhotoshapeByIndex = (idx, session, shapesArray, setSelected, callback, showPanelFromRight2) => {
+  if (!session.order.length)
+    return false;
+  if (idx < 0 || idx >= session.order.length)
+    return false;
+  const id = session.order[idx];
+  const nextShape = shapesArray.find((s) => s.id === id);
+  if (!nextShape)
+    return false;
+  setSelected(nextShape);
+  session.index = idx;
+  callback(nextShape);
+  showPanelFromRight2(nextShape.kind + "-panel");
+  return true;
+};
+const advanceToNextUnvisited = (session, shapesArray, selected, setSelected, callback, showPanelFromRight2) => {
+  rebuildOrderAndIndex(session, shapesArray, selected);
+  const nextIdx = session.index + 1;
+  if (nextIdx >= session.order.length)
+    return false;
+  return selectPhotoshapeByIndex(
+    nextIdx,
+    session,
+    shapesArray,
+    setSelected,
+    callback,
+    showPanelFromRight2
+  );
+};
 const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, showPanelFromLeft2, showPanelFromRight2, doCsg2, display2D, callback, callback1, camera, renderer, scene) => {
   const stepUI = {
     container: document.querySelector("#photoshape-stepper"),
@@ -55467,6 +55484,17 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
     order: [],
     index: 0
   };
+  const beginSession = () => beginPhotoshapeEditSession(photoshapeSession, shapesArray, selected);
+  const moveToNext = () => advanceToNextUnvisited(
+    photoshapeSession,
+    shapesArray,
+    selected,
+    (shape) => {
+      selected = shape;
+    },
+    callback,
+    showPanelFromRight2
+  );
   const hidePhotoshapeUI = () => {
     document.getElementById("photoshape-step-note").style.display = "none";
     document.getElementById("photoshape-button").style.display = "none";
@@ -55487,50 +55515,15 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
     }
   };
   window.__photoshapeCleanup = cleanupPhotoshapeUI;
-  const selectPhotoshapeByIndex = (idx) => {
-    if (!photoshapeSession.order.length)
-      return false;
-    if (idx < 0 || idx >= photoshapeSession.order.length)
-      return false;
-    const id = photoshapeSession.order[idx];
-    const nextShape = shapesArray.find((s) => s.id === id);
-    if (!nextShape)
-      return false;
-    selected = nextShape;
-    photoshapeSession.index = idx;
-    callback(selected);
-    const backBtn = document.querySelector("#back-button");
-    if (backBtn) {
-      backBtn.removeAttribute("disabled");
-      backBtn.onclick = () => {
-        backBtn.setAttribute("disabled", "");
-        hidePhotoshapeUI();
-        setEditing(false);
-        setPhotoshapeStep(1, {
-          note: "Upload an image to start.",
-          canBack: false,
-          canNext: false,
-          nextLabel: "Edit"
-        });
-        showPanelFromLeft2("main-panel");
-        selected = null;
-      };
-    }
-    showPanelFromRight2(selected.kind + "-panel");
-    return true;
-  };
   photoshapeSession.visited = /* @__PURE__ */ new Set();
   photoshapeSession.remaining = 0;
-  const beginPhotoshapeEditSession = () => {
-    rebuildOrderAndIndex();
-  };
   const startPhotoshapeEditFlow = () => {
     if (!photoshapeSession.ids.length)
       return;
     document.getElementById("photoshape-step-note").style.display = "flex";
     document.getElementById("photoshape-button").style.display = "flex";
     setPhotoshapeFlowActive(true);
-    beginPhotoshapeEditSession();
+    beginSession();
     setEditing(true);
     setPhotoshapeStep(3, {
       note: `Edit outline: shape ${photoshapeSession.index + 1} of ${photoshapeSession.order.length || photoshapeSession.ids.length}`,
@@ -55539,25 +55532,6 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
       nextLabel: "Depth"
     });
     showPanelFromLeft2("upload-photo-panel");
-  };
-  const rebuildOrderAndIndex = () => {
-    photoshapeSession.order = photoshapeSession.ids.map((id) => shapesArray.find((s) => s.id === id)).filter(Boolean).sort((a, b) => getBoundingBox(a).minX - getBoundingBox(b).minX).map((s) => s.id);
-    if (selected && selected.id) {
-      const idx = photoshapeSession.order.indexOf(selected.id);
-      photoshapeSession.index = idx !== -1 ? idx : 0;
-    } else {
-      photoshapeSession.index = 0;
-    }
-  };
-  const advanceToNextUnvisited = () => {
-    rebuildOrderAndIndex();
-    const nextIdx = photoshapeSession.index + 1;
-    if (nextIdx >= photoshapeSession.order.length)
-      return false;
-    return selectPhotoshapeByIndex(nextIdx);
-  };
-  const getPhotoshapeDepthLabel = () => {
-    return photoshapeSession.index < photoshapeSession.order.length - 1 ? "Next Shape" : "Finish";
   };
   setPhotoshapeFlowActive(false);
   setPhotoshapeStep(1, {
@@ -55602,7 +55576,7 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
       if (!photoshapeFlowActive)
         return;
       if (photoshapeStep === 2) {
-        beginPhotoshapeEditSession();
+        beginSession();
         setEditing(true);
         setPhotoshapeStep(3, {
           note: `Edit outline: shape ${photoshapeSession.index + 1} of ${photoshapeSession.order.length || photoshapeSession.ids.length}`,
@@ -55620,13 +55594,13 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
           note: `Adjust depth: shape ${photoshapeSession.index + 1} of ${photoshapeSession.order.length || photoshapeSession.ids.length}`,
           canBack: true,
           canNext: true,
-          nextLabel: getPhotoshapeDepthLabel()
+          nextLabel: getPhotoshapeDepthLabel(photoshapeSession)
         });
         showPanelFromRight2(getDepthPanelId());
         return;
       }
       if (photoshapeStep === 4) {
-        const moved = advanceToNextUnvisited();
+        const moved = moveToNext();
         if (moved) {
           setEditing(true);
           setPhotoshapeStep(3, {
@@ -55646,8 +55620,8 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
           nextLabel: "Edit"
         });
         setPhotoshapeFlowActive(false);
-        document.getElementById("photoshape-step-note").style.display = `none`;
-        document.getElementById("photoshape-button").style.display = `none`;
+        document.getElementById("photoshape-step-note").style.display = "none";
+        document.getElementById("photoshape-button").style.display = "none";
         if (selected) {
           showPanelFromRight2(selected.kind + "-panel");
         }
@@ -55670,14 +55644,14 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
       canNext: false,
       nextLabel: "Edit"
     });
-    document.getElementById("photoshape-step-note").style.display = `flex`;
-    document.getElementById("photoshape-button").style.display = `flex`;
+    document.getElementById("photoshape-step-note").style.display = "flex";
+    document.getElementById("photoshape-button").style.display = "flex";
     setEditing(false);
     document.querySelector("#back-button").removeAttribute("disabled");
     document.querySelector("#back-button").onclick = () => {
       document.querySelector("#back-button").setAttribute("disabled", "");
-      document.getElementById("photoshape-step-note").style.display = `none`;
-      document.getElementById("photoshape-button").style.display = `none`;
+      document.getElementById("photoshape-step-note").style.display = "none";
+      document.getElementById("photoshape-button").style.display = "none";
       showPanelFromLeft2("main-panel");
       setEditing(false);
       selected = null;
@@ -55702,20 +55676,20 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
         canNext: false,
         nextLabel: "Edit"
       });
-      reader.onload = function(e2) {
-        imgElement.src = e2.target.result;
-        uploadImage(file, e2.target.result);
+      reader.onload = function(ev) {
+        imgElement.src = ev.target.result;
+        uploadImage(file, ev.target.result);
       };
       reader.readAsDataURL(file);
     }
-    function uploadImage(file2, imageSrc) {
+    function uploadImage(fileParam, imageSrc) {
       setPhotoshapeStep(2, {
         note: "Removing background and detecting outline...",
         canBack: true,
         canNext: false,
         nextLabel: "Edit"
       });
-      getBase64(file2).then((base64Image) => {
+      getBase64(fileParam).then((base64Image) => {
         return fetch("https://api.remove.bg/v1.0/removebg", {
           method: "POST",
           headers: {
@@ -55780,7 +55754,7 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
         });
         commit2();
         photoshapeSession.index = 0;
-        beginPhotoshapeEditSession();
+        beginSession();
         setPhotoshapeFlowActive(true);
         setPhotoshapeStep(2, {
           note: "Outline ready. Click Edit to adjust points.",
@@ -56372,4 +56346,4 @@ if (typeof window === "object") {
   initUI();
   commit();
 }
-//# sourceMappingURL=index-2152e3ed.js.map
+//# sourceMappingURL=index-1ce4ec8d.js.map
