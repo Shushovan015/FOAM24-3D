@@ -72,15 +72,23 @@ export const depthButtonClick = (
   const btn = document.querySelector(`#${buttonName}`);
   if (!btn) return;
   btn.onclick = () => {
-    document.querySelector("#back-button").removeAttribute("disabled");
-    document.querySelector("#back-button").onclick = () => {
-      document.querySelector("#back-button").setAttribute("disabled", "");
+    const backBtn = document.querySelector("#back-button");
+    backBtn.removeAttribute("disabled");
+    backBtn.onclick = () => {
       showPanelFromLeft(`${panelLeft}`);
+
+      // once back on the shape panel, allow back to main again
+      backBtn.removeAttribute("disabled");
+      backBtn.onclick = () => {
+        backBtn.setAttribute("disabled", "");
+        showPanelFromLeft("main-panel");
+      };
     };
     showPanelFromRight(`${panelRight}`);
     additionalCallback();
   };
 };
+
 
 
 export const sliderButtonClick = (sliderName, sliderInput, doCsg, callback) => {

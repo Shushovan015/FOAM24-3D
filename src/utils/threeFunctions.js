@@ -1157,7 +1157,7 @@ export function drawMeasurementsLine(shape, ctx, camera, centimeters) {
 export function drawEdgeToFoamMeasurements(shape, foam, ctx, camera) {
   if (!shape || !foam) return;
 
-  const { minX, maxY } = getBoundingBox(shape);
+  const { minX, maxX, minY, maxY } = getBoundingBox(shape);
 
   const foamLeft = foam.x - foam.sizeX / 2;
   const foamTop = foam.y + foam.sizeY / 2;
@@ -1168,11 +1168,14 @@ export function drawEdgeToFoamMeasurements(shape, foam, ctx, camera) {
 
   if (leftDist < 0 || topDist < 0) return;
 
-  const pLeftEdge = project(new THREE.Vector3(foamLeft, maxY, baseZ), camera, ctx);
-  const pLeftVertex = project(new THREE.Vector3(minX, maxY, baseZ), camera, ctx);
+  const midY = (minY + maxY) / 2;
+  const midX = (minX + maxX) / 2;
 
-  const pTopEdge = project(new THREE.Vector3(minX, foamTop, baseZ), camera, ctx);
-  const pTopVertex = project(new THREE.Vector3(minX, maxY, baseZ), camera, ctx);
+  const pLeftEdge = project(new THREE.Vector3(foamLeft, midY, baseZ), camera, ctx);
+  const pLeftVertex = project(new THREE.Vector3(minX, midY, baseZ), camera, ctx);
+
+  const pTopEdge = project(new THREE.Vector3(midX, foamTop, baseZ), camera, ctx);
+  const pTopVertex = project(new THREE.Vector3(midX, maxY, baseZ), camera, ctx);
 
   ctx.save();
   ctx.strokeStyle = "orange";
