@@ -21,7 +21,6 @@ import {
   simplifyPointsForDrag,
   drawEdgeToFoamMeasurements
 } from "../utils/threeFunctions";
-// src/setup/scene.js
 import { pointInsidePolygon, confirmMerge, getValues, getCameraValue, structuredClone } from "../utils/common";
 import { LambertMaterial } from "../components/Material";
 import { createImage } from "../components/createImage";
@@ -50,16 +49,26 @@ const deleteButtonsByKind = {
   photoshape: "photoshape-delete-button",
 };
 
-// const updateDeleteButtons = (selected) => {
-//   Object.values(deleteButtonsByKind).forEach((id) => {
-//     const btn = document.querySelector(`#${id}`);
-//     if (btn) btn.setAttribute("disabled", "");
-//   });
-//   if (!selected) return;
-//   const id = deleteButtonsByKind[selected.kind];
-//   const btn = id ? document.querySelector(`#${id}`) : null;
-//   if (btn) btn.removeAttribute("disabled");
-// };
+export function saveCameraView() {
+  if (!state.camera || !state.controls) return;
+
+  state._savedCameraView = {
+    position: state.camera.position.clone(),
+    target: state.controls.target.clone(),
+    up: state.camera.up.clone(),
+  };
+}
+
+export function restoreCameraView() {
+  const saved = state._savedCameraView;
+  if (!saved || !state.camera || !state.controls) return;
+
+  state.camera.position.copy(saved.position);
+  state.controls.target.copy(saved.target);
+  state.camera.up.copy(saved.up);
+  state.camera.lookAt(saved.target);
+  state.controls.update();
+}
 
 export const updateDeleteButtons = (selected) => {
   Object.values(deleteButtonsByKind).forEach((id) => {
@@ -86,6 +95,43 @@ export const updateDeleteButtons = (selected) => {
   }
 };
 
+export function resetCameraToTopView() {
+  if (!state.camera || !state.controls) return;
+
+  const targetX = state.foam?.x || 0;
+  const targetY = state.foam?.y || 0;
+  const targetZ = 37 * units.centimeters;
+
+  const maxDim = Math.max(state.foam.sizeX, state.foam.sizeY);
+  const distance = Math.max(maxDim * 2, 1 * units.meters);
+
+  state.camera.up.set(0, 0, 1);
+
+  const epsilon = distance * 0.001;
+
+  state.controls.target.set(targetX, targetY, targetZ);
+  state.camera.position.set(targetX, targetY - epsilon, targetZ + distance);
+  state.camera.lookAt(targetX, targetY, targetZ);
+  state.controls.update();
+}
+
+export function resetCameraToFrontView() {
+  if (!state.camera || !state.controls) return;
+
+  const targetX = state.foam?.x || 0;
+  const targetY = state.foam?.y || 0;
+  const targetZ = 37 * units.centimeters;
+
+  const maxDim = Math.max(state.foam.sizeX, state.foam.sizeY);
+  const distance = Math.max(maxDim * 2, 1 * units.meters);
+
+  state.camera.up.set(0, 0, 1);
+
+  state.controls.target.set(targetX, targetY, targetZ);
+  state.camera.position.set(targetX, targetY - distance, targetZ);
+  state.camera.lookAt(targetX, targetY, targetZ);
+  state.controls.update();
+}
 
 export function init3D() {
   state.renderer = new THREE.WebGL1Renderer({

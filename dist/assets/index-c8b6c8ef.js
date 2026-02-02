@@ -33466,38 +33466,39 @@ function projectPoint(x, y, z, camera, renderer) {
 }
 function drawMeasurementsPhotoshape(shape, ctx, camera, currPanel2, centimeters) {
   ctx.fillStyle = "orange";
-  const canvasCenterX = ctx.canvas.width / 2;
-  const canvasCenterY = ctx.canvas.height / 2;
-  const shapeCenterX = shape.sizeX / 2;
-  const shapeCenterY = shape.sizeY / 2;
-  const offsetX = canvasCenterX - shapeCenterX;
-  const offsetY = canvasCenterY - shapeCenterY;
-  function transform2(v, is2DMode, object, shape2) {
-    const clonedV = v.clone();
-    if (is2DMode) {
-      clonedV.sub(new Vector3(shape2.sizeX / 2, shape2.sizeY / 2, 0)).applyAxisAngle(
+  const { minX, minY } = getBoundingBox(shape);
+  function transform2(v, camera2) {
+    return project(
+      v.sub(new Vector3(shape.x, shape.y, 0)).applyAxisAngle(
         new Vector3(0, 0, 1),
-        src.utils.degToRad((shape2 == null ? void 0 : shape2.rotation) || 0)
-      ).add(new Vector3(offsetX, offsetY, 0));
-    } else {
-      clonedV.applyMatrix4(object.matrixWorld);
-    }
-    return project(clonedV, camera, ctx);
+        src.utils.degToRad((shape == null ? void 0 : shape.rotation) || 0)
+      ).add(new Vector3(shape.x, shape.y, 0)),
+      camera2,
+      ctx
+    );
   }
   if (currPanel2.id.endsWith("-depth-panel")) {
     ctx.beginPath();
-    let p0 = transform2(new Vector3(shape.x, shape.y, 37 * centimeters));
+    let p0 = transform2(
+      new Vector3(minX, minY, 37 * centimeters),
+      camera
+    );
     let p1 = transform2(
-      new Vector3(shape.x, shape.y, 37 * centimeters - shape.sizeZ)
+      new Vector3(minX, minY, 37 * centimeters - shape.sizeZ),
+      camera
     );
     ctx.moveTo(p0.x, p0.y);
     ctx.lineTo(p1.x, p1.y);
     ctx.stroke();
   }
   if (currPanel2.id.endsWith("-depth-panel")) {
-    let p0 = transform2(new Vector3(shape.x, shape.y, 37 * centimeters));
+    let p0 = transform2(
+      new Vector3(minX, minY, 37 * centimeters),
+      camera
+    );
     let p1 = transform2(
-      new Vector3(shape.x, shape.y, 37 * centimeters - shape.sizeZ)
+      new Vector3(minX, minY, 37 * centimeters - shape.sizeZ),
+      camera
     );
     let pMid = new Vector3().addVectors(p0, p1).divideScalar(2);
     ctx.font = measurementFont(20);
@@ -33664,6 +33665,7 @@ function drawMeasurementsRectangle(shape, ctx, camera, currPanel2, centimeters) 
 }
 function drawMeasurementsPolygon(shape, ctx, camera, currPanel2, centimeters) {
   ctx.fillStyle = "orange";
+  const { minX, minY } = getBoundingBox(shape);
   function transform2(v, camera2) {
     return project(
       v.sub(new Vector3(shape == null ? void 0 : shape.x, shape == null ? void 0 : shape.y, 0)).applyAxisAngle(
@@ -33677,11 +33679,11 @@ function drawMeasurementsPolygon(shape, ctx, camera, currPanel2, centimeters) {
   if (currPanel2.id.endsWith("-depth-panel")) {
     ctx.beginPath();
     let p0 = transform2(
-      new Vector3(shape.x, shape.y, 37 * centimeters),
+      new Vector3(minX, minY, 37 * centimeters),
       camera
     );
     let p1 = transform2(
-      new Vector3(shape.x, shape.y, 37 * centimeters - shape.sizeZ),
+      new Vector3(minX, minY, 37 * centimeters - shape.sizeZ),
       camera
     );
     ctx.moveTo(p0.x, p0.y);
@@ -33690,11 +33692,11 @@ function drawMeasurementsPolygon(shape, ctx, camera, currPanel2, centimeters) {
   }
   if (currPanel2.id.endsWith("-depth-panel")) {
     let p0 = transform2(
-      new Vector3(shape.x, shape.y, 37 * centimeters),
+      new Vector3(minX, minY, 37 * centimeters),
       camera
     );
     let p1 = transform2(
-      new Vector3(shape.x, shape.y, 37 * centimeters - shape.sizeZ),
+      new Vector3(minX, minY, 37 * centimeters - shape.sizeZ),
       camera
     );
     let pMid = new Vector3().addVectors(p0, p1).divideScalar(2);
@@ -33832,7 +33834,7 @@ function drawMeasurementsLine(shape, ctx, camera, centimeters) {
 function drawEdgeToFoamMeasurements(shape, foam, ctx, camera) {
   if (!shape || !foam)
     return;
-  const { minX, maxY } = getBoundingBox(shape);
+  const { minX, maxX, minY, maxY } = getBoundingBox(shape);
   const foamLeft = foam.x - foam.sizeX / 2;
   const foamTop = foam.y + foam.sizeY / 2;
   const baseZ = foam.sizeZ;
@@ -33840,10 +33842,12 @@ function drawEdgeToFoamMeasurements(shape, foam, ctx, camera) {
   const topDist = foamTop - maxY;
   if (leftDist < 0 || topDist < 0)
     return;
-  const pLeftEdge = project(new Vector3(foamLeft, maxY, baseZ), camera, ctx);
-  const pLeftVertex = project(new Vector3(minX, maxY, baseZ), camera, ctx);
-  const pTopEdge = project(new Vector3(minX, foamTop, baseZ), camera, ctx);
-  const pTopVertex = project(new Vector3(minX, maxY, baseZ), camera, ctx);
+  const midY = (minY + maxY) / 2;
+  const midX = (minX + maxX) / 2;
+  const pLeftEdge = project(new Vector3(foamLeft, midY, baseZ), camera, ctx);
+  const pLeftVertex = project(new Vector3(minX, midY, baseZ), camera, ctx);
+  const pTopEdge = project(new Vector3(midX, foamTop, baseZ), camera, ctx);
+  const pTopVertex = project(new Vector3(midX, maxY, baseZ), camera, ctx);
   ctx.save();
   ctx.strokeStyle = "orange";
   ctx.fillStyle = "orange";
@@ -34364,6 +34368,25 @@ const deleteButtonsByKind = {
   polygon: "polygon-delete-button",
   photoshape: "photoshape-delete-button"
 };
+function saveCameraView() {
+  if (!state.camera || !state.controls)
+    return;
+  state._savedCameraView = {
+    position: state.camera.position.clone(),
+    target: state.controls.target.clone(),
+    up: state.camera.up.clone()
+  };
+}
+function restoreCameraView() {
+  const saved = state._savedCameraView;
+  if (!saved || !state.camera || !state.controls)
+    return;
+  state.camera.position.copy(saved.position);
+  state.controls.target.copy(saved.target);
+  state.camera.up.copy(saved.up);
+  state.camera.lookAt(saved.target);
+  state.controls.update();
+}
 const updateDeleteButtons = (selected) => {
   Object.values(deleteButtonsByKind).forEach((id2) => {
     const btn2 = document.querySelector(`#${id2}`);
@@ -34383,6 +34406,37 @@ const updateDeleteButtons = (selected) => {
     unmergeBtn.removeAttribute("disabled");
   }
 };
+function resetCameraToTopView() {
+  var _a, _b;
+  if (!state.camera || !state.controls)
+    return;
+  const targetX = ((_a = state.foam) == null ? void 0 : _a.x) || 0;
+  const targetY = ((_b = state.foam) == null ? void 0 : _b.y) || 0;
+  const targetZ = 37 * units.centimeters;
+  const maxDim = Math.max(state.foam.sizeX, state.foam.sizeY);
+  const distance2 = Math.max(maxDim * 2, 1 * units.meters);
+  state.camera.up.set(0, 0, 1);
+  const epsilon = distance2 * 1e-3;
+  state.controls.target.set(targetX, targetY, targetZ);
+  state.camera.position.set(targetX, targetY - epsilon, targetZ + distance2);
+  state.camera.lookAt(targetX, targetY, targetZ);
+  state.controls.update();
+}
+function resetCameraToFrontView() {
+  var _a, _b;
+  if (!state.camera || !state.controls)
+    return;
+  const targetX = ((_a = state.foam) == null ? void 0 : _a.x) || 0;
+  const targetY = ((_b = state.foam) == null ? void 0 : _b.y) || 0;
+  const targetZ = 37 * units.centimeters;
+  const maxDim = Math.max(state.foam.sizeX, state.foam.sizeY);
+  const distance2 = Math.max(maxDim * 2, 1 * units.meters);
+  state.camera.up.set(0, 0, 1);
+  state.controls.target.set(targetX, targetY, targetZ);
+  state.camera.position.set(targetX, targetY - distance2, targetZ);
+  state.camera.lookAt(targetX, targetY, targetZ);
+  state.controls.update();
+}
 function init3D() {
   state.renderer = new WebGL1Renderer({
     antialias: true,
@@ -55092,10 +55146,16 @@ const depthButtonClick = (buttonName, panelLeft, panelRight, selected, showPanel
   if (!btn)
     return;
   btn.onclick = () => {
-    document.querySelector("#back-button").removeAttribute("disabled");
-    document.querySelector("#back-button").onclick = () => {
-      document.querySelector("#back-button").setAttribute("disabled", "");
+    const backBtn = document.querySelector("#back-button");
+    backBtn.removeAttribute("disabled");
+    backBtn.onclick = () => {
       showPanelFromLeft2(`${panelLeft}`);
+      restoreCameraView();
+      backBtn.removeAttribute("disabled");
+      backBtn.onclick = () => {
+        backBtn.setAttribute("disabled", "");
+        showPanelFromLeft2("main-panel");
+      };
     };
     showPanelFromRight2(`${panelRight}`);
     additionalCallback();
@@ -55552,6 +55612,8 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
           canNext: true,
           nextLabel: "Depth"
         });
+        if (!display2D)
+          restoreCameraView();
         showPanelFromLeft2("upload-photo-panel");
       } else if (photoshapeStep === 3) {
         setEditing(false);
@@ -55597,6 +55659,10 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
           nextLabel: getPhotoshapeDepthLabel(photoshapeSession)
         });
         showPanelFromRight2(getDepthPanelId());
+        if (!display2D) {
+          saveCameraView();
+          resetCameraToFrontView();
+        }
         return;
       }
       if (photoshapeStep === 4) {
@@ -55991,6 +56057,10 @@ function initUI() {
       state.display2D,
       (modifiedSelected) => {
         state.selected = modifiedSelected;
+        if (!state.display2D) {
+          saveCameraView();
+          resetCameraToTopView();
+        }
       },
       (modifiedDisplay) => {
         state.display2D = modifiedDisplay;
@@ -56007,6 +56077,10 @@ function initUI() {
     doCsg,
     (modifiedSelected) => {
       state.selected = modifiedSelected;
+      if (!state.display2D) {
+        saveCameraView();
+        resetCameraToTopView();
+      }
     }
   );
   depthButtonClick(
@@ -56033,6 +56107,8 @@ function initUI() {
     () => {
       document.querySelector("#rectangle-depth-input").value = state.selected.sizeZ;
       document.querySelector("#rectangle-depth-slider").value = state.selected.sizeZ;
+      if (!state.display2D)
+        resetCameraToFrontView();
     }
   );
   depthButtonClick(
@@ -56090,6 +56166,10 @@ function initUI() {
     doCsg,
     (modifiedSelected) => {
       state.selected = modifiedSelected;
+      if (!state.display2D) {
+        saveCameraView();
+        resetCameraToTopView();
+      }
     }
   );
   depthButtonClick(
@@ -56114,6 +56194,8 @@ function initUI() {
     () => {
       document.querySelector("#depth-input").value = state.selected.sizeZ;
       document.querySelector("#depth-slider").value = state.selected.sizeZ;
+      if (!state.display2D)
+        resetCameraToFrontView();
     }
   );
   sliderButtonClick("radius-slider", "radius-input", doCsg, (radius) => {
@@ -56153,6 +56235,10 @@ function initUI() {
         (modifiedSelected, modifiedDisplay) => {
           state.selected = modifiedSelected;
           state.display2D = modifiedDisplay;
+          if (!state.display2D) {
+            saveCameraView();
+            resetCameraToTopView();
+          }
         },
         foamMesh
       );
@@ -56171,6 +56257,8 @@ function initUI() {
     () => {
       document.querySelector("#polygon-depth-input").value = state.selected.sizeZ;
       document.querySelector("#polygon-depth-slider").value = state.selected.sizeZ;
+      if (!state.display2D)
+        resetCameraToFrontView();
     }
   );
   depthButtonClick(
@@ -56213,6 +56301,8 @@ function initUI() {
     () => {
       document.querySelector("#photoshape-depth-input").value = state.selected.sizeZ;
       document.querySelector("#photoshape-depth-slider").value = state.selected.sizeZ;
+      if (!state.display2D)
+        resetCameraToFrontView();
     }
   );
   const unmergeBtn = document.querySelector("#polygon-unmerge-button");
@@ -56346,4 +56436,4 @@ if (typeof window === "object") {
   initUI();
   commit();
 }
-//# sourceMappingURL=index-1ce4ec8d.js.map
+//# sourceMappingURL=index-c8b6c8ef.js.map

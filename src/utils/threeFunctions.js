@@ -731,37 +731,31 @@ export function drawMeasurementsPhotoshape(
 ) {
   ctx.fillStyle = "orange";
 
-  const canvasCenterX = ctx.canvas.width / 2;
-  const canvasCenterY = ctx.canvas.height / 2;
+  const { minX, minY } = getBoundingBox(shape);
 
-  const shapeCenterX = shape.sizeX / 2;
-  const shapeCenterY = shape.sizeY / 2;
-  const offsetX = canvasCenterX - shapeCenterX;
-  const offsetY = canvasCenterY - shapeCenterY;
-
-  function transform(v, is2DMode, object, shape) {
-    const clonedV = v.clone();
-
-    if (is2DMode) {
-      clonedV
-        .sub(new THREE.Vector3(shape.sizeX / 2, shape.sizeY / 2, 0))
+  function transform(v, camera) {
+    return project(
+      v
+        .sub(new THREE.Vector3(shape.x, shape.y, 0))
         .applyAxisAngle(
           new THREE.Vector3(0, 0, 1),
           jscad.utils.degToRad(shape?.rotation || 0)
         )
-        .add(new THREE.Vector3(offsetX, offsetY, 0)); // Direct access
-    } else {
-      clonedV.applyMatrix4(object.matrixWorld);
-    }
-
-    return project(clonedV, camera, ctx);
+        .add(new THREE.Vector3(shape.x, shape.y, 0)),
+      camera,
+      ctx
+    );
   }
 
   if (currPanel.id.endsWith("-depth-panel")) {
     ctx.beginPath();
-    let p0 = transform(new THREE.Vector3(shape.x, shape.y, 37 * centimeters));
+    let p0 = transform(
+      new THREE.Vector3(minX, minY, 37 * centimeters),
+      camera
+    );
     let p1 = transform(
-      new THREE.Vector3(shape.x, shape.y, 37 * centimeters - shape.sizeZ)
+      new THREE.Vector3(minX, minY, 37 * centimeters - shape.sizeZ),
+      camera
     );
     ctx.moveTo(p0.x, p0.y);
     ctx.lineTo(p1.x, p1.y);
@@ -769,9 +763,13 @@ export function drawMeasurementsPhotoshape(
   }
 
   if (currPanel.id.endsWith("-depth-panel")) {
-    let p0 = transform(new THREE.Vector3(shape.x, shape.y, 37 * centimeters));
+    let p0 = transform(
+      new THREE.Vector3(minX, minY, 37 * centimeters),
+      camera
+    );
     let p1 = transform(
-      new THREE.Vector3(shape.x, shape.y, 37 * centimeters - shape.sizeZ)
+      new THREE.Vector3(minX, minY, 37 * centimeters - shape.sizeZ),
+      camera
     );
     let pMid = new THREE.Vector3().addVectors(p0, p1).divideScalar(2);
     ctx.font = measurementFont(20);
@@ -962,6 +960,7 @@ export function drawMeasurementsPolygon(
   centimeters
 ) {
   ctx.fillStyle = "orange";
+  const { minX, minY } = getBoundingBox(shape);
 
   function transform(v, camera) {
     return project(
@@ -979,12 +978,12 @@ export function drawMeasurementsPolygon(
 
   if (currPanel.id.endsWith("-depth-panel")) {
     ctx.beginPath();
-    let p0 = transform(
-      new THREE.Vector3(shape.x, shape.y, 37 * centimeters),
+        let p0 = transform(
+      new THREE.Vector3(minX, minY, 37 * centimeters),
       camera
     );
     let p1 = transform(
-      new THREE.Vector3(shape.x, shape.y, 37 * centimeters - shape.sizeZ),
+      new THREE.Vector3(minX, minY, 37 * centimeters - shape.sizeZ),
       camera
     );
     ctx.moveTo(p0.x, p0.y);
@@ -993,12 +992,12 @@ export function drawMeasurementsPolygon(
   }
 
   if (currPanel.id.endsWith("-depth-panel")) {
-    let p0 = transform(
-      new THREE.Vector3(shape.x, shape.y, 37 * centimeters),
+       let p0 = transform(
+      new THREE.Vector3(minX, minY, 37 * centimeters),
       camera
     );
     let p1 = transform(
-      new THREE.Vector3(shape.x, shape.y, 37 * centimeters - shape.sizeZ),
+      new THREE.Vector3(minX, minY, 37 * centimeters - shape.sizeZ),
       camera
     );
     let pMid = new THREE.Vector3().addVectors(p0, p1).divideScalar(2);
@@ -1182,13 +1181,11 @@ export function drawEdgeToFoamMeasurements(shape, foam, ctx, camera) {
   ctx.fillStyle = "orange";
   ctx.lineWidth = 1;
 
-  // left measurement line
   ctx.beginPath();
   ctx.moveTo(pLeftEdge.x, pLeftEdge.y);
   ctx.lineTo(pLeftVertex.x, pLeftVertex.y);
   ctx.stroke();
 
-  // top measurement line
   ctx.beginPath();
   ctx.moveTo(pTopEdge.x, pTopEdge.y);
   ctx.lineTo(pTopVertex.x, pTopVertex.y);
@@ -1207,7 +1204,6 @@ export function drawEdgeToFoamMeasurements(shape, foam, ctx, camera) {
 
   ctx.restore();
 }
-
 
 export function drawCircle(shape, ctx, camera, centimeters) {
   ctx.fillStyle = "red";

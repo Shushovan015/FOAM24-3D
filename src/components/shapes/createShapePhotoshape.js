@@ -4,6 +4,7 @@ import {
   beginPhotoshapeEditSession,
   advanceToNextUnvisited,
 } from "../../utils/photoshapeFlow";
+import { saveCameraView, restoreCameraView, resetCameraToFrontView } from "../../setup/scene";
 
 export const createShapePhotoShape = (
   millimeters,
@@ -181,6 +182,7 @@ export const createShapePhotoShape = (
           canNext: true,
           nextLabel: "Depth",
         });
+        if (!display2D) restoreCameraView();
         showPanelFromLeft("upload-photo-panel");
       } else if (photoshapeStep === 3) {
         setEditing(false);
@@ -230,6 +232,10 @@ export const createShapePhotoShape = (
           nextLabel: getPhotoshapeDepthLabel(photoshapeSession),
         });
         showPanelFromRight(getDepthPanelId());
+        if (!display2D) {
+          saveCameraView();
+          resetCameraToFrontView();
+        }
         return;
       }
 

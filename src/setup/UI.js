@@ -20,7 +20,7 @@ import {
   depthButtonClick,
   sliderButtonClick,
 } from "../utils/buttonClick";
-import { updateSelectedShape, updateDeleteButtons } from "./scene";
+import { updateSelectedShape, updateDeleteButtons, resetCameraToTopView, resetCameraToFrontView, saveCameraView, restoreCameraView } from "./scene";
 import { rightestPoint, leftestPoint, highestPoint, lowestPoint, structuredClone } from "../utils/common";
 import { shapeToGeom2 } from "../utils/threeFunctions";
 
@@ -96,6 +96,10 @@ export function initUI() {
       state.display2D,
       (modifiedSelected) => {
         state.selected = modifiedSelected;
+        if (!state.display2D) {
+          saveCameraView();
+          resetCameraToTopView();
+        }
       },
       (modifiedDisplay) => {
         state.display2D = modifiedDisplay;
@@ -116,6 +120,10 @@ export function initUI() {
     doCsg,
     (modifiedSelected) => {
       state.selected = modifiedSelected;
+      if (!state.display2D) {
+        saveCameraView();
+        resetCameraToTopView();
+      }
     }
   );
 
@@ -143,6 +151,7 @@ export function initUI() {
     () => {
       document.querySelector("#rectangle-depth-input").value = state.selected.sizeZ;
       document.querySelector("#rectangle-depth-slider").value = state.selected.sizeZ;
+      if (!state.display2D) resetCameraToFrontView();
     }
   );
   depthButtonClick(
@@ -206,6 +215,10 @@ export function initUI() {
     doCsg,
     (modifiedSelected) => {
       state.selected = modifiedSelected;
+      if (!state.display2D) {
+        saveCameraView();
+        resetCameraToTopView();
+      }
     }
   );
 
@@ -232,6 +245,7 @@ export function initUI() {
     () => {
       document.querySelector("#depth-input").value = state.selected.sizeZ;
       document.querySelector("#depth-slider").value = state.selected.sizeZ;
+      if (!state.display2D) resetCameraToFrontView();
     }
   );
 
@@ -274,6 +288,10 @@ export function initUI() {
         (modifiedSelected, modifiedDisplay) => {
           state.selected = modifiedSelected;
           state.display2D = modifiedDisplay;
+          if (!state.display2D) {
+            saveCameraView();
+            resetCameraToTopView();
+          }
         },
         foamMesh
       );
@@ -293,8 +311,10 @@ export function initUI() {
     () => {
       document.querySelector("#polygon-depth-input").value = state.selected.sizeZ;
       document.querySelector("#polygon-depth-slider").value = state.selected.sizeZ;
+      if (!state.display2D) resetCameraToFrontView();
     }
   );
+
   depthButtonClick(
     "polygon-rotate-button",
     "polygon-panel",
@@ -339,6 +359,7 @@ export function initUI() {
     () => {
       document.querySelector("#photoshape-depth-input").value = state.selected.sizeZ;
       document.querySelector("#photoshape-depth-slider").value = state.selected.sizeZ;
+      if (!state.display2D) resetCameraToFrontView();
     }
   );
 

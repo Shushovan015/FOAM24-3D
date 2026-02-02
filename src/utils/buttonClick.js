@@ -1,3 +1,5 @@
+import { restoreCameraView } from "../setup/scene";
+
 export const buttonClick = (
   buttonName,
   panelLeft,
@@ -8,7 +10,7 @@ export const buttonClick = (
   additionalCallback = () => { }
 ) => {
   const btn = document.querySelector(`#${buttonName}`);
-  if (!btn) return; // element may not exist in current UI
+  if (!btn) return;
   btn.onclick = () => {
     document.querySelector("#back-button").removeAttribute("disabled");
     document.querySelector("#back-button").onclick = () => {
@@ -51,14 +53,11 @@ export const deleteButtonClick = (
     document.querySelector("#back-button").setAttribute("disabled", "");
     showPanelFromLeft("main-panel");
 
-    // NEW: clean up photoshape UI if nothing left
     if (window.__photoshapeCleanup) {
       window.__photoshapeCleanup();
     }
   };
 };
-
-
 
 export const depthButtonClick = (
   buttonName,
@@ -76,8 +75,7 @@ export const depthButtonClick = (
     backBtn.removeAttribute("disabled");
     backBtn.onclick = () => {
       showPanelFromLeft(`${panelLeft}`);
-
-      // once back on the shape panel, allow back to main again
+      restoreCameraView();
       backBtn.removeAttribute("disabled");
       backBtn.onclick = () => {
         backBtn.setAttribute("disabled", "");
