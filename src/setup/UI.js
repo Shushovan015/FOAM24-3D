@@ -525,7 +525,31 @@ export function initUI() {
     appendedDiv.innerHTML = "";
 
     const items = loadShapeLibrary();
-    if (!items.length) {
+
+    const isValidPolygonPoints = (pts) => {
+      if (!Array.isArray(pts) || pts.length < 3) return false;
+      let area = 0;
+      for (let i = 0; i < pts.length; i++) {
+        const [x1, y1] = pts[i];
+        const [x2, y2] = pts[(i + 1) % pts.length];
+        area += x1 * y2 - x2 * y1;
+      }
+      return Math.abs(area) > 1e-6;
+    };
+
+    const cleaned = items.filter((entry) => {
+      if (!entry?.shape) return false;
+      if (entry.shape.kind === "polygon") {
+        return isValidPolygonPoints(entry.shape.points);
+      }
+      return true;
+    });
+
+    if (cleaned.length !== items.length) {
+      localStorage.setItem("myShapes", JSON.stringify(cleaned));
+    }
+
+    if (!cleaned.length) {
       const empty = document.createElement("div");
       empty.style.padding = "12px";
       empty.textContent = "No saved shapes yet.";
@@ -533,7 +557,7 @@ export function initUI() {
       return;
     }
 
-    items.forEach((entry) => {
+    cleaned.forEach((entry) => {
       const row = document.createElement("div");
       row.style.display = "flex";
       row.style.gap = "8px";
@@ -543,9 +567,16 @@ export function initUI() {
       const useBtn = document.createElement("button");
       useBtn.className = "column grow white";
       useBtn.textContent = entry.name;
-
       useBtn.onclick = () => {
         const newShape = cloneShapeForInsert(entry.shape);
+
+        if (newShape.kind === "polygon") {
+          if (!isValidPolygonPoints(newShape.points)) {
+            alert("This saved shape is invalid (not enough points or zero area).");
+            return;
+          }
+        }
+
         state.shapesArray.push(newShape);
         commit();
         state.selected = newShape;

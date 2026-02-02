@@ -46,24 +46,32 @@ export const createShapeFreehand = (
     };
 
     document.querySelector("#buttonContainer").onclick = () => {
-      newPoints = finalPoints?.map((point) => [point.x, point.y]);
       cleanupDrawing({ restoreView: true });
-      if (!Array.isArray(newPoints) || newPoints.length < 3) return;
-      let shape = {
-        id: generateId(),
-        kind: "polygon",
-        x: 0,
-        y: 0,
-        sizeZ: 300 * millimeters,
-        sizeX: 200 * millimeters,
-        sizeY: 200 * millimeters,
-        points: newPoints,
-        rotation: 0,
-        free: true,
-      };
-      shapesArray.push(shape);
+      if (!finalizedPolygons.length) return;
+
+      let lastShape = null;
+      finalizedPolygons.forEach((pts) => {
+        if (!Array.isArray(finalPoints) || finalPoints.length < 3) return;
+        const shape = {
+          id: generateId(),
+          kind: "polygon",
+          x: 0,
+          y: 0,
+          sizeZ: 300 * millimeters,
+          sizeX: 200 * millimeters,
+          sizeY: 200 * millimeters,
+          points: pts,
+          rotation: 0,
+          free: true,
+        };
+        shapesArray.push(shape);
+        lastShape = shape;
+      });
+
+      if (!lastShape) return;
+
       commit();
-      selected = shape;
+      selected = lastShape;
       showPanelFromRight(selected.kind + "-panel");
       doCsg();
       callback(selected);
@@ -71,7 +79,13 @@ export const createShapeFreehand = (
 
     const saveButton = document.getElementById("saveButtonContainer");
     saveButton.onclick = () => {
-      newPoints = finalPoints?.map((point) => [point.x, point.y]);
+      if (!finalizedPolygons.length) {
+        alert("Close a shape first before saving.");
+        return;
+      }
+
+      const newPoints = finalizedPolygons[finalizedPolygons.length - 1];
+
       const shape = {
         id: generateId(),
         kind: "polygon",
@@ -93,14 +107,30 @@ export const createShapeFreehand = (
 
       drawing = false;
       registering = false;
+      points.length = 0;
+
+      line.geometry.attributes.position.setXYZ(0, 0, 0, 0);
+      line.geometry.attributes.position.setXYZ(1, 0, 0, 0);
+      line.geometry.attributes.position.needsUpdate = true;
+
+      lines.forEach((l) => sceneCopy.remove(l));
+      circles.forEach((c) => sceneCopy.remove(c));
+      lines = [];
+      circles = [];
     };
+
 
     var drawing = false;
     var points = [];
     var circles = [];
     var lines = [];
+    var closedCircles = [];
+    var closedLines = [];
     let finalPoints = [];
+    let finalizedPolygons = [];
     let mesh;
+    let previewMeshes = [];
+
     var proximityThresholdMm = 5;
     let objectZCoordinate = 0;
     const distanceText = document.createElement("div");
@@ -164,8 +194,14 @@ export const createShapeFreehand = (
 
       if (line) sceneCopy.remove(line);
       if (mesh) sceneCopy.remove(mesh);
+      previewMeshes.forEach((m) => sceneCopy.remove(m));
+      previewMeshes = [];
       circles.forEach((circle) => sceneCopy.remove(circle));
       lines.forEach((l) => sceneCopy.remove(l));
+      closedCircles.forEach((c) => sceneCopy.remove(c));
+      closedLines.forEach((l) => sceneCopy.remove(l));
+      closedCircles = [];
+      closedLines = [];
 
       callback1(false);
       angleCtx.clearRect(0, 0, angleOverlay.width, angleOverlay.height);
@@ -284,6 +320,30 @@ export const createShapeFreehand = (
       }
     }
 
+    function isValidPolygonPoints(pts) {
+      if (!Array.isArray(pts) || pts.length < 3) return false;
+
+      const clean = [];
+      for (const p of pts) {
+        if (!clean.length) {
+          clean.push(p);
+          continue;
+        }
+        const last = clean[clean.length - 1];
+        if (last[0] !== p[0] || last[1] !== p[1]) clean.push(p);
+      }
+      if (clean.length < 3) return false;
+
+      let area = 0;
+      for (let i = 0; i < clean.length; i++) {
+        const [x1, y1] = clean[i];
+        const [x2, y2] = clean[(i + 1) % clean.length];
+        area += x1 * y2 - x2 * y1;
+      }
+      return Math.abs(area) > 1e-6;
+    }
+
+
     function pointerDown(event) {
       const rect = event.target.getBoundingClientRect();
       mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
@@ -310,7 +370,11 @@ export const createShapeFreehand = (
             disableButton(true);
             registering = false;
             document.getElementById("saveButtonContainer").disabled = false;
-            finalPoints = [...points];
+            const closedPoints = points.map((p) => [p.x, p.y]);
+            if (isValidPolygonPoints(closedPoints)) {
+              finalizedPolygons.push(closedPoints);
+              finalPoints = closedPoints;
+            }
             drawing = false;
             const newPoints = points.map(p => new THREE.Vector3(p.x, p.y, p.z));
             const shape = new THREE.Shape(newPoints.map(p => new THREE.Vector2(p.x, p.y)));
@@ -320,6 +384,11 @@ export const createShapeFreehand = (
             mesh = new THREE.Mesh(geometry, material);
             mesh.position.z = objectZCoordinate;
             sceneCopy.add(mesh);
+            previewMeshes.push(mesh);
+            closedCircles.push(...circles);
+            closedLines.push(...lines);
+            circles = [];
+            lines = [];
             points = [];
             return;
           }

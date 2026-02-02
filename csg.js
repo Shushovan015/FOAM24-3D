@@ -29,6 +29,17 @@ function roundGeom2(geom, radius) {
   return g;
 }
 
+function polygonArea(points) {
+  let area = 0;
+  for (let i = 0; i < points.length; i++) {
+    const [x1, y1] = points[i];
+    const [x2, y2] = points[(i + 1) % points.length];
+    area += x1 * y2 - x2 * y1;
+  }
+  return area / 2;
+}
+
+
 function shapeToGeom2(shape) {
   switch (shape.kind) {
     case "circle":
@@ -105,6 +116,10 @@ function shapeToGeom2(shape) {
         return [];
       }
     case "polygon":
+      if (!Array.isArray(shape.points) || shape.points.length < 3) return null;
+      const area = Math.abs(polygonArea(shape.points));
+      if (area < 1e-6) return null;
+
       let newShape = shape.free ? shape.points.slice().reverse() : shape.points;
       let poly = newShape
         .map(([x, y]) => [x, y])
@@ -117,28 +132,46 @@ function shapeToGeom2(shape) {
           )
         );
       poly = poly.map(([x, y]) => [x + shape.x, y + shape.y]);
-      return roundGeom2(
-        jscad.geometries.geom2.fromPoints(poly),
-        shape?.source === "photoshape" ? 0 : shape.cornerRadius || 0
-      );
+      return jscad.geometries.geom2.fromPoints(poly);
   }
+
 }
 
 function shapeToGeom3(shape) {
   let geom2 = shapeToGeom2(shape);
-  return jscad.extrusions.extrudeLinear(
-    {
-      height: shape.sizeZ,
-    },
-    geom2
-  );
+
+  if (!geom2) return null;
+  if (Array.isArray(geom2)) {
+    geom2 = geom2.filter((g) => g?.sides?.length);
+    if (!geom2.length) return null;
+  } else if (!geom2.sides || !geom2.sides.length) {
+    return null;
+  }
+
+  try {
+    return jscad.extrusions.extrudeLinear(
+      {
+        height: shape.sizeZ,
+      },
+      geom2
+    );
+  } catch {
+    return null;
+  }
 }
+
 
 onmessage = (e) => {
   let { id, foam, shapesArray } = e.data;
-  let geom3s = [shapeToGeom3(foam)];
+  const foamGeom3 = shapeToGeom3(foam);
+  if (!foamGeom3) {
+    postMessage({ id, geom: null });
+    return;
+  }
+  let geom3s = [foamGeom3];
   for (let shape of shapesArray) {
     let geom3 = shapeToGeom3(shape);
+    if (!geom3) continue;
     geom3 = jscad.transforms.translateZ(foam.sizeZ - shape.sizeZ, geom3);
     geom3s.push(geom3);
   }
