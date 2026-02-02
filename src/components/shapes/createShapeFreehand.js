@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { displayLineXY, lineFunction } from "../../utils/displayLinesXY";
 import { disableButton } from "../../utils/buttonClick";
 import { generateId } from "../../utils/common";
+import { restoreCameraView } from "../../setup/scene";
 
 export const createShapeFreehand = (
   millimeters,
@@ -17,7 +18,8 @@ export const createShapeFreehand = (
   display2D,
   callback1,
   callback,
-  foamMesh
+  foamMesh,
+  defaultCornerRadius
 ) => {
   document.querySelector("#create-polygon").onclick = () => {
     let newPoints;
@@ -45,6 +47,7 @@ export const createShapeFreehand = (
       registering = false;
       lineFunction("none", "none", true);
       document.querySelector("#back-button").setAttribute("disabled", "");
+      restoreCameraView();
       showPanelFromLeft("main-panel");
       selected = null;
       points.length = 0;
@@ -83,6 +86,7 @@ export const createShapeFreehand = (
         points: newPoints,
         rotation: 0,
         free: true,
+        cornerRadius: defaultCornerRadius,
       };
       shapesArray.push(shape);
       commit();
@@ -106,6 +110,7 @@ export const createShapeFreehand = (
         points: newPoints,
         rotation: 0,
         free: true,
+        cornerRadius: defaultCornerRadius,
       };
       localStorage.setItem("cachedJson", JSON.stringify(shape));
       if (window.confirm("The shape is saved temporarily. Do you want to save in the the shape library?")) {

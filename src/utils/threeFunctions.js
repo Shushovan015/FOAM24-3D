@@ -2,6 +2,42 @@ import * as jscad from "@jscad/modeling";
 import * as THREE from "three";
 import earcut from "earcut";
 import { isOverlapping } from "./shapeOverlapping";
+import { state } from "../setup/state";
+
+const CORNER_SEGMENTS = 16;
+
+function getDefaultCornerRadius() {
+  return typeof state?.cornerRadius === "number" && !isNaN(state.cornerRadius)
+    ? state.cornerRadius
+    : 5;
+}
+
+function clampCornerRadius(sizeX, sizeY, radius) {
+  const maxR = Math.max(0, Math.min(sizeX, sizeY) / 2 - 0.001);
+  return Math.min(radius, maxR);
+}
+
+function roundGeom2(geom, radius) {
+  if (!radius || radius <= 0) return geom;
+
+  const bounds = jscad.measurements.measureBoundingBox(geom);
+  if (!bounds) return geom;
+
+  const sizeX = bounds[1][0] - bounds[0][0];
+  const sizeY = bounds[1][1] - bounds[0][1];
+  const useR = clampCornerRadius(sizeX, sizeY, radius);
+  if (useR <= 0) return geom;
+
+  let g = jscad.expansions.offset(
+    { delta: -useR, corners: "round", segments: CORNER_SEGMENTS },
+    geom
+  );
+  g = jscad.expansions.offset(
+    { delta: useR, corners: "round", segments: CORNER_SEGMENTS },
+    g
+  );
+  return g;
+}
 
 export function project(p0, camera, ctx) {
   return p0
@@ -13,13 +49,11 @@ export function project(p0, camera, ctx) {
 }
 
 export function shapeToGeom2(shape) {
-  // helper to be extra-sure we always have numbers
   function num(v, fallback = 0) {
     return typeof v === "number" && !isNaN(v) ? v : fallback;
   }
 
   if (!shape || typeof shape.kind !== "string") {
-    // empty 1×1 square at origin
     return jscad.primitives.rectangle({ center: [0, 0], size: [1, 1] });
   }
 
@@ -35,18 +69,30 @@ export function shapeToGeom2(shape) {
       });
     }
     case "line":
-      // assume your line shapes already encode valid geometry
       return Array.isArray(shape) ? shape : [];
     case "rectangle": {
       const cx = num(shape.x),
         cy = num(shape.y);
       const sx = num(shape.sizeX, 1),
         sy = num(shape.sizeY, 1);
-      let rect = jscad.primitives.rectangle({
-        center: [cx, cy],
-        size: [sx, sy],
-      });
-      // apply rotation if present
+      const radius = clampCornerRadius(
+        sx,
+        sy,
+        shape.cornerRadius ?? getDefaultCornerRadius()
+      );
+      let rect =
+        radius > 0
+          ? jscad.primitives.roundedRectangle({
+            center: [cx, cy],
+            size: [sx, sy],
+            roundRadius: radius,
+            segments: CORNER_SEGMENTS,
+          })
+          : jscad.primitives.rectangle({
+            center: [cx, cy],
+            size: [sx, sy],
+          });
+
       const rot = num(shape.rotation, 0);
       if (rot !== 0) {
         for (let side of rect.sides) {
@@ -63,8 +109,12 @@ export function shapeToGeom2(shape) {
       return rect;
     }
     case "polygon": {
+      const useR =
+        shape?.source === "photoshape"
+          ? 0
+          : num(shape.cornerRadius, getDefaultCornerRadius());
       if (shape.geom) {
-        return shape.geom;
+        return roundGeom2(shape.geom, useR);
       }
       const cx = num(shape.x),
         cy = num(shape.y),
@@ -72,7 +122,6 @@ export function shapeToGeom2(shape) {
       if (!Array.isArray(shape.points) || shape.points.length === 0) {
         return jscad.primitives.rectangle({ center: [cx, cy], size: [1, 1] });
       }
-      // rotate around origin then translate
       let pts = shape.points.map(([x, y]) => {
         const px = num(x),
           py = num(y);
@@ -80,7 +129,8 @@ export function shapeToGeom2(shape) {
         jscad.maths.vec2.rotate(v, v, [0, 0], jscad.utils.degToRad(rot));
         return [v[0] + cx, v[1] + cy];
       });
-      return jscad.geometries.geom2.fromPoints(pts);
+      const geom = jscad.geometries.geom2.fromPoints(pts);
+      return roundGeom2(geom, useR);
     }
     case "photoshape": {
       const cx = num(shape.x),
@@ -978,7 +1028,7 @@ export function drawMeasurementsPolygon(
 
   if (currPanel.id.endsWith("-depth-panel")) {
     ctx.beginPath();
-        let p0 = transform(
+    let p0 = transform(
       new THREE.Vector3(minX, minY, 37 * centimeters),
       camera
     );
@@ -992,7 +1042,7 @@ export function drawMeasurementsPolygon(
   }
 
   if (currPanel.id.endsWith("-depth-panel")) {
-       let p0 = transform(
+    let p0 = transform(
       new THREE.Vector3(minX, minY, 37 * centimeters),
       camera
     );

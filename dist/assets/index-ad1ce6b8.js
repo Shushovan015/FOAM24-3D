@@ -21510,8 +21510,10 @@ const state = {
     sizeX: 70 * 10,
     sizeY: 50 * 10,
     sizeZ: 37 * 10,
-    rotation: 0
+    rotation: 0,
+    cornerRadius: 5
   },
+  cornerRadius: 5,
   shapesArray: [],
   worker: null,
   undoRedoHistory: [],
@@ -32959,6 +32961,35 @@ earcut.flatten = function(data) {
   }
   return result;
 };
+const CORNER_SEGMENTS = 16;
+function getDefaultCornerRadius() {
+  return !isNaN(state.cornerRadius) ? state.cornerRadius : 5;
+}
+function clampCornerRadius(sizeX, sizeY, radius) {
+  const maxR = Math.max(0, Math.min(sizeX, sizeY) / 2 - 1e-3);
+  return Math.min(radius, maxR);
+}
+function roundGeom2(geom, radius) {
+  if (!radius || radius <= 0)
+    return geom;
+  const bounds = src.measurements.measureBoundingBox(geom);
+  if (!bounds)
+    return geom;
+  const sizeX = bounds[1][0] - bounds[0][0];
+  const sizeY = bounds[1][1] - bounds[0][1];
+  const useR = clampCornerRadius(sizeX, sizeY, radius);
+  if (useR <= 0)
+    return geom;
+  let g = src.expansions.offset(
+    { delta: -useR, corners: "round", segments: CORNER_SEGMENTS },
+    geom
+  );
+  g = src.expansions.offset(
+    { delta: useR, corners: "round", segments: CORNER_SEGMENTS },
+    g
+  );
+  return g;
+}
 function project(p0, camera, ctx) {
   return p0.project(camera).multiply(new Vector3(1, -1, 1)).addScalar(1).multiplyScalar(0.5).multiply(new Vector3(ctx.canvas.width, ctx.canvas.height, 1));
 }
@@ -32983,7 +33014,17 @@ function shapeToGeom2(shape) {
     case "rectangle": {
       const cx2 = num(shape.x), cy2 = num(shape.y);
       const sx2 = num(shape.sizeX, 1), sy2 = num(shape.sizeY, 1);
-      let rect = src.primitives.rectangle({
+      const radius = clampCornerRadius(
+        sx2,
+        sy2,
+        shape.cornerRadius ?? getDefaultCornerRadius()
+      );
+      let rect = radius > 0 ? src.primitives.roundedRectangle({
+        center: [cx2, cy2],
+        size: [sx2, sy2],
+        roundRadius: radius,
+        segments: CORNER_SEGMENTS
+      }) : src.primitives.rectangle({
         center: [cx2, cy2],
         size: [sx2, sy2]
       });
@@ -33003,8 +33044,9 @@ function shapeToGeom2(shape) {
       return rect;
     }
     case "polygon": {
+      const useR = (shape == null ? void 0 : shape.source) === "photoshape" ? 0 : num(shape.cornerRadius, getDefaultCornerRadius());
       if (shape.geom) {
-        return shape.geom;
+        return roundGeom2(shape.geom, useR);
       }
       const cx2 = num(shape.x), cy2 = num(shape.y), rot = num(shape.rotation, 0);
       if (!Array.isArray(shape.points) || shape.points.length === 0) {
@@ -33016,7 +33058,8 @@ function shapeToGeom2(shape) {
         src.maths.vec2.rotate(v, v, [0, 0], src.utils.degToRad(rot));
         return [v[0] + cx2, v[1] + cy2];
       });
-      return src.geometries.geom2.fromPoints(pts);
+      const geom = src.geometries.geom2.fromPoints(pts);
+      return roundGeom2(geom, useR);
     }
     case "photoshape": {
       const cx2 = num(shape.x), cy2 = num(shape.y), rot = num(shape.rotation, 0);
@@ -34153,7 +34196,7 @@ let latestId = 0;
 function ensureWorker() {
   if (worker)
     return;
-  worker = new Worker(new URL("/assets/csg-0387ebd0.js", self.location), {
+  worker = new Worker(new URL("/assets/csg-237513a0.js", self.location), {
     type: "module"
   });
   worker.onmessage = (e) => {
@@ -34194,8 +34237,18 @@ function sendToWorker(payload) {
 }
 function doCsg() {
   ensureWorker();
+  const defaultCornerRadius = state.cornerRadius;
   const foamForWorker = structuredClone(state.foam);
-  const shapesForWorker = structuredClone(state.shapesArray);
+  if (foamForWorker && typeof foamForWorker.cornerRadius !== "number" && typeof defaultCornerRadius === "number") {
+    foamForWorker.cornerRadius = defaultCornerRadius;
+  }
+  const shapesForWorker = structuredClone(state.shapesArray).map((shape) => {
+    if (!shape || typeof shape !== "object")
+      return shape;
+    if (typeof shape.cornerRadius === "number")
+      return shape;
+    return { ...shape, cornerRadius: defaultCornerRadius };
+  });
   const payload = { id: ++requestId, foam: foamForWorker, shapesArray: shapesForWorker };
   if (inFlight) {
     pending = payload;
@@ -34548,6 +34601,7 @@ function init3D() {
     document.querySelector("#back-button").removeAttribute("disabled");
     document.querySelector("#back-button").onclick = () => {
       document.querySelector("#back-button").setAttribute("disabled", "");
+      restoreCameraView();
       state.selected = null;
       updateDeleteButtons(null);
       showPanelFromLeft("main-panel");
@@ -55053,6 +55107,7 @@ const createShapeCircle = (millimeters, selected, shapesArray, commit2, showPane
     document.querySelector("#back-button").removeAttribute("disabled");
     document.querySelector("#back-button").onclick = () => {
       document.querySelector("#back-button").setAttribute("disabled", "");
+      restoreCameraView();
       showPanelFromLeft2("main-panel");
       selected = null;
     };
@@ -55188,7 +55243,7 @@ const disableButton = (boolValue) => {
     deleteBtn.setAttribute("disabled", "");
   }
 };
-const createShapeFreehand = (millimeters, selected, shapesArray, commit2, showPanelFromLeft2, showPanelFromRight2, doCsg2, orthoCamera, sceneCopy, rendererCopy, display2D, callback1, callback, foamMesh) => {
+const createShapeFreehand = (millimeters, selected, shapesArray, commit2, showPanelFromLeft2, showPanelFromRight2, doCsg2, orthoCamera, sceneCopy, rendererCopy, display2D, callback1, callback, foamMesh, defaultCornerRadius) => {
   document.querySelector("#create-polygon").onclick = () => {
     let newPoints;
     lineFunction("block", "flex", true);
@@ -55212,6 +55267,7 @@ const createShapeFreehand = (millimeters, selected, shapesArray, commit2, showPa
       registering = false;
       lineFunction("none", "none", true);
       document.querySelector("#back-button").setAttribute("disabled", "");
+      restoreCameraView();
       showPanelFromLeft2("main-panel");
       selected = null;
       points.length = 0;
@@ -55248,7 +55304,8 @@ const createShapeFreehand = (millimeters, selected, shapesArray, commit2, showPa
         sizeY: 200 * millimeters,
         points: newPoints,
         rotation: 0,
-        free: true
+        free: true,
+        cornerRadius: defaultCornerRadius
       };
       shapesArray.push(shape);
       commit2();
@@ -55270,7 +55327,8 @@ const createShapeFreehand = (millimeters, selected, shapesArray, commit2, showPa
         sizeY: 200 * millimeters,
         points: newPoints,
         rotation: 0,
-        free: true
+        free: true,
+        cornerRadius: defaultCornerRadius
       };
       localStorage.setItem("cachedJson", JSON.stringify(shape));
       if (window.confirm("The shape is saved temporarily. Do you want to save in the the shape library?")) {
@@ -55409,11 +55467,12 @@ const createShapeFreehand = (millimeters, selected, shapesArray, commit2, showPa
     callback(selected, display2D);
   };
 };
-const createShapeRectangle = (millimeters, selected, shapesArray, commit2, showPanelFromLeft2, showPanelFromRight2, doCsg2, callback) => {
+const createShapeRectangle = (millimeters, selected, shapesArray, commit2, showPanelFromLeft2, showPanelFromRight2, doCsg2, callback, defaultCornerRadius) => {
   document.querySelector("#create-rectangle").onclick = () => {
     document.querySelector("#back-button").removeAttribute("disabled");
     document.querySelector("#back-button").onclick = () => {
       document.querySelector("#back-button").setAttribute("disabled", "");
+      restoreCameraView();
       showPanelFromLeft2("main-panel");
       selected = null;
     };
@@ -55425,7 +55484,8 @@ const createShapeRectangle = (millimeters, selected, shapesArray, commit2, showP
       sizeZ: 250 * millimeters,
       sizeX: 200 * millimeters,
       sizeY: 200 * millimeters,
-      rotation: 0
+      rotation: 0,
+      cornerRadius: defaultCornerRadius
     };
     shapesArray.push(shape);
     commit2();
@@ -55477,7 +55537,7 @@ const advanceToNextUnvisited = (session, shapesArray, selected, setSelected, cal
     showPanelFromRight2
   );
 };
-const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, showPanelFromLeft2, showPanelFromRight2, doCsg2, display2D, callback, callback1, camera, renderer, scene) => {
+const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, showPanelFromLeft2, showPanelFromRight2, doCsg2, display2D, callback, callback1, camera, renderer, scene, defaultCornerRadius) => {
   const stepUI = {
     container: document.querySelector("#photoshape-stepper"),
     steps: Array.from(document.querySelectorAll("[data-photoshape-step]")),
@@ -55807,7 +55867,8 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
             points: contour,
             rotation: 0,
             free: true,
-            source: "photoshape"
+            source: "photoshape",
+            cornerRadius: defaultCornerRadius
           };
           shapesArray.push(shape);
           photoshapeSession.ids.push(shape.id);
@@ -56064,7 +56125,11 @@ function initUI() {
       },
       (modifiedDisplay) => {
         state.display2D = modifiedDisplay;
-      }
+      },
+      state.cameraCopy,
+      state.rendererCopy,
+      state.sceneCopy,
+      state.cornerRadius
     );
   }, 100);
   createShapeRectangle(
@@ -56081,7 +56146,8 @@ function initUI() {
         saveCameraView();
         resetCameraToTopView();
       }
-    }
+    },
+    state.cornerRadius
   );
   depthButtonClick(
     "rectangle-resize-button",
@@ -56240,7 +56306,8 @@ function initUI() {
             resetCameraToTopView();
           }
         },
-        foamMesh
+        foamMesh,
+        state.cornerRadius
       );
     } else {
       setTimeout(waitForFoamAndInitFreehand, 100);
@@ -56436,4 +56503,4 @@ if (typeof window === "object") {
   initUI();
   commit();
 }
-//# sourceMappingURL=index-c8b6c8ef.js.map
+//# sourceMappingURL=index-ad1ce6b8.js.map

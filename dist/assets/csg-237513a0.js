@@ -10979,6 +10979,32 @@ ${nonManifold.join("\n")}`);
     modifiers,
     transforms
   };
+  const CORNER_SEGMENTS = 16;
+  function clampCornerRadius(sizeX, sizeY, radius) {
+    const maxR = Math.max(0, Math.min(sizeX, sizeY) / 2 - 1e-3);
+    return Math.min(radius, maxR);
+  }
+  function roundGeom2(geom, radius) {
+    if (!radius || radius <= 0)
+      return geom;
+    const bounds = src.measurements.measureBoundingBox(geom);
+    if (!bounds)
+      return geom;
+    const sizeX = bounds[1][0] - bounds[0][0];
+    const sizeY = bounds[1][1] - bounds[0][1];
+    const useR = clampCornerRadius(sizeX, sizeY, radius);
+    if (useR <= 0)
+      return geom;
+    let g = src.expansions.offset(
+      { delta: -useR, corners: "round", segments: CORNER_SEGMENTS },
+      geom
+    );
+    g = src.expansions.offset(
+      { delta: useR, corners: "round", segments: CORNER_SEGMENTS },
+      g
+    );
+    return g;
+  }
   function shapeToGeom2(shape) {
     switch (shape.kind) {
       case "circle":
@@ -10989,10 +11015,18 @@ ${nonManifold.join("\n")}`);
         });
       case "line":
         return shape;
-      case "rectangle":
-        let rect = src.primitives.rectangle({
+      case "rectangle": {
+        const sx = shape.sizeX;
+        const sy = shape.sizeY;
+        const radius = clampCornerRadius(sx, sy, shape.cornerRadius || 0);
+        let rect = radius > 0 ? src.primitives.roundedRectangle({
           center: [shape.x, shape.y],
-          size: [shape.sizeX, shape.sizeY]
+          size: [sx, sy],
+          roundRadius: radius,
+          segments: CORNER_SEGMENTS
+        }) : src.primitives.rectangle({
+          center: [shape.x, shape.y],
+          size: [sx, sy]
         });
         for (let side of rect.sides) {
           for (let vert of side) {
@@ -11005,6 +11039,7 @@ ${nonManifold.join("\n")}`);
           }
         }
         return rect;
+      }
       case "photoshape":
         if (Array.isArray(shape.polygon) && Array.isArray(shape.polygon[0])) {
           let polygons = shape.polygon.map((contour, index) => {
@@ -11044,7 +11079,10 @@ ${nonManifold.join("\n")}`);
           )
         );
         poly = poly.map(([x, y]) => [x + shape.x, y + shape.y]);
-        return src.geometries.geom2.fromPoints(poly);
+        return roundGeom2(
+          src.geometries.geom2.fromPoints(poly),
+          (shape == null ? void 0 : shape.source) === "photoshape" ? 0 : shape.cornerRadius || 0
+        );
     }
   }
   function shapeToGeom3(shape) {
@@ -11068,4 +11106,4 @@ ${nonManifold.join("\n")}`);
     postMessage({ id, geom: result });
   };
 })();
-//# sourceMappingURL=csg-0387ebd0.js.map
+//# sourceMappingURL=csg-237513a0.js.map

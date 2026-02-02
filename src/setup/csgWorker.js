@@ -56,13 +56,30 @@ function sendToWorker(payload) {
 export function doCsg() {
   ensureWorker();
 
+  const defaultCornerRadius = state.cornerRadius;
+
   const foamForWorker = structuredClone(state.foam);
-  const shapesForWorker = structuredClone(state.shapesArray);
+  if (
+    foamForWorker &&
+    typeof foamForWorker.cornerRadius !== "number" &&
+    typeof defaultCornerRadius === "number"
+  ) {
+    foamForWorker.cornerRadius = defaultCornerRadius;
+  }
+
+  const shapesForWorker = structuredClone(state.shapesArray).map((shape) => {
+    if (!shape || typeof shape !== "object") return shape;
+    if (typeof shape.cornerRadius === "number") return shape;
+    if (typeof defaultCornerRadius !== "number") return shape;
+    return { ...shape, cornerRadius: defaultCornerRadius };
+  });
+
   const payload = { id: ++requestId, foam: foamForWorker, shapesArray: shapesForWorker };
 
   if (inFlight) {
-    pending = payload; // keep only latest
+    pending = payload;
     return;
   }
   sendToWorker(payload);
 }
+

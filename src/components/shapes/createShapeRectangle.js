@@ -1,4 +1,5 @@
 import { generateId } from "../../utils/common";
+import { restoreCameraView } from "../../setup/scene";
 export const createShapeRectangle = (
   millimeters,
   selected,
@@ -7,12 +8,14 @@ export const createShapeRectangle = (
   showPanelFromLeft,
   showPanelFromRight,
   doCsg,
-  callback 
+  callback,
+  defaultCornerRadius
 ) => {
   document.querySelector("#create-rectangle").onclick = () => {
     document.querySelector("#back-button").removeAttribute("disabled");
     document.querySelector("#back-button").onclick = () => {
       document.querySelector("#back-button").setAttribute("disabled", "");
+      restoreCameraView();
       showPanelFromLeft("main-panel");
       selected = null;
     };
@@ -25,6 +28,7 @@ export const createShapeRectangle = (
       sizeX: 200 * millimeters,
       sizeY: 200 * millimeters,
       rotation: 0,
+      cornerRadius: defaultCornerRadius,
     };
     shapesArray.push(shape);
     commit();

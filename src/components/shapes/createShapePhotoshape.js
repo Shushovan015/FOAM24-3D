@@ -19,7 +19,8 @@ export const createShapePhotoShape = (
   callback1,
   camera,
   renderer,
-  scene
+  scene,
+  defaultCornerRadius
   // createEditor
 ) => {
   const stepUI = {
@@ -408,6 +409,7 @@ export const createShapePhotoShape = (
             rotation: 0,
             free: true,
             source: "photoshape",
+            cornerRadius: defaultCornerRadius,
           };
 
           shapesArray.push(shape);

@@ -106,7 +106,8 @@ export function initUI() {
       },
       state.cameraCopy,
       state.rendererCopy,
-      state.sceneCopy
+      state.sceneCopy,
+      state.cornerRadius
     );
   }, 100);
 
@@ -124,8 +125,10 @@ export function initUI() {
         saveCameraView();
         resetCameraToTopView();
       }
-    }
+    },
+    state.cornerRadius
   );
+
 
   depthButtonClick(
     "rectangle-resize-button",
@@ -293,7 +296,8 @@ export function initUI() {
             resetCameraToTopView();
           }
         },
-        foamMesh
+        foamMesh,
+        state.cornerRadius
       );
     } else {
       setTimeout(waitForFoamAndInitFreehand, 100);

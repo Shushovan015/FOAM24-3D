@@ -264,6 +264,7 @@ export function init3D() {
     document.querySelector("#back-button").removeAttribute("disabled");
     document.querySelector("#back-button").onclick = () => {
       document.querySelector("#back-button").setAttribute("disabled", "");
+      restoreCameraView();
       state.selected = null;
       updateDeleteButtons(null);
       showPanelFromLeft("main-panel");

@@ -49,8 +49,9 @@ export const state = {
     sizeY: 50 * 10,
     sizeZ: 37 * 10,
     rotation: 0,
+    cornerRadius: 5,
   },
-
+  cornerRadius: 5,
   shapesArray: [],
   worker: null,
   undoRedoHistory: [],
