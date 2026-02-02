@@ -617,6 +617,92 @@ export function drawOutline(
         sphere.position.set(pt[0] + shape.x, pt[1] + shape.y, CP_Z);
       }
     }
+    if (
+      showControlPoints &&
+      Array.isArray(shape.points) &&
+      shape.points.length >= 3 &&
+      typeof shape._selectedPointIndex === "number"
+    ) {
+      const i = shape._selectedPointIndex;
+      const n = shape.points.length;
+
+      const prev = shape.points[(i - 1 + n) % n];
+      const curr = shape.points[i];
+      const next = shape.points[(i + 1) % n];
+
+      const v1 = new THREE.Vector2(prev[0] - curr[0], prev[1] - curr[1]);
+      const v2 = new THREE.Vector2(next[0] - curr[0], next[1] - curr[1]);
+
+      const denom = v1.length() * v2.length();
+      if (denom > 0) {
+        const cos = THREE.MathUtils.clamp(v1.dot(v2) / denom, -1, 1);
+        const angleDeg = THREE.MathUtils.radToDeg(Math.acos(cos));
+
+        const p = projectPoint(curr[0] + shape.x, curr[1] + shape.y, z, camera, renderer);
+        ctx.save();
+        ctx.fillStyle = "yellow";
+        ctx.strokeStyle = "black";
+        ctx.lineWidth = 2;
+        ctx.font = measurementFont(18);
+        const label = `${angleDeg.toFixed(1)}°`;
+        ctx.strokeText(label, p.x + 8, p.y - 8);
+        ctx.fillText(label, p.x + 8, p.y - 8);
+        ctx.restore();
+      }
+    }
+    if (
+      shape.points.length >= 3 &&
+      typeof shape._selectedPointIndex === "number"
+    ) {
+      const i = shape._selectedPointIndex;
+      const n = shape.points.length;
+
+      const prev = shape.points[(i - 1 + n) % n];
+      const curr = shape.points[i];
+      const next = shape.points[(i + 1) % n];
+
+      const pPrev = projectPoint(prev[0] + shape.x, prev[1] + shape.y, z, camera, renderer);
+      const pCurr = projectPoint(curr[0] + shape.x, curr[1] + shape.y, z, camera, renderer);
+      const pNext = projectPoint(next[0] + shape.x, next[1] + shape.y, z, camera, renderer);
+
+      const v1x = pPrev.x - pCurr.x;
+      const v1y = pPrev.y - pCurr.y;
+      const v2x = pNext.x - pCurr.x;
+      const v2y = pNext.y - pCurr.y;
+
+      const len1 = Math.hypot(v1x, v1y);
+      const len2 = Math.hypot(v2x, v2y);
+
+      if (len1 > 0 && len2 > 0) {
+        const dot = (v1x * v2x + v1y * v2y) / (len1 * len2);
+        const angleDeg = THREE.MathUtils.radToDeg(Math.acos(THREE.MathUtils.clamp(dot, -1, 1)));
+        const a1 = Math.atan2(v1y, v1x);
+        const a2 = Math.atan2(v2y, v2x);
+        let start = a1;
+        let end = a2;
+        let delta = end - start;
+        if (delta > Math.PI) end -= Math.PI * 2;
+        if (delta < -Math.PI) end += Math.PI * 2;
+        const radius = 22;
+        ctx.save();
+        ctx.strokeStyle = "yellow";
+        ctx.fillStyle = "yellow";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(pCurr.x, pCurr.y, radius, start, end, false);
+        ctx.stroke();
+        const mid = (start + end) / 2;
+        const lx = pCurr.x + Math.cos(mid) * (radius + 10);
+        const ly = pCurr.y + Math.sin(mid) * (radius + 10);
+        ctx.font = measurementFont(18);
+        const label = `${angleDeg.toFixed(1)}°`;
+        ctx.strokeStyle = "black";
+        ctx.lineWidth = 3;
+        ctx.strokeText(label, lx, ly);
+        ctx.fillText(label, lx, ly);
+        ctx.restore();
+      }
+    }
 
     if (!shape._controlPointsSetup) {
       shape._controlPointsSetup = true;
@@ -677,6 +763,56 @@ function setupControlPointInteractions(
     state.raycaster.setFromCamera(state.mouse, camera);
   }
 
+  function getPlaneHit(evt) {
+    syncRaycast(evt);
+    const dragPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -state.CP_Z);
+    const pos = new THREE.Vector3();
+    const hit = state.raycaster.ray.intersectPlane(dragPlane, pos);
+    return hit ? pos : null;
+  }
+
+  function dist2PointToSegment(p, a, b) {
+    const ax = a[0], ay = a[1];
+    const bx = b[0], by = b[1];
+    const px = p[0], py = p[1];
+
+    const abx = bx - ax;
+    const aby = by - ay;
+    const apx = px - ax;
+    const apy = py - ay;
+
+    const abLen2 = abx * abx + aby * aby;
+    const t = abLen2 === 0 ? 0 : Math.max(0, Math.min(1, (apx * abx + apy * aby) / abLen2));
+    const cx = ax + abx * t;
+    const cy = ay + aby * t;
+
+    const dx = px - cx;
+    const dy = py - cy;
+    return { dist2: dx * dx + dy * dy, t };
+  }
+
+  function insertPointAtWorldPos(worldPos) {
+    if (!Array.isArray(shape.points) || shape.points.length < 2) return;
+    const local = [worldPos.x - shape.x, worldPos.y - shape.y];
+
+    let best = { i: 0, dist2: Infinity };
+    for (let i = 0; i < shape.points.length; i++) {
+      const a = shape.points[i];
+      const b = shape.points[(i + 1) % shape.points.length];
+      const { dist2 } = dist2PointToSegment(local, a, b);
+      if (dist2 < best.dist2) best = { i, dist2 };
+    }
+
+    shape.points.splice(best.i + 1, 0, local);
+    clearControlPoints(shape, scene);
+  }
+
+  function removePointAtIndex(idx) {
+    if (!Array.isArray(shape.points) || shape.points.length <= 3) return;
+    shape.points.splice(idx, 1);
+    clearControlPoints(shape, scene);
+  }
+
   function onMouseDown(evt) {
     evt.stopPropagation();
     syncRaycast(evt);
@@ -684,11 +820,16 @@ function setupControlPointInteractions(
 
     if (hit.length) {
       evt.preventDefault();
-      state.isDragging = true;
-
       const obj = hit[0].object;
       const idx = obj.userData.pointIndex;
+      shape._selectedPointIndex = idx;
 
+      if (evt.altKey) {
+        removePointAtIndex(idx);
+        return;
+      }
+
+      state.isDragging = true;
       state.selectedPoint =
         shape.controlPoints.find(
           (p) => p.userData.pointIndex === idx && p.userData.isControlSphere
@@ -696,6 +837,12 @@ function setupControlPointInteractions(
 
       window.addEventListener("mousemove", onMouseMove);
       window.addEventListener("mouseup", onMouseUp);
+      return;
+    }
+
+    if (evt.shiftKey) {
+      const pos = getPlaneHit(evt);
+      if (pos) insertPointAtWorldPos(pos);
     }
   }
 
@@ -712,7 +859,6 @@ function setupControlPointInteractions(
 
     const i = state.selectedPoint.userData.pointIndex;
     shape.points[i] = [pos.x - shape.x, pos.y - shape.y];
-
   }
 
   function onMouseUp() {
@@ -726,12 +872,20 @@ function setupControlPointInteractions(
   function onHover(evt) {
     syncRaycast(evt);
     const hit = state.raycaster.intersectObjects(shape.controlPoints, true);
-    target.style.cursor = hit.length ? "move" : "";
+
+    if (hit.length) {
+      const obj = hit[0].object;
+      const idx = obj.userData.pointIndex;
+      shape._selectedPointIndex = idx;
+      target.style.cursor = evt.altKey ? "not-allowed" : "move";
+    } else {
+      delete shape._selectedPointIndex;
+      target.style.cursor = evt.shiftKey ? "copy" : "";
+    }
   }
 
   target.addEventListener("mousedown", onMouseDown, { capture: true });
   window.addEventListener("mousemove", onHover);
-
 
   shape.cleanup = () => {
     target.removeEventListener("mousedown", onMouseDown);
@@ -739,6 +893,7 @@ function setupControlPointInteractions(
     window.removeEventListener("mousemove", onMouseMove);
     window.removeEventListener("mouseup", onMouseUp);
     shape._controlPointHandlersInitialized = false;
+    delete shape._selectedPointIndex;
   };
 }
 
@@ -1246,11 +1401,15 @@ export function drawEdgeToFoamMeasurements(shape, foam, ctx, camera) {
 
   const leftMidX = (pLeftEdge.x + pLeftVertex.x) / 2;
   const leftMidY = (pLeftEdge.y + pLeftVertex.y) / 2;
-  ctx.fillText(leftDist.toFixed(0) + "mm", leftMidX, leftMidY - 6);
+  const leftLabel = leftDist.toFixed(0) + "mm";
+  ctx.fillText(leftLabel, leftMidX, leftMidY - 6);
+  ctx.strokeText(leftLabel, leftMidX, leftMidY - 6);
 
   const topMidX = (pTopEdge.x + pTopVertex.x) / 2;
   const topMidY = (pTopEdge.y + pTopVertex.y) / 2;
-  ctx.fillText(topDist.toFixed(0) + "mm", topMidX + 6, topMidY);
+  const topLabel = topDist.toFixed(0) + "mm";
+  ctx.fillText(topLabel, topMidX + 6, topMidY);
+  ctx.strokeText(topLabel, topMidX + 6, topMidY);
 
   ctx.restore();
 }

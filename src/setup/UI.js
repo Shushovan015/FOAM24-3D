@@ -23,6 +23,12 @@ import {
 import { updateSelectedShape, updateDeleteButtons, resetCameraToTopView, resetCameraToFrontView, saveCameraView, restoreCameraView } from "./scene";
 import { rightestPoint, leftestPoint, highestPoint, lowestPoint, structuredClone } from "../utils/common";
 import { shapeToGeom2 } from "../utils/threeFunctions";
+import {
+  saveShapeToLibrary,
+  loadShapeLibrary,
+  removeShapeFromLibrary,
+  cloneShapeForInsert
+} from "../utils/shapeLibrary";
 
 export function initUI() {
   initPanels();
@@ -332,6 +338,35 @@ export function initUI() {
     }
   );
 
+  const editShapeButton = document.getElementById("edit-shape");
+  let isEditingPolygon = false;
+
+  if (editShapeButton) {
+    editShapeButton.onclick = () => {
+      if (!state.selected || state.selected.kind !== "polygon") return;
+      if (state.selected.source === "photoshape") return;
+
+      if (!isEditingPolygon) {
+        isEditingPolygon = true;
+        window.__editingPoints = true;
+        if (!state.display2D) {
+          saveCameraView();
+          resetCameraToTopView();
+        }
+        state.display2D = true;
+        editShapeButton.textContent = "Finish Edit";
+      } else {
+        isEditingPolygon = false;
+        window.__editingPoints = false;
+        editShapeButton.textContent = "Edit points";
+        commit();
+        if (!state.display2D) return;
+        state.display2D = false;
+        restoreCameraView();
+      }
+    };
+  }
+
   sliderButtonClick("polygon-rotate-input", "polygon-rotate-slider", doCsg, (rotation) => {
     state.selected.rotation = rotation;
   });
@@ -484,6 +519,99 @@ export function initUI() {
   let appendedDiv;
   let isOpen = false;
 
+  const saveShapeButton = document.getElementById("save-shape");
+  const loadShapeButton = document.getElementById("load-shape");
+  const loadShapeInput = document.getElementById("load-shape-input");
+
+  const renderMyShapes = () => {
+    if (!appendedDiv) return;
+    appendedDiv.innerHTML = "";
+
+    const items = loadShapeLibrary();
+    if (!items.length) {
+      const empty = document.createElement("div");
+      empty.style.padding = "12px";
+      empty.textContent = "No saved shapes yet.";
+      appendedDiv.appendChild(empty);
+      return;
+    }
+
+    items.forEach((entry) => {
+      const row = document.createElement("div");
+      row.style.display = "flex";
+      row.style.gap = "8px";
+      row.style.padding = "8px 12px";
+      row.style.alignItems = "center";
+
+      const useBtn = document.createElement("button");
+      useBtn.className = "column grow white";
+      useBtn.textContent = entry.name;
+
+      useBtn.onclick = () => {
+        const newShape = cloneShapeForInsert(entry.shape);
+        state.shapesArray.push(newShape);
+        commit();
+        state.selected = newShape;
+        showPanelFromRight(newShape.kind + "-panel");
+        doCsg();
+      };
+
+      const delBtn = document.createElement("button");
+      delBtn.className = "column white";
+      delBtn.textContent = "Delete";
+      delBtn.onclick = () => {
+        removeShapeFromLibrary(entry.id);
+        renderMyShapes();
+      };
+
+      row.appendChild(useBtn);
+      row.appendChild(delBtn);
+      appendedDiv.appendChild(row);
+    });
+  };
+
+  if (saveShapeButton) {
+    saveShapeButton.onclick = () => {
+      if (!state.selected) return;
+      saveShapeToLibrary(state.selected);
+      renderMyShapes();
+    };
+  }
+
+  if (loadShapeButton && loadShapeInput) {
+    loadShapeButton.onclick = () => loadShapeInput.click();
+
+    loadShapeInput.onchange = (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const json = JSON.parse(reader.result);
+          const addShape = (shape) => {
+            const newShape = cloneShapeForInsert(shape);
+            state.shapesArray.push(newShape);
+            commit();
+            state.selected = newShape;
+            showPanelFromRight(newShape.kind + "-panel");
+            doCsg();
+          };
+
+          if (Array.isArray(json)) {
+            json.forEach(addShape);
+          } else if (json && typeof json === "object") {
+            addShape(json);
+          }
+        } catch (err) {
+          console.error("Invalid JSON file", err);
+        }
+      };
+      reader.readAsText(file);
+      loadShapeInput.value = "";
+    };
+  }
+
   myShapesButton.addEventListener("click", function () {
     if (isOpen) {
       myShapesContainer.style.display = "none";
@@ -503,6 +631,7 @@ export function initUI() {
 
       myShapesContainer.appendChild(appendedDiv);
       myShapesContainer.style.display = "block";
+      renderMyShapes();
 
       resizeHandler = updateAppendedDivHeight;
       window.addEventListener("resize", resizeHandler);
