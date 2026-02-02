@@ -520,9 +520,6 @@ export function initUI() {
   let isOpen = false;
 
   const saveShapeButton = document.getElementById("save-shape");
-  const loadShapeButton = document.getElementById("load-shape");
-  const loadShapeInput = document.getElementById("load-shape-input");
-
   const renderMyShapes = () => {
     if (!appendedDiv) return;
     appendedDiv.innerHTML = "";
@@ -578,6 +575,9 @@ export function initUI() {
     };
   }
 
+  const loadShapeButton = document.getElementById("load-shape");
+  const loadShapeInput = document.getElementById("load-shape-input");
+
   if (loadShapeButton && loadShapeInput) {
     loadShapeButton.onclick = () => loadShapeInput.click();
 
@@ -590,7 +590,8 @@ export function initUI() {
         try {
           const json = JSON.parse(reader.result);
           const addShape = (shape) => {
-            const newShape = cloneShapeForInsert(shape);
+            const newShape = JSON.parse(JSON.stringify(shape));
+            newShape.id = `shape-${Date.now()}`;
             state.shapesArray.push(newShape);
             commit();
             state.selected = newShape;
@@ -611,6 +612,7 @@ export function initUI() {
       loadShapeInput.value = "";
     };
   }
+
 
   myShapesButton.addEventListener("click", function () {
     if (isOpen) {

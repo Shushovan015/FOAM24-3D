@@ -280,9 +280,7 @@ export const createShapeFreehand = (
         } else {
           angleCtx.clearRect(0, 0, angleOverlay.width, angleOverlay.height);
         }
-
         distanceText.textContent = `Distance: ${distance.toFixed(2)} mm`;
-
       }
     }
 
