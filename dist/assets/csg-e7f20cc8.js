@@ -10984,26 +10984,14 @@ ${nonManifold.join("\n")}`);
     const maxR = Math.max(0, Math.min(sizeX, sizeY) / 2 - 1e-3);
     return Math.min(radius, maxR);
   }
-  function roundGeom2(geom, radius) {
-    if (!radius || radius <= 0)
-      return geom;
-    const bounds = src.measurements.measureBoundingBox(geom);
-    if (!bounds)
-      return geom;
-    const sizeX = bounds[1][0] - bounds[0][0];
-    const sizeY = bounds[1][1] - bounds[0][1];
-    const useR = clampCornerRadius(sizeX, sizeY, radius);
-    if (useR <= 0)
-      return geom;
-    let g = src.expansions.offset(
-      { delta: -useR, corners: "round", segments: CORNER_SEGMENTS },
-      geom
-    );
-    g = src.expansions.offset(
-      { delta: useR, corners: "round", segments: CORNER_SEGMENTS },
-      g
-    );
-    return g;
+  function polygonArea(points) {
+    let area2 = 0;
+    for (let i = 0; i < points.length; i++) {
+      const [x1, y1] = points[i];
+      const [x2, y2] = points[(i + 1) % points.length];
+      area2 += x1 * y2 - x2 * y1;
+    }
+    return area2 / 2;
   }
   function shapeToGeom2(shape) {
     switch (shape.kind) {
@@ -11069,6 +11057,11 @@ ${nonManifold.join("\n")}`);
           return [];
         }
       case "polygon":
+        if (!Array.isArray(shape.points) || shape.points.length < 3)
+          return null;
+        const area2 = Math.abs(polygonArea(shape.points));
+        if (area2 < 1e-6)
+          return null;
         let newShape = shape.free ? shape.points.slice().reverse() : shape.points;
         let poly = newShape.map(([x, y]) => [x, y]).map(
           (v) => src.maths.vec2.rotate(
@@ -11079,26 +11072,46 @@ ${nonManifold.join("\n")}`);
           )
         );
         poly = poly.map(([x, y]) => [x + shape.x, y + shape.y]);
-        return roundGeom2(
-          src.geometries.geom2.fromPoints(poly),
-          (shape == null ? void 0 : shape.source) === "photoshape" ? 0 : shape.cornerRadius || 0
-        );
+        return src.geometries.geom2.fromPoints(poly);
     }
   }
   function shapeToGeom3(shape) {
     let geom22 = shapeToGeom2(shape);
-    return src.extrusions.extrudeLinear(
-      {
-        height: shape.sizeZ
-      },
-      geom22
-    );
+    if (!geom22)
+      return null;
+    if (Array.isArray(geom22)) {
+      geom22 = geom22.filter((g) => {
+        var _a;
+        return (_a = g == null ? void 0 : g.sides) == null ? void 0 : _a.length;
+      });
+      if (!geom22.length)
+        return null;
+    } else if (!geom22.sides || !geom22.sides.length) {
+      return null;
+    }
+    try {
+      return src.extrusions.extrudeLinear(
+        {
+          height: shape.sizeZ
+        },
+        geom22
+      );
+    } catch {
+      return null;
+    }
   }
   onmessage = (e) => {
     let { id, foam, shapesArray } = e.data;
-    let geom3s = [shapeToGeom3(foam)];
+    const foamGeom3 = shapeToGeom3(foam);
+    if (!foamGeom3) {
+      postMessage({ id, geom: null });
+      return;
+    }
+    let geom3s = [foamGeom3];
     for (let shape of shapesArray) {
       let geom32 = shapeToGeom3(shape);
+      if (!geom32)
+        continue;
       geom32 = src.transforms.translateZ(foam.sizeZ - shape.sizeZ, geom32);
       geom3s.push(geom32);
     }
@@ -11106,4 +11119,4 @@ ${nonManifold.join("\n")}`);
     postMessage({ id, geom: result });
   };
 })();
-//# sourceMappingURL=csg-237513a0.js.map
+//# sourceMappingURL=csg-e7f20cc8.js.map

@@ -4,6 +4,13 @@ import { disableButton } from "../../utils/buttonClick";
 import { generateId } from "../../utils/common";
 import { restoreCameraView } from "../../setup/scene";
 import { saveShapeToLibrary } from "../../utils/shapeLibrary";
+import {
+  isValidPolygonPoints,
+  drawAngleArc,
+  buildPreviewMesh,
+  makePolygonShape,
+  showToast
+} from "../../utils/freehandUtils";
 
 export const createShapeFreehand = (
   millimeters,
@@ -23,11 +30,9 @@ export const createShapeFreehand = (
   defaultCornerRadius
 ) => {
   document.querySelector("#create-polygon").onclick = () => {
-    let newPoints;
     lineFunction("block", "flex", true);
     disableButton(false);
     display2D = true;
-
     const foamBox = (() => {
       foamMesh.geometry.computeBoundingBox();
       const box = foamMesh.geometry.boundingBox.clone();
@@ -48,22 +53,11 @@ export const createShapeFreehand = (
     document.querySelector("#buttonContainer").onclick = () => {
       cleanupDrawing({ restoreView: true });
       if (!finalizedPolygons.length) return;
-
       let lastShape = null;
       finalizedPolygons.forEach((pts) => {
-        if (!Array.isArray(finalPoints) || finalPoints.length < 3) return;
-        const shape = {
-          id: generateId(),
-          kind: "polygon",
-          x: 0,
-          y: 0,
-          sizeZ: 300 * millimeters,
-          sizeX: 200 * millimeters,
-          sizeY: 200 * millimeters,
-          points: pts,
-          rotation: 0,
-          free: true,
-        };
+        if (!Array.isArray(pts) || pts.length < 3) return;
+        const shape = makePolygonShape(pts, millimeters);
+        shape.id = generateId();
         shapesArray.push(shape);
         lastShape = shape;
       });
@@ -85,24 +79,13 @@ export const createShapeFreehand = (
       }
 
       const newPoints = finalizedPolygons[finalizedPolygons.length - 1];
-
-      const shape = {
-        id: generateId(),
-        kind: "polygon",
-        x: 0,
-        y: 0,
-        sizeZ: 300 * millimeters,
-        sizeX: 200 * millimeters,
-        sizeY: 200 * millimeters,
-        points: newPoints,
-        rotation: 0,
-        free: true,
-      };
-
+      const shape = makePolygonShape(newPoints, millimeters);
+      shape.id = generateId();
       const defaultName = `freehand-${new Date().toISOString().slice(0, 10)}`;
       const name = window.prompt("Save shape as:", defaultName);
       if (name !== null) {
         saveShapeToLibrary(shape, name.trim() || defaultName);
+        showToast("Shape saved successfully under My Shapes");
       }
 
       drawing = false;
@@ -119,14 +102,12 @@ export const createShapeFreehand = (
       circles = [];
     };
 
-
     var drawing = false;
     var points = [];
     var circles = [];
     var lines = [];
     var closedCircles = [];
     var closedLines = [];
-    let finalPoints = [];
     let finalizedPolygons = [];
     let mesh;
     let previewMeshes = [];
@@ -155,6 +136,7 @@ export const createShapeFreehand = (
       angleOverlay.style.width = window.innerWidth + "px";
       angleOverlay.style.height = window.innerHeight + "px";
     }
+
     resizeAngleOverlay();
     window.addEventListener("resize", resizeAngleOverlay);
     const angleCtx = angleOverlay.getContext("2d");
@@ -189,9 +171,7 @@ export const createShapeFreehand = (
         restoreCameraView();
         showPanelFromLeft("main-panel");
       }
-
       points.length = 0;
-
       if (line) sceneCopy.remove(line);
       if (mesh) sceneCopy.remove(mesh);
       previewMeshes.forEach((m) => sceneCopy.remove(m));
@@ -202,12 +182,10 @@ export const createShapeFreehand = (
       closedLines.forEach((l) => sceneCopy.remove(l));
       closedCircles = [];
       closedLines = [];
-
       callback1(false);
       angleCtx.clearRect(0, 0, angleOverlay.width, angleOverlay.height);
       angleOverlay.remove();
       window.removeEventListener("resize", resizeAngleOverlay);
-
       document.removeEventListener("pointerdown", pointerDown);
       document.removeEventListener("mousemove", onMouseMove);
     }
@@ -217,81 +195,6 @@ export const createShapeFreehand = (
       const intersect = new THREE.Vector3();
       raycaster.ray.intersectPlane(plane, intersect);
       return intersect;
-    }
-
-    function angleAtPoint(prev, curr, next) {
-      const v1 = new THREE.Vector2(prev.x - curr.x, prev.y - curr.y);
-      const v2 = new THREE.Vector2(next.x - curr.x, next.y - curr.y);
-      const denom = v1.length() * v2.length();
-      if (denom === 0) return null;
-      const cos = THREE.MathUtils.clamp(v1.dot(v2) / denom, -1, 1);
-      const rad = Math.acos(cos);
-      return THREE.MathUtils.radToDeg(rad);
-    }
-
-    function projectToScreen(vec3) {
-      const v = vec3.clone().project(orthoCamera);
-      const x = (v.x * 0.5 + 0.5) * window.innerWidth;
-      const y = (-v.y * 0.5 + 0.5) * window.innerHeight;
-      return { x, y };
-    }
-
-    function drawAngleArc(prev, curr, next) {
-      angleCtx.clearRect(0, 0, angleOverlay.width, angleOverlay.height);
-
-      const pPrev = projectToScreen(prev);
-      const pCurr = projectToScreen(curr);
-      const pNext = projectToScreen(next);
-
-      const v1x = pPrev.x - pCurr.x;
-      const v1y = pPrev.y - pCurr.y;
-      const v2x = pNext.x - pCurr.x;
-      const v2y = pNext.y - pCurr.y;
-
-      const len1 = Math.hypot(v1x, v1y);
-      const len2 = Math.hypot(v2x, v2y);
-      if (len1 === 0 || len2 === 0) return;
-
-      const dot = (v1x * v2x + v1y * v2y) / (len1 * len2);
-      const angleDeg = THREE.MathUtils.radToDeg(
-        Math.acos(THREE.MathUtils.clamp(dot, -1, 1))
-      );
-
-      const a1 = Math.atan2(v1y, v1x);
-      const a2 = Math.atan2(v2y, v2x);
-
-      let delta = a2 - a1;
-      while (delta <= -Math.PI) delta += Math.PI * 2;
-      while (delta > Math.PI) delta -= Math.PI * 2;
-
-      const start = a1;
-      const end = a1 + delta;
-      const anticlockwise = delta < 0;
-
-      const dpr = window.devicePixelRatio || 1;
-      const radius = 30 * dpr;
-
-      angleCtx.save();
-      angleCtx.setTransform(1, 0, 0, 1, 0, 0);
-      angleCtx.scale(dpr, dpr);
-      angleCtx.strokeStyle = "yellow";
-      angleCtx.fillStyle = "yellow";
-      angleCtx.lineWidth = 2;
-
-      angleCtx.beginPath();
-      angleCtx.arc(pCurr.x, pCurr.y, radius / dpr, start, end, anticlockwise);
-      angleCtx.stroke();
-
-      const mid = (start + end) / 2;
-      const lx = pCurr.x + Math.cos(mid) * 40;
-      const ly = pCurr.y + Math.sin(mid) * 40;
-
-      angleCtx.font = "bold 16px sans-serif";
-      angleCtx.strokeStyle = "black";
-      angleCtx.lineWidth = 3;
-      angleCtx.strokeText(`${angleDeg.toFixed(1)}°`, lx, ly);
-      angleCtx.fillText(`${angleDeg.toFixed(1)}°`, lx, ly);
-      angleCtx.restore();
     }
 
     function onMouseMove(event) {
@@ -312,37 +215,13 @@ export const createShapeFreehand = (
         if (points.length >= 2) {
           const prev = points[points.length - 2];
           const curr = points[points.length - 1];
-          drawAngleArc(prev, curr, endPoint);
+          drawAngleArc(prev, curr, endPoint, angleCtx, angleOverlay, orthoCamera);
         } else {
           angleCtx.clearRect(0, 0, angleOverlay.width, angleOverlay.height);
         }
         distanceText.textContent = `Distance: ${distance.toFixed(2)} mm`;
       }
     }
-
-    function isValidPolygonPoints(pts) {
-      if (!Array.isArray(pts) || pts.length < 3) return false;
-
-      const clean = [];
-      for (const p of pts) {
-        if (!clean.length) {
-          clean.push(p);
-          continue;
-        }
-        const last = clean[clean.length - 1];
-        if (last[0] !== p[0] || last[1] !== p[1]) clean.push(p);
-      }
-      if (clean.length < 3) return false;
-
-      let area = 0;
-      for (let i = 0; i < clean.length; i++) {
-        const [x1, y1] = clean[i];
-        const [x2, y2] = clean[(i + 1) % clean.length];
-        area += x1 * y2 - x2 * y1;
-      }
-      return Math.abs(area) > 1e-6;
-    }
-
 
     function pointerDown(event) {
       const rect = event.target.getBoundingClientRect();
@@ -365,7 +244,6 @@ export const createShapeFreehand = (
           const firstPoint = points[0];
           const distanceToFirstPointMm =
             firstPoint.distanceTo(intersect) * millimeters;
-
           if (distanceToFirstPointMm < proximityThresholdMm) {
             disableButton(true);
             registering = false;
@@ -373,16 +251,9 @@ export const createShapeFreehand = (
             const closedPoints = points.map((p) => [p.x, p.y]);
             if (isValidPolygonPoints(closedPoints)) {
               finalizedPolygons.push(closedPoints);
-              finalPoints = closedPoints;
             }
             drawing = false;
-            const newPoints = points.map(p => new THREE.Vector3(p.x, p.y, p.z));
-            const shape = new THREE.Shape(newPoints.map(p => new THREE.Vector2(p.x, p.y)));
-            const extrudeSettings = { depth: 0, bevelEnabled: false };
-            const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-            const material = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
-            mesh = new THREE.Mesh(geometry, material);
-            mesh.position.z = objectZCoordinate;
+            mesh = buildPreviewMesh(points, objectZCoordinate);
             sceneCopy.add(mesh);
             previewMeshes.push(mesh);
             closedCircles.push(...circles);
@@ -393,7 +264,6 @@ export const createShapeFreehand = (
             return;
           }
         }
-
         const unprojectedPoint = intersect.clone();
         unprojectedPoint.z = objectZCoordinate + 1;
         points.push(unprojectedPoint);
@@ -424,7 +294,6 @@ export const createShapeFreehand = (
         points.push(unprojectedPoint.clone());
       }
     }
-
     showPanelFromRight("polygon-panel");
     doCsg();
     callback(selected, display2D);

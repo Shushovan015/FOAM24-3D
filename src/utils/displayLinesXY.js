@@ -54,11 +54,16 @@ export function displayLineXY() {
 }
 
 export function lineFunction(name1, name2, boolValue) {
+  const actions = document.getElementById("freehand-actions");
+  if (actions) actions.style.display = name2;
+
   document.getElementById("buttonContainer").style.display = `${name2}`;
   document.getElementById("saveButtonContainer").style.display = `${name2}`;
   document.getElementById("saveButtonContainer").disabled = boolValue;
+
   document.querySelector(".x-line").style.display = `${name1}`;
   document.querySelector(".y-line").style.display = `${name1}`;
   document.querySelector(".x-coordinates").style.display = `${name1}`;
   document.querySelector(".y-coordinates").style.display = `${name1}`;
 }
+

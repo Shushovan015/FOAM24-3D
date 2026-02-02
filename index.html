@@ -121,13 +121,13 @@
         <div class="group">
           <button class="column grow white" id="edit-shape" data-icon="play_shapes">Edit shapes</button>
         </div>
-        <!-- <div class="group">
-          <div id="navButtons" class="column grow white" style="display: flex; gap: 10px; margin-top: 10px;">
-            <button id="prevBtn">Previous</button>
-            <button id="nextBtn">Next</button>
-          </div>
-        </div> -->
+
+        <div class="group" id="freehand-actions" style="display:none; gap:10px;">
+          <button class="column grow green" id="buttonContainer">Done</button>
+          <button class="column grow green" id="saveButtonContainer">Save</button>
+        </div>
       </div>
+
       <div class="panel" id="radius-panel">
         <div class="group">
           <input id="radius-slider" class="column grow" type="range" min="5" max="350" value="100">
@@ -234,11 +234,6 @@
       <button id="photoshape-step-back" disabled>Back</button>
       <button id="photoshape-step-next" disabled>Edit</button>
     </div>
-  </div>
-
-  <div class="button-container">
-    <button class="button" id="buttonContainer" style="display: none;">Done</button>
-    <button class="button" id="saveButtonContainer" style="display: none;">Save</button>
   </div>
 
   <script type="module" src="./main.js"></script>

@@ -33382,6 +33382,77 @@ function drawOutline(shape, style2, width, z, ctx, camera, display2D, renderer, 
         sphere2.position.set(pt[0] + shape.x, pt[1] + shape.y, CP_Z);
       }
     }
+    if (showControlPoints && Array.isArray(shape.points) && shape.points.length >= 3 && typeof shape._selectedPointIndex === "number") {
+      const i = shape._selectedPointIndex;
+      const n = shape.points.length;
+      const prev = shape.points[(i - 1 + n) % n];
+      const curr = shape.points[i];
+      const next = shape.points[(i + 1) % n];
+      const v12 = new Vector2(prev[0] - curr[0], prev[1] - curr[1]);
+      const v22 = new Vector2(next[0] - curr[0], next[1] - curr[1]);
+      const denom = v12.length() * v22.length();
+      if (denom > 0) {
+        const cos2 = MathUtils.clamp(v12.dot(v22) / denom, -1, 1);
+        const angleDeg = MathUtils.radToDeg(Math.acos(cos2));
+        const p = projectPoint(curr[0] + shape.x, curr[1] + shape.y, z, camera, renderer);
+        ctx.save();
+        ctx.fillStyle = "yellow";
+        ctx.strokeStyle = "black";
+        ctx.lineWidth = 2;
+        ctx.font = measurementFont(18);
+        const label = `${angleDeg.toFixed(1)}°`;
+        ctx.strokeText(label, p.x + 8, p.y - 8);
+        ctx.fillText(label, p.x + 8, p.y - 8);
+        ctx.restore();
+      }
+    }
+    if (shape.points.length >= 3 && typeof shape._selectedPointIndex === "number") {
+      const i = shape._selectedPointIndex;
+      const n = shape.points.length;
+      const prev = shape.points[(i - 1 + n) % n];
+      const curr = shape.points[i];
+      const next = shape.points[(i + 1) % n];
+      const pPrev = projectPoint(prev[0] + shape.x, prev[1] + shape.y, z, camera, renderer);
+      const pCurr = projectPoint(curr[0] + shape.x, curr[1] + shape.y, z, camera, renderer);
+      const pNext = projectPoint(next[0] + shape.x, next[1] + shape.y, z, camera, renderer);
+      const v1x = pPrev.x - pCurr.x;
+      const v1y = pPrev.y - pCurr.y;
+      const v2x = pNext.x - pCurr.x;
+      const v2y = pNext.y - pCurr.y;
+      const len1 = Math.hypot(v1x, v1y);
+      const len2 = Math.hypot(v2x, v2y);
+      if (len1 > 0 && len2 > 0) {
+        const dot2 = (v1x * v2x + v1y * v2y) / (len1 * len2);
+        const angleDeg = MathUtils.radToDeg(Math.acos(MathUtils.clamp(dot2, -1, 1)));
+        const a1 = Math.atan2(v1y, v1x);
+        const a2 = Math.atan2(v2y, v2x);
+        let start = a1;
+        let end = a2;
+        let delta = end - start;
+        if (delta > Math.PI)
+          end -= Math.PI * 2;
+        if (delta < -Math.PI)
+          end += Math.PI * 2;
+        const radius = 22;
+        ctx.save();
+        ctx.strokeStyle = "yellow";
+        ctx.fillStyle = "yellow";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(pCurr.x, pCurr.y, radius, start, end, false);
+        ctx.stroke();
+        const mid = (start + end) / 2;
+        const lx = pCurr.x + Math.cos(mid) * (radius + 10);
+        const ly = pCurr.y + Math.sin(mid) * (radius + 10);
+        ctx.font = measurementFont(18);
+        const label = `${angleDeg.toFixed(1)}°`;
+        ctx.strokeStyle = "black";
+        ctx.lineWidth = 3;
+        ctx.strokeText(label, lx, ly);
+        ctx.fillText(label, lx, ly);
+        ctx.restore();
+      }
+    }
     if (!shape._controlPointsSetup) {
       shape._controlPointsSetup = true;
       setupControlPointInteractions(shape, scene, camera, renderer, z);
@@ -33429,20 +33500,75 @@ function setupControlPointInteractions(shape, scene, camera, renderer, CP_Z = 0)
     state2.mouse.set(ndc.x, ndc.y);
     state2.raycaster.setFromCamera(state2.mouse, camera);
   }
+  function getPlaneHit(evt) {
+    syncRaycast(evt);
+    const dragPlane = new Plane$1(new Vector3(0, 0, 1), -state2.CP_Z);
+    const pos = new Vector3();
+    const hit = state2.raycaster.ray.intersectPlane(dragPlane, pos);
+    return hit ? pos : null;
+  }
+  function dist2PointToSegment(p, a, b) {
+    const ax = a[0], ay = a[1];
+    const bx = b[0], by = b[1];
+    const px2 = p[0], py2 = p[1];
+    const abx = bx - ax;
+    const aby = by - ay;
+    const apx = px2 - ax;
+    const apy = py2 - ay;
+    const abLen2 = abx * abx + aby * aby;
+    const t = abLen2 === 0 ? 0 : Math.max(0, Math.min(1, (apx * abx + apy * aby) / abLen2));
+    const cx2 = ax + abx * t;
+    const cy2 = ay + aby * t;
+    const dx = px2 - cx2;
+    const dy = py2 - cy2;
+    return { dist2: dx * dx + dy * dy, t };
+  }
+  function insertPointAtWorldPos(worldPos) {
+    if (!Array.isArray(shape.points) || shape.points.length < 2)
+      return;
+    const local = [worldPos.x - shape.x, worldPos.y - shape.y];
+    let best = { i: 0, dist2: Infinity };
+    for (let i = 0; i < shape.points.length; i++) {
+      const a = shape.points[i];
+      const b = shape.points[(i + 1) % shape.points.length];
+      const { dist2 } = dist2PointToSegment(local, a, b);
+      if (dist2 < best.dist2)
+        best = { i, dist2 };
+    }
+    shape.points.splice(best.i + 1, 0, local);
+    clearControlPoints(shape, scene);
+  }
+  function removePointAtIndex(idx) {
+    if (!Array.isArray(shape.points) || shape.points.length <= 3)
+      return;
+    shape.points.splice(idx, 1);
+    clearControlPoints(shape, scene);
+  }
   function onMouseDown(evt) {
     evt.stopPropagation();
     syncRaycast(evt);
     const hit = state2.raycaster.intersectObjects(shape.controlPoints, true);
     if (hit.length) {
       evt.preventDefault();
-      state2.isDragging = true;
       const obj = hit[0].object;
       const idx = obj.userData.pointIndex;
+      shape._selectedPointIndex = idx;
+      if (evt.altKey) {
+        removePointAtIndex(idx);
+        return;
+      }
+      state2.isDragging = true;
       state2.selectedPoint = shape.controlPoints.find(
         (p) => p.userData.pointIndex === idx && p.userData.isControlSphere
       ) || obj;
       window.addEventListener("mousemove", onMouseMove);
       window.addEventListener("mouseup", onMouseUp);
+      return;
+    }
+    if (evt.shiftKey) {
+      const pos = getPlaneHit(evt);
+      if (pos)
+        insertPointAtWorldPos(pos);
     }
   }
   function onMouseMove(evt) {
@@ -33467,7 +33593,15 @@ function setupControlPointInteractions(shape, scene, camera, renderer, CP_Z = 0)
   function onHover(evt) {
     syncRaycast(evt);
     const hit = state2.raycaster.intersectObjects(shape.controlPoints, true);
-    target.style.cursor = hit.length ? "move" : "";
+    if (hit.length) {
+      const obj = hit[0].object;
+      const idx = obj.userData.pointIndex;
+      shape._selectedPointIndex = idx;
+      target.style.cursor = evt.altKey ? "not-allowed" : "move";
+    } else {
+      delete shape._selectedPointIndex;
+      target.style.cursor = evt.shiftKey ? "copy" : "";
+    }
   }
   target.addEventListener("mousedown", onMouseDown, { capture: true });
   window.addEventListener("mousemove", onHover);
@@ -33477,6 +33611,7 @@ function setupControlPointInteractions(shape, scene, camera, renderer, CP_Z = 0)
     window.removeEventListener("mousemove", onMouseMove);
     window.removeEventListener("mouseup", onMouseUp);
     shape._controlPointHandlersInitialized = false;
+    delete shape._selectedPointIndex;
   };
 }
 function drawPolygonFromPoints(points, shape, z, ctx, camera, renderer) {
@@ -33907,10 +34042,14 @@ function drawEdgeToFoamMeasurements(shape, foam, ctx, camera) {
   ctx.textAlign = "center";
   const leftMidX = (pLeftEdge.x + pLeftVertex.x) / 2;
   const leftMidY = (pLeftEdge.y + pLeftVertex.y) / 2;
-  ctx.fillText(leftDist.toFixed(0) + "mm", leftMidX, leftMidY - 6);
+  const leftLabel = leftDist.toFixed(0) + "mm";
+  ctx.fillText(leftLabel, leftMidX, leftMidY - 6);
+  ctx.strokeText(leftLabel, leftMidX, leftMidY - 6);
   const topMidX = (pTopEdge.x + pTopVertex.x) / 2;
   const topMidY = (pTopEdge.y + pTopVertex.y) / 2;
-  ctx.fillText(topDist.toFixed(0) + "mm", topMidX + 6, topMidY);
+  const topLabel = topDist.toFixed(0) + "mm";
+  ctx.fillText(topLabel, topMidX + 6, topMidY);
+  ctx.strokeText(topLabel, topMidX + 6, topMidY);
   ctx.restore();
 }
 function drawCircle(shape, ctx, camera, centimeters) {
@@ -34196,7 +34335,7 @@ let latestId = 0;
 function ensureWorker() {
   if (worker)
     return;
-  worker = new Worker(new URL("/assets/csg-237513a0.js", self.location), {
+  worker = new Worker(new URL("/assets/csg-e7f20cc8.js", self.location), {
     type: "module"
   });
   worker.onmessage = (e) => {
@@ -55132,18 +55271,49 @@ function displayLineXY() {
   const yLine = document.querySelector(".y-line");
   const xCoordinates = document.querySelector(".x-coordinates");
   const yCoordinates = document.querySelector(".y-coordinates");
+  const plane2 = new Plane$1(new Vector3(0, 0, 1), 0);
+  const raycaster = new Raycaster();
+  const mouse = new Vector2();
+  function getWorldPos(event) {
+    var _a, _b;
+    const cam = state.orthoCamera || state.camera1 || state.camera;
+    if (!cam)
+      return null;
+    const rect = ((_b = (_a = state.renderer) == null ? void 0 : _a.domElement) == null ? void 0 : _b.getBoundingClientRect()) || {
+      left: 0,
+      top: 0,
+      width: window.innerWidth,
+      height: window.innerHeight
+    };
+    mouse.x = (event.clientX - rect.left) / rect.width * 2 - 1;
+    mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    raycaster.setFromCamera(mouse, cam);
+    const hit = new Vector3();
+    if (raycaster.ray.intersectPlane(plane2, hit))
+      return hit;
+    return null;
+  }
   document.addEventListener("mousemove", (event) => {
     const mouseX = event.clientX;
     const mouseY = event.clientY;
     xLine.style.top = `${mouseY}px`;
-    xCoordinates.textContent = `X: ${mouseX}px`;
-    xCoordinates.style.top = `${mouseY}px`;
     yLine.style.left = `${mouseX}px`;
-    yCoordinates.textContent = `Y: ${mouseY}px`;
+    xCoordinates.style.top = `${mouseY}px`;
     yCoordinates.style.left = `${mouseX}px`;
+    const world = getWorldPos(event);
+    if (world) {
+      xCoordinates.textContent = `X: ${world.x.toFixed(1)}mm`;
+      yCoordinates.textContent = `Y: ${world.y.toFixed(1)}mm`;
+    } else {
+      xCoordinates.textContent = `X: ${mouseX}px`;
+      yCoordinates.textContent = `Y: ${mouseY}px`;
+    }
   });
 }
 function lineFunction(name1, name2, boolValue) {
+  const actions = document.getElementById("freehand-actions");
+  if (actions)
+    actions.style.display = name2;
   document.getElementById("buttonContainer").style.display = `${name2}`;
   document.getElementById("saveButtonContainer").style.display = `${name2}`;
   document.getElementById("saveButtonContainer").disabled = boolValue;
@@ -55243,9 +55413,169 @@ const disableButton = (boolValue) => {
     deleteBtn.setAttribute("disabled", "");
   }
 };
+const STORAGE_KEY = "myShapes";
+function loadShapeLibrary() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+function saveShapeToLibrary(shape, name) {
+  if (!shape || typeof shape !== "object")
+    return;
+  const items = loadShapeLibrary();
+  const entry = {
+    id: generateId(),
+    name: name || `${shape.kind || "shape"}-${(/* @__PURE__ */ new Date()).toISOString().slice(0, 19)}`,
+    shape
+  };
+  items.unshift(entry);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+}
+function removeShapeFromLibrary(entryId) {
+  const items = loadShapeLibrary().filter((s) => s.id !== entryId);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+}
+function cloneShapeForInsert(shape) {
+  const clean = JSON.parse(JSON.stringify(shape));
+  clean.id = generateId();
+  delete clean.controlPoints;
+  delete clean._controlPointsSetup;
+  delete clean._controlPointHandlersInitialized;
+  delete clean.cleanup;
+  delete clean._dragOriginalPoints;
+  return clean;
+}
+function isValidPolygonPoints(pts) {
+  if (!Array.isArray(pts) || pts.length < 3)
+    return false;
+  const clean = [];
+  for (const p of pts) {
+    if (!clean.length) {
+      clean.push(p);
+      continue;
+    }
+    const last2 = clean[clean.length - 1];
+    if (last2[0] !== p[0] || last2[1] !== p[1])
+      clean.push(p);
+  }
+  if (clean.length < 3)
+    return false;
+  let area2 = 0;
+  for (let i = 0; i < clean.length; i++) {
+    const [x1, y1] = clean[i];
+    const [x2, y2] = clean[(i + 1) % clean.length];
+    area2 += x1 * y2 - x2 * y1;
+  }
+  return Math.abs(area2) > 1e-6;
+}
+function projectToScreen(vec32, camera) {
+  const v = vec32.clone().project(camera);
+  const x = (v.x * 0.5 + 0.5) * window.innerWidth;
+  const y = (-v.y * 0.5 + 0.5) * window.innerHeight;
+  return { x, y };
+}
+function drawAngleArc(prev, curr, next, angleCtx, angleOverlay, camera) {
+  angleCtx.clearRect(0, 0, angleOverlay.width, angleOverlay.height);
+  const pPrev = projectToScreen(prev, camera);
+  const pCurr = projectToScreen(curr, camera);
+  const pNext = projectToScreen(next, camera);
+  const v1x = pPrev.x - pCurr.x;
+  const v1y = pPrev.y - pCurr.y;
+  const v2x = pNext.x - pCurr.x;
+  const v2y = pNext.y - pCurr.y;
+  const len1 = Math.hypot(v1x, v1y);
+  const len2 = Math.hypot(v2x, v2y);
+  if (len1 === 0 || len2 === 0)
+    return;
+  const dot2 = (v1x * v2x + v1y * v2y) / (len1 * len2);
+  const angleDeg = MathUtils.radToDeg(
+    Math.acos(MathUtils.clamp(dot2, -1, 1))
+  );
+  const a1 = Math.atan2(v1y, v1x);
+  const a2 = Math.atan2(v2y, v2x);
+  let delta = a2 - a1;
+  while (delta <= -Math.PI)
+    delta += Math.PI * 2;
+  while (delta > Math.PI)
+    delta -= Math.PI * 2;
+  const start = a1;
+  const end = a1 + delta;
+  const anticlockwise = delta < 0;
+  const dpr = window.devicePixelRatio || 1;
+  const radius = 30 * dpr;
+  angleCtx.save();
+  angleCtx.setTransform(1, 0, 0, 1, 0, 0);
+  angleCtx.scale(dpr, dpr);
+  angleCtx.strokeStyle = "yellow";
+  angleCtx.fillStyle = "yellow";
+  angleCtx.lineWidth = 2;
+  angleCtx.beginPath();
+  angleCtx.arc(pCurr.x, pCurr.y, radius / dpr, start, end, anticlockwise);
+  angleCtx.stroke();
+  const mid = (start + end) / 2;
+  const lx = pCurr.x + Math.cos(mid) * 40;
+  const ly = pCurr.y + Math.sin(mid) * 40;
+  angleCtx.font = "bold 16px sans-serif";
+  angleCtx.strokeStyle = "black";
+  angleCtx.lineWidth = 3;
+  angleCtx.strokeText(`${angleDeg.toFixed(1)}°`, lx, ly);
+  angleCtx.fillText(`${angleDeg.toFixed(1)}°`, lx, ly);
+  angleCtx.restore();
+}
+function buildPreviewMesh(points, objectZ) {
+  const newPoints = points.map((p) => new Vector3(p.x, p.y, p.z));
+  const shape = new Shape(newPoints.map((p) => new Vector2(p.x, p.y)));
+  const extrudeSettings = { depth: 0, bevelEnabled: false };
+  const geometry = new ExtrudeGeometry(shape, extrudeSettings);
+  const material = new MeshBasicMaterial({ color: 16777215, side: DoubleSide });
+  const mesh = new Mesh(geometry, material);
+  mesh.position.z = objectZ;
+  return mesh;
+}
+function makePolygonShape(points, millimeters) {
+  return {
+    id: `shape-${Date.now()}`,
+    kind: "polygon",
+    x: 0,
+    y: 0,
+    sizeZ: 300 * millimeters,
+    sizeX: 200 * millimeters,
+    sizeY: 200 * millimeters,
+    points,
+    rotation: 0,
+    free: true
+  };
+}
+function showToast(message, opts = {}) {
+  const {
+    top = "16px",
+    duration = 2e3,
+    background = "#1e7d34",
+    color = "#fff"
+  } = opts;
+  const msg2 = document.createElement("div");
+  msg2.textContent = message;
+  Object.assign(msg2.style, {
+    position: "fixed",
+    top,
+    left: "50%",
+    transform: "translateX(-50%)",
+    background,
+    color,
+    padding: "10px 16px",
+    borderRadius: "6px",
+    fontSize: "14px",
+    zIndex: 1e4
+  });
+  document.body.appendChild(msg2);
+  setTimeout(() => msg2.remove(), duration);
+}
 const createShapeFreehand = (millimeters, selected, shapesArray, commit2, showPanelFromLeft2, showPanelFromRight2, doCsg2, orthoCamera, sceneCopy, rendererCopy, display2D, callback1, callback, foamMesh, defaultCornerRadius) => {
   document.querySelector("#create-polygon").onclick = () => {
-    let newPoints;
     lineFunction("block", "flex", true);
     disableButton(false);
     display2D = true;
@@ -55260,94 +55590,66 @@ const createShapeFreehand = (millimeters, selected, shapesArray, commit2, showPa
       return foamBox.containsPoint(point2);
     }
     document.querySelector("#back-button").onclick = () => {
-      drawingActive = false;
-      document.body.style.cursor = originalCursor;
-      document.body.style.cursor = "default";
-      distanceText.textContent = "";
-      registering = false;
-      lineFunction("none", "none", true);
-      document.querySelector("#back-button").setAttribute("disabled", "");
-      restoreCameraView();
-      showPanelFromLeft2("main-panel");
+      cleanupDrawing({ restoreView: true });
       selected = null;
-      points.length = 0;
-      sceneCopy.remove(mesh);
-      circles.map((circle2) => sceneCopy.remove(circle2));
-      lines.map((line5) => sceneCopy.remove(line5));
-      callback1(false);
-      document.removeEventListener("pointerdown", pointerDown);
     };
     document.querySelector("#buttonContainer").onclick = () => {
-      drawingActive = false;
-      document.body.style.cursor = originalCursor;
-      document.body.style.cursor = "default";
-      distanceText.textContent = "";
-      registering = false;
-      sceneCopy.remove(line4);
-      lineFunction("none", "none", true);
-      document.querySelector("#back-button").setAttribute("disabled", "");
-      showPanelFromLeft2("main-panel");
-      points.length = 0;
-      callback1(false);
-      document.removeEventListener("pointerdown", pointerDown);
-      sceneCopy.remove(mesh);
-      circles.map((circle2) => sceneCopy.remove(circle2));
-      lines.map((line5) => sceneCopy.remove(line5));
-      newPoints = finalPoints == null ? void 0 : finalPoints.map((point2) => [point2.x, point2.y]);
-      let shape = {
-        id: generateId(),
-        kind: "polygon",
-        x: 0,
-        y: 0,
-        sizeZ: 300 * millimeters,
-        sizeX: 200 * millimeters,
-        sizeY: 200 * millimeters,
-        points: newPoints,
-        rotation: 0,
-        free: true,
-        cornerRadius: defaultCornerRadius
-      };
-      shapesArray.push(shape);
+      cleanupDrawing({ restoreView: true });
+      if (!finalizedPolygons.length)
+        return;
+      let lastShape = null;
+      finalizedPolygons.forEach((pts) => {
+        if (!Array.isArray(pts) || pts.length < 3)
+          return;
+        const shape = makePolygonShape(pts, millimeters);
+        shape.id = generateId();
+        shapesArray.push(shape);
+        lastShape = shape;
+      });
+      if (!lastShape)
+        return;
       commit2();
-      selected = shape;
+      selected = lastShape;
       showPanelFromRight2(selected.kind + "-panel");
       doCsg2();
       callback(selected);
     };
     const saveButton = document.getElementById("saveButtonContainer");
     saveButton.onclick = () => {
-      newPoints = finalPoints == null ? void 0 : finalPoints.map((point2) => [point2.x, point2.y]);
-      var shape = {
-        id: generateId(),
-        kind: "polygon",
-        x: 0,
-        y: 0,
-        sizeZ: 300 * millimeters,
-        sizeX: 200 * millimeters,
-        sizeY: 200 * millimeters,
-        points: newPoints,
-        rotation: 0,
-        free: true,
-        cornerRadius: defaultCornerRadius
-      };
-      localStorage.setItem("cachedJson", JSON.stringify(shape));
-      if (window.confirm("The shape is saved temporarily. Do you want to save in the the shape library?")) {
-        const json = localStorage.getItem("cachedJson");
-        if (json)
-          console.log(JSON.parse(json));
-        else
-          alert("No JSON found in cache.");
+      if (!finalizedPolygons.length) {
+        alert("Close a shape first before saving.");
+        return;
+      }
+      const newPoints = finalizedPolygons[finalizedPolygons.length - 1];
+      const shape = makePolygonShape(newPoints, millimeters);
+      shape.id = generateId();
+      const defaultName = `freehand-${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}`;
+      const name = window.prompt("Save shape as:", defaultName);
+      if (name !== null) {
+        saveShapeToLibrary(shape, name.trim() || defaultName);
+        showToast("Shape saved successfully under My Shapes");
       }
       drawing = false;
       registering = false;
+      points.length = 0;
+      line4.geometry.attributes.position.setXYZ(0, 0, 0, 0);
+      line4.geometry.attributes.position.setXYZ(1, 0, 0, 0);
+      line4.geometry.attributes.position.needsUpdate = true;
+      lines.forEach((l) => sceneCopy.remove(l));
+      circles.forEach((c2) => sceneCopy.remove(c2));
+      lines = [];
+      circles = [];
     };
     var drawing = false;
     var points = [];
     var circles = [];
     var lines = [];
-    let finalPoints = [];
+    var closedCircles = [];
+    var closedLines = [];
+    let finalizedPolygons = [];
     let mesh;
-    var proximityThreshold = 5;
+    let previewMeshes = [];
+    var proximityThresholdMm = 5;
     let objectZCoordinate = 0;
     const distanceText = document.createElement("div");
     Object.assign(distanceText.style, {
@@ -55357,6 +55659,22 @@ const createShapeFreehand = (millimeters, selected, shapesArray, commit2, showPa
       color: "white"
     });
     document.body.appendChild(distanceText);
+    const angleOverlay = document.createElement("canvas");
+    angleOverlay.style.position = "absolute";
+    angleOverlay.style.top = "0";
+    angleOverlay.style.left = "0";
+    angleOverlay.style.pointerEvents = "none";
+    angleOverlay.style.zIndex = "10";
+    document.body.appendChild(angleOverlay);
+    function resizeAngleOverlay() {
+      angleOverlay.width = window.innerWidth * (window.devicePixelRatio || 1);
+      angleOverlay.height = window.innerHeight * (window.devicePixelRatio || 1);
+      angleOverlay.style.width = window.innerWidth + "px";
+      angleOverlay.style.height = window.innerHeight + "px";
+    }
+    resizeAngleOverlay();
+    window.addEventListener("resize", resizeAngleOverlay);
+    const angleCtx = angleOverlay.getContext("2d");
     const lineMaterial = new LineBasicMaterial({ color: 16777215, linewidth: 2 });
     const lineGeometry = new BufferGeometry();
     lineGeometry.setAttribute("position", new BufferAttribute(new Float32Array(6), 3));
@@ -55372,6 +55690,37 @@ const createShapeFreehand = (millimeters, selected, shapesArray, commit2, showPa
     document.addEventListener("mousemove", onMouseMove);
     let drawingActive = true;
     displayLineXY();
+    function cleanupDrawing({ restoreView = true } = {}) {
+      drawingActive = false;
+      document.body.style.cursor = originalCursor || "default";
+      distanceText.textContent = "";
+      registering = false;
+      lineFunction("none", "none", true);
+      document.querySelector("#back-button").setAttribute("disabled", "");
+      if (restoreView) {
+        restoreCameraView();
+        showPanelFromLeft2("main-panel");
+      }
+      points.length = 0;
+      if (line4)
+        sceneCopy.remove(line4);
+      if (mesh)
+        sceneCopy.remove(mesh);
+      previewMeshes.forEach((m) => sceneCopy.remove(m));
+      previewMeshes = [];
+      circles.forEach((circle2) => sceneCopy.remove(circle2));
+      lines.forEach((l) => sceneCopy.remove(l));
+      closedCircles.forEach((c2) => sceneCopy.remove(c2));
+      closedLines.forEach((l) => sceneCopy.remove(l));
+      closedCircles = [];
+      closedLines = [];
+      callback1(false);
+      angleCtx.clearRect(0, 0, angleOverlay.width, angleOverlay.height);
+      angleOverlay.remove();
+      window.removeEventListener("resize", resizeAngleOverlay);
+      document.removeEventListener("pointerdown", pointerDown);
+      document.removeEventListener("mousemove", onMouseMove);
+    }
     function getMouseIntersection(event) {
       raycaster.setFromCamera(mouse, orthoCamera);
       const intersect2 = new Vector3();
@@ -55391,7 +55740,14 @@ const createShapeFreehand = (millimeters, selected, shapesArray, commit2, showPa
         line4.geometry.attributes.position.needsUpdate = true;
         distanceText.style.top = `${midpoint.y + window.innerHeight / 2 - 20}px`;
         distanceText.style.left = `${midpoint.x + window.innerWidth / 2}px`;
-        const distance2 = point.distanceTo(endPoint) * 10;
+        const distance2 = point.distanceTo(endPoint) * millimeters;
+        if (points.length >= 2) {
+          const prev = points[points.length - 2];
+          const curr = points[points.length - 1];
+          drawAngleArc(prev, curr, endPoint, angleCtx, angleOverlay, orthoCamera);
+        } else {
+          angleCtx.clearRect(0, 0, angleOverlay.width, angleOverlay.height);
+        }
         distanceText.textContent = `Distance: ${distance2.toFixed(2)} mm`;
       }
     }
@@ -55413,22 +55769,23 @@ const createShapeFreehand = (millimeters, selected, shapesArray, commit2, showPa
       if (drawing) {
         if (points.length > 1) {
           const firstPoint = points[0];
-          const distanceToFirstPoint = firstPoint.distanceTo(intersect2);
-          if (distanceToFirstPoint < proximityThreshold) {
-            distanceText.textContent = "";
+          const distanceToFirstPointMm = firstPoint.distanceTo(intersect2) * millimeters;
+          if (distanceToFirstPointMm < proximityThresholdMm) {
             disableButton(true);
             registering = false;
             document.getElementById("saveButtonContainer").disabled = false;
-            finalPoints = [...points];
+            const closedPoints = points.map((p) => [p.x, p.y]);
+            if (isValidPolygonPoints(closedPoints)) {
+              finalizedPolygons.push(closedPoints);
+            }
             drawing = false;
-            const newPoints2 = points.map((p) => new Vector3(p.x, p.y, p.z));
-            const shape = new Shape(newPoints2.map((p) => new Vector2(p.x, p.y)));
-            const extrudeSettings = { depth: 0, bevelEnabled: false };
-            const geometry2 = new ExtrudeGeometry(shape, extrudeSettings);
-            const material2 = new MeshBasicMaterial({ color: 16777215, side: DoubleSide });
-            mesh = new Mesh(geometry2, material2);
-            mesh.position.z = objectZCoordinate;
+            mesh = buildPreviewMesh(points, objectZCoordinate);
             sceneCopy.add(mesh);
+            previewMeshes.push(mesh);
+            closedCircles.push(...circles);
+            closedLines.push(...lines);
+            circles = [];
+            lines = [];
             points = [];
             return;
           }
@@ -56306,8 +56663,7 @@ function initUI() {
             resetCameraToTopView();
           }
         },
-        foamMesh,
-        state.cornerRadius
+        foamMesh
       );
     } else {
       setTimeout(waitForFoamAndInitFreehand, 100);
@@ -56340,6 +56696,35 @@ function initUI() {
       document.querySelector("#polygon-rotate-slider").value = state.selected.rotation;
     }
   );
+  const editShapeButton = document.getElementById("edit-shape");
+  let isEditingPolygon = false;
+  if (editShapeButton) {
+    editShapeButton.onclick = () => {
+      if (!state.selected || state.selected.kind !== "polygon")
+        return;
+      if (state.selected.source === "photoshape")
+        return;
+      if (!isEditingPolygon) {
+        isEditingPolygon = true;
+        window.__editingPoints = true;
+        if (!state.display2D) {
+          saveCameraView();
+          resetCameraToTopView();
+        }
+        state.display2D = true;
+        editShapeButton.textContent = "Finish Edit";
+      } else {
+        isEditingPolygon = false;
+        window.__editingPoints = false;
+        editShapeButton.textContent = "Edit points";
+        commit();
+        if (!state.display2D)
+          return;
+        state.display2D = false;
+        restoreCameraView();
+      }
+    };
+  }
   sliderButtonClick("polygon-rotate-input", "polygon-rotate-slider", doCsg, (rotation) => {
     state.selected.rotation = rotation;
   });
@@ -56458,6 +56843,119 @@ function initUI() {
   const myShapesContainer = document.getElementById("my-shapes-container");
   let appendedDiv;
   let isOpen = false;
+  const saveShapeButton = document.getElementById("save-shape");
+  const renderMyShapes = () => {
+    if (!appendedDiv)
+      return;
+    appendedDiv.innerHTML = "";
+    const items = loadShapeLibrary();
+    const isValidPolygonPoints2 = (pts) => {
+      if (!Array.isArray(pts) || pts.length < 3)
+        return false;
+      let area2 = 0;
+      for (let i = 0; i < pts.length; i++) {
+        const [x1, y1] = pts[i];
+        const [x2, y2] = pts[(i + 1) % pts.length];
+        area2 += x1 * y2 - x2 * y1;
+      }
+      return Math.abs(area2) > 1e-6;
+    };
+    const cleaned = items.filter((entry) => {
+      if (!(entry == null ? void 0 : entry.shape))
+        return false;
+      if (entry.shape.kind === "polygon") {
+        return isValidPolygonPoints2(entry.shape.points);
+      }
+      return true;
+    });
+    if (cleaned.length !== items.length) {
+      localStorage.setItem("myShapes", JSON.stringify(cleaned));
+    }
+    if (!cleaned.length) {
+      const empty = document.createElement("div");
+      empty.style.padding = "12px";
+      empty.textContent = "No saved shapes yet.";
+      appendedDiv.appendChild(empty);
+      return;
+    }
+    cleaned.forEach((entry) => {
+      const row = document.createElement("div");
+      row.style.display = "flex";
+      row.style.gap = "8px";
+      row.style.padding = "8px 12px";
+      row.style.alignItems = "center";
+      const useBtn = document.createElement("button");
+      useBtn.className = "column grow white";
+      useBtn.textContent = entry.name;
+      useBtn.onclick = () => {
+        const newShape = cloneShapeForInsert(entry.shape);
+        if (newShape.kind === "polygon") {
+          if (!isValidPolygonPoints2(newShape.points)) {
+            alert("This saved shape is invalid (not enough points or zero area).");
+            return;
+          }
+        }
+        state.shapesArray.push(newShape);
+        commit();
+        state.selected = newShape;
+        showPanelFromRight(newShape.kind + "-panel");
+        doCsg();
+      };
+      const delBtn = document.createElement("button");
+      delBtn.className = "column white";
+      delBtn.textContent = "Delete";
+      delBtn.onclick = () => {
+        removeShapeFromLibrary(entry.id);
+        renderMyShapes();
+      };
+      row.appendChild(useBtn);
+      row.appendChild(delBtn);
+      appendedDiv.appendChild(row);
+    });
+  };
+  if (saveShapeButton) {
+    saveShapeButton.onclick = () => {
+      if (!state.selected)
+        return;
+      saveShapeToLibrary(state.selected);
+      renderMyShapes();
+    };
+  }
+  const loadShapeButton = document.getElementById("load-shape");
+  const loadShapeInput = document.getElementById("load-shape-input");
+  if (loadShapeButton && loadShapeInput) {
+    loadShapeButton.onclick = () => loadShapeInput.click();
+    loadShapeInput.onchange = (e) => {
+      var _a;
+      const file = (_a = e.target.files) == null ? void 0 : _a[0];
+      if (!file)
+        return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const json = JSON.parse(reader.result);
+          const addShape = (shape) => {
+            const newShape = JSON.parse(JSON.stringify(shape));
+            newShape.id = `shape-${Date.now()}`;
+            state.shapesArray.push(newShape);
+            commit();
+            state.selected = newShape;
+            showPanelFromRight(newShape.kind + "-panel");
+            doCsg();
+          };
+          if (Array.isArray(json)) {
+            json.forEach(addShape);
+          } else if (json && typeof json === "object") {
+            addShape(json);
+          }
+        } catch (err2) {
+          console.error("Invalid JSON file", err2);
+        }
+      };
+      reader.readAsText(file);
+      loadShapeInput.value = "";
+    };
+  }
   myShapesButton.addEventListener("click", function() {
     if (isOpen) {
       myShapesContainer.style.display = "none";
@@ -56475,6 +56973,7 @@ function initUI() {
       appendedDiv.style.borderRadius = "3px";
       myShapesContainer.appendChild(appendedDiv);
       myShapesContainer.style.display = "block";
+      renderMyShapes();
       resizeHandler = updateAppendedDivHeight;
       window.addEventListener("resize", resizeHandler);
     }
@@ -56503,4 +57002,4 @@ if (typeof window === "object") {
   initUI();
   commit();
 }
-//# sourceMappingURL=index-ad1ce6b8.js.map
+//# sourceMappingURL=index-56b3f8e7.js.map
