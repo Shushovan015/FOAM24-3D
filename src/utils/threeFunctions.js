@@ -3,6 +3,8 @@ import * as THREE from "three";
 import earcut from "earcut";
 import { isOverlapping } from "./shapeOverlapping";
 import { state } from "../setup/state";
+import { isValidPolygonPoints } from "./freehandUtils";
+import { showToast } from "./freehandUtils";
 
 const CORNER_SEGMENTS = 16;
 
@@ -119,7 +121,7 @@ export function shapeToGeom2(shape) {
       const cx = num(shape.x),
         cy = num(shape.y),
         rot = num(shape.rotation, 0);
-      if (!Array.isArray(shape.points) || shape.points.length === 0) {
+      if (!Array.isArray(shape.points) || shape.points.length < 3) {
         return jscad.primitives.rectangle({ center: [cx, cy], size: [1, 1] });
       }
       let pts = shape.points.map(([x, y]) => {
@@ -129,8 +131,17 @@ export function shapeToGeom2(shape) {
         jscad.maths.vec2.rotate(v, v, [0, 0], jscad.utils.degToRad(rot));
         return [v[0] + cx, v[1] + cy];
       });
-      const geom = jscad.geometries.geom2.fromPoints(pts);
-      return roundGeom2(geom, useR);
+      if (!isValidPolygonPoints(pts)) {
+        return jscad.primitives.rectangle({ center: [cx, cy], size: [1, 1] });
+      }
+
+      try {
+        const geom = jscad.geometries.geom2.fromPoints(pts);
+        return roundGeom2(geom, useR);
+      } catch (err) {
+        console.error("Invalid polygon points", err, pts);
+        return jscad.primitives.rectangle({ center: [cx, cy], size: [1, 1] });
+      }
     }
     case "photoshape": {
       const cx = num(shape.x),
@@ -610,13 +621,16 @@ export function drawOutline(
       });
     } else {
       const CP_Z = z;
-      for (let i = 0; i < shape.controlPoints.length; i += 2) {
-        const sphere = shape.controlPoints[i];
-        const pt = shape.points[sphere.userData.pointIndex];
-        if (!pt) continue;
-        sphere.position.set(pt[0] + shape.x, pt[1] + shape.y, CP_Z);
+      if (!shape._draggingPoint) {
+        for (let i = 0; i < shape.controlPoints.length; i += 2) {
+          const sphere = shape.controlPoints[i];
+          const pt = shape.points[sphere.userData.pointIndex];
+          if (!pt) continue;
+          sphere.position.set(pt[0] + shape.x, pt[1] + shape.y, CP_Z);
+        }
       }
     }
+
     if (
       showControlPoints &&
       Array.isArray(shape.points) &&
@@ -735,13 +749,17 @@ function setupControlPointInteractions(
   if (shape._controlPointHandlersInitialized) return;
   shape._controlPointHandlersInitialized = true;
 
-  const state = {
+  const cpState = {
     isDragging: false,
     selectedPoint: null,
     raycaster: new THREE.Raycaster(),
     mouse: new THREE.Vector2(),
     CP_Z: CP_Z,
   };
+  cpState.dragRaf = null;
+  cpState.lastClientX = 0;
+  cpState.lastClientY = 0;
+
 
   const target = renderer.domElement;
   target.style.pointerEvents = "auto";
@@ -759,15 +777,15 @@ function setupControlPointInteractions(
     scene.updateMatrixWorld(true);
     shape.controlPoints.forEach((p) => p.updateMatrixWorld(true));
     const ndc = ndcFromEvent(evt);
-    state.mouse.set(ndc.x, ndc.y);
-    state.raycaster.setFromCamera(state.mouse, camera);
+    cpState.mouse.set(ndc.x, ndc.y);
+    cpState.raycaster.setFromCamera(cpState.mouse, camera);
   }
 
   function getPlaneHit(evt) {
     syncRaycast(evt);
-    const dragPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -state.CP_Z);
+    const dragPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -cpState.CP_Z);
     const pos = new THREE.Vector3();
-    const hit = state.raycaster.ray.intersectPlane(dragPlane, pos);
+    const hit = cpState.raycaster.ray.intersectPlane(dragPlane, pos);
     return hit ? pos : null;
   }
 
@@ -791,8 +809,130 @@ function setupControlPointInteractions(
     return { dist2: dx * dx + dy * dy, t };
   }
 
-  function insertPointAtWorldPos(worldPos) {
+  function dist2PointToSegment2D(p, a, b) {
+    const ax = a.x, ay = a.y;
+    const bx = b.x, by = b.y;
+    const px = p.x, py = p.y;
+
+    const abx = bx - ax;
+    const aby = by - ay;
+    const apx = px - ax;
+    const apy = py - ay;
+
+    const abLen2 = abx * abx + aby * aby;
+    const t = abLen2 === 0 ? 0 : Math.max(0, Math.min(1, (apx * abx + apy * aby) / abLen2));
+    const cx = ax + abx * t;
+    const cy = ay + aby * t;
+
+    const dx = px - cx;
+    const dy = py - cy;
+    return dx * dx + dy * dy;
+  }
+
+  function projectToClient(x, y, z) {
+    const v = new THREE.Vector3(x, y, z);
+    v.project(camera);
+    const r = getRect();
+    return {
+      x: r.left + (v.x + 1) * 0.5 * r.width,
+      y: r.top + (1 - v.y) * 0.5 * r.height,
+    };
+  }
+
+  function getNearestPointIndex(evt, pixelThreshold = 10) {
+    if (!evt || !Array.isArray(shape.points)) return -1;
+
+    const mx = evt.clientX;
+    const my = evt.clientY;
+
+    let bestIdx = -1;
+    let bestDist2 = Infinity;
+
+    for (let i = 0; i < shape.points.length; i++) {
+      const pt = shape.points[i];
+      const screen = projectToClient(pt[0] + shape.x, pt[1] + shape.y, cpState.CP_Z);
+      const dx = screen.x - mx;
+      const dy = screen.y - my;
+      const d2 = dx * dx + dy * dy;
+      if (d2 < bestDist2) {
+        bestDist2 = d2;
+        bestIdx = i;
+      }
+    }
+
+    return bestDist2 <= pixelThreshold * pixelThreshold ? bestIdx : -1;
+  }
+
+  function isNearExistingPoint(evt, pixelThreshold = 45) {
+    if (!evt || !Array.isArray(shape.points)) return false;
+
+    const mx = evt.clientX;
+    const my = evt.clientY;
+
+    for (let i = 0; i < shape.points.length; i++) {
+      const pt = shape.points[i];
+      const screen = projectToClient(pt[0] + shape.x, pt[1] + shape.y, cpState.CP_Z);
+      const dx = screen.x - mx;
+      const dy = screen.y - my;
+      if (dx * dx + dy * dy <= pixelThreshold * pixelThreshold) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  function dist2PointToSegment2D(p, a, b) {
+    const ax = a.x, ay = a.y;
+    const bx = b.x, by = b.y;
+    const px = p.x, py = p.y;
+
+    const abx = bx - ax;
+    const aby = by - ay;
+    const apx = px - ax;
+    const apy = py - ay;
+
+    const abLen2 = abx * abx + aby * aby;
+    const t = abLen2 === 0 ? 0 : Math.max(0, Math.min(1, (apx * abx + apy * aby) / abLen2));
+    const cx = ax + abx * t;
+    const cy = ay + aby * t;
+
+    const dx = px - cx;
+    const dy = py - cy;
+    return dx * dx + dy * dy;
+  }
+
+  function getEdgeHit(evt, pixelThreshold = 12) {
+    const pos = getPlaneHit(evt);
+    if (!pos || !Array.isArray(shape.points) || shape.points.length < 2) {
+      return null;
+    }
+
+    const mouse = { x: evt.clientX, y: evt.clientY };
+
+    let best = { i: 0, dist2: Infinity };
+
+    for (let i = 0; i < shape.points.length; i++) {
+      const a = shape.points[i];
+      const b = shape.points[(i + 1) % shape.points.length];
+
+      const aScreen = projectToClient(a[0] + shape.x, a[1] + shape.y, cpState.CP_Z);
+      const bScreen = projectToClient(b[0] + shape.x, b[1] + shape.y, cpState.CP_Z);
+
+      const dist2 = dist2PointToSegment2D(mouse, aScreen, bScreen);
+      if (dist2 < best.dist2) best = { i, dist2 };
+    }
+
+    return best.dist2 <= pixelThreshold * pixelThreshold
+      ? { pos, edgeIndex: best.i }
+      : null;
+  }
+
+  function insertPointAtWorldPos(worldPos, evt) {
     if (!Array.isArray(shape.points) || shape.points.length < 2) return;
+
+    if (isNearExistingPoint(evt, 10)) return;
+
     const local = [worldPos.x - shape.x, worldPos.y - shape.y];
 
     let best = { i: 0, dist2: Infinity };
@@ -803,7 +943,22 @@ function setupControlPointInteractions(
       if (dist2 < best.dist2) best = { i, dist2 };
     }
 
-    shape.points.splice(best.i + 1, 0, local);
+    const prev = shape.points[best.i];
+    const next = shape.points[(best.i + 1) % shape.points.length];
+
+    if (
+      (prev && prev[0] === local[0] && prev[1] === local[1]) ||
+      (next && next[0] === local[0] && next[1] === local[1])
+    ) {
+      return;
+    }
+
+    const newPoints = shape.points.slice();
+    newPoints.splice(best.i + 1, 0, local);
+
+    if (!isValidPolygonPoints(newPoints)) return;
+
+    shape.points = newPoints;
     clearControlPoints(shape, scene);
   }
 
@@ -815,8 +970,19 @@ function setupControlPointInteractions(
 
   function onMouseDown(evt) {
     evt.stopPropagation();
+    if (state.deletePointMode) {
+      if (!Array.isArray(shape.points) || shape.points.length <= 3) {
+        showToast("No more point delete possible", { background: "#b00020" });
+        return;
+      }
+      const idx = getNearestPointIndex(evt, 10);
+      if (idx === -1) return;
+      removePointAtIndex(idx);
+      return;
+    }
+
     syncRaycast(evt);
-    const hit = state.raycaster.intersectObjects(shape.controlPoints, true);
+    const hit = cpState.raycaster.intersectObjects(shape.controlPoints, true);
 
     if (hit.length) {
       evt.preventDefault();
@@ -829,8 +995,9 @@ function setupControlPointInteractions(
         return;
       }
 
-      state.isDragging = true;
-      state.selectedPoint =
+      cpState.isDragging = true;
+      shape._draggingPoint = true;
+      cpState.selectedPoint =
         shape.controlPoints.find(
           (p) => p.userData.pointIndex === idx && p.userData.isControlSphere
         ) || obj;
@@ -840,47 +1007,102 @@ function setupControlPointInteractions(
       return;
     }
 
+    if (state.addPointMode) {
+      const edgeHit = getEdgeHit(evt);
+      if (!edgeHit) return;
+      insertPointAtWorldPos(edgeHit.pos, evt);
+      return;
+    }
+
     if (evt.shiftKey) {
       const pos = getPlaneHit(evt);
-      if (pos) insertPointAtWorldPos(pos);
+      if (pos) insertPointAtWorldPos(pos, evt);
     }
   }
 
-  function onMouseMove(evt) {
-    if (!state.isDragging || !state.selectedPoint) return;
-
-    syncRaycast(evt);
-
-    const dragPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -state.CP_Z);
-    const pos = new THREE.Vector3();
-    state.raycaster.ray.intersectPlane(dragPlane, pos);
-
-    state.selectedPoint.position.set(pos.x, pos.y, state.CP_Z);
-
-    const i = state.selectedPoint.userData.pointIndex;
-    shape.points[i] = [pos.x - shape.x, pos.y - shape.y];
-  }
-
-  function onMouseUp() {
-    if (!state.isDragging) return;
-    window.removeEventListener("mousemove", onMouseMove);
-    window.removeEventListener("mouseup", onMouseUp);
-    state.isDragging = false;
-    state.selectedPoint = null;
-  }
-
   function onHover(evt) {
+    if (state.deletePointMode) {
+      if (!Array.isArray(shape.points) || shape.points.length <= 3) {
+        delete shape._selectedPointIndex;
+        target.style.cursor = "not-allowed";
+        return;
+      }
+      const idx = getNearestPointIndex(evt, 10);
+      if (idx !== -1) {
+        shape._selectedPointIndex = idx;
+        target.style.cursor = "pointer";
+      } else {
+        delete shape._selectedPointIndex;
+        target.style.cursor = "not-allowed";
+      }
+      return;
+    }
+
     syncRaycast(evt);
-    const hit = state.raycaster.intersectObjects(shape.controlPoints, true);
+    const hit = cpState.raycaster.intersectObjects(shape.controlPoints, true);
 
     if (hit.length) {
       const obj = hit[0].object;
       const idx = obj.userData.pointIndex;
       shape._selectedPointIndex = idx;
       target.style.cursor = evt.altKey ? "not-allowed" : "move";
-    } else {
-      delete shape._selectedPointIndex;
-      target.style.cursor = evt.shiftKey ? "copy" : "";
+      return;
+    }
+
+    delete shape._selectedPointIndex;
+
+    if (state.addPointMode) {
+      const edgeHit = getEdgeHit(evt);
+      target.style.cursor = edgeHit ? "copy" : "not-allowed";
+      return;
+    }
+
+    target.style.cursor = evt.shiftKey ? "copy" : "";
+  }
+
+  function onMouseMove(evt) {
+    if (!cpState.isDragging || !cpState.selectedPoint) return;
+
+    cpState.lastClientX = evt.clientX;
+    cpState.lastClientY = evt.clientY;
+
+    if (cpState.dragRaf) return;
+
+    cpState.dragRaf = requestAnimationFrame(() => {
+      cpState.dragRaf = null;
+      if (!cpState.isDragging || !cpState.selectedPoint) return;
+
+      const fakeEvt = {
+        clientX: cpState.lastClientX,
+        clientY: cpState.lastClientY,
+      };
+
+      syncRaycast(fakeEvt);
+
+      const dragPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -cpState.CP_Z);
+      const pos = new THREE.Vector3();
+      cpState.raycaster.ray.intersectPlane(dragPlane, pos);
+
+      cpState.selectedPoint.position.set(pos.x, pos.y, cpState.CP_Z);
+
+      const i = cpState.selectedPoint.userData.pointIndex;
+      shape.points[i] = [pos.x - shape.x, pos.y - shape.y];
+    });
+  }
+
+  function onMouseUp() {
+    if (!cpState.isDragging) return;
+
+    window.removeEventListener("mousemove", onMouseMove);
+    window.removeEventListener("mouseup", onMouseUp);
+
+    cpState.isDragging = false;
+    cpState.selectedPoint = null;
+    shape._draggingPoint = false;
+
+    if (cpState.dragRaf) {
+      cancelAnimationFrame(cpState.dragRaf);
+      cpState.dragRaf = null;
     }
   }
 

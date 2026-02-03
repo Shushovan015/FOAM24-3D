@@ -287,7 +287,6 @@ export function init3D() {
     }
   };
 
-
   state.renderer.domElement.addEventListener("pointerdown", (e) => {
     if (window.__editingPoints) return;
     recalculateMouse(e);
@@ -537,8 +536,11 @@ export function onFrame() {
         );
         state.ctx.setLineDash([]);
       }
-      drawMeasurements(shape);
-      drawEdgeToFoamMeasurements(shape, state.foam, state.ctx, currentCamera);
+      if (!window.__editingPoints) {
+        drawMeasurements(shape);
+        drawEdgeToFoamMeasurements(shape, state.foam, state.ctx, currentCamera);
+      }
+
     } else {
       state.ctx.setLineDash([5, 5]);
       drawOutline(

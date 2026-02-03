@@ -341,6 +341,40 @@ export function initUI() {
   const editShapeButton = document.getElementById("edit-shape");
   let isEditingPolygon = false;
 
+  const addPointButton = document.getElementById("add-point");
+  const deletePointButton = document.getElementById("delete-point");
+
+  const setDeletePointButtonEnabled = (enabled) => {
+    if (!deletePointButton) return;
+    if (enabled) deletePointButton.removeAttribute("disabled");
+    else deletePointButton.setAttribute("disabled", "");
+  };
+
+  const setDeletePointMode = (on) => {
+    state.deletePointMode = on;
+    if (deletePointButton) {
+      deletePointButton.textContent = on ? "Exit Delete Point" : "Delete point";
+    }
+  };
+
+  const setAddPointButtonEnabled = (enabled) => {
+    if (!addPointButton) return;
+    if (enabled) addPointButton.removeAttribute("disabled");
+    else addPointButton.setAttribute("disabled", "");
+  };
+
+  const setAddPointMode = (on) => {
+    state.addPointMode = on;
+    if (addPointButton) {
+      addPointButton.textContent = on ? "Exit Add Point" : "Add point";
+    }
+  };
+
+  setAddPointButtonEnabled(false);
+  setAddPointMode(false);
+  setDeletePointButtonEnabled(false);
+  setDeletePointMode(false);
+
   if (editShapeButton) {
     editShapeButton.onclick = () => {
       if (!state.selected || state.selected.kind !== "polygon") return;
@@ -349,6 +383,11 @@ export function initUI() {
       if (!isEditingPolygon) {
         isEditingPolygon = true;
         window.__editingPoints = true;
+        setAddPointMode(false);
+        setDeletePointMode(false);
+        setAddPointButtonEnabled(true);
+        setDeletePointButtonEnabled(true);
+
         if (!state.display2D) {
           saveCameraView();
           resetCameraToTopView();
@@ -358,12 +397,37 @@ export function initUI() {
       } else {
         isEditingPolygon = false;
         window.__editingPoints = false;
+        setAddPointMode(false);
+        setDeletePointMode(false);
+        setAddPointButtonEnabled(false);
+        setDeletePointButtonEnabled(false);
+
         editShapeButton.textContent = "Edit points";
         commit();
         if (!state.display2D) return;
         state.display2D = false;
         restoreCameraView();
       }
+    };
+  }
+
+  if (addPointButton) {
+    addPointButton.onclick = () => {
+      if (addPointButton.hasAttribute("disabled")) return;
+      if (!state.selected || state.selected.kind !== "polygon") return;
+      if (!window.__editingPoints) return;
+      setDeletePointMode(false);
+      setAddPointMode(!state.addPointMode);
+    };
+  }
+
+  if (deletePointButton) {
+    deletePointButton.onclick = () => {
+      if (deletePointButton.hasAttribute("disabled")) return;
+      if (!state.selected || state.selected.kind !== "polygon") return;
+      if (!window.__editingPoints) return;
+      setAddPointMode(false);
+      setDeletePointMode(!state.deletePointMode);
     };
   }
 

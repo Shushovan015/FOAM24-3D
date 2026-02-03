@@ -13,6 +13,10 @@ export const state = {
   rendererCopy: null,
   display2D: false,
   sidebar: null,
+  undoRedoHistory: [],
+  undoRedoPosition: 0,
+  addPointMode: false,
+  deletePointMode: false,
 
   renderer: null,
   overlayCanvas: null,

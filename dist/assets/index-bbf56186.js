@@ -21480,6 +21480,10 @@ const state = {
   rendererCopy: null,
   display2D: false,
   sidebar: null,
+  undoRedoHistory: [],
+  undoRedoPosition: 0,
+  addPointMode: false,
+  deletePointMode: false,
   renderer: null,
   overlayCanvas: null,
   ctx: null,
@@ -32961,6 +32965,131 @@ earcut.flatten = function(data) {
   }
   return result;
 };
+function isValidPolygonPoints(pts) {
+  if (!Array.isArray(pts) || pts.length < 3)
+    return false;
+  const clean = [];
+  for (const p of pts) {
+    if (!clean.length) {
+      clean.push(p);
+      continue;
+    }
+    const last2 = clean[clean.length - 1];
+    if (last2[0] !== p[0] || last2[1] !== p[1])
+      clean.push(p);
+  }
+  if (clean.length < 3)
+    return false;
+  let area2 = 0;
+  for (let i = 0; i < clean.length; i++) {
+    const [x1, y1] = clean[i];
+    const [x2, y2] = clean[(i + 1) % clean.length];
+    area2 += x1 * y2 - x2 * y1;
+  }
+  return Math.abs(area2) > 1e-6;
+}
+function projectToScreen(vec32, camera) {
+  const v = vec32.clone().project(camera);
+  const x = (v.x * 0.5 + 0.5) * window.innerWidth;
+  const y = (-v.y * 0.5 + 0.5) * window.innerHeight;
+  return { x, y };
+}
+function drawAngleArc(prev, curr, next, angleCtx, angleOverlay, camera) {
+  angleCtx.clearRect(0, 0, angleOverlay.width, angleOverlay.height);
+  const pPrev = projectToScreen(prev, camera);
+  const pCurr = projectToScreen(curr, camera);
+  const pNext = projectToScreen(next, camera);
+  const v1x = pPrev.x - pCurr.x;
+  const v1y = pPrev.y - pCurr.y;
+  const v2x = pNext.x - pCurr.x;
+  const v2y = pNext.y - pCurr.y;
+  const len1 = Math.hypot(v1x, v1y);
+  const len2 = Math.hypot(v2x, v2y);
+  if (len1 === 0 || len2 === 0)
+    return;
+  const dot2 = (v1x * v2x + v1y * v2y) / (len1 * len2);
+  const angleDeg = MathUtils.radToDeg(
+    Math.acos(MathUtils.clamp(dot2, -1, 1))
+  );
+  const a1 = Math.atan2(v1y, v1x);
+  const a2 = Math.atan2(v2y, v2x);
+  let delta = a2 - a1;
+  while (delta <= -Math.PI)
+    delta += Math.PI * 2;
+  while (delta > Math.PI)
+    delta -= Math.PI * 2;
+  const start = a1;
+  const end = a1 + delta;
+  const anticlockwise = delta < 0;
+  const dpr = window.devicePixelRatio || 1;
+  const radius = 30 * dpr;
+  angleCtx.save();
+  angleCtx.setTransform(1, 0, 0, 1, 0, 0);
+  angleCtx.scale(dpr, dpr);
+  angleCtx.strokeStyle = "yellow";
+  angleCtx.fillStyle = "yellow";
+  angleCtx.lineWidth = 2;
+  angleCtx.beginPath();
+  angleCtx.arc(pCurr.x, pCurr.y, radius / dpr, start, end, anticlockwise);
+  angleCtx.stroke();
+  const mid = (start + end) / 2;
+  const lx = pCurr.x + Math.cos(mid) * 40;
+  const ly = pCurr.y + Math.sin(mid) * 40;
+  angleCtx.font = "bold 16px sans-serif";
+  angleCtx.strokeStyle = "black";
+  angleCtx.lineWidth = 3;
+  angleCtx.strokeText(`${angleDeg.toFixed(1)}°`, lx, ly);
+  angleCtx.fillText(`${angleDeg.toFixed(1)}°`, lx, ly);
+  angleCtx.restore();
+}
+function buildPreviewMesh(points, objectZ) {
+  const newPoints = points.map((p) => new Vector3(p.x, p.y, p.z));
+  const shape = new Shape(newPoints.map((p) => new Vector2(p.x, p.y)));
+  const extrudeSettings = { depth: 0, bevelEnabled: false };
+  const geometry = new ExtrudeGeometry(shape, extrudeSettings);
+  const material = new MeshBasicMaterial({ color: 16777215, side: DoubleSide });
+  const mesh = new Mesh(geometry, material);
+  mesh.position.z = objectZ;
+  return mesh;
+}
+function makePolygonShape(points, millimeters) {
+  return {
+    id: `shape-${Date.now()}`,
+    kind: "polygon",
+    x: 0,
+    y: 0,
+    sizeZ: 300 * millimeters,
+    sizeX: 200 * millimeters,
+    sizeY: 200 * millimeters,
+    points,
+    rotation: 0,
+    free: true
+  };
+}
+function showToast(message, opts = {}) {
+  const {
+    top = "16px",
+    duration = 2e3,
+    background = "#1e7d34",
+    color = "#fff"
+  } = opts;
+  const msg2 = document.createElement("div");
+  msg2.textContent = message;
+  Object.assign(msg2.style, {
+    position: "fixed",
+    top,
+    left: "50%",
+    transform: "translateX(-50%)",
+    background,
+    color,
+    padding: "10px 16px",
+    borderRadius: "6px",
+    fontSize: "14px",
+    zIndex: 1e4
+  });
+  document.body.appendChild(msg2);
+  setTimeout(() => msg2.remove(), duration);
+}
 const CORNER_SEGMENTS = 16;
 function getDefaultCornerRadius() {
   return !isNaN(state.cornerRadius) ? state.cornerRadius : 5;
@@ -33049,7 +33178,7 @@ function shapeToGeom2(shape) {
         return roundGeom2(shape.geom, useR);
       }
       const cx2 = num(shape.x), cy2 = num(shape.y), rot = num(shape.rotation, 0);
-      if (!Array.isArray(shape.points) || shape.points.length === 0) {
+      if (!Array.isArray(shape.points) || shape.points.length < 3) {
         return src.primitives.rectangle({ center: [cx2, cy2], size: [1, 1] });
       }
       let pts = shape.points.map(([x, y]) => {
@@ -33058,8 +33187,16 @@ function shapeToGeom2(shape) {
         src.maths.vec2.rotate(v, v, [0, 0], src.utils.degToRad(rot));
         return [v[0] + cx2, v[1] + cy2];
       });
-      const geom = src.geometries.geom2.fromPoints(pts);
-      return roundGeom2(geom, useR);
+      if (!isValidPolygonPoints(pts)) {
+        return src.primitives.rectangle({ center: [cx2, cy2], size: [1, 1] });
+      }
+      try {
+        const geom = src.geometries.geom2.fromPoints(pts);
+        return roundGeom2(geom, useR);
+      } catch (err2) {
+        console.error("Invalid polygon points", err2, pts);
+        return src.primitives.rectangle({ center: [cx2, cy2], size: [1, 1] });
+      }
     }
     case "photoshape": {
       const cx2 = num(shape.x), cy2 = num(shape.y), rot = num(shape.rotation, 0);
@@ -33374,12 +33511,14 @@ function drawOutline(shape, style2, width, z, ctx, camera, display2D, renderer, 
       });
     } else {
       const CP_Z = z;
-      for (let i = 0; i < shape.controlPoints.length; i += 2) {
-        const sphere2 = shape.controlPoints[i];
-        const pt = shape.points[sphere2.userData.pointIndex];
-        if (!pt)
-          continue;
-        sphere2.position.set(pt[0] + shape.x, pt[1] + shape.y, CP_Z);
+      if (!shape._draggingPoint) {
+        for (let i = 0; i < shape.controlPoints.length; i += 2) {
+          const sphere2 = shape.controlPoints[i];
+          const pt = shape.points[sphere2.userData.pointIndex];
+          if (!pt)
+            continue;
+          sphere2.position.set(pt[0] + shape.x, pt[1] + shape.y, CP_Z);
+        }
       }
     }
     if (showControlPoints && Array.isArray(shape.points) && shape.points.length >= 3 && typeof shape._selectedPointIndex === "number") {
@@ -33476,13 +33615,16 @@ function setupControlPointInteractions(shape, scene, camera, renderer, CP_Z = 0)
   if (shape._controlPointHandlersInitialized)
     return;
   shape._controlPointHandlersInitialized = true;
-  const state2 = {
+  const cpState = {
     isDragging: false,
     selectedPoint: null,
     raycaster: new Raycaster(),
     mouse: new Vector2(),
     CP_Z
   };
+  cpState.dragRaf = null;
+  cpState.lastClientX = 0;
+  cpState.lastClientY = 0;
   const target = renderer.domElement;
   target.style.pointerEvents = "auto";
   const getRect = () => renderer.domElement.getBoundingClientRect();
@@ -33497,14 +33639,14 @@ function setupControlPointInteractions(shape, scene, camera, renderer, CP_Z = 0)
     scene.updateMatrixWorld(true);
     shape.controlPoints.forEach((p) => p.updateMatrixWorld(true));
     const ndc = ndcFromEvent(evt);
-    state2.mouse.set(ndc.x, ndc.y);
-    state2.raycaster.setFromCamera(state2.mouse, camera);
+    cpState.mouse.set(ndc.x, ndc.y);
+    cpState.raycaster.setFromCamera(cpState.mouse, camera);
   }
   function getPlaneHit(evt) {
     syncRaycast(evt);
-    const dragPlane = new Plane$1(new Vector3(0, 0, 1), -state2.CP_Z);
+    const dragPlane = new Plane$1(new Vector3(0, 0, 1), -cpState.CP_Z);
     const pos = new Vector3();
-    const hit = state2.raycaster.ray.intersectPlane(dragPlane, pos);
+    const hit = cpState.raycaster.ray.intersectPlane(dragPlane, pos);
     return hit ? pos : null;
   }
   function dist2PointToSegment(p, a, b) {
@@ -33523,8 +33665,105 @@ function setupControlPointInteractions(shape, scene, camera, renderer, CP_Z = 0)
     const dy = py2 - cy2;
     return { dist2: dx * dx + dy * dy, t };
   }
-  function insertPointAtWorldPos(worldPos) {
+  function dist2PointToSegment2D(p, a, b) {
+    const ax = a.x, ay = a.y;
+    const bx = b.x, by = b.y;
+    const px2 = p.x, py2 = p.y;
+    const abx = bx - ax;
+    const aby = by - ay;
+    const apx = px2 - ax;
+    const apy = py2 - ay;
+    const abLen2 = abx * abx + aby * aby;
+    const t = abLen2 === 0 ? 0 : Math.max(0, Math.min(1, (apx * abx + apy * aby) / abLen2));
+    const cx2 = ax + abx * t;
+    const cy2 = ay + aby * t;
+    const dx = px2 - cx2;
+    const dy = py2 - cy2;
+    return dx * dx + dy * dy;
+  }
+  function projectToClient(x, y, z) {
+    const v = new Vector3(x, y, z);
+    v.project(camera);
+    const r = getRect();
+    return {
+      x: r.left + (v.x + 1) * 0.5 * r.width,
+      y: r.top + (1 - v.y) * 0.5 * r.height
+    };
+  }
+  function getNearestPointIndex(evt, pixelThreshold = 10) {
+    if (!evt || !Array.isArray(shape.points))
+      return -1;
+    const mx = evt.clientX;
+    const my = evt.clientY;
+    let bestIdx = -1;
+    let bestDist2 = Infinity;
+    for (let i = 0; i < shape.points.length; i++) {
+      const pt = shape.points[i];
+      const screen = projectToClient(pt[0] + shape.x, pt[1] + shape.y, cpState.CP_Z);
+      const dx = screen.x - mx;
+      const dy = screen.y - my;
+      const d2 = dx * dx + dy * dy;
+      if (d2 < bestDist2) {
+        bestDist2 = d2;
+        bestIdx = i;
+      }
+    }
+    return bestDist2 <= pixelThreshold * pixelThreshold ? bestIdx : -1;
+  }
+  function isNearExistingPoint(evt, pixelThreshold = 45) {
+    if (!evt || !Array.isArray(shape.points))
+      return false;
+    const mx = evt.clientX;
+    const my = evt.clientY;
+    for (let i = 0; i < shape.points.length; i++) {
+      const pt = shape.points[i];
+      const screen = projectToClient(pt[0] + shape.x, pt[1] + shape.y, cpState.CP_Z);
+      const dx = screen.x - mx;
+      const dy = screen.y - my;
+      if (dx * dx + dy * dy <= pixelThreshold * pixelThreshold) {
+        return true;
+      }
+    }
+    return false;
+  }
+  function dist2PointToSegment2D(p, a, b) {
+    const ax = a.x, ay = a.y;
+    const bx = b.x, by = b.y;
+    const px2 = p.x, py2 = p.y;
+    const abx = bx - ax;
+    const aby = by - ay;
+    const apx = px2 - ax;
+    const apy = py2 - ay;
+    const abLen2 = abx * abx + aby * aby;
+    const t = abLen2 === 0 ? 0 : Math.max(0, Math.min(1, (apx * abx + apy * aby) / abLen2));
+    const cx2 = ax + abx * t;
+    const cy2 = ay + aby * t;
+    const dx = px2 - cx2;
+    const dy = py2 - cy2;
+    return dx * dx + dy * dy;
+  }
+  function getEdgeHit(evt, pixelThreshold = 12) {
+    const pos = getPlaneHit(evt);
+    if (!pos || !Array.isArray(shape.points) || shape.points.length < 2) {
+      return null;
+    }
+    const mouse = { x: evt.clientX, y: evt.clientY };
+    let best = { i: 0, dist2: Infinity };
+    for (let i = 0; i < shape.points.length; i++) {
+      const a = shape.points[i];
+      const b = shape.points[(i + 1) % shape.points.length];
+      const aScreen = projectToClient(a[0] + shape.x, a[1] + shape.y, cpState.CP_Z);
+      const bScreen = projectToClient(b[0] + shape.x, b[1] + shape.y, cpState.CP_Z);
+      const dist2 = dist2PointToSegment2D(mouse, aScreen, bScreen);
+      if (dist2 < best.dist2)
+        best = { i, dist2 };
+    }
+    return best.dist2 <= pixelThreshold * pixelThreshold ? { pos, edgeIndex: best.i } : null;
+  }
+  function insertPointAtWorldPos(worldPos, evt) {
     if (!Array.isArray(shape.points) || shape.points.length < 2)
+      return;
+    if (isNearExistingPoint(evt, 10))
       return;
     const local = [worldPos.x - shape.x, worldPos.y - shape.y];
     let best = { i: 0, dist2: Infinity };
@@ -33535,7 +33774,16 @@ function setupControlPointInteractions(shape, scene, camera, renderer, CP_Z = 0)
       if (dist2 < best.dist2)
         best = { i, dist2 };
     }
-    shape.points.splice(best.i + 1, 0, local);
+    const prev = shape.points[best.i];
+    const next = shape.points[(best.i + 1) % shape.points.length];
+    if (prev && prev[0] === local[0] && prev[1] === local[1] || next && next[0] === local[0] && next[1] === local[1]) {
+      return;
+    }
+    const newPoints = shape.points.slice();
+    newPoints.splice(best.i + 1, 0, local);
+    if (!isValidPolygonPoints(newPoints))
+      return;
+    shape.points = newPoints;
     clearControlPoints(shape, scene);
   }
   function removePointAtIndex(idx) {
@@ -33546,8 +33794,19 @@ function setupControlPointInteractions(shape, scene, camera, renderer, CP_Z = 0)
   }
   function onMouseDown(evt) {
     evt.stopPropagation();
+    if (state.deletePointMode) {
+      if (!Array.isArray(shape.points) || shape.points.length <= 3) {
+        showToast("No more point delete possible", { background: "#b00020" });
+        return;
+      }
+      const idx = getNearestPointIndex(evt, 10);
+      if (idx === -1)
+        return;
+      removePointAtIndex(idx);
+      return;
+    }
     syncRaycast(evt);
-    const hit = state2.raycaster.intersectObjects(shape.controlPoints, true);
+    const hit = cpState.raycaster.intersectObjects(shape.controlPoints, true);
     if (hit.length) {
       evt.preventDefault();
       const obj = hit[0].object;
@@ -33557,50 +33816,97 @@ function setupControlPointInteractions(shape, scene, camera, renderer, CP_Z = 0)
         removePointAtIndex(idx);
         return;
       }
-      state2.isDragging = true;
-      state2.selectedPoint = shape.controlPoints.find(
+      cpState.isDragging = true;
+      shape._draggingPoint = true;
+      cpState.selectedPoint = shape.controlPoints.find(
         (p) => p.userData.pointIndex === idx && p.userData.isControlSphere
       ) || obj;
       window.addEventListener("mousemove", onMouseMove);
       window.addEventListener("mouseup", onMouseUp);
       return;
     }
+    if (state.addPointMode) {
+      const edgeHit = getEdgeHit(evt);
+      if (!edgeHit)
+        return;
+      insertPointAtWorldPos(edgeHit.pos, evt);
+      return;
+    }
     if (evt.shiftKey) {
       const pos = getPlaneHit(evt);
       if (pos)
-        insertPointAtWorldPos(pos);
+        insertPointAtWorldPos(pos, evt);
     }
   }
-  function onMouseMove(evt) {
-    if (!state2.isDragging || !state2.selectedPoint)
-      return;
-    syncRaycast(evt);
-    const dragPlane = new Plane$1(new Vector3(0, 0, 1), -state2.CP_Z);
-    const pos = new Vector3();
-    state2.raycaster.ray.intersectPlane(dragPlane, pos);
-    state2.selectedPoint.position.set(pos.x, pos.y, state2.CP_Z);
-    const i = state2.selectedPoint.userData.pointIndex;
-    shape.points[i] = [pos.x - shape.x, pos.y - shape.y];
-  }
-  function onMouseUp() {
-    if (!state2.isDragging)
-      return;
-    window.removeEventListener("mousemove", onMouseMove);
-    window.removeEventListener("mouseup", onMouseUp);
-    state2.isDragging = false;
-    state2.selectedPoint = null;
-  }
   function onHover(evt) {
+    if (state.deletePointMode) {
+      if (!Array.isArray(shape.points) || shape.points.length <= 3) {
+        delete shape._selectedPointIndex;
+        target.style.cursor = "not-allowed";
+        return;
+      }
+      const idx = getNearestPointIndex(evt, 10);
+      if (idx !== -1) {
+        shape._selectedPointIndex = idx;
+        target.style.cursor = "pointer";
+      } else {
+        delete shape._selectedPointIndex;
+        target.style.cursor = "not-allowed";
+      }
+      return;
+    }
     syncRaycast(evt);
-    const hit = state2.raycaster.intersectObjects(shape.controlPoints, true);
+    const hit = cpState.raycaster.intersectObjects(shape.controlPoints, true);
     if (hit.length) {
       const obj = hit[0].object;
       const idx = obj.userData.pointIndex;
       shape._selectedPointIndex = idx;
       target.style.cursor = evt.altKey ? "not-allowed" : "move";
-    } else {
-      delete shape._selectedPointIndex;
-      target.style.cursor = evt.shiftKey ? "copy" : "";
+      return;
+    }
+    delete shape._selectedPointIndex;
+    if (state.addPointMode) {
+      const edgeHit = getEdgeHit(evt);
+      target.style.cursor = edgeHit ? "copy" : "not-allowed";
+      return;
+    }
+    target.style.cursor = evt.shiftKey ? "copy" : "";
+  }
+  function onMouseMove(evt) {
+    if (!cpState.isDragging || !cpState.selectedPoint)
+      return;
+    cpState.lastClientX = evt.clientX;
+    cpState.lastClientY = evt.clientY;
+    if (cpState.dragRaf)
+      return;
+    cpState.dragRaf = requestAnimationFrame(() => {
+      cpState.dragRaf = null;
+      if (!cpState.isDragging || !cpState.selectedPoint)
+        return;
+      const fakeEvt = {
+        clientX: cpState.lastClientX,
+        clientY: cpState.lastClientY
+      };
+      syncRaycast(fakeEvt);
+      const dragPlane = new Plane$1(new Vector3(0, 0, 1), -cpState.CP_Z);
+      const pos = new Vector3();
+      cpState.raycaster.ray.intersectPlane(dragPlane, pos);
+      cpState.selectedPoint.position.set(pos.x, pos.y, cpState.CP_Z);
+      const i = cpState.selectedPoint.userData.pointIndex;
+      shape.points[i] = [pos.x - shape.x, pos.y - shape.y];
+    });
+  }
+  function onMouseUp() {
+    if (!cpState.isDragging)
+      return;
+    window.removeEventListener("mousemove", onMouseMove);
+    window.removeEventListener("mouseup", onMouseUp);
+    cpState.isDragging = false;
+    cpState.selectedPoint = null;
+    shape._draggingPoint = false;
+    if (cpState.dragRaf) {
+      cancelAnimationFrame(cpState.dragRaf);
+      cpState.dragRaf = null;
     }
   }
   target.addEventListener("mousedown", onMouseDown, { capture: true });
@@ -34986,8 +35292,10 @@ function onFrame() {
         );
         state.ctx.setLineDash([]);
       }
-      drawMeasurements(shape);
-      drawEdgeToFoamMeasurements(shape, state.foam, state.ctx, currentCamera);
+      if (!window.__editingPoints) {
+        drawMeasurements(shape);
+        drawEdgeToFoamMeasurements(shape, state.foam, state.ctx, currentCamera);
+      }
     } else {
       state.ctx.setLineDash([5, 5]);
       drawOutline(
@@ -55449,131 +55757,6 @@ function cloneShapeForInsert(shape) {
   delete clean._dragOriginalPoints;
   return clean;
 }
-function isValidPolygonPoints(pts) {
-  if (!Array.isArray(pts) || pts.length < 3)
-    return false;
-  const clean = [];
-  for (const p of pts) {
-    if (!clean.length) {
-      clean.push(p);
-      continue;
-    }
-    const last2 = clean[clean.length - 1];
-    if (last2[0] !== p[0] || last2[1] !== p[1])
-      clean.push(p);
-  }
-  if (clean.length < 3)
-    return false;
-  let area2 = 0;
-  for (let i = 0; i < clean.length; i++) {
-    const [x1, y1] = clean[i];
-    const [x2, y2] = clean[(i + 1) % clean.length];
-    area2 += x1 * y2 - x2 * y1;
-  }
-  return Math.abs(area2) > 1e-6;
-}
-function projectToScreen(vec32, camera) {
-  const v = vec32.clone().project(camera);
-  const x = (v.x * 0.5 + 0.5) * window.innerWidth;
-  const y = (-v.y * 0.5 + 0.5) * window.innerHeight;
-  return { x, y };
-}
-function drawAngleArc(prev, curr, next, angleCtx, angleOverlay, camera) {
-  angleCtx.clearRect(0, 0, angleOverlay.width, angleOverlay.height);
-  const pPrev = projectToScreen(prev, camera);
-  const pCurr = projectToScreen(curr, camera);
-  const pNext = projectToScreen(next, camera);
-  const v1x = pPrev.x - pCurr.x;
-  const v1y = pPrev.y - pCurr.y;
-  const v2x = pNext.x - pCurr.x;
-  const v2y = pNext.y - pCurr.y;
-  const len1 = Math.hypot(v1x, v1y);
-  const len2 = Math.hypot(v2x, v2y);
-  if (len1 === 0 || len2 === 0)
-    return;
-  const dot2 = (v1x * v2x + v1y * v2y) / (len1 * len2);
-  const angleDeg = MathUtils.radToDeg(
-    Math.acos(MathUtils.clamp(dot2, -1, 1))
-  );
-  const a1 = Math.atan2(v1y, v1x);
-  const a2 = Math.atan2(v2y, v2x);
-  let delta = a2 - a1;
-  while (delta <= -Math.PI)
-    delta += Math.PI * 2;
-  while (delta > Math.PI)
-    delta -= Math.PI * 2;
-  const start = a1;
-  const end = a1 + delta;
-  const anticlockwise = delta < 0;
-  const dpr = window.devicePixelRatio || 1;
-  const radius = 30 * dpr;
-  angleCtx.save();
-  angleCtx.setTransform(1, 0, 0, 1, 0, 0);
-  angleCtx.scale(dpr, dpr);
-  angleCtx.strokeStyle = "yellow";
-  angleCtx.fillStyle = "yellow";
-  angleCtx.lineWidth = 2;
-  angleCtx.beginPath();
-  angleCtx.arc(pCurr.x, pCurr.y, radius / dpr, start, end, anticlockwise);
-  angleCtx.stroke();
-  const mid = (start + end) / 2;
-  const lx = pCurr.x + Math.cos(mid) * 40;
-  const ly = pCurr.y + Math.sin(mid) * 40;
-  angleCtx.font = "bold 16px sans-serif";
-  angleCtx.strokeStyle = "black";
-  angleCtx.lineWidth = 3;
-  angleCtx.strokeText(`${angleDeg.toFixed(1)}°`, lx, ly);
-  angleCtx.fillText(`${angleDeg.toFixed(1)}°`, lx, ly);
-  angleCtx.restore();
-}
-function buildPreviewMesh(points, objectZ) {
-  const newPoints = points.map((p) => new Vector3(p.x, p.y, p.z));
-  const shape = new Shape(newPoints.map((p) => new Vector2(p.x, p.y)));
-  const extrudeSettings = { depth: 0, bevelEnabled: false };
-  const geometry = new ExtrudeGeometry(shape, extrudeSettings);
-  const material = new MeshBasicMaterial({ color: 16777215, side: DoubleSide });
-  const mesh = new Mesh(geometry, material);
-  mesh.position.z = objectZ;
-  return mesh;
-}
-function makePolygonShape(points, millimeters) {
-  return {
-    id: `shape-${Date.now()}`,
-    kind: "polygon",
-    x: 0,
-    y: 0,
-    sizeZ: 300 * millimeters,
-    sizeX: 200 * millimeters,
-    sizeY: 200 * millimeters,
-    points,
-    rotation: 0,
-    free: true
-  };
-}
-function showToast(message, opts = {}) {
-  const {
-    top = "16px",
-    duration = 2e3,
-    background = "#1e7d34",
-    color = "#fff"
-  } = opts;
-  const msg2 = document.createElement("div");
-  msg2.textContent = message;
-  Object.assign(msg2.style, {
-    position: "fixed",
-    top,
-    left: "50%",
-    transform: "translateX(-50%)",
-    background,
-    color,
-    padding: "10px 16px",
-    borderRadius: "6px",
-    fontSize: "14px",
-    zIndex: 1e4
-  });
-  document.body.appendChild(msg2);
-  setTimeout(() => msg2.remove(), duration);
-}
 const createShapeFreehand = (millimeters, selected, shapesArray, commit2, showPanelFromLeft2, showPanelFromRight2, doCsg2, orthoCamera, sceneCopy, rendererCopy, display2D, callback1, callback, foamMesh, defaultCornerRadius) => {
   document.querySelector("#create-polygon").onclick = () => {
     lineFunction("block", "flex", true);
@@ -56698,6 +56881,40 @@ function initUI() {
   );
   const editShapeButton = document.getElementById("edit-shape");
   let isEditingPolygon = false;
+  const addPointButton = document.getElementById("add-point");
+  const deletePointButton = document.getElementById("delete-point");
+  const setDeletePointButtonEnabled = (enabled) => {
+    if (!deletePointButton)
+      return;
+    if (enabled)
+      deletePointButton.removeAttribute("disabled");
+    else
+      deletePointButton.setAttribute("disabled", "");
+  };
+  const setDeletePointMode = (on) => {
+    state.deletePointMode = on;
+    if (deletePointButton) {
+      deletePointButton.textContent = on ? "Exit Delete Point" : "Delete point";
+    }
+  };
+  const setAddPointButtonEnabled = (enabled) => {
+    if (!addPointButton)
+      return;
+    if (enabled)
+      addPointButton.removeAttribute("disabled");
+    else
+      addPointButton.setAttribute("disabled", "");
+  };
+  const setAddPointMode = (on) => {
+    state.addPointMode = on;
+    if (addPointButton) {
+      addPointButton.textContent = on ? "Exit Add Point" : "Add point";
+    }
+  };
+  setAddPointButtonEnabled(false);
+  setAddPointMode(false);
+  setDeletePointButtonEnabled(false);
+  setDeletePointMode(false);
   if (editShapeButton) {
     editShapeButton.onclick = () => {
       if (!state.selected || state.selected.kind !== "polygon")
@@ -56707,6 +56924,10 @@ function initUI() {
       if (!isEditingPolygon) {
         isEditingPolygon = true;
         window.__editingPoints = true;
+        setAddPointMode(false);
+        setDeletePointMode(false);
+        setAddPointButtonEnabled(true);
+        setDeletePointButtonEnabled(true);
         if (!state.display2D) {
           saveCameraView();
           resetCameraToTopView();
@@ -56716,6 +56937,10 @@ function initUI() {
       } else {
         isEditingPolygon = false;
         window.__editingPoints = false;
+        setAddPointMode(false);
+        setDeletePointMode(false);
+        setAddPointButtonEnabled(false);
+        setDeletePointButtonEnabled(false);
         editShapeButton.textContent = "Edit points";
         commit();
         if (!state.display2D)
@@ -56723,6 +56948,30 @@ function initUI() {
         state.display2D = false;
         restoreCameraView();
       }
+    };
+  }
+  if (addPointButton) {
+    addPointButton.onclick = () => {
+      if (addPointButton.hasAttribute("disabled"))
+        return;
+      if (!state.selected || state.selected.kind !== "polygon")
+        return;
+      if (!window.__editingPoints)
+        return;
+      setDeletePointMode(false);
+      setAddPointMode(!state.addPointMode);
+    };
+  }
+  if (deletePointButton) {
+    deletePointButton.onclick = () => {
+      if (deletePointButton.hasAttribute("disabled"))
+        return;
+      if (!state.selected || state.selected.kind !== "polygon")
+        return;
+      if (!window.__editingPoints)
+        return;
+      setAddPointMode(false);
+      setDeletePointMode(!state.deletePointMode);
     };
   }
   sliderButtonClick("polygon-rotate-input", "polygon-rotate-slider", doCsg, (rotation) => {
@@ -57002,4 +57251,4 @@ if (typeof window === "object") {
   initUI();
   commit();
 }
-//# sourceMappingURL=index-56b3f8e7.js.map
+//# sourceMappingURL=index-bbf56186.js.map
