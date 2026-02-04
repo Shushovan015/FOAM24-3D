@@ -292,7 +292,7 @@ function seededRandom(s) {
   t ^= t + Math.imul(t ^ t >>> 7, t | 61);
   return ((t ^ t >>> 14) >>> 0) / 4294967296;
 }
-function degToRad$1(degrees2) {
+function degToRad$2(degrees2) {
   return degrees2 * DEG2RAD;
 }
 function radToDeg$1(radians) {
@@ -357,7 +357,7 @@ function denormalize(value, array) {
       throw new Error("Invalid component type.");
   }
 }
-function normalize$4(value, array) {
+function normalize$2(value, array) {
   switch (array.constructor) {
     case Float32Array:
       return value;
@@ -380,7 +380,7 @@ var MathUtils = /* @__PURE__ */ Object.freeze({
   ceilPowerOfTwo,
   clamp,
   damp,
-  degToRad: degToRad$1,
+  degToRad: degToRad$2,
   denormalize,
   euclideanModulo,
   floorPowerOfTwo,
@@ -389,7 +389,7 @@ var MathUtils = /* @__PURE__ */ Object.freeze({
   isPowerOfTwo,
   lerp: lerp$2,
   mapLinear,
-  normalize: normalize$4,
+  normalize: normalize$2,
   pingpong,
   radToDeg: radToDeg$1,
   randFloat,
@@ -2911,8 +2911,8 @@ class Vector3 {
     const scalar = v.dot(this) / denominator;
     return this.copy(v).multiplyScalar(scalar);
   }
-  projectOnPlane(planeNormal2) {
-    _vector$c.copy(this).projectOnVector(planeNormal2);
+  projectOnPlane(planeNormal) {
+    _vector$c.copy(this).projectOnVector(planeNormal);
     return this.sub(_vector$c);
   }
   reflect(normal2) {
@@ -3188,9 +3188,9 @@ class Box3 {
   intersectsBox(box) {
     return box.max.x < this.min.x || box.min.x > this.max.x || box.max.y < this.min.y || box.min.y > this.max.y || box.max.z < this.min.z || box.min.z > this.max.z ? false : true;
   }
-  intersectsSphere(sphere2) {
-    this.clampPoint(sphere2.center, _vector$b);
-    return _vector$b.distanceToSquared(sphere2.center) <= sphere2.radius * sphere2.radius;
+  intersectsSphere(sphere) {
+    this.clampPoint(sphere.center, _vector$b);
+    return _vector$b.distanceToSquared(sphere.center) <= sphere.radius * sphere.radius;
   }
   intersectsPlane(plane2) {
     let min2, max2;
@@ -3378,9 +3378,9 @@ class Sphere {
     this.radius = Math.sqrt(maxRadiusSq);
     return this;
   }
-  copy(sphere2) {
-    this.center.copy(sphere2.center);
-    this.radius = sphere2.radius;
+  copy(sphere) {
+    this.center.copy(sphere.center);
+    this.radius = sphere.radius;
     return this;
   }
   isEmpty() {
@@ -3397,9 +3397,9 @@ class Sphere {
   distanceToPoint(point) {
     return point.distanceTo(this.center) - this.radius;
   }
-  intersectsSphere(sphere2) {
-    const radiusSum = this.radius + sphere2.radius;
-    return sphere2.center.distanceToSquared(this.center) <= radiusSum * radiusSum;
+  intersectsSphere(sphere) {
+    const radiusSum = this.radius + sphere.radius;
+    return sphere.center.distanceToSquared(this.center) <= radiusSum * radiusSum;
   }
   intersectsBox(box) {
     return box.intersectsSphere(this);
@@ -3450,25 +3450,25 @@ class Sphere {
     }
     return this;
   }
-  union(sphere2) {
-    if (sphere2.isEmpty()) {
+  union(sphere) {
+    if (sphere.isEmpty()) {
       return this;
     }
     if (this.isEmpty()) {
-      this.copy(sphere2);
+      this.copy(sphere);
       return this;
     }
-    if (this.center.equals(sphere2.center) === true) {
-      this.radius = Math.max(this.radius, sphere2.radius);
+    if (this.center.equals(sphere.center) === true) {
+      this.radius = Math.max(this.radius, sphere.radius);
     } else {
-      _v2$3.subVectors(sphere2.center, this.center).setLength(sphere2.radius);
-      this.expandByPoint(_v1$6.copy(sphere2.center).add(_v2$3));
-      this.expandByPoint(_v1$6.copy(sphere2.center).sub(_v2$3));
+      _v2$3.subVectors(sphere.center, this.center).setLength(sphere.radius);
+      this.expandByPoint(_v1$6.copy(sphere.center).add(_v2$3));
+      this.expandByPoint(_v1$6.copy(sphere.center).sub(_v2$3));
     }
     return this;
   }
-  equals(sphere2) {
-    return sphere2.center.equals(this.center) && sphere2.radius === this.radius;
+  equals(sphere) {
+    return sphere.center.equals(this.center) && sphere.radius === this.radius;
   }
   clone() {
     return new this.constructor().copy(this);
@@ -3586,11 +3586,11 @@ class Ray {
     }
     return sqrDist;
   }
-  intersectSphere(sphere2, target) {
-    _vector$a.subVectors(sphere2.center, this.origin);
+  intersectSphere(sphere, target) {
+    _vector$a.subVectors(sphere.center, this.origin);
     const tca = _vector$a.dot(this.direction);
     const d2 = _vector$a.dot(_vector$a) - tca * tca;
-    const radius2 = sphere2.radius * sphere2.radius;
+    const radius2 = sphere.radius * sphere.radius;
     if (d2 > radius2)
       return null;
     const thc = Math.sqrt(radius2 - d2);
@@ -3602,8 +3602,8 @@ class Ray {
       return this.at(t1, target);
     return this.at(t0, target);
   }
-  intersectsSphere(sphere2) {
-    return this.distanceSqToPoint(sphere2.center) <= sphere2.radius * sphere2.radius;
+  intersectsSphere(sphere) {
+    return this.distanceSqToPoint(sphere.center) <= sphere.radius * sphere.radius;
   }
   distanceToPlane(plane2) {
     const denominator = plane2.normal.dot(this.direction);
@@ -3870,20 +3870,20 @@ class Matrix4 {
   extractRotation(m) {
     const te = this.elements;
     const me = m.elements;
-    const scaleX2 = 1 / _v1$5.setFromMatrixColumn(m, 0).length();
-    const scaleY2 = 1 / _v1$5.setFromMatrixColumn(m, 1).length();
-    const scaleZ2 = 1 / _v1$5.setFromMatrixColumn(m, 2).length();
-    te[0] = me[0] * scaleX2;
-    te[1] = me[1] * scaleX2;
-    te[2] = me[2] * scaleX2;
+    const scaleX = 1 / _v1$5.setFromMatrixColumn(m, 0).length();
+    const scaleY = 1 / _v1$5.setFromMatrixColumn(m, 1).length();
+    const scaleZ = 1 / _v1$5.setFromMatrixColumn(m, 2).length();
+    te[0] = me[0] * scaleX;
+    te[1] = me[1] * scaleX;
+    te[2] = me[2] * scaleX;
     te[3] = 0;
-    te[4] = me[4] * scaleY2;
-    te[5] = me[5] * scaleY2;
-    te[6] = me[6] * scaleY2;
+    te[4] = me[4] * scaleY;
+    te[5] = me[5] * scaleY;
+    te[6] = me[6] * scaleY;
     te[7] = 0;
-    te[8] = me[8] * scaleZ2;
-    te[9] = me[9] * scaleZ2;
-    te[10] = me[10] * scaleZ2;
+    te[8] = me[8] * scaleZ;
+    te[9] = me[9] * scaleZ;
+    te[10] = me[10] * scaleZ;
     te[11] = 0;
     te[12] = 0;
     te[13] = 0;
@@ -5893,7 +5893,7 @@ class BufferAttribute {
   }
   setX(index, x) {
     if (this.normalized)
-      x = normalize$4(x, this.array);
+      x = normalize$2(x, this.array);
     this.array[index * this.itemSize] = x;
     return this;
   }
@@ -5905,7 +5905,7 @@ class BufferAttribute {
   }
   setY(index, y) {
     if (this.normalized)
-      y = normalize$4(y, this.array);
+      y = normalize$2(y, this.array);
     this.array[index * this.itemSize + 1] = y;
     return this;
   }
@@ -5917,7 +5917,7 @@ class BufferAttribute {
   }
   setZ(index, z) {
     if (this.normalized)
-      z = normalize$4(z, this.array);
+      z = normalize$2(z, this.array);
     this.array[index * this.itemSize + 2] = z;
     return this;
   }
@@ -5929,15 +5929,15 @@ class BufferAttribute {
   }
   setW(index, w) {
     if (this.normalized)
-      w = normalize$4(w, this.array);
+      w = normalize$2(w, this.array);
     this.array[index * this.itemSize + 3] = w;
     return this;
   }
   setXY(index, x, y) {
     index *= this.itemSize;
     if (this.normalized) {
-      x = normalize$4(x, this.array);
-      y = normalize$4(y, this.array);
+      x = normalize$2(x, this.array);
+      y = normalize$2(y, this.array);
     }
     this.array[index + 0] = x;
     this.array[index + 1] = y;
@@ -5946,9 +5946,9 @@ class BufferAttribute {
   setXYZ(index, x, y, z) {
     index *= this.itemSize;
     if (this.normalized) {
-      x = normalize$4(x, this.array);
-      y = normalize$4(y, this.array);
-      z = normalize$4(z, this.array);
+      x = normalize$2(x, this.array);
+      y = normalize$2(y, this.array);
+      z = normalize$2(z, this.array);
     }
     this.array[index + 0] = x;
     this.array[index + 1] = y;
@@ -5958,10 +5958,10 @@ class BufferAttribute {
   setXYZW(index, x, y, z, w) {
     index *= this.itemSize;
     if (this.normalized) {
-      x = normalize$4(x, this.array);
-      y = normalize$4(y, this.array);
-      z = normalize$4(z, this.array);
-      w = normalize$4(w, this.array);
+      x = normalize$2(x, this.array);
+      y = normalize$2(y, this.array);
+      z = normalize$2(z, this.array);
+      w = normalize$2(w, this.array);
     }
     this.array[index + 0] = x;
     this.array[index + 1] = y;
@@ -6885,12 +6885,12 @@ class BoxGeometry extends BufferGeometry {
     return new BoxGeometry(data.width, data.height, data.depth, data.widthSegments, data.heightSegments, data.depthSegments);
   }
 }
-function cloneUniforms(src2) {
+function cloneUniforms(src) {
   const dst = {};
-  for (const u in src2) {
+  for (const u in src) {
     dst[u] = {};
-    for (const p in src2[u]) {
-      const property = src2[u][p];
+    for (const p in src[u]) {
+      const property = src[u][p];
       if (property && (property.isColor || property.isMatrix3 || property.isMatrix4 || property.isVector2 || property.isVector3 || property.isVector4 || property.isTexture || property.isQuaternion)) {
         dst[u][p] = property.clone();
       } else if (Array.isArray(property)) {
@@ -6912,10 +6912,10 @@ function mergeUniforms(uniforms) {
   }
   return merged;
 }
-function cloneUniformsGroups(src2) {
+function cloneUniformsGroups(src) {
   const dst = [];
-  for (let u = 0; u < src2.length; u++) {
-    dst.push(src2[u].clone());
+  for (let u = 0; u < src.length; u++) {
+    dst.push(src[u].clone());
   }
   return dst;
 }
@@ -7462,37 +7462,37 @@ let Plane$1 = class Plane2 {
   distanceToPoint(point) {
     return this.normal.dot(point) + this.constant;
   }
-  distanceToSphere(sphere2) {
-    return this.distanceToPoint(sphere2.center) - sphere2.radius;
+  distanceToSphere(sphere) {
+    return this.distanceToPoint(sphere.center) - sphere.radius;
   }
   projectPoint(point, target) {
     return target.copy(this.normal).multiplyScalar(-this.distanceToPoint(point)).add(point);
   }
-  intersectLine(line4, target) {
-    const direction2 = line4.delta(_vector1);
+  intersectLine(line, target) {
+    const direction2 = line.delta(_vector1);
     const denominator = this.normal.dot(direction2);
     if (denominator === 0) {
-      if (this.distanceToPoint(line4.start) === 0) {
-        return target.copy(line4.start);
+      if (this.distanceToPoint(line.start) === 0) {
+        return target.copy(line.start);
       }
       return null;
     }
-    const t = -(line4.start.dot(this.normal) + this.constant) / denominator;
+    const t = -(line.start.dot(this.normal) + this.constant) / denominator;
     if (t < 0 || t > 1) {
       return null;
     }
-    return target.copy(direction2).multiplyScalar(t).add(line4.start);
+    return target.copy(direction2).multiplyScalar(t).add(line.start);
   }
-  intersectsLine(line4) {
-    const startSign = this.distanceToPoint(line4.start);
-    const endSign = this.distanceToPoint(line4.end);
+  intersectsLine(line) {
+    const startSign = this.distanceToPoint(line.start);
+    const endSign = this.distanceToPoint(line.end);
     return startSign < 0 && endSign > 0 || endSign < 0 && startSign > 0;
   }
   intersectsBox(box) {
     return box.intersectsPlane(this);
   }
-  intersectsSphere(sphere2) {
-    return sphere2.intersectsPlane(this);
+  intersectsSphere(sphere) {
+    return sphere.intersectsPlane(this);
   }
   coplanarPoint(target) {
     return target.copy(this.normal).multiplyScalar(-this.constant);
@@ -7566,10 +7566,10 @@ class Frustum {
     _sphere$2.applyMatrix4(sprite.matrixWorld);
     return this.intersectsSphere(_sphere$2);
   }
-  intersectsSphere(sphere2) {
+  intersectsSphere(sphere) {
     const planes = this.planes;
-    const center2 = sphere2.center;
-    const negRadius = -sphere2.radius;
+    const center2 = sphere.center;
+    const negRadius = -sphere.radius;
     for (let i = 0; i < 6; i++) {
       const distance2 = planes[i].distanceToPoint(center2);
       if (distance2 < negRadius) {
@@ -10451,7 +10451,7 @@ const arrayCacheI32 = [];
 const mat4array = new Float32Array(16);
 const mat3array = new Float32Array(9);
 const mat2array = new Float32Array(4);
-function flatten$M(array, nBlocks, blockSize) {
+function flatten$c(array, nBlocks, blockSize) {
   const firstElem = array[0];
   if (firstElem <= 0 || firstElem > 0)
     return array;
@@ -10813,27 +10813,27 @@ function setValueV1fArray(gl, v) {
   gl.uniform1fv(this.addr, v);
 }
 function setValueV2fArray(gl, v) {
-  const data = flatten$M(v, this.size, 2);
+  const data = flatten$c(v, this.size, 2);
   gl.uniform2fv(this.addr, data);
 }
 function setValueV3fArray(gl, v) {
-  const data = flatten$M(v, this.size, 3);
+  const data = flatten$c(v, this.size, 3);
   gl.uniform3fv(this.addr, data);
 }
 function setValueV4fArray(gl, v) {
-  const data = flatten$M(v, this.size, 4);
+  const data = flatten$c(v, this.size, 4);
   gl.uniform4fv(this.addr, data);
 }
 function setValueM2Array(gl, v) {
-  const data = flatten$M(v, this.size, 4);
+  const data = flatten$c(v, this.size, 4);
   gl.uniformMatrix2fv(this.addr, false, data);
 }
 function setValueM3Array(gl, v) {
-  const data = flatten$M(v, this.size, 9);
+  const data = flatten$c(v, this.size, 9);
   gl.uniformMatrix3fv(this.addr, false, data);
 }
 function setValueM4Array(gl, v) {
-  const data = flatten$M(v, this.size, 16);
+  const data = flatten$c(v, this.size, 16);
   gl.uniformMatrix4fv(this.addr, false, data);
 }
 function setValueV1iArray(gl, v) {
@@ -11076,8 +11076,8 @@ function handleSource(string, errorLine) {
   const from = Math.max(errorLine - 6, 0);
   const to = Math.min(errorLine + 6, lines.length);
   for (let i = from; i < to; i++) {
-    const line4 = i + 1;
-    lines2.push(`${line4 === errorLine ? ">" : " "} ${line4}: ${lines[i]}`);
+    const line = i + 1;
+    lines2.push(`${line === errorLine ? ">" : " "} ${line}: ${lines[i]}`);
   }
   return lines2.join("\n");
 }
@@ -18491,8 +18491,8 @@ class CurvePath extends Curve {
   getPoints(divisions = 12) {
     const points = [];
     let last2;
-    for (let i = 0, curves2 = this.curves; i < curves2.length; i++) {
-      const curve = curves2[i];
+    for (let i = 0, curves = this.curves; i < curves.length; i++) {
+      const curve = curves[i];
       const resolution = curve.isEllipseCurve ? divisions * 2 : curve.isLineCurve || curve.isLineCurve3 ? 1 : curve.isSplineCurve ? divisions * curve.points.length : divisions;
       const pts = curve.getPoints(resolution);
       for (let j = 0; j < pts.length; j++) {
@@ -18780,7 +18780,7 @@ function linkedList$2(data, start, end, dim, clockwise) {
     for (i = end - dim; i >= start; i -= dim)
       last2 = insertNode$3(i, data[i], data[i + 1], last2);
   }
-  if (last2 && equals$b(last2, last2.next)) {
+  if (last2 && equals$a(last2, last2.next)) {
     removeNode$4(last2);
     last2 = last2.next;
   }
@@ -18794,7 +18794,7 @@ function filterPoints$4(start, end) {
   let p = start, again;
   do {
     again = false;
-    if (!p.steiner && (equals$b(p, p.next) || area$b(p.prev, p, p.next) === 0)) {
+    if (!p.steiner && (equals$a(p, p.next) || area$9(p.prev, p, p.next) === 0)) {
       removeNode$4(p);
       p = end = p.prev;
       if (p === p.next)
@@ -18840,13 +18840,13 @@ function earcutLinked$2(ear, triangles, dim, minX, minY, invSize, pass) {
 }
 function isEar$2(ear) {
   const a = ear.prev, b = ear, c2 = ear.next;
-  if (area$b(a, b, c2) >= 0)
+  if (area$9(a, b, c2) >= 0)
     return false;
   const ax = a.x, bx = b.x, cx2 = c2.x, ay = a.y, by = b.y, cy2 = c2.y;
   const x0 = ax < bx ? ax < cx2 ? ax : cx2 : bx < cx2 ? bx : cx2, y0 = ay < by ? ay < cy2 ? ay : cy2 : by < cy2 ? by : cy2, x1 = ax > bx ? ax > cx2 ? ax : cx2 : bx > cx2 ? bx : cx2, y1 = ay > by ? ay > cy2 ? ay : cy2 : by > cy2 ? by : cy2;
   let p = c2.next;
   while (p !== a) {
-    if (p.x >= x0 && p.x <= x1 && p.y >= y0 && p.y <= y1 && pointInTriangle$4(ax, ay, bx, by, cx2, cy2, p.x, p.y) && area$b(p.prev, p, p.next) >= 0)
+    if (p.x >= x0 && p.x <= x1 && p.y >= y0 && p.y <= y1 && pointInTriangle$4(ax, ay, bx, by, cx2, cy2, p.x, p.y) && area$9(p.prev, p, p.next) >= 0)
       return false;
     p = p.next;
   }
@@ -18854,27 +18854,27 @@ function isEar$2(ear) {
 }
 function isEarHashed$2(ear, minX, minY, invSize) {
   const a = ear.prev, b = ear, c2 = ear.next;
-  if (area$b(a, b, c2) >= 0)
+  if (area$9(a, b, c2) >= 0)
     return false;
   const ax = a.x, bx = b.x, cx2 = c2.x, ay = a.y, by = b.y, cy2 = c2.y;
   const x0 = ax < bx ? ax < cx2 ? ax : cx2 : bx < cx2 ? bx : cx2, y0 = ay < by ? ay < cy2 ? ay : cy2 : by < cy2 ? by : cy2, x1 = ax > bx ? ax > cx2 ? ax : cx2 : bx > cx2 ? bx : cx2, y1 = ay > by ? ay > cy2 ? ay : cy2 : by > cy2 ? by : cy2;
   const minZ = zOrder$2(x0, y0, minX, minY, invSize), maxZ = zOrder$2(x1, y1, minX, minY, invSize);
   let p = ear.prevZ, n = ear.nextZ;
   while (p && p.z >= minZ && n && n.z <= maxZ) {
-    if (p.x >= x0 && p.x <= x1 && p.y >= y0 && p.y <= y1 && p !== a && p !== c2 && pointInTriangle$4(ax, ay, bx, by, cx2, cy2, p.x, p.y) && area$b(p.prev, p, p.next) >= 0)
+    if (p.x >= x0 && p.x <= x1 && p.y >= y0 && p.y <= y1 && p !== a && p !== c2 && pointInTriangle$4(ax, ay, bx, by, cx2, cy2, p.x, p.y) && area$9(p.prev, p, p.next) >= 0)
       return false;
     p = p.prevZ;
-    if (n.x >= x0 && n.x <= x1 && n.y >= y0 && n.y <= y1 && n !== a && n !== c2 && pointInTriangle$4(ax, ay, bx, by, cx2, cy2, n.x, n.y) && area$b(n.prev, n, n.next) >= 0)
+    if (n.x >= x0 && n.x <= x1 && n.y >= y0 && n.y <= y1 && n !== a && n !== c2 && pointInTriangle$4(ax, ay, bx, by, cx2, cy2, n.x, n.y) && area$9(n.prev, n, n.next) >= 0)
       return false;
     n = n.nextZ;
   }
   while (p && p.z >= minZ) {
-    if (p.x >= x0 && p.x <= x1 && p.y >= y0 && p.y <= y1 && p !== a && p !== c2 && pointInTriangle$4(ax, ay, bx, by, cx2, cy2, p.x, p.y) && area$b(p.prev, p, p.next) >= 0)
+    if (p.x >= x0 && p.x <= x1 && p.y >= y0 && p.y <= y1 && p !== a && p !== c2 && pointInTriangle$4(ax, ay, bx, by, cx2, cy2, p.x, p.y) && area$9(p.prev, p, p.next) >= 0)
       return false;
     p = p.prevZ;
   }
   while (n && n.z <= maxZ) {
-    if (n.x >= x0 && n.x <= x1 && n.y >= y0 && n.y <= y1 && n !== a && n !== c2 && pointInTriangle$4(ax, ay, bx, by, cx2, cy2, n.x, n.y) && area$b(n.prev, n, n.next) >= 0)
+    if (n.x >= x0 && n.x <= x1 && n.y >= y0 && n.y <= y1 && n !== a && n !== c2 && pointInTriangle$4(ax, ay, bx, by, cx2, cy2, n.x, n.y) && area$9(n.prev, n, n.next) >= 0)
       return false;
     n = n.nextZ;
   }
@@ -18884,7 +18884,7 @@ function cureLocalIntersections$3(start, triangles, dim) {
   let p = start;
   do {
     const a = p.prev, b = p.next.next;
-    if (!equals$b(a, b) && intersects$2(a, p, p.next, b) && locallyInside$3(a, b) && locallyInside$3(b, a)) {
+    if (!equals$a(a, b) && intersects$2(a, p, p.next, b) && locallyInside$3(a, b) && locallyInside$3(b, a)) {
       triangles.push(a.i / dim | 0);
       triangles.push(p.i / dim | 0);
       triangles.push(b.i / dim | 0);
@@ -18976,7 +18976,7 @@ function findHoleBridge$2(hole, outerNode) {
   return m;
 }
 function sectorContainsSector$2(m, p) {
-  return area$b(m.prev, m, p.prev) < 0 && area$b(p.next, m, m.next) < 0;
+  return area$9(m.prev, m, p.prev) < 0 && area$9(p.next, m, m.next) < 0;
 }
 function indexCurve$2(start, minX, minY, invSize) {
   let p = start;
@@ -19061,20 +19061,20 @@ function pointInTriangle$4(ax, ay, bx, by, cx2, cy2, px2, py2) {
 function isValidDiagonal$3(a, b) {
   return a.next.i !== b.i && a.prev.i !== b.i && !intersectsPolygon$2(a, b) && // dones't intersect other edges
   (locallyInside$3(a, b) && locallyInside$3(b, a) && middleInside$2(a, b) && // locally visible
-  (area$b(a.prev, a, b.prev) || area$b(a, b.prev, b)) || // does not create opposite-facing sectors
-  equals$b(a, b) && area$b(a.prev, a, a.next) > 0 && area$b(b.prev, b, b.next) > 0);
+  (area$9(a.prev, a, b.prev) || area$9(a, b.prev, b)) || // does not create opposite-facing sectors
+  equals$a(a, b) && area$9(a.prev, a, a.next) > 0 && area$9(b.prev, b, b.next) > 0);
 }
-function area$b(p, q, r) {
+function area$9(p, q, r) {
   return (q.y - p.y) * (r.x - q.x) - (q.x - p.x) * (r.y - q.y);
 }
-function equals$b(p1, p2) {
+function equals$a(p1, p2) {
   return p1.x === p2.x && p1.y === p2.y;
 }
 function intersects$2(p1, q1, p2, q2) {
-  const o1 = sign$1(area$b(p1, q1, p2));
-  const o2 = sign$1(area$b(p1, q1, q2));
-  const o3 = sign$1(area$b(p2, q2, p1));
-  const o4 = sign$1(area$b(p2, q2, q1));
+  const o1 = sign$1(area$9(p1, q1, p2));
+  const o2 = sign$1(area$9(p1, q1, q2));
+  const o3 = sign$1(area$9(p2, q2, p1));
+  const o4 = sign$1(area$9(p2, q2, q1));
   if (o1 !== o2 && o3 !== o4)
     return true;
   if (o1 === 0 && onSegment$2(p1, p2, q1))
@@ -19103,7 +19103,7 @@ function intersectsPolygon$2(a, b) {
   return false;
 }
 function locallyInside$3(a, b) {
-  return area$b(a.prev, a, a.next) < 0 ? area$b(a, b, a.next) >= 0 && area$b(a, a.prev, b) >= 0 : area$b(a, b, a.prev) < 0 || area$b(a, a.next, b) < 0;
+  return area$9(a.prev, a, a.next) < 0 ? area$9(a, b, a.next) >= 0 && area$9(a, a.prev, b) >= 0 : area$9(a, b, a.prev) < 0 || area$9(a, a.next, b) < 0;
 }
 function middleInside$2(a, b) {
   let p = a, inside = false;
@@ -19968,9 +19968,9 @@ class FileLoader extends Loader {
         case "blob":
           return response.blob();
         case "document":
-          return response.text().then((text2) => {
+          return response.text().then((text) => {
             const parser = new DOMParser();
-            return parser.parseFromString(text2, mimeType);
+            return parser.parseFromString(text, mimeType);
           });
         case "json":
           return response.json();
@@ -21096,35 +21096,35 @@ function ParserState() {
       return (index >= 0 ? index - 1 : index + len / 2) * 2;
     },
     addVertex: function(a, b, c2) {
-      const src2 = this.vertices;
+      const src = this.vertices;
       const dst = this.object.geometry.vertices;
-      dst.push(src2[a + 0], src2[a + 1], src2[a + 2]);
-      dst.push(src2[b + 0], src2[b + 1], src2[b + 2]);
-      dst.push(src2[c2 + 0], src2[c2 + 1], src2[c2 + 2]);
+      dst.push(src[a + 0], src[a + 1], src[a + 2]);
+      dst.push(src[b + 0], src[b + 1], src[b + 2]);
+      dst.push(src[c2 + 0], src[c2 + 1], src[c2 + 2]);
     },
     addVertexPoint: function(a) {
-      const src2 = this.vertices;
+      const src = this.vertices;
       const dst = this.object.geometry.vertices;
-      dst.push(src2[a + 0], src2[a + 1], src2[a + 2]);
+      dst.push(src[a + 0], src[a + 1], src[a + 2]);
     },
     addVertexLine: function(a) {
-      const src2 = this.vertices;
+      const src = this.vertices;
       const dst = this.object.geometry.vertices;
-      dst.push(src2[a + 0], src2[a + 1], src2[a + 2]);
+      dst.push(src[a + 0], src[a + 1], src[a + 2]);
     },
     addNormal: function(a, b, c2) {
-      const src2 = this.normals;
+      const src = this.normals;
       const dst = this.object.geometry.normals;
-      dst.push(src2[a + 0], src2[a + 1], src2[a + 2]);
-      dst.push(src2[b + 0], src2[b + 1], src2[b + 2]);
-      dst.push(src2[c2 + 0], src2[c2 + 1], src2[c2 + 2]);
+      dst.push(src[a + 0], src[a + 1], src[a + 2]);
+      dst.push(src[b + 0], src[b + 1], src[b + 2]);
+      dst.push(src[c2 + 0], src[c2 + 1], src[c2 + 2]);
     },
     addFaceNormal: function(a, b, c2) {
-      const src2 = this.vertices;
+      const src = this.vertices;
       const dst = this.object.geometry.normals;
-      _vA.fromArray(src2, a);
-      _vB.fromArray(src2, b);
-      _vC.fromArray(src2, c2);
+      _vA.fromArray(src, a);
+      _vB.fromArray(src, b);
+      _vC.fromArray(src, c2);
       _cb.subVectors(_vC, _vB);
       _ab.subVectors(_vA, _vB);
       _cb.cross(_ab);
@@ -21134,21 +21134,21 @@ function ParserState() {
       dst.push(_cb.x, _cb.y, _cb.z);
     },
     addColor: function(a, b, c2) {
-      const src2 = this.colors;
+      const src = this.colors;
       const dst = this.object.geometry.colors;
-      if (src2[a] !== void 0)
-        dst.push(src2[a + 0], src2[a + 1], src2[a + 2]);
-      if (src2[b] !== void 0)
-        dst.push(src2[b + 0], src2[b + 1], src2[b + 2]);
-      if (src2[c2] !== void 0)
-        dst.push(src2[c2 + 0], src2[c2 + 1], src2[c2 + 2]);
+      if (src[a] !== void 0)
+        dst.push(src[a + 0], src[a + 1], src[a + 2]);
+      if (src[b] !== void 0)
+        dst.push(src[b + 0], src[b + 1], src[b + 2]);
+      if (src[c2] !== void 0)
+        dst.push(src[c2 + 0], src[c2 + 1], src[c2 + 2]);
     },
     addUV: function(a, b, c2) {
-      const src2 = this.uvs;
+      const src = this.uvs;
       const dst = this.object.geometry.uvs;
-      dst.push(src2[a + 0], src2[a + 1]);
-      dst.push(src2[b + 0], src2[b + 1]);
-      dst.push(src2[c2 + 0], src2[c2 + 1]);
+      dst.push(src[a + 0], src[a + 1]);
+      dst.push(src[b + 0], src[b + 1]);
+      dst.push(src[c2 + 0], src[c2 + 1]);
     },
     addDefaultUV: function() {
       const dst = this.object.geometry.uvs;
@@ -21157,9 +21157,9 @@ function ParserState() {
       dst.push(0, 0);
     },
     addUVLine: function(a) {
-      const src2 = this.uvs;
+      const src = this.uvs;
       const dst = this.object.geometry.uvs;
-      dst.push(src2[a + 0], src2[a + 1]);
+      dst.push(src[a + 0], src[a + 1]);
     },
     addFace: function(a, b, c2, ua, ub, uc, na, nb, nc) {
       const vLen = this.vertices.length;
@@ -21223,9 +21223,9 @@ class OBJLoader extends Loader {
     loader.setPath(this.path);
     loader.setRequestHeader(this.requestHeader);
     loader.setWithCredentials(this.withCredentials);
-    loader.load(url, function(text2) {
+    loader.load(url, function(text) {
       try {
-        onLoad(scope.parse(text2));
+        onLoad(scope.parse(text));
       } catch (e) {
         if (onError) {
           onError(e);
@@ -21240,25 +21240,25 @@ class OBJLoader extends Loader {
     this.materials = materials;
     return this;
   }
-  parse(text2) {
+  parse(text) {
     const state2 = new ParserState();
-    if (text2.indexOf("\r\n") !== -1) {
-      text2 = text2.replace(/\r\n/g, "\n");
+    if (text.indexOf("\r\n") !== -1) {
+      text = text.replace(/\r\n/g, "\n");
     }
-    if (text2.indexOf("\\\n") !== -1) {
-      text2 = text2.replace(/\\\n/g, "");
+    if (text.indexOf("\\\n") !== -1) {
+      text = text.replace(/\\\n/g, "");
     }
-    const lines = text2.split("\n");
+    const lines = text.split("\n");
     let result = [];
     for (let i = 0, l = lines.length; i < l; i++) {
-      const line4 = lines[i].trimStart();
-      if (line4.length === 0)
+      const line = lines[i].trimStart();
+      if (line.length === 0)
         continue;
-      const lineFirstChar = line4.charAt(0);
+      const lineFirstChar = line.charAt(0);
       if (lineFirstChar === "#")
         continue;
       if (lineFirstChar === "v") {
-        const data = line4.split(_face_vertex_data_separator_pattern);
+        const data = line.split(_face_vertex_data_separator_pattern);
         switch (data[0]) {
           case "v":
             state2.vertices.push(
@@ -21292,7 +21292,7 @@ class OBJLoader extends Loader {
             break;
         }
       } else if (lineFirstChar === "f") {
-        const lineData = line4.slice(1).trim();
+        const lineData = line.slice(1).trim();
         const vertexData = lineData.split(_face_vertex_data_separator_pattern);
         const faceVertices = [];
         for (let j = 0, jl = vertexData.length; j < jl; j++) {
@@ -21319,10 +21319,10 @@ class OBJLoader extends Loader {
           );
         }
       } else if (lineFirstChar === "l") {
-        const lineParts = line4.substring(1).trim().split(" ");
+        const lineParts = line.substring(1).trim().split(" ");
         let lineVertices = [];
         const lineUVs = [];
-        if (line4.indexOf("/") === -1) {
+        if (line.indexOf("/") === -1) {
           lineVertices = lineParts;
         } else {
           for (let li = 0, llen = lineParts.length; li < llen; li++) {
@@ -21335,20 +21335,20 @@ class OBJLoader extends Loader {
         }
         state2.addLineGeometry(lineVertices, lineUVs);
       } else if (lineFirstChar === "p") {
-        const lineData = line4.slice(1).trim();
+        const lineData = line.slice(1).trim();
         const pointData = lineData.split(" ");
         state2.addPointGeometry(pointData);
-      } else if ((result = _object_pattern.exec(line4)) !== null) {
+      } else if ((result = _object_pattern.exec(line)) !== null) {
         const name = (" " + result[0].slice(1).trim()).slice(1);
         state2.startObject(name);
-      } else if (_material_use_pattern.test(line4)) {
-        state2.object.startMaterial(line4.substring(7).trim(), state2.materialLibraries);
-      } else if (_material_library_pattern.test(line4)) {
-        state2.materialLibraries.push(line4.substring(7).trim());
-      } else if (_map_use_pattern.test(line4)) {
+      } else if (_material_use_pattern.test(line)) {
+        state2.object.startMaterial(line.substring(7).trim(), state2.materialLibraries);
+      } else if (_material_library_pattern.test(line)) {
+        state2.materialLibraries.push(line.substring(7).trim());
+      } else if (_map_use_pattern.test(line)) {
         console.warn('THREE.OBJLoader: Rendering identifier "usemap" not supported. Textures must be defined in MTL files.');
       } else if (lineFirstChar === "s") {
-        result = line4.split(" ");
+        result = line.split(" ");
         if (result.length > 1) {
           const value = result[1].trim().toLowerCase();
           state2.object.smooth = value !== "0" && value !== "off";
@@ -21359,9 +21359,9 @@ class OBJLoader extends Loader {
         if (material)
           material.smooth = state2.object.smooth;
       } else {
-        if (line4 === "\0")
+        if (line === "\0")
           continue;
-        console.warn('THREE.OBJLoader: Unexpected line: "' + line4 + '"');
+        console.warn('THREE.OBJLoader: Unexpected line: "' + line + '"');
       }
     }
     state2.finalize();
@@ -21526,11 +21526,242 @@ const state = {
 function getDefaultExportFromCjs(x) {
   return x && x.__esModule && Object.prototype.hasOwnProperty.call(x, "default") ? x["default"] : x;
 }
-const flatten$L = (arr) => arr.reduce((acc, val) => Array.isArray(val) ? acc.concat(flatten$L(val)) : acc.concat(val), []);
-var flatten_1 = flatten$L;
-const clone$c = (geometry) => Object.assign({}, geometry);
-var clone_1$a = clone$c;
-const add$3 = (out, a, b) => {
+const spatialResolution = 1e5;
+const EPS$e = 1e-5;
+const NEPS$3 = 1e-13;
+const TAU$8 = Math.PI * 2;
+var constants$3 = {
+  EPS: EPS$e,
+  NEPS: NEPS$3,
+  TAU: TAU$8,
+  spatialResolution
+};
+const abs$2 = (out, vector) => {
+  out[0] = Math.abs(vector[0]);
+  out[1] = Math.abs(vector[1]);
+  return out;
+};
+var abs_1$1 = abs$2;
+const add$2 = (out, a, b) => {
+  out[0] = a[0] + b[0];
+  out[1] = a[1] + b[1];
+  return out;
+};
+var add_1$2 = add$2;
+const angleRadians$1 = (vector) => Math.atan2(vector[1], vector[0]);
+var angleRadians_1 = angleRadians$1;
+var angle$1 = angleRadians_1;
+const angleRadians = angleRadians_1;
+const angleDegrees = (vector) => angleRadians(vector) * 57.29577951308232;
+var angleDegrees_1 = angleDegrees;
+const create$H = () => [0, 0];
+var create_1$a = create$H;
+const create$G = create_1$a;
+const clone$b = (vector) => {
+  const out = create$G();
+  out[0] = vector[0];
+  out[1] = vector[1];
+  return out;
+};
+var clone_1$9 = clone$b;
+const copy$6 = (out, vector) => {
+  out[0] = vector[0];
+  out[1] = vector[1];
+  return out;
+};
+var copy_1$4 = copy$6;
+const cross$2 = (out, a, b) => {
+  out[0] = 0;
+  out[1] = 0;
+  out[2] = a[0] * b[1] - a[1] * b[0];
+  return out;
+};
+var cross_1$1 = cross$2;
+const distance$1 = (a, b) => {
+  const x = b[0] - a[0];
+  const y = b[1] - a[1];
+  return Math.sqrt(x * x + y * y);
+};
+var distance_1$1 = distance$1;
+const divide$1 = (out, a, b) => {
+  out[0] = a[0] / b[0];
+  out[1] = a[1] / b[1];
+  return out;
+};
+var divide_1$1 = divide$1;
+const dot$3 = (a, b) => a[0] * b[0] + a[1] * b[1];
+var dot_1$2 = dot$3;
+const equals$9 = (a, b) => a[0] === b[0] && a[1] === b[1];
+var equals_1$6 = equals$9;
+const { NEPS: NEPS$2 } = constants$3;
+const rezero = (n) => Math.abs(n) < NEPS$2 ? 0 : n;
+const sin$c = (radians) => rezero(Math.sin(radians));
+const cos$c = (radians) => rezero(Math.cos(radians));
+var trigonometry = { sin: sin$c, cos: cos$c };
+const { sin: sin$b, cos: cos$b } = trigonometry;
+const fromAngleRadians$1 = (out, radians) => {
+  out[0] = cos$b(radians);
+  out[1] = sin$b(radians);
+  return out;
+};
+var fromAngleRadians_1 = fromAngleRadians$1;
+const fromAngleRadians = fromAngleRadians_1;
+const fromAngleDegrees = (out, degrees2) => fromAngleRadians(out, degrees2 * 0.017453292519943295);
+var fromAngleDegrees_1 = fromAngleDegrees;
+const fromScalar$2 = (out, scalar) => {
+  out[0] = scalar;
+  out[1] = scalar;
+  return out;
+};
+var fromScalar_1$2 = fromScalar$2;
+const create$F = create_1$a;
+const fromValues$5 = (x, y) => {
+  const out = create$F();
+  out[0] = x;
+  out[1] = y;
+  return out;
+};
+var fromValues_1$4 = fromValues$5;
+const length$1 = (vector) => Math.sqrt(vector[0] * vector[0] + vector[1] * vector[1]);
+var length_1$1 = length$1;
+const lerp$1 = (out, a, b, t) => {
+  const ax = a[0];
+  const ay = a[1];
+  out[0] = ax + t * (b[0] - ax);
+  out[1] = ay + t * (b[1] - ay);
+  return out;
+};
+var lerp_1$1 = lerp$1;
+const max$1 = (out, a, b) => {
+  out[0] = Math.max(a[0], b[0]);
+  out[1] = Math.max(a[1], b[1]);
+  return out;
+};
+var max_1$1 = max$1;
+const min$1 = (out, a, b) => {
+  out[0] = Math.min(a[0], b[0]);
+  out[1] = Math.min(a[1], b[1]);
+  return out;
+};
+var min_1$1 = min$1;
+const multiply$2 = (out, a, b) => {
+  out[0] = a[0] * b[0];
+  out[1] = a[1] * b[1];
+  return out;
+};
+var multiply_1$2 = multiply$2;
+const negate$1 = (out, vector) => {
+  out[0] = -vector[0];
+  out[1] = -vector[1];
+  return out;
+};
+var negate_1$1 = negate$1;
+const rotate$2 = (out, vector, origin2, radians) => {
+  const x = vector[0] - origin2[0];
+  const y = vector[1] - origin2[1];
+  const c2 = Math.cos(radians);
+  const s = Math.sin(radians);
+  out[0] = x * c2 - y * s + origin2[0];
+  out[1] = x * s + y * c2 + origin2[1];
+  return out;
+};
+var rotate_1$1 = rotate$2;
+const vec2Rotate = /* @__PURE__ */ getDefaultExportFromCjs(rotate_1$1);
+const { TAU: TAU$7 } = constants$3;
+const create$E = create_1$a;
+const rotate$1 = rotate_1$1;
+const normal = (out, vector) => rotate$1(out, vector, create$E(), TAU$7 / 4);
+var normal_1 = normal;
+const normalize$1 = (out, vector) => {
+  const x = vector[0];
+  const y = vector[1];
+  let len = x * x + y * y;
+  if (len > 0) {
+    len = 1 / Math.sqrt(len);
+  }
+  out[0] = x * len;
+  out[1] = y * len;
+  return out;
+};
+var normalize_1$1 = normalize$1;
+const scale$3 = (out, vector, amount) => {
+  out[0] = vector[0] * amount;
+  out[1] = vector[1] * amount;
+  return out;
+};
+var scale_1$2 = scale$3;
+const snap$1 = (out, vector, epsilon) => {
+  out[0] = Math.round(vector[0] / epsilon) * epsilon + 0;
+  out[1] = Math.round(vector[1] / epsilon) * epsilon + 0;
+  return out;
+};
+var snap_1$1 = snap$1;
+const squaredDistance$1 = (a, b) => {
+  const x = b[0] - a[0];
+  const y = b[1] - a[1];
+  return x * x + y * y;
+};
+var squaredDistance_1$1 = squaredDistance$1;
+const squaredLength$1 = (vector) => {
+  const x = vector[0];
+  const y = vector[1];
+  return x * x + y * y;
+};
+var squaredLength_1$1 = squaredLength$1;
+const subtract$2 = (out, a, b) => {
+  out[0] = a[0] - b[0];
+  out[1] = a[1] - b[1];
+  return out;
+};
+var subtract_1$2 = subtract$2;
+const toString$b = (vector) => `[${vector[0].toFixed(7)}, ${vector[1].toFixed(7)}]`;
+var toString_1$9 = toString$b;
+const transform$9 = (out, vector, matrix) => {
+  const x = vector[0];
+  const y = vector[1];
+  out[0] = matrix[0] * x + matrix[4] * y + matrix[12];
+  out[1] = matrix[1] * x + matrix[5] * y + matrix[13];
+  return out;
+};
+var transform_1$9 = transform$9;
+var vec2$w = {
+  abs: abs_1$1,
+  add: add_1$2,
+  angle: angle$1,
+  angleDegrees: angleDegrees_1,
+  angleRadians: angleRadians_1,
+  clone: clone_1$9,
+  copy: copy_1$4,
+  create: create_1$a,
+  cross: cross_1$1,
+  distance: distance_1$1,
+  divide: divide_1$1,
+  dot: dot_1$2,
+  equals: equals_1$6,
+  fromAngleDegrees: fromAngleDegrees_1,
+  fromAngleRadians: fromAngleRadians_1,
+  fromScalar: fromScalar_1$2,
+  fromValues: fromValues_1$4,
+  length: length_1$1,
+  lerp: lerp_1$1,
+  max: max_1$1,
+  min: min_1$1,
+  multiply: multiply_1$2,
+  negate: negate_1$1,
+  normal: normal_1,
+  normalize: normalize_1$1,
+  rotate: rotate_1$1,
+  scale: scale_1$2,
+  snap: snap_1$1,
+  squaredDistance: squaredDistance_1$1,
+  squaredLength: squaredLength_1$1,
+  subtract: subtract_1$2,
+  toString: toString_1$9,
+  transform: transform_1$9
+};
+const clone$a = (geometry) => Object.assign({}, geometry);
+var clone_1$8 = clone$a;
+const add$1 = (out, a, b) => {
   out[0] = a[0] + b[0];
   out[1] = a[1] + b[1];
   out[2] = a[2] + b[2];
@@ -21549,8 +21780,8 @@ const add$3 = (out, a, b) => {
   out[15] = a[15] + b[15];
   return out;
 };
-var add_1$2 = add$3;
-const create$K = () => [
+var add_1$1 = add$1;
+const create$D = () => [
   1,
   0,
   0,
@@ -21568,10 +21799,10 @@ const create$K = () => [
   0,
   1
 ];
-var create_1$c = create$K;
-const create$J = create_1$c;
-const clone$b = (matrix) => {
-  const out = create$J();
+var create_1$9 = create$D;
+const create$C = create_1$9;
+const clone$9 = (matrix) => {
+  const out = create$C();
   out[0] = matrix[0];
   out[1] = matrix[1];
   out[2] = matrix[2];
@@ -21590,8 +21821,8 @@ const clone$b = (matrix) => {
   out[15] = matrix[15];
   return out;
 };
-var clone_1$9 = clone$b;
-const copy$8 = (out, matrix) => {
+var clone_1$7 = clone$9;
+const copy$5 = (out, matrix) => {
   out[0] = matrix[0];
   out[1] = matrix[1];
   out[2] = matrix[2];
@@ -21610,7 +21841,7 @@ const copy$8 = (out, matrix) => {
   out[15] = matrix[15];
   return out;
 };
-var copy_1$5 = copy$8;
+var copy_1$3 = copy$5;
 const invert$2 = (out, matrix) => {
   const a00 = matrix[0];
   const a01 = matrix[1];
@@ -21664,23 +21895,8 @@ const invert$2 = (out, matrix) => {
   return out;
 };
 var invert_1$2 = invert$2;
-const equals$a = (a, b) => a[0] === b[0] && a[1] === b[1] && a[2] === b[2] && a[3] === b[3] && a[4] === b[4] && a[5] === b[5] && a[6] === b[6] && a[7] === b[7] && a[8] === b[8] && a[9] === b[9] && a[10] === b[10] && a[11] === b[11] && a[12] === b[12] && a[13] === b[13] && a[14] === b[14] && a[15] === b[15];
-var equals_1$7 = equals$a;
-const spatialResolution = 1e5;
-const EPS$k = 1e-5;
-const NEPS$4 = 1e-13;
-const TAU$i = Math.PI * 2;
-var constants$3 = {
-  EPS: EPS$k,
-  NEPS: NEPS$4,
-  TAU: TAU$i,
-  spatialResolution
-};
-const { NEPS: NEPS$3 } = constants$3;
-const rezero = (n) => Math.abs(n) < NEPS$3 ? 0 : n;
-const sin$g = (radians) => rezero(Math.sin(radians));
-const cos$g = (radians) => rezero(Math.cos(radians));
-var trigonometry = { sin: sin$g, cos: cos$g };
+const equals$8 = (a, b) => a[0] === b[0] && a[1] === b[1] && a[2] === b[2] && a[3] === b[3] && a[4] === b[4] && a[5] === b[5] && a[6] === b[6] && a[7] === b[7] && a[8] === b[8] && a[9] === b[9] && a[10] === b[10] && a[11] === b[11] && a[12] === b[12] && a[13] === b[13] && a[14] === b[14] && a[15] === b[15];
+var equals_1$5 = equals$8;
 const identity$1 = (out) => {
   out[0] = 1;
   out[1] = 0;
@@ -21701,21 +21917,21 @@ const identity$1 = (out) => {
   return out;
 };
 var identity_1 = identity$1;
-const { EPS: EPS$j } = constants$3;
-const { sin: sin$f, cos: cos$f } = trigonometry;
+const { EPS: EPS$d } = constants$3;
+const { sin: sin$a, cos: cos$a } = trigonometry;
 const identity = identity_1;
 const fromRotation$1 = (out, rad, axis) => {
   let [x, y, z] = axis;
   const lengthSquared = x * x + y * y + z * z;
-  if (Math.abs(lengthSquared) < EPS$j) {
+  if (Math.abs(lengthSquared) < EPS$d) {
     return identity(out);
   }
   const len = 1 / Math.sqrt(lengthSquared);
   x *= len;
   y *= len;
   z *= len;
-  const s = sin$f(rad);
-  const c2 = cos$f(rad);
+  const s = sin$a(rad);
+  const c2 = cos$a(rad);
   const t = 1 - c2;
   out[0] = x * x * t + c2;
   out[1] = y * x * t + z * s;
@@ -21756,14 +21972,14 @@ const fromScaling = (out, vector) => {
   return out;
 };
 var fromScaling_1 = fromScaling;
-const { sin: sin$e, cos: cos$e } = trigonometry;
+const { sin: sin$9, cos: cos$9 } = trigonometry;
 const fromTaitBryanRotation = (out, yaw, pitch, roll) => {
-  const sy2 = sin$e(yaw);
-  const cy2 = cos$e(yaw);
-  const sp = sin$e(pitch);
-  const cp = cos$e(pitch);
-  const sr = sin$e(roll);
-  const cr = cos$e(roll);
+  const sy2 = sin$9(yaw);
+  const cy2 = cos$9(yaw);
+  const sp = sin$9(pitch);
+  const cp = cos$9(pitch);
+  const sr = sin$9(roll);
+  const cr = cos$9(roll);
   out[0] = cp * cy2;
   out[1] = cp * sy2;
   out[2] = -sp;
@@ -21803,9 +22019,9 @@ const fromTranslation = (out, vector) => {
   return out;
 };
 var fromTranslation_1 = fromTranslation;
-const create$I = create_1$c;
-const fromValues$5 = (m00, m01, m02, m03, m10, m11, m12, m13, m20, m21, m22, m23, m30, m31, m32, m33) => {
-  const out = create$I();
+const create$B = create_1$9;
+const fromValues$4 = (m00, m01, m02, m03, m10, m11, m12, m13, m20, m21, m22, m23, m30, m31, m32, m33) => {
+  const out = create$B();
   out[0] = m00;
   out[1] = m01;
   out[2] = m02;
@@ -21824,25 +22040,25 @@ const fromValues$5 = (m00, m01, m02, m03, m10, m11, m12, m13, m20, m21, m22, m23
   out[15] = m33;
   return out;
 };
-var fromValues_1$4 = fromValues$5;
-const abs$2 = (out, vector) => {
+var fromValues_1$3 = fromValues$4;
+const abs$1 = (out, vector) => {
   out[0] = Math.abs(vector[0]);
   out[1] = Math.abs(vector[1]);
   out[2] = Math.abs(vector[2]);
   return out;
 };
-var abs_1$1 = abs$2;
-const add$2 = (out, a, b) => {
+var abs_1 = abs$1;
+const add = (out, a, b) => {
   out[0] = a[0] + b[0];
   out[1] = a[1] + b[1];
   out[2] = a[2] + b[2];
   return out;
 };
-var add_1$1 = add$2;
-const dot$5 = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-var dot_1$2 = dot$5;
-const dot$4 = dot_1$2;
-const angle$1 = (a, b) => {
+var add_1 = add;
+const dot$2 = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+var dot_1$1 = dot$2;
+const dot$1 = dot_1$1;
+const angle = (a, b) => {
   const ax = a[0];
   const ay = a[1];
   const az = a[2];
@@ -21852,29 +22068,29 @@ const angle$1 = (a, b) => {
   const mag1 = Math.sqrt(ax * ax + ay * ay + az * az);
   const mag2 = Math.sqrt(bx * bx + by * by + bz * bz);
   const mag = mag1 * mag2;
-  const cosine = mag && dot$4(a, b) / mag;
+  const cosine = mag && dot$1(a, b) / mag;
   return Math.acos(Math.min(Math.max(cosine, -1), 1));
 };
-var angle_1 = angle$1;
-const create$H = () => [0, 0, 0];
-var create_1$b = create$H;
-const create$G = create_1$b;
-const clone$a = (vector) => {
-  const out = create$G();
+var angle_1 = angle;
+const create$A = () => [0, 0, 0];
+var create_1$8 = create$A;
+const create$z = create_1$8;
+const clone$8 = (vector) => {
+  const out = create$z();
   out[0] = vector[0];
   out[1] = vector[1];
   out[2] = vector[2];
   return out;
 };
-var clone_1$8 = clone$a;
-const copy$7 = (out, vector) => {
+var clone_1$6 = clone$8;
+const copy$4 = (out, vector) => {
   out[0] = vector[0];
   out[1] = vector[1];
   out[2] = vector[2];
   return out;
 };
-var copy_1$4 = copy$7;
-const cross$5 = (out, a, b) => {
+var copy_1$2 = copy$4;
+const cross$1 = (out, a, b) => {
   const ax = a[0];
   const ay = a[1];
   const az = a[2];
@@ -21886,39 +22102,39 @@ const cross$5 = (out, a, b) => {
   out[2] = ax * by - ay * bx;
   return out;
 };
-var cross_1$1 = cross$5;
-const distance$2 = (a, b) => {
+var cross_1 = cross$1;
+const distance = (a, b) => {
   const x = b[0] - a[0];
   const y = b[1] - a[1];
   const z = b[2] - a[2];
   return Math.sqrt(x * x + y * y + z * z);
 };
-var distance_1$1 = distance$2;
-const divide$1 = (out, a, b) => {
+var distance_1 = distance;
+const divide = (out, a, b) => {
   out[0] = a[0] / b[0];
   out[1] = a[1] / b[1];
   out[2] = a[2] / b[2];
   return out;
 };
-var divide_1$1 = divide$1;
-const equals$9 = (a, b) => a[0] === b[0] && a[1] === b[1] && a[2] === b[2];
-var equals_1$6 = equals$9;
-const fromScalar$2 = (out, scalar) => {
+var divide_1 = divide;
+const equals$7 = (a, b) => a[0] === b[0] && a[1] === b[1] && a[2] === b[2];
+var equals_1$4 = equals$7;
+const fromScalar$1 = (out, scalar) => {
   out[0] = scalar;
   out[1] = scalar;
   out[2] = scalar;
   return out;
 };
-var fromScalar_1$2 = fromScalar$2;
-const create$F = create_1$b;
-const fromValues$4 = (x, y, z) => {
-  const out = create$F();
+var fromScalar_1$1 = fromScalar$1;
+const create$y = create_1$8;
+const fromValues$3 = (x, y, z) => {
+  const out = create$y();
   out[0] = x;
   out[1] = y;
   out[2] = z;
   return out;
 };
-var fromValues_1$3 = fromValues$4;
+var fromValues_1$2 = fromValues$3;
 const fromVector2 = (out, vector, z = 0) => {
   out[0] = vector[0];
   out[1] = vector[1];
@@ -21926,49 +22142,49 @@ const fromVector2 = (out, vector, z = 0) => {
   return out;
 };
 var fromVec2 = fromVector2;
-const length$2 = (vector) => {
+const length = (vector) => {
   const x = vector[0];
   const y = vector[1];
   const z = vector[2];
   return Math.sqrt(x * x + y * y + z * z);
 };
-var length_1$1 = length$2;
-const lerp$1 = (out, a, b, t) => {
+var length_1 = length;
+const lerp = (out, a, b, t) => {
   out[0] = a[0] + t * (b[0] - a[0]);
   out[1] = a[1] + t * (b[1] - a[1]);
   out[2] = a[2] + t * (b[2] - a[2]);
   return out;
 };
-var lerp_1$1 = lerp$1;
-const max$1 = (out, a, b) => {
+var lerp_1 = lerp;
+const max = (out, a, b) => {
   out[0] = Math.max(a[0], b[0]);
   out[1] = Math.max(a[1], b[1]);
   out[2] = Math.max(a[2], b[2]);
   return out;
 };
-var max_1$1 = max$1;
-const min$1 = (out, a, b) => {
+var max_1 = max;
+const min = (out, a, b) => {
   out[0] = Math.min(a[0], b[0]);
   out[1] = Math.min(a[1], b[1]);
   out[2] = Math.min(a[2], b[2]);
   return out;
 };
-var min_1$1 = min$1;
-const multiply$2 = (out, a, b) => {
+var min_1 = min;
+const multiply$1 = (out, a, b) => {
   out[0] = a[0] * b[0];
   out[1] = a[1] * b[1];
   out[2] = a[2] * b[2];
   return out;
 };
-var multiply_1$2 = multiply$2;
-const negate$1 = (out, vector) => {
+var multiply_1$1 = multiply$1;
+const negate = (out, vector) => {
   out[0] = -vector[0];
   out[1] = -vector[1];
   out[2] = -vector[2];
   return out;
 };
-var negate_1$1 = negate$1;
-const normalize$3 = (out, vector) => {
+var negate_1 = negate;
+const normalize = (out, vector) => {
   const x = vector[0];
   const y = vector[1];
   const z = vector[2];
@@ -21981,19 +22197,19 @@ const normalize$3 = (out, vector) => {
   out[2] = z * len;
   return out;
 };
-var normalize_1$1 = normalize$3;
-const abs$1 = abs_1$1;
-const create$E = create_1$b;
-const cross$4 = cross_1$1;
+var normalize_1 = normalize;
+const abs = abs_1;
+const create$x = create_1$8;
+const cross = cross_1;
 const orthogonal = (out, vector) => {
-  const bV = abs$1(create$E(), vector);
+  const bV = abs(create$x(), vector);
   const b0 = 0 + (bV[0] < bV[1] && bV[0] < bV[2]);
   const b1 = 0 + (bV[1] <= bV[0] && bV[1] < bV[2]);
   const b2 = 0 + (bV[2] <= bV[0] && bV[2] <= bV[1]);
-  return cross$4(out, vector, [b0, b1, b2]);
+  return cross(out, vector, [b0, b1, b2]);
 };
 var orthogonal_1 = orthogonal;
-const rotateX$2 = (out, vector, origin2, radians) => {
+const rotateX$1 = (out, vector, origin2, radians) => {
   const p = [];
   const r = [];
   p[0] = vector[0] - origin2[0];
@@ -22007,8 +22223,8 @@ const rotateX$2 = (out, vector, origin2, radians) => {
   out[2] = r[2] + origin2[2];
   return out;
 };
-var rotateX_1$1 = rotateX$2;
-const rotateY$2 = (out, vector, origin2, radians) => {
+var rotateX_1$1 = rotateX$1;
+const rotateY$1 = (out, vector, origin2, radians) => {
   const p = [];
   const r = [];
   p[0] = vector[0] - origin2[0];
@@ -22022,8 +22238,8 @@ const rotateY$2 = (out, vector, origin2, radians) => {
   out[2] = r[2] + origin2[2];
   return out;
 };
-var rotateY_1$1 = rotateY$2;
-const rotateZ$2 = (out, vector, origin2, radians) => {
+var rotateY_1$1 = rotateY$1;
+const rotateZ$1 = (out, vector, origin2, radians) => {
   const p = [];
   const r = [];
   p[0] = vector[0] - origin2[0];
@@ -22035,45 +22251,45 @@ const rotateZ$2 = (out, vector, origin2, radians) => {
   out[2] = vector[2];
   return out;
 };
-var rotateZ_1$1 = rotateZ$2;
-const scale$5 = (out, vector, amount) => {
+var rotateZ_1$1 = rotateZ$1;
+const scale$2 = (out, vector, amount) => {
   out[0] = vector[0] * amount;
   out[1] = vector[1] * amount;
   out[2] = vector[2] * amount;
   return out;
 };
-var scale_1$3 = scale$5;
-const snap$2 = (out, vector, epsilon) => {
+var scale_1$1 = scale$2;
+const snap = (out, vector, epsilon) => {
   out[0] = Math.round(vector[0] / epsilon) * epsilon + 0;
   out[1] = Math.round(vector[1] / epsilon) * epsilon + 0;
   out[2] = Math.round(vector[2] / epsilon) * epsilon + 0;
   return out;
 };
-var snap_1$2 = snap$2;
-const squaredDistance$2 = (a, b) => {
+var snap_1 = snap;
+const squaredDistance = (a, b) => {
   const x = b[0] - a[0];
   const y = b[1] - a[1];
   const z = b[2] - a[2];
   return x * x + y * y + z * z;
 };
-var squaredDistance_1$1 = squaredDistance$2;
-const squaredLength$2 = (vector) => {
+var squaredDistance_1 = squaredDistance;
+const squaredLength = (vector) => {
   const x = vector[0];
   const y = vector[1];
   const z = vector[2];
   return x * x + y * y + z * z;
 };
-var squaredLength_1$1 = squaredLength$2;
-const subtract$8 = (out, a, b) => {
+var squaredLength_1 = squaredLength;
+const subtract$1 = (out, a, b) => {
   out[0] = a[0] - b[0];
   out[1] = a[1] - b[1];
   out[2] = a[2] - b[2];
   return out;
 };
-var subtract_1$3 = subtract$8;
-const toString$c = (vec) => `[${vec[0].toFixed(7)}, ${vec[1].toFixed(7)}, ${vec[2].toFixed(7)}]`;
-var toString_1$a = toString$c;
-const transform$b = (out, vector, matrix) => {
+var subtract_1$1 = subtract$1;
+const toString$a = (vec) => `[${vec[0].toFixed(7)}, ${vec[1].toFixed(7)}, ${vec[2].toFixed(7)}]`;
+var toString_1$8 = toString$a;
+const transform$8 = (out, vector, matrix) => {
   const x = vector[0];
   const y = vector[1];
   const z = vector[2];
@@ -22084,50 +22300,50 @@ const transform$b = (out, vector, matrix) => {
   out[2] = (matrix[2] * x + matrix[6] * y + matrix[10] * z + matrix[14]) / w;
   return out;
 };
-var transform_1$b = transform$b;
-var vec3$Y = {
-  abs: abs_1$1,
-  add: add_1$1,
+var transform_1$8 = transform$8;
+var vec3$C = {
+  abs: abs_1,
+  add: add_1,
   angle: angle_1,
-  clone: clone_1$8,
-  copy: copy_1$4,
-  create: create_1$b,
-  cross: cross_1$1,
-  distance: distance_1$1,
-  divide: divide_1$1,
-  dot: dot_1$2,
-  equals: equals_1$6,
-  fromScalar: fromScalar_1$2,
-  fromValues: fromValues_1$3,
+  clone: clone_1$6,
+  copy: copy_1$2,
+  create: create_1$8,
+  cross: cross_1,
+  distance: distance_1,
+  divide: divide_1,
+  dot: dot_1$1,
+  equals: equals_1$4,
+  fromScalar: fromScalar_1$1,
+  fromValues: fromValues_1$2,
   fromVec2,
-  length: length_1$1,
-  lerp: lerp_1$1,
-  max: max_1$1,
-  min: min_1$1,
-  multiply: multiply_1$2,
-  negate: negate_1$1,
-  normalize: normalize_1$1,
+  length: length_1,
+  lerp: lerp_1,
+  max: max_1,
+  min: min_1,
+  multiply: multiply_1$1,
+  negate: negate_1,
+  normalize: normalize_1,
   orthogonal: orthogonal_1,
   rotateX: rotateX_1$1,
   rotateY: rotateY_1$1,
   rotateZ: rotateZ_1$1,
-  scale: scale_1$3,
-  snap: snap_1$2,
-  squaredDistance: squaredDistance_1$1,
-  squaredLength: squaredLength_1$1,
-  subtract: subtract_1$3,
-  toString: toString_1$a,
-  transform: transform_1$b
+  scale: scale_1$1,
+  snap: snap_1,
+  squaredDistance: squaredDistance_1,
+  squaredLength: squaredLength_1,
+  subtract: subtract_1$1,
+  toString: toString_1$8,
+  transform: transform_1$8
 };
-const vec3$X = vec3$Y;
+const vec3$B = vec3$C;
 const fromRotation = fromRotation_1;
 const fromVectorRotation = (out, source, target) => {
-  const sourceNormal = vec3$X.normalize(vec3$X.create(), source);
-  const targetNormal = vec3$X.normalize(vec3$X.create(), target);
-  const axis = vec3$X.cross(vec3$X.create(), targetNormal, sourceNormal);
-  const cosA = vec3$X.dot(targetNormal, sourceNormal);
+  const sourceNormal = vec3$B.normalize(vec3$B.create(), source);
+  const targetNormal = vec3$B.normalize(vec3$B.create(), target);
+  const axis = vec3$B.cross(vec3$B.create(), targetNormal, sourceNormal);
+  const cosA = vec3$B.dot(targetNormal, sourceNormal);
   if (cosA === -1)
-    return fromRotation(out, Math.PI, vec3$X.orthogonal(axis, sourceNormal));
+    return fromRotation(out, Math.PI, vec3$B.orthogonal(axis, sourceNormal));
   const k = 1 / (1 + cosA);
   out[0] = axis[0] * axis[0] * k + cosA;
   out[1] = axis[1] * axis[0] * k - axis[2];
@@ -22148,10 +22364,10 @@ const fromVectorRotation = (out, source, target) => {
   return out;
 };
 var fromVectorRotation_1 = fromVectorRotation;
-const { sin: sin$d, cos: cos$d } = trigonometry;
+const { sin: sin$8, cos: cos$8 } = trigonometry;
 const fromXRotation = (out, radians) => {
-  const s = sin$d(radians);
-  const c2 = cos$d(radians);
+  const s = sin$8(radians);
+  const c2 = cos$8(radians);
   out[0] = 1;
   out[1] = 0;
   out[2] = 0;
@@ -22171,10 +22387,10 @@ const fromXRotation = (out, radians) => {
   return out;
 };
 var fromXRotation_1 = fromXRotation;
-const { sin: sin$c, cos: cos$c } = trigonometry;
+const { sin: sin$7, cos: cos$7 } = trigonometry;
 const fromYRotation = (out, radians) => {
-  const s = sin$c(radians);
-  const c2 = cos$c(radians);
+  const s = sin$7(radians);
+  const c2 = cos$7(radians);
   out[0] = c2;
   out[1] = 0;
   out[2] = -s;
@@ -22194,10 +22410,10 @@ const fromYRotation = (out, radians) => {
   return out;
 };
 var fromYRotation_1 = fromYRotation;
-const { sin: sin$b, cos: cos$b } = trigonometry;
+const { sin: sin$6, cos: cos$6 } = trigonometry;
 const fromZRotation = (out, radians) => {
-  const s = sin$b(radians);
-  const c2 = cos$b(radians);
+  const s = sin$6(radians);
+  const c2 = cos$6(radians);
   out[0] = c2;
   out[1] = s;
   out[2] = 0;
@@ -22254,7 +22470,7 @@ const mirrorByPlane = (out, plane2) => {
   return out;
 };
 var mirrorByPlane_1 = mirrorByPlane;
-const multiply$1 = (out, a, b) => {
+const multiply = (out, a, b) => {
   const a00 = a[0];
   const a01 = a[1];
   const a02 = a[2];
@@ -22305,22 +22521,22 @@ const multiply$1 = (out, a, b) => {
   out[15] = b0 * a03 + b1 * a13 + b2 * a23 + b3 * a33;
   return out;
 };
-var multiply_1$1 = multiply$1;
-const { EPS: EPS$i } = constants$3;
-const { sin: sin$a, cos: cos$a } = trigonometry;
-const copy$6 = copy_1$5;
-const rotate$4 = (out, matrix, radians, axis) => {
+var multiply_1 = multiply;
+const { EPS: EPS$c } = constants$3;
+const { sin: sin$5, cos: cos$5 } = trigonometry;
+const copy$3 = copy_1$3;
+const rotate = (out, matrix, radians, axis) => {
   let [x, y, z] = axis;
   const lengthSquared = x * x + y * y + z * z;
-  if (Math.abs(lengthSquared) < EPS$i) {
-    return copy$6(out, matrix);
+  if (Math.abs(lengthSquared) < EPS$c) {
+    return copy$3(out, matrix);
   }
   const len = 1 / Math.sqrt(lengthSquared);
   x *= len;
   y *= len;
   z *= len;
-  const s = sin$a(radians);
-  const c2 = cos$a(radians);
+  const s = sin$5(radians);
+  const c2 = cos$5(radians);
   const t = 1 - c2;
   const a00 = matrix[0];
   const a01 = matrix[1];
@@ -22363,11 +22579,11 @@ const rotate$4 = (out, matrix, radians, axis) => {
   }
   return out;
 };
-var rotate_1$2 = rotate$4;
-const { sin: sin$9, cos: cos$9 } = trigonometry;
-const rotateX$1 = (out, matrix, radians) => {
-  const s = sin$9(radians);
-  const c2 = cos$9(radians);
+var rotate_1 = rotate;
+const { sin: sin$4, cos: cos$4 } = trigonometry;
+const rotateX = (out, matrix, radians) => {
+  const s = sin$4(radians);
+  const c2 = cos$4(radians);
   const a10 = matrix[4];
   const a11 = matrix[5];
   const a12 = matrix[6];
@@ -22396,11 +22612,11 @@ const rotateX$1 = (out, matrix, radians) => {
   out[11] = a23 * c2 - a13 * s;
   return out;
 };
-var rotateX_1 = rotateX$1;
-const { sin: sin$8, cos: cos$8 } = trigonometry;
-const rotateY$1 = (out, matrix, radians) => {
-  const s = sin$8(radians);
-  const c2 = cos$8(radians);
+var rotateX_1 = rotateX;
+const { sin: sin$3, cos: cos$3 } = trigonometry;
+const rotateY = (out, matrix, radians) => {
+  const s = sin$3(radians);
+  const c2 = cos$3(radians);
   const a00 = matrix[0];
   const a01 = matrix[1];
   const a02 = matrix[2];
@@ -22429,11 +22645,11 @@ const rotateY$1 = (out, matrix, radians) => {
   out[11] = a03 * s + a23 * c2;
   return out;
 };
-var rotateY_1 = rotateY$1;
-const { sin: sin$7, cos: cos$7 } = trigonometry;
-const rotateZ$1 = (out, matrix, radians) => {
-  const s = sin$7(radians);
-  const c2 = cos$7(radians);
+var rotateY_1 = rotateY;
+const { sin: sin$2, cos: cos$2 } = trigonometry;
+const rotateZ = (out, matrix, radians) => {
+  const s = sin$2(radians);
+  const c2 = cos$2(radians);
   const a00 = matrix[0];
   const a01 = matrix[1];
   const a02 = matrix[2];
@@ -22462,8 +22678,8 @@ const rotateZ$1 = (out, matrix, radians) => {
   out[7] = a13 * c2 - a03 * s;
   return out;
 };
-var rotateZ_1 = rotateZ$1;
-const scale$4 = (out, matrix, dimensions) => {
+var rotateZ_1 = rotateZ;
+const scale$1 = (out, matrix, dimensions) => {
   const x = dimensions[0];
   const y = dimensions[1];
   const z = dimensions[2];
@@ -22485,8 +22701,8 @@ const scale$4 = (out, matrix, dimensions) => {
   out[15] = matrix[15];
   return out;
 };
-var scale_1$2 = scale$4;
-const subtract$7 = (out, a, b) => {
+var scale_1 = scale$1;
+const subtract = (out, a, b) => {
   out[0] = a[0] - b[0];
   out[1] = a[1] - b[1];
   out[2] = a[2] - b[2];
@@ -22505,10 +22721,10 @@ const subtract$7 = (out, a, b) => {
   out[15] = a[15] - b[15];
   return out;
 };
-var subtract_1$2 = subtract$7;
-const toString$b = (mat) => mat.map((n) => n.toFixed(7)).toString();
-var toString_1$9 = toString$b;
-const translate$5 = (out, matrix, offsets) => {
+var subtract_1 = subtract;
+const toString$9 = (mat) => mat.map((n) => n.toFixed(7)).toString();
+var toString_1$7 = toString$9;
+const translate$1 = (out, matrix, offsets) => {
   const x = offsets[0];
   const y = offsets[1];
   const z = offsets[2];
@@ -22561,19 +22777,19 @@ const translate$5 = (out, matrix, offsets) => {
   }
   return out;
 };
-var translate_1$1 = translate$5;
-var mat4$r = {
-  add: add_1$2,
-  clone: clone_1$9,
-  copy: copy_1$5,
-  create: create_1$c,
+var translate_1 = translate$1;
+var mat4$h = {
+  add: add_1$1,
+  clone: clone_1$7,
+  copy: copy_1$3,
+  create: create_1$9,
   invert: invert_1$2,
-  equals: equals_1$7,
+  equals: equals_1$5,
   fromRotation: fromRotation_1,
   fromScaling: fromScaling_1,
   fromTaitBryanRotation: fromTaitBryanRotation_1,
   fromTranslation: fromTranslation_1,
-  fromValues: fromValues_1$4,
+  fromValues: fromValues_1$3,
   fromVectorRotation: fromVectorRotation_1,
   fromXRotation: fromXRotation_1,
   fromYRotation: fromYRotation_1,
@@ -22583,247 +22799,30 @@ var mat4$r = {
   isOnlyTransformScale: isOnlyTransformScale_1,
   isMirroring: isMirroring_1,
   mirrorByPlane: mirrorByPlane_1,
-  multiply: multiply_1$1,
-  rotate: rotate_1$2,
+  multiply: multiply_1,
+  rotate: rotate_1,
   rotateX: rotateX_1,
   rotateY: rotateY_1,
   rotateZ: rotateZ_1,
-  scale: scale_1$2,
-  subtract: subtract_1$2,
-  toString: toString_1$9,
-  translate: translate_1$1
+  scale: scale_1,
+  subtract: subtract_1,
+  toString: toString_1$7,
+  translate: translate_1
 };
-const mat4$q = mat4$r;
-const create$D = (sides) => {
+const mat4$g = mat4$h;
+const create$w = (sides) => {
   if (sides === void 0) {
     sides = [];
   }
   return {
     sides,
-    transforms: mat4$q.create()
+    transforms: mat4$g.create()
   };
 };
-var create_1$a = create$D;
-const abs = (out, vector) => {
-  out[0] = Math.abs(vector[0]);
-  out[1] = Math.abs(vector[1]);
-  return out;
-};
-var abs_1 = abs;
-const add$1 = (out, a, b) => {
-  out[0] = a[0] + b[0];
-  out[1] = a[1] + b[1];
-  return out;
-};
-var add_1 = add$1;
-const angleRadians$1 = (vector) => Math.atan2(vector[1], vector[0]);
-var angleRadians_1 = angleRadians$1;
-var angle = angleRadians_1;
-const angleRadians = angleRadians_1;
-const angleDegrees = (vector) => angleRadians(vector) * 57.29577951308232;
-var angleDegrees_1 = angleDegrees;
-const create$C = () => [0, 0];
-var create_1$9 = create$C;
-const create$B = create_1$9;
-const clone$9 = (vector) => {
-  const out = create$B();
-  out[0] = vector[0];
-  out[1] = vector[1];
-  return out;
-};
-var clone_1$7 = clone$9;
-const copy$5 = (out, vector) => {
-  out[0] = vector[0];
-  out[1] = vector[1];
-  return out;
-};
-var copy_1$3 = copy$5;
-const cross$3 = (out, a, b) => {
-  out[0] = 0;
-  out[1] = 0;
-  out[2] = a[0] * b[1] - a[1] * b[0];
-  return out;
-};
-var cross_1 = cross$3;
-const distance$1 = (a, b) => {
-  const x = b[0] - a[0];
-  const y = b[1] - a[1];
-  return Math.sqrt(x * x + y * y);
-};
-var distance_1 = distance$1;
-const divide = (out, a, b) => {
-  out[0] = a[0] / b[0];
-  out[1] = a[1] / b[1];
-  return out;
-};
-var divide_1 = divide;
-const dot$3 = (a, b) => a[0] * b[0] + a[1] * b[1];
-var dot_1$1 = dot$3;
-const equals$8 = (a, b) => a[0] === b[0] && a[1] === b[1];
-var equals_1$5 = equals$8;
-const { sin: sin$6, cos: cos$6 } = trigonometry;
-const fromAngleRadians$1 = (out, radians) => {
-  out[0] = cos$6(radians);
-  out[1] = sin$6(radians);
-  return out;
-};
-var fromAngleRadians_1 = fromAngleRadians$1;
-const fromAngleRadians = fromAngleRadians_1;
-const fromAngleDegrees = (out, degrees2) => fromAngleRadians(out, degrees2 * 0.017453292519943295);
-var fromAngleDegrees_1 = fromAngleDegrees;
-const fromScalar$1 = (out, scalar) => {
-  out[0] = scalar;
-  out[1] = scalar;
-  return out;
-};
-var fromScalar_1$1 = fromScalar$1;
-const create$A = create_1$9;
-const fromValues$3 = (x, y) => {
-  const out = create$A();
-  out[0] = x;
-  out[1] = y;
-  return out;
-};
-var fromValues_1$2 = fromValues$3;
-const length$1 = (vector) => Math.sqrt(vector[0] * vector[0] + vector[1] * vector[1]);
-var length_1 = length$1;
-const lerp = (out, a, b, t) => {
-  const ax = a[0];
-  const ay = a[1];
-  out[0] = ax + t * (b[0] - ax);
-  out[1] = ay + t * (b[1] - ay);
-  return out;
-};
-var lerp_1 = lerp;
-const max = (out, a, b) => {
-  out[0] = Math.max(a[0], b[0]);
-  out[1] = Math.max(a[1], b[1]);
-  return out;
-};
-var max_1 = max;
-const min = (out, a, b) => {
-  out[0] = Math.min(a[0], b[0]);
-  out[1] = Math.min(a[1], b[1]);
-  return out;
-};
-var min_1 = min;
-const multiply = (out, a, b) => {
-  out[0] = a[0] * b[0];
-  out[1] = a[1] * b[1];
-  return out;
-};
-var multiply_1 = multiply;
-const negate = (out, vector) => {
-  out[0] = -vector[0];
-  out[1] = -vector[1];
-  return out;
-};
-var negate_1 = negate;
-const rotate$3 = (out, vector, origin2, radians) => {
-  const x = vector[0] - origin2[0];
-  const y = vector[1] - origin2[1];
-  const c2 = Math.cos(radians);
-  const s = Math.sin(radians);
-  out[0] = x * c2 - y * s + origin2[0];
-  out[1] = x * s + y * c2 + origin2[1];
-  return out;
-};
-var rotate_1$1 = rotate$3;
-const { TAU: TAU$h } = constants$3;
-const create$z = create_1$9;
-const rotate$2 = rotate_1$1;
-const normal = (out, vector) => rotate$2(out, vector, create$z(), TAU$h / 4);
-var normal_1 = normal;
-const normalize$2 = (out, vector) => {
-  const x = vector[0];
-  const y = vector[1];
-  let len = x * x + y * y;
-  if (len > 0) {
-    len = 1 / Math.sqrt(len);
-  }
-  out[0] = x * len;
-  out[1] = y * len;
-  return out;
-};
-var normalize_1 = normalize$2;
-const scale$3 = (out, vector, amount) => {
-  out[0] = vector[0] * amount;
-  out[1] = vector[1] * amount;
-  return out;
-};
-var scale_1$1 = scale$3;
-const snap$1 = (out, vector, epsilon) => {
-  out[0] = Math.round(vector[0] / epsilon) * epsilon + 0;
-  out[1] = Math.round(vector[1] / epsilon) * epsilon + 0;
-  return out;
-};
-var snap_1$1 = snap$1;
-const squaredDistance$1 = (a, b) => {
-  const x = b[0] - a[0];
-  const y = b[1] - a[1];
-  return x * x + y * y;
-};
-var squaredDistance_1 = squaredDistance$1;
-const squaredLength$1 = (vector) => {
-  const x = vector[0];
-  const y = vector[1];
-  return x * x + y * y;
-};
-var squaredLength_1 = squaredLength$1;
-const subtract$6 = (out, a, b) => {
-  out[0] = a[0] - b[0];
-  out[1] = a[1] - b[1];
-  return out;
-};
-var subtract_1$1 = subtract$6;
-const toString$a = (vector) => `[${vector[0].toFixed(7)}, ${vector[1].toFixed(7)}]`;
-var toString_1$8 = toString$a;
-const transform$a = (out, vector, matrix) => {
-  const x = vector[0];
-  const y = vector[1];
-  out[0] = matrix[0] * x + matrix[4] * y + matrix[12];
-  out[1] = matrix[1] * x + matrix[5] * y + matrix[13];
-  return out;
-};
-var transform_1$a = transform$a;
-var vec2$E = {
-  abs: abs_1,
-  add: add_1,
-  angle,
-  angleDegrees: angleDegrees_1,
-  angleRadians: angleRadians_1,
-  clone: clone_1$7,
-  copy: copy_1$3,
-  create: create_1$9,
-  cross: cross_1,
-  distance: distance_1,
-  divide: divide_1,
-  dot: dot_1$1,
-  equals: equals_1$5,
-  fromAngleDegrees: fromAngleDegrees_1,
-  fromAngleRadians: fromAngleRadians_1,
-  fromScalar: fromScalar_1$1,
-  fromValues: fromValues_1$2,
-  length: length_1,
-  lerp: lerp_1,
-  max: max_1,
-  min: min_1,
-  multiply: multiply_1,
-  negate: negate_1,
-  normal: normal_1,
-  normalize: normalize_1,
-  rotate: rotate_1$1,
-  scale: scale_1$1,
-  snap: snap_1$1,
-  squaredDistance: squaredDistance_1,
-  squaredLength: squaredLength_1,
-  subtract: subtract_1$1,
-  toString: toString_1$8,
-  transform: transform_1$a
-};
-const vec2$D = vec2$E;
-const create$y = create_1$a;
-const fromPoints$b = (points) => {
+var create_1$7 = create$w;
+const vec2$v = vec2$w;
+const create$v = create_1$7;
+const fromPoints$a = (points) => {
   if (!Array.isArray(points)) {
     throw new Error("the given points must be an array");
   }
@@ -22831,29 +22830,29 @@ const fromPoints$b = (points) => {
   if (length2 < 3) {
     throw new Error("the given points must define a closed geometry with three or more points");
   }
-  if (vec2$D.equals(points[0], points[length2 - 1]))
+  if (vec2$v.equals(points[0], points[length2 - 1]))
     --length2;
   const sides = [];
   let prevpoint = points[length2 - 1];
   for (let i = 0; i < length2; i++) {
     const point = points[i];
-    sides.push([vec2$D.clone(prevpoint), vec2$D.clone(point)]);
+    sides.push([vec2$v.clone(prevpoint), vec2$v.clone(point)]);
     prevpoint = point;
   }
-  return create$y(sides);
+  return create$v(sides);
 };
-var fromPoints_1$7 = fromPoints$b;
-const mat4$p = mat4$r;
-const vec2$C = vec2$E;
-const create$x = create_1$a;
+var fromPoints_1$6 = fromPoints$a;
+const mat4$f = mat4$h;
+const vec2$u = vec2$w;
+const create$u = create_1$7;
 const fromCompactBinary$2 = (data) => {
   if (data[0] !== 0)
     throw new Error("invalid compact binary data");
-  const created = create$x();
-  created.transforms = mat4$p.clone(data.slice(1, 17));
+  const created = create$u();
+  created.transforms = mat4$f.clone(data.slice(1, 17));
   for (let i = 21; i < data.length; i += 4) {
-    const point0 = vec2$C.fromValues(data[i + 0], data[i + 1]);
-    const point1 = vec2$C.fromValues(data[i + 2], data[i + 3]);
+    const point0 = vec2$u.fromValues(data[i + 0], data[i + 1]);
+    const point1 = vec2$u.fromValues(data[i + 2], data[i + 3]);
     created.sides.push([point0, point1]);
   }
   if (data[17] >= 0) {
@@ -22873,33 +22872,33 @@ const isA$8 = (object) => {
   return false;
 };
 var isA_1$4 = isA$8;
-const mat4$o = mat4$r;
-const vec2$B = vec2$E;
+const mat4$e = mat4$h;
+const vec2$t = vec2$w;
 const applyTransforms$5 = (geometry) => {
-  if (mat4$o.isIdentity(geometry.transforms))
+  if (mat4$e.isIdentity(geometry.transforms))
     return geometry;
   geometry.sides = geometry.sides.map((side) => {
-    const p0 = vec2$B.transform(vec2$B.create(), side[0], geometry.transforms);
-    const p1 = vec2$B.transform(vec2$B.create(), side[1], geometry.transforms);
+    const p0 = vec2$t.transform(vec2$t.create(), side[0], geometry.transforms);
+    const p1 = vec2$t.transform(vec2$t.create(), side[1], geometry.transforms);
     return [p0, p1];
   });
-  geometry.transforms = mat4$o.create();
+  geometry.transforms = mat4$e.create();
   return geometry;
 };
 var applyTransforms_1$2 = applyTransforms$5;
 const applyTransforms$4 = applyTransforms_1$2;
 const toSides$4 = (geometry) => applyTransforms$4(geometry).sides;
 var toSides_1 = toSides$4;
-const create$w = create_1$a;
+const create$t = create_1$7;
 const toSides$3 = toSides_1;
-const reverse$4 = (geometry) => {
+const reverse$3 = (geometry) => {
   const oldsides = toSides$3(geometry);
   const newsides = oldsides.map((side) => [side[1], side[0]]);
   newsides.reverse();
-  return create$w(newsides);
+  return create$t(newsides);
 };
-var reverse_1$4 = reverse$4;
-const vec2$A = vec2$E;
+var reverse_1$3 = reverse$3;
+const vec2$s = vec2$w;
 const toSides$2 = toSides_1;
 const toSharedVertices = (sides) => {
   const unique = /* @__PURE__ */ new Map();
@@ -22970,12 +22969,12 @@ const popNextSide = (startSide, nextSides) => {
   if (nextSides.length === 1) {
     return nextSides.pop();
   }
-  const v0 = vec2$A.create();
-  const startAngle = vec2$A.angleDegrees(vec2$A.subtract(v0, startSide[1], startSide[0]));
+  const v0 = vec2$s.create();
+  const startAngle = vec2$s.angleDegrees(vec2$s.subtract(v0, startSide[1], startSide[0]));
   let bestAngle;
   let bestIndex;
   nextSides.forEach((nextSide2, index) => {
-    const nextAngle = vec2$A.angleDegrees(vec2$A.subtract(v0, nextSide2[1], nextSide2[0]));
+    const nextAngle = vec2$s.angleDegrees(vec2$s.subtract(v0, nextSide2[1], nextSide2[0]));
     let angle2 = nextAngle - startAngle;
     if (angle2 < -180)
       angle2 += 360;
@@ -23001,42 +23000,42 @@ const toPoints$8 = (geometry) => {
   return points;
 };
 var toPoints_1$3 = toPoints$8;
-const vec2$z = vec2$E;
+const vec2$r = vec2$w;
 const toSides = toSides_1;
-const toString$9 = (geometry) => {
+const toString$8 = (geometry) => {
   const sides = toSides(geometry);
   let result = "geom2 (" + sides.length + " sides):\n[\n";
   sides.forEach((side) => {
-    result += "  [" + vec2$z.toString(side[0]) + ", " + vec2$z.toString(side[1]) + "]\n";
+    result += "  [" + vec2$r.toString(side[0]) + ", " + vec2$r.toString(side[1]) + "]\n";
   });
   result += "]\n";
   return result;
 };
-var toString_1$7 = toString$9;
+var toString_1$6 = toString$8;
 const toCompactBinary$2 = (geometry) => {
   const sides = geometry.sides;
-  const transforms2 = geometry.transforms;
+  const transforms = geometry.transforms;
   let color = [-1, -1, -1, -1];
   if (geometry.color)
     color = geometry.color;
   const compacted = new Float32Array(1 + 16 + 4 + sides.length * 4);
   compacted[0] = 0;
-  compacted[1] = transforms2[0];
-  compacted[2] = transforms2[1];
-  compacted[3] = transforms2[2];
-  compacted[4] = transforms2[3];
-  compacted[5] = transforms2[4];
-  compacted[6] = transforms2[5];
-  compacted[7] = transforms2[6];
-  compacted[8] = transforms2[7];
-  compacted[9] = transforms2[8];
-  compacted[10] = transforms2[9];
-  compacted[11] = transforms2[10];
-  compacted[12] = transforms2[11];
-  compacted[13] = transforms2[12];
-  compacted[14] = transforms2[13];
-  compacted[15] = transforms2[14];
-  compacted[16] = transforms2[15];
+  compacted[1] = transforms[0];
+  compacted[2] = transforms[1];
+  compacted[3] = transforms[2];
+  compacted[4] = transforms[3];
+  compacted[5] = transforms[4];
+  compacted[6] = transforms[5];
+  compacted[7] = transforms[6];
+  compacted[8] = transforms[7];
+  compacted[9] = transforms[8];
+  compacted[10] = transforms[9];
+  compacted[11] = transforms[10];
+  compacted[12] = transforms[11];
+  compacted[13] = transforms[12];
+  compacted[14] = transforms[13];
+  compacted[15] = transforms[14];
+  compacted[16] = transforms[15];
   compacted[17] = color[0];
   compacted[18] = color[1];
   compacted[19] = color[2];
@@ -23053,13 +23052,13 @@ const toCompactBinary$2 = (geometry) => {
   return compacted;
 };
 var toCompactBinary_1$2 = toCompactBinary$2;
-const mat4$n = mat4$r;
-const transform$9 = (matrix, geometry) => {
-  const transforms2 = mat4$n.multiply(mat4$n.create(), matrix, geometry.transforms);
-  return Object.assign({}, geometry, { transforms: transforms2 });
+const mat4$d = mat4$h;
+const transform$7 = (matrix, geometry) => {
+  const transforms = mat4$d.multiply(mat4$d.create(), matrix, geometry.transforms);
+  return Object.assign({}, geometry, { transforms });
 };
-var transform_1$9 = transform$9;
-const vec2$y = vec2$E;
+var transform_1$7 = transform$7;
+const vec2$q = vec2$w;
 const isA$7 = isA_1$4;
 const toOutlines$1 = toOutlines_1;
 const validate$3 = (object) => {
@@ -23068,7 +23067,7 @@ const validate$3 = (object) => {
   }
   toOutlines$1(object);
   object.sides.forEach((side) => {
-    if (vec2$y.equals(side[0], side[1])) {
+    if (vec2$q.equals(side[0], side[1])) {
       throw new Error(`geom2 self-edge ${side[0]}`);
     }
   });
@@ -23077,93 +23076,260 @@ const validate$3 = (object) => {
   }
 };
 var validate_1$3 = validate$3;
-var geom2$K = {
-  clone: clone_1$a,
-  create: create_1$a,
-  fromPoints: fromPoints_1$7,
+var geom2$i = {
+  clone: clone_1$8,
+  create: create_1$7,
+  fromPoints: fromPoints_1$6,
   fromCompactBinary: fromCompactBinary_1$2,
   isA: isA_1$4,
-  reverse: reverse_1$4,
+  reverse: reverse_1$3,
   toOutlines: toOutlines_1,
   toPoints: toPoints_1$3,
   toSides: toSides_1,
-  toString: toString_1$7,
+  toString: toString_1$6,
   toCompactBinary: toCompactBinary_1$2,
-  transform: transform_1$9,
+  transform: transform_1$7,
   validate: validate_1$3
 };
-const clone$8 = (geometry) => Object.assign({}, geometry);
-var clone_1$6 = clone$8;
-const mat4$m = mat4$r;
-const create$v = (polygons) => {
+const geom2$j = /* @__PURE__ */ getDefaultExportFromCjs(geom2$i);
+const isNumberArray$3 = (array, dimension) => {
+  if (Array.isArray(array) && array.length >= dimension) {
+    return array.every((n) => Number.isFinite(n));
+  }
+  return false;
+};
+const isGT$2 = (value, constant) => Number.isFinite(value) && value > constant;
+const isGTE$2 = (value, constant) => Number.isFinite(value) && value >= constant;
+var commonChecks = {
+  isNumberArray: isNumberArray$3,
+  isGT: isGT$2,
+  isGTE: isGTE$2
+};
+const { EPS: EPS$b, TAU: TAU$6 } = constants$3;
+const vec2$p = vec2$w;
+const geom2$h = geom2$i;
+const { sin: sin$1, cos: cos$1 } = trigonometry;
+const { isGTE: isGTE$1, isNumberArray: isNumberArray$2 } = commonChecks;
+const ellipse$1 = (options) => {
+  const defaults = {
+    center: [0, 0],
+    radius: [1, 1],
+    startAngle: 0,
+    endAngle: TAU$6,
+    segments: 32
+  };
+  let { center: center2, radius, startAngle, endAngle, segments } = Object.assign({}, defaults, options);
+  if (!isNumberArray$2(center2, 2))
+    throw new Error("center must be an array of X and Y values");
+  if (!isNumberArray$2(radius, 2))
+    throw new Error("radius must be an array of X and Y values");
+  if (!radius.every((n) => n > 0))
+    throw new Error("radius values must be greater than zero");
+  if (!isGTE$1(startAngle, 0))
+    throw new Error("startAngle must be positive");
+  if (!isGTE$1(endAngle, 0))
+    throw new Error("endAngle must be positive");
+  if (!isGTE$1(segments, 3))
+    throw new Error("segments must be three or more");
+  startAngle = startAngle % TAU$6;
+  endAngle = endAngle % TAU$6;
+  let rotation = TAU$6;
+  if (startAngle < endAngle) {
+    rotation = endAngle - startAngle;
+  }
+  if (startAngle > endAngle) {
+    rotation = endAngle + (TAU$6 - startAngle);
+  }
+  const minradius = Math.min(radius[0], radius[1]);
+  const minangle = Math.acos((minradius * minradius + minradius * minradius - EPS$b * EPS$b) / (2 * minradius * minradius));
+  if (rotation < minangle)
+    throw new Error("startAngle and endAngle do not define a significant rotation");
+  segments = Math.floor(segments * (rotation / TAU$6));
+  const centerv = vec2$p.clone(center2);
+  const step = rotation / segments;
+  const points = [];
+  segments = rotation < TAU$6 ? segments + 1 : segments;
+  for (let i = 0; i < segments; i++) {
+    const angle2 = step * i + startAngle;
+    const point = vec2$p.fromValues(radius[0] * cos$1(angle2), radius[1] * sin$1(angle2));
+    vec2$p.add(point, centerv, point);
+    points.push(point);
+  }
+  if (rotation < TAU$6)
+    points.push(centerv);
+  return geom2$h.fromPoints(points);
+};
+var ellipse_1 = ellipse$1;
+const { TAU: TAU$5 } = constants$3;
+const ellipse = ellipse_1;
+const { isGT: isGT$1 } = commonChecks;
+const circle = (options) => {
+  const defaults = {
+    center: [0, 0],
+    radius: 1,
+    startAngle: 0,
+    endAngle: TAU$5,
+    segments: 32
+  };
+  let { center: center2, radius, startAngle, endAngle, segments } = Object.assign({}, defaults, options);
+  if (!isGT$1(radius, 0))
+    throw new Error("radius must be greater than zero");
+  radius = [radius, radius];
+  return ellipse({ center: center2, radius, startAngle, endAngle, segments });
+};
+var circle_1 = circle;
+const circle$1 = /* @__PURE__ */ getDefaultExportFromCjs(circle_1);
+const vec2$o = vec2$w;
+const geom2$g = geom2$i;
+const { isNumberArray: isNumberArray$1 } = commonChecks;
+const rectangle = (options) => {
+  const defaults = {
+    center: [0, 0],
+    size: [2, 2]
+  };
+  const { center: center2, size } = Object.assign({}, defaults, options);
+  if (!isNumberArray$1(center2, 2))
+    throw new Error("center must be an array of X and Y values");
+  if (!isNumberArray$1(size, 2))
+    throw new Error("size must be an array of X and Y values");
+  if (!size.every((n) => n > 0))
+    throw new Error("size values must be greater than zero");
+  const point = [size[0] / 2, size[1] / 2];
+  const pswap = [point[0], -point[1]];
+  const points = [
+    vec2$o.subtract(vec2$o.create(), center2, point),
+    vec2$o.add(vec2$o.create(), center2, pswap),
+    vec2$o.add(vec2$o.create(), center2, point),
+    vec2$o.subtract(vec2$o.create(), center2, pswap)
+  ];
+  return geom2$g.fromPoints(points);
+};
+var rectangle_1 = rectangle;
+const rectangle$1 = /* @__PURE__ */ getDefaultExportFromCjs(rectangle_1);
+const { EPS: EPS$a, TAU: TAU$4 } = constants$3;
+const vec2$n = vec2$w;
+const geom2$f = geom2$i;
+const { isGT, isGTE, isNumberArray } = commonChecks;
+const roundedRectangle = (options) => {
+  const defaults = {
+    center: [0, 0],
+    size: [2, 2],
+    roundRadius: 0.2,
+    segments: 32
+  };
+  let { center: center2, size, roundRadius, segments } = Object.assign({}, defaults, options);
+  if (!isNumberArray(center2, 2))
+    throw new Error("center must be an array of X and Y values");
+  if (!isNumberArray(size, 2))
+    throw new Error("size must be an array of X and Y values");
+  if (!size.every((n) => n > 0))
+    throw new Error("size values must be greater than zero");
+  if (!isGT(roundRadius, 0))
+    throw new Error("roundRadius must be greater than zero");
+  if (!isGTE(segments, 4))
+    throw new Error("segments must be four or more");
+  size = size.map((v) => v / 2);
+  if (roundRadius > size[0] - EPS$a || roundRadius > size[1] - EPS$a)
+    throw new Error("roundRadius must be smaller then the radius of all dimensions");
+  const cornersegments = Math.floor(segments / 4);
+  const corner0 = vec2$n.add(vec2$n.create(), center2, [size[0] - roundRadius, size[1] - roundRadius]);
+  const corner1 = vec2$n.add(vec2$n.create(), center2, [roundRadius - size[0], size[1] - roundRadius]);
+  const corner2 = vec2$n.add(vec2$n.create(), center2, [roundRadius - size[0], roundRadius - size[1]]);
+  const corner3 = vec2$n.add(vec2$n.create(), center2, [size[0] - roundRadius, roundRadius - size[1]]);
+  const corner0Points = [];
+  const corner1Points = [];
+  const corner2Points = [];
+  const corner3Points = [];
+  for (let i = 0; i <= cornersegments; i++) {
+    const radians = TAU$4 / 4 * i / cornersegments;
+    const point = vec2$n.fromAngleRadians(vec2$n.create(), radians);
+    vec2$n.scale(point, point, roundRadius);
+    corner0Points.push(vec2$n.add(vec2$n.create(), corner0, point));
+    vec2$n.rotate(point, point, vec2$n.create(), TAU$4 / 4);
+    corner1Points.push(vec2$n.add(vec2$n.create(), corner1, point));
+    vec2$n.rotate(point, point, vec2$n.create(), TAU$4 / 4);
+    corner2Points.push(vec2$n.add(vec2$n.create(), corner2, point));
+    vec2$n.rotate(point, point, vec2$n.create(), TAU$4 / 4);
+    corner3Points.push(vec2$n.add(vec2$n.create(), corner3, point));
+  }
+  return geom2$f.fromPoints(corner0Points.concat(corner1Points, corner2Points, corner3Points));
+};
+var roundedRectangle_1 = roundedRectangle;
+const roundedRectangle$1 = /* @__PURE__ */ getDefaultExportFromCjs(roundedRectangle_1);
+const flatten$b = (arr) => arr.reduce((acc, val) => Array.isArray(val) ? acc.concat(flatten$b(val)) : acc.concat(val), []);
+var flatten_1 = flatten$b;
+const clone$7 = (geometry) => Object.assign({}, geometry);
+var clone_1$5 = clone$7;
+const mat4$c = mat4$h;
+const create$s = (polygons) => {
   if (polygons === void 0) {
     polygons = [];
   }
   return {
     polygons,
-    transforms: mat4$m.create()
+    transforms: mat4$c.create()
   };
 };
-var create_1$8 = create$v;
-const create$u = (vertices) => {
+var create_1$6 = create$s;
+const create$r = (vertices) => {
   if (vertices === void 0 || vertices.length < 3) {
     vertices = [];
   }
   return { vertices };
 };
-var create_1$7 = create$u;
-const create$t = create_1$7;
-const vec3$W = vec3$Y;
-const clone$7 = (...params) => {
+var create_1$5 = create$r;
+const create$q = create_1$5;
+const vec3$A = vec3$C;
+const clone$6 = (...params) => {
   let out;
   let poly32;
   if (params.length === 1) {
-    out = create$t();
+    out = create$q();
     poly32 = params[0];
   } else {
     out = params[0];
     poly32 = params[1];
   }
-  out.vertices = poly32.vertices.map((vec) => vec3$W.clone(vec));
+  out.vertices = poly32.vertices.map((vec) => vec3$A.clone(vec));
   return out;
 };
-var clone_1$5 = clone$7;
-const vec3$V = vec3$Y;
-const create$s = create_1$7;
-const fromPoints$a = (points) => {
-  const vertices = points.map((point) => vec3$V.clone(point));
-  return create$s(vertices);
+var clone_1$4 = clone$6;
+const vec3$z = vec3$C;
+const create$p = create_1$5;
+const fromPoints$9 = (points) => {
+  const vertices = points.map((point) => vec3$z.clone(point));
+  return create$p(vertices);
 };
-var fromPoints_1$6 = fromPoints$a;
-const create$r = create_1$7;
+var fromPoints_1$5 = fromPoints$9;
+const create$o = create_1$5;
 const fromPointsAndPlane = (vertices, plane2) => {
-  const poly = create$r(vertices);
+  const poly = create$o(vertices);
   poly.plane = plane2;
   return poly;
 };
 var fromPointsAndPlane_1 = fromPointsAndPlane;
-const create$q = () => [0, 0, 0, 0];
-var create_1$6 = create$q;
-const create$p = create_1$6;
-const clone$6 = (vector) => {
-  const out = create$p();
+const create$n = () => [0, 0, 0, 0];
+var create_1$4 = create$n;
+const create$m = create_1$4;
+const clone$5 = (vector) => {
+  const out = create$m();
   out[0] = vector[0];
   out[1] = vector[1];
   out[2] = vector[2];
   out[3] = vector[3];
   return out;
 };
-var clone_1$4 = clone$6;
-const copy$4 = (out, vector) => {
+var clone_1$3 = clone$5;
+const copy$2 = (out, vector) => {
   out[0] = vector[0];
   out[1] = vector[1];
   out[2] = vector[2];
   out[3] = vector[3];
   return out;
 };
-var copy_1$2 = copy$4;
-const equals$7 = (a, b) => a[0] === b[0] && a[1] === b[1] && a[2] === b[2] && a[3] === b[3];
-var equals_1$4 = equals$7;
+var copy_1$1 = copy$2;
+const equals$6 = (a, b) => a[0] === b[0] && a[1] === b[1] && a[2] === b[2] && a[3] === b[3];
+var equals_1$3 = equals$6;
 const flip$3 = (out, plane2) => {
   out[0] = -plane2[0];
   out[1] = -plane2[1];
@@ -23172,10 +23338,10 @@ const flip$3 = (out, plane2) => {
   return out;
 };
 var flip_1$1 = flip$3;
-const vec3$U = vec3$Y;
+const vec3$y = vec3$C;
 const fromNormalAndPoint = (out, normal2, point) => {
-  const u = vec3$U.normalize(vec3$U.create(), normal2);
-  const w = vec3$U.dot(point, u);
+  const u = vec3$y.normalize(vec3$y.create(), normal2);
+  const w = vec3$y.dot(point, u);
   out[0] = u[0];
   out[1] = u[1];
   out[2] = u[2];
@@ -23183,9 +23349,9 @@ const fromNormalAndPoint = (out, normal2, point) => {
   return out;
 };
 var fromNormalAndPoint_1 = fromNormalAndPoint;
-const create$o = create_1$6;
+const create$l = create_1$4;
 const fromValues$2 = (x, y, z, w) => {
-  const out = create$o();
+  const out = create$l();
   out[0] = x;
   out[1] = y;
   out[2] = z;
@@ -23193,54 +23359,54 @@ const fromValues$2 = (x, y, z, w) => {
   return out;
 };
 var fromValues_1$1 = fromValues$2;
-const vec3$T = vec3$Y;
-const fromPoints$9 = (out, ...vertices) => {
+const vec3$x = vec3$C;
+const fromPoints$8 = (out, ...vertices) => {
   const len = vertices.length;
-  const ba = vec3$T.create();
-  const ca = vec3$T.create();
+  const ba = vec3$x.create();
+  const ca = vec3$x.create();
   const vertexNormal = (index) => {
     const a = vertices[index];
     const b = vertices[(index + 1) % len];
     const c2 = vertices[(index + 2) % len];
-    vec3$T.subtract(ba, b, a);
-    vec3$T.subtract(ca, c2, a);
-    vec3$T.cross(ba, ba, ca);
-    vec3$T.normalize(ba, ba);
+    vec3$x.subtract(ba, b, a);
+    vec3$x.subtract(ca, c2, a);
+    vec3$x.cross(ba, ba, ca);
+    vec3$x.normalize(ba, ba);
     return ba;
   };
   out[0] = 0;
   out[1] = 0;
   out[2] = 0;
   if (len === 3) {
-    vec3$T.copy(out, vertexNormal(0));
+    vec3$x.copy(out, vertexNormal(0));
   } else {
     vertices.forEach((v, i) => {
-      vec3$T.add(out, out, vertexNormal(i));
+      vec3$x.add(out, out, vertexNormal(i));
     });
-    vec3$T.normalize(out, out);
+    vec3$x.normalize(out, out);
   }
-  out[3] = vec3$T.dot(out, vertices[0]);
+  out[3] = vec3$x.dot(out, vertices[0]);
   return out;
 };
-var fromPoints_1$5 = fromPoints$9;
-const { EPS: EPS$h } = constants$3;
-const vec3$S = vec3$Y;
+var fromPoints_1$4 = fromPoints$8;
+const { EPS: EPS$9 } = constants$3;
+const vec3$w = vec3$C;
 const fromPointsRandom = (out, a, b, c2) => {
-  let ba = vec3$S.subtract(vec3$S.create(), b, a);
-  let ca = vec3$S.subtract(vec3$S.create(), c2, a);
-  if (vec3$S.length(ba) < EPS$h) {
-    ba = vec3$S.orthogonal(ba, ca);
+  let ba = vec3$w.subtract(vec3$w.create(), b, a);
+  let ca = vec3$w.subtract(vec3$w.create(), c2, a);
+  if (vec3$w.length(ba) < EPS$9) {
+    ba = vec3$w.orthogonal(ba, ca);
   }
-  if (vec3$S.length(ca) < EPS$h) {
-    ca = vec3$S.orthogonal(ca, ba);
+  if (vec3$w.length(ca) < EPS$9) {
+    ca = vec3$w.orthogonal(ca, ba);
   }
-  let normal2 = vec3$S.cross(vec3$S.create(), ba, ca);
-  if (vec3$S.length(normal2) < EPS$h) {
-    ca = vec3$S.orthogonal(ca, ba);
-    normal2 = vec3$S.cross(normal2, ba, ca);
+  let normal2 = vec3$w.cross(vec3$w.create(), ba, ca);
+  if (vec3$w.length(normal2) < EPS$9) {
+    ca = vec3$w.orthogonal(ca, ba);
+    normal2 = vec3$w.cross(normal2, ba, ca);
   }
-  normal2 = vec3$S.normalize(normal2, normal2);
-  const w = vec3$S.dot(normal2, a);
+  normal2 = vec3$w.normalize(normal2, normal2);
+  const w = vec3$w.dot(normal2, a);
   out[0] = normal2[0];
   out[1] = normal2[1];
   out[2] = normal2[2];
@@ -23248,64 +23414,64 @@ const fromPointsRandom = (out, a, b, c2) => {
   return out;
 };
 var fromPointsRandom_1 = fromPointsRandom;
-const vec3$R = vec3$Y;
+const vec3$v = vec3$C;
 const projectionOfPoint = (plane2, point) => {
   const a = point[0] * plane2[0] + point[1] * plane2[1] + point[2] * plane2[2] - plane2[3];
   const x = point[0] - a * plane2[0];
   const y = point[1] - a * plane2[1];
   const z = point[2] - a * plane2[2];
-  return vec3$R.fromValues(x, y, z);
+  return vec3$v.fromValues(x, y, z);
 };
 var projectionOfPoint_1 = projectionOfPoint;
-const vec3$Q = vec3$Y;
-const signedDistanceToPoint$1 = (plane2, point) => vec3$Q.dot(plane2, point) - plane2[3];
+const vec3$u = vec3$C;
+const signedDistanceToPoint$1 = (plane2, point) => vec3$u.dot(plane2, point) - plane2[3];
 var signedDistanceToPoint_1 = signedDistanceToPoint$1;
-const toString$8 = (vec) => `(${vec[0].toFixed(9)}, ${vec[1].toFixed(9)}, ${vec[2].toFixed(9)}, ${vec[3].toFixed(9)})`;
-var toString_1$6 = toString$8;
-const mat4$l = mat4$r;
-const vec3$P = vec3$Y;
-const fromPoints$8 = fromPoints_1$5;
+const toString$7 = (vec) => `(${vec[0].toFixed(9)}, ${vec[1].toFixed(9)}, ${vec[2].toFixed(9)}, ${vec[3].toFixed(9)})`;
+var toString_1$5 = toString$7;
+const mat4$b = mat4$h;
+const vec3$t = vec3$C;
+const fromPoints$7 = fromPoints_1$4;
 const flip$2 = flip_1$1;
-const transform$8 = (out, plane2, matrix) => {
-  const ismirror = mat4$l.isMirroring(matrix);
-  const r = vec3$P.orthogonal(vec3$P.create(), plane2);
-  const u = vec3$P.cross(r, plane2, r);
-  const v = vec3$P.cross(vec3$P.create(), plane2, u);
-  let point1 = vec3$P.fromScalar(vec3$P.create(), plane2[3]);
-  vec3$P.multiply(point1, point1, plane2);
-  let point2 = vec3$P.add(vec3$P.create(), point1, u);
-  let point3 = vec3$P.add(vec3$P.create(), point1, v);
-  point1 = vec3$P.transform(point1, point1, matrix);
-  point2 = vec3$P.transform(point2, point2, matrix);
-  point3 = vec3$P.transform(point3, point3, matrix);
-  fromPoints$8(out, point1, point2, point3);
+const transform$6 = (out, plane2, matrix) => {
+  const ismirror = mat4$b.isMirroring(matrix);
+  const r = vec3$t.orthogonal(vec3$t.create(), plane2);
+  const u = vec3$t.cross(r, plane2, r);
+  const v = vec3$t.cross(vec3$t.create(), plane2, u);
+  let point1 = vec3$t.fromScalar(vec3$t.create(), plane2[3]);
+  vec3$t.multiply(point1, point1, plane2);
+  let point2 = vec3$t.add(vec3$t.create(), point1, u);
+  let point3 = vec3$t.add(vec3$t.create(), point1, v);
+  point1 = vec3$t.transform(point1, point1, matrix);
+  point2 = vec3$t.transform(point2, point2, matrix);
+  point3 = vec3$t.transform(point3, point3, matrix);
+  fromPoints$7(out, point1, point2, point3);
   if (ismirror) {
     flip$2(out, out);
   }
   return out;
 };
-var transform_1$8 = transform$8;
-var plane$b = {
+var transform_1$6 = transform$6;
+var plane$9 = {
   /**
    * @see [vec4.clone()]{@link module:modeling/maths/vec4.clone}
    * @function clone
    */
-  clone: clone_1$4,
+  clone: clone_1$3,
   /**
    * @see [vec4.copy()]{@link module:modeling/maths/vec4.copy}
    * @function copy
    */
-  copy: copy_1$2,
+  copy: copy_1$1,
   /**
    * @see [vec4.create()]{@link module:modeling/maths/vec4.create}
    * @function create
    */
-  create: create_1$6,
+  create: create_1$4,
   /**
    * @see [vec4.equals()]{@link module:modeling/maths/vec4.equals}
    * @function equals
    */
-  equals: equals_1$4,
+  equals: equals_1$3,
   flip: flip_1$1,
   fromNormalAndPoint: fromNormalAndPoint_1,
   /**
@@ -23313,7 +23479,7 @@ var plane$b = {
    * @function fromValues
    */
   fromValues: fromValues_1$1,
-  fromPoints: fromPoints_1$5,
+  fromPoints: fromPoints_1$4,
   fromPointsRandom: fromPointsRandom_1,
   projectionOfPoint: projectionOfPoint_1,
   signedDistanceToPoint: signedDistanceToPoint_1,
@@ -23321,16 +23487,16 @@ var plane$b = {
    * @see [vec4.toString()]{@link module:modeling/maths/vec4.toString}
    * @function toString
    */
-  toString: toString_1$6,
-  transform: transform_1$8
+  toString: toString_1$5,
+  transform: transform_1$6
 };
-const plane$a = plane$b;
-const create$n = create_1$7;
-const invert$1 = (polygon2) => {
-  const vertices = polygon2.vertices.slice().reverse();
-  const inverted = create$n(vertices);
-  if (polygon2.plane) {
-    inverted.plane = plane$a.flip(plane$a.create(), polygon2.plane);
+const plane$8 = plane$9;
+const create$k = create_1$5;
+const invert$1 = (polygon) => {
+  const vertices = polygon.vertices.slice().reverse();
+  const inverted = create$k(vertices);
+  if (polygon.plane) {
+    inverted.plane = plane$8.flip(plane$8.create(), polygon.plane);
   }
   return inverted;
 };
@@ -23346,13 +23512,13 @@ const isA$6 = (object) => {
   return false;
 };
 var isA_1$3 = isA$6;
-const plane$9 = plane$b;
-const vec3$O = vec3$Y;
-const isConvex$1 = (polygon2) => areVerticesConvex(polygon2.vertices);
+const plane$7 = plane$9;
+const vec3$s = vec3$C;
+const isConvex$1 = (polygon) => areVerticesConvex(polygon.vertices);
 const areVerticesConvex = (vertices) => {
   const numvertices = vertices.length;
   if (numvertices > 2) {
-    const normal2 = plane$9.fromPoints(plane$9.create(), ...vertices);
+    const normal2 = plane$7.fromPoints(plane$7.create(), ...vertices);
     let prevprevpos = vertices[numvertices - 2];
     let prevpos = vertices[numvertices - 1];
     for (let i = 0; i < numvertices; i++) {
@@ -23367,31 +23533,31 @@ const areVerticesConvex = (vertices) => {
   return true;
 };
 const isConvexPoint = (prevpoint, point, nextpoint, normal2) => {
-  const crossproduct = vec3$O.cross(
-    vec3$O.create(),
-    vec3$O.subtract(vec3$O.create(), point, prevpoint),
-    vec3$O.subtract(vec3$O.create(), nextpoint, point)
+  const crossproduct = vec3$s.cross(
+    vec3$s.create(),
+    vec3$s.subtract(vec3$s.create(), point, prevpoint),
+    vec3$s.subtract(vec3$s.create(), nextpoint, point)
   );
-  const crossdotnormal = vec3$O.dot(crossproduct, normal2);
+  const crossdotnormal = vec3$s.dot(crossproduct, normal2);
   return crossdotnormal >= 0;
 };
 var isConvex_1 = isConvex$1;
-const mplane = plane$b;
-const plane$8 = (polygon2) => {
-  if (!polygon2.plane) {
-    polygon2.plane = mplane.fromPoints(mplane.create(), ...polygon2.vertices);
+const mplane = plane$9;
+const plane$6 = (polygon) => {
+  if (!polygon.plane) {
+    polygon.plane = mplane.fromPoints(mplane.create(), ...polygon.vertices);
   }
-  return polygon2.plane;
+  return polygon.plane;
 };
-var plane_1 = plane$8;
-const plane$7 = plane_1;
-const measureArea$5 = (polygon2) => {
-  const n = polygon2.vertices.length;
+var plane_1 = plane$6;
+const plane$5 = plane_1;
+const measureArea$3 = (polygon) => {
+  const n = polygon.vertices.length;
   if (n < 3) {
     return 0;
   }
-  const vertices = polygon2.vertices;
-  const normal2 = plane$7(polygon2);
+  const vertices = polygon.vertices;
+  const normal2 = plane$5(polygon);
   const ax = Math.abs(normal2[0]);
   const ay = Math.abs(normal2[1]);
   const az = Math.abs(normal2[2]);
@@ -23440,22 +23606,22 @@ const measureArea$5 = (polygon2) => {
   }
   return area2;
 };
-var measureArea_1$2 = measureArea$5;
-const vec3$N = vec3$Y;
-const measureBoundingBox$7 = (polygon2) => {
-  const vertices = polygon2.vertices;
+var measureArea_1$1 = measureArea$3;
+const vec3$r = vec3$C;
+const measureBoundingBox$4 = (polygon) => {
+  const vertices = polygon.vertices;
   const numvertices = vertices.length;
-  const min2 = numvertices === 0 ? vec3$N.create() : vec3$N.clone(vertices[0]);
-  const max2 = vec3$N.clone(min2);
+  const min2 = numvertices === 0 ? vec3$r.create() : vec3$r.clone(vertices[0]);
+  const max2 = vec3$r.clone(min2);
   for (let i = 1; i < numvertices; i++) {
-    vec3$N.min(min2, min2, vertices[i]);
-    vec3$N.max(max2, max2, vertices[i]);
+    vec3$r.min(min2, min2, vertices[i]);
+    vec3$r.max(max2, max2, vertices[i]);
   }
   return [min2, max2];
 };
-var measureBoundingBox_1$1 = measureBoundingBox$7;
-const dot$2 = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3];
-var dot_1 = dot$2;
+var measureBoundingBox_1$1 = measureBoundingBox$4;
+const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3];
+var dot_1 = dot;
 const fromScalar = (out, scalar) => {
   out[0] = scalar;
   out[1] = scalar;
@@ -23464,7 +23630,7 @@ const fromScalar = (out, scalar) => {
   return out;
 };
 var fromScalar_1 = fromScalar;
-const transform$7 = (out, vector, matrix) => {
+const transform$5 = (out, vector, matrix) => {
   const [x, y, z, w] = vector;
   out[0] = matrix[0] * x + matrix[4] * y + matrix[8] * z + matrix[12] * w;
   out[1] = matrix[1] * x + matrix[5] * y + matrix[9] * z + matrix[13] * w;
@@ -23472,25 +23638,25 @@ const transform$7 = (out, vector, matrix) => {
   out[3] = matrix[3] * x + matrix[7] * y + matrix[11] * z + matrix[15] * w;
   return out;
 };
-var transform_1$7 = transform$7;
+var transform_1$5 = transform$5;
 var vec4$1 = {
-  clone: clone_1$4,
-  copy: copy_1$2,
-  create: create_1$6,
+  clone: clone_1$3,
+  copy: copy_1$1,
+  create: create_1$4,
   dot: dot_1,
-  equals: equals_1$4,
+  equals: equals_1$3,
   fromScalar: fromScalar_1,
   fromValues: fromValues_1$1,
-  toString: toString_1$6,
-  transform: transform_1$7
+  toString: toString_1$5,
+  transform: transform_1$5
 };
 const vec4 = vec4$1;
-const cache$3 = /* @__PURE__ */ new WeakMap();
-const measureBoundingSphere$1 = (polygon2) => {
-  let boundingSphere = cache$3.get(polygon2);
+const cache$1 = /* @__PURE__ */ new WeakMap();
+const measureBoundingSphere = (polygon) => {
+  let boundingSphere = cache$1.get(polygon);
   if (boundingSphere)
     return boundingSphere;
-  const vertices = polygon2.vertices;
+  const vertices = polygon.vertices;
   const out = vec4.create();
   if (vertices.length === 0) {
     out[0] = 0;
@@ -23526,53 +23692,53 @@ const measureBoundingSphere$1 = (polygon2) => {
   const y = out[1] - maxy[1];
   const z = out[2] - maxz[2];
   out[3] = Math.sqrt(x * x + y * y + z * z);
-  cache$3.set(polygon2, out);
+  cache$1.set(polygon, out);
   return out;
 };
-var measureBoundingSphere_1$1 = measureBoundingSphere$1;
-const vec3$M = vec3$Y;
-const measureSignedVolume = (polygon2) => {
+var measureBoundingSphere_1 = measureBoundingSphere;
+const vec3$q = vec3$C;
+const measureSignedVolume = (polygon) => {
   let signedVolume = 0;
-  const vertices = polygon2.vertices;
-  const cross2 = vec3$M.create();
+  const vertices = polygon.vertices;
+  const cross2 = vec3$q.create();
   for (let i = 0; i < vertices.length - 2; i++) {
-    vec3$M.cross(cross2, vertices[i + 1], vertices[i + 2]);
-    signedVolume += vec3$M.dot(vertices[0], cross2);
+    vec3$q.cross(cross2, vertices[i + 1], vertices[i + 2]);
+    signedVolume += vec3$q.dot(vertices[0], cross2);
   }
   signedVolume /= 6;
   return signedVolume;
 };
 var measureSignedVolume_1 = measureSignedVolume;
-const toPoints$7 = (polygon2) => polygon2.vertices;
+const toPoints$7 = (polygon) => polygon.vertices;
 var toPoints_1$2 = toPoints$7;
-const vec3$L = vec3$Y;
-const toString$7 = (polygon2) => {
+const vec3$p = vec3$C;
+const toString$6 = (polygon) => {
   let result = "poly3: vertices: [";
-  polygon2.vertices.forEach((vertex2) => {
-    result += `${vec3$L.toString(vertex2)}, `;
+  polygon.vertices.forEach((vertex2) => {
+    result += `${vec3$p.toString(vertex2)}, `;
   });
   result += "]";
   return result;
 };
-var toString_1$5 = toString$7;
-const mat4$k = mat4$r;
-const vec3$K = vec3$Y;
-const create$m = create_1$7;
-const transform$6 = (matrix, polygon2) => {
-  const vertices = polygon2.vertices.map((vertex2) => vec3$K.transform(vec3$K.create(), vertex2, matrix));
-  if (mat4$k.isMirroring(matrix)) {
+var toString_1$4 = toString$6;
+const mat4$a = mat4$h;
+const vec3$o = vec3$C;
+const create$j = create_1$5;
+const transform$4 = (matrix, polygon) => {
+  const vertices = polygon.vertices.map((vertex2) => vec3$o.transform(vec3$o.create(), vertex2, matrix));
+  if (mat4$a.isMirroring(matrix)) {
     vertices.reverse();
   }
-  return create$m(vertices);
+  return create$j(vertices);
 };
-var transform_1$6 = transform$6;
+var transform_1$4 = transform$4;
 const signedDistanceToPoint = signedDistanceToPoint_1;
-const { NEPS: NEPS$2 } = constants$3;
-const vec3$J = vec3$Y;
+const { NEPS: NEPS$1 } = constants$3;
+const vec3$n = vec3$C;
 const isA$5 = isA_1$3;
 const isConvex = isConvex_1;
-const measureArea$4 = measureArea_1$2;
-const plane$6 = plane_1;
+const measureArea$2 = measureArea_1$1;
+const plane$4 = plane_1;
 const validate$2 = (object) => {
   if (!isA$5(object)) {
     throw new Error("invalid poly3 structure");
@@ -23580,11 +23746,11 @@ const validate$2 = (object) => {
   if (object.vertices.length < 3) {
     throw new Error(`poly3 not enough vertices ${object.vertices.length}`);
   }
-  if (measureArea$4(object) <= 0) {
+  if (measureArea$2(object) <= 0) {
     throw new Error("poly3 area must be greater than zero");
   }
   for (let i = 0; i < object.vertices.length; i++) {
-    if (vec3$J.equals(object.vertices[i], object.vertices[(i + 1) % object.vertices.length])) {
+    if (vec3$n.equals(object.vertices[i], object.vertices[(i + 1) % object.vertices.length])) {
       throw new Error(`poly3 duplicate vertex ${object.vertices[i]}`);
     }
   }
@@ -23597,57 +23763,57 @@ const validate$2 = (object) => {
     }
   });
   if (object.vertices.length > 3) {
-    const normal2 = plane$6(object);
+    const normal2 = plane$4(object);
     object.vertices.forEach((vertex2) => {
       const dist = Math.abs(signedDistanceToPoint(normal2, vertex2));
-      if (dist > NEPS$2) {
+      if (dist > NEPS$1) {
         throw new Error(`poly3 must be coplanar: vertex ${vertex2} distance ${dist}`);
       }
     });
   }
 };
 var validate_1$2 = validate$2;
-var poly3$A = {
-  clone: clone_1$5,
-  create: create_1$7,
-  fromPoints: fromPoints_1$6,
+var poly3$m = {
+  clone: clone_1$4,
+  create: create_1$5,
+  fromPoints: fromPoints_1$5,
   fromPointsAndPlane: fromPointsAndPlane_1,
   invert: invert_1$1,
   isA: isA_1$3,
   isConvex: isConvex_1,
-  measureArea: measureArea_1$2,
+  measureArea: measureArea_1$1,
   measureBoundingBox: measureBoundingBox_1$1,
-  measureBoundingSphere: measureBoundingSphere_1$1,
+  measureBoundingSphere: measureBoundingSphere_1,
   measureSignedVolume: measureSignedVolume_1,
   plane: plane_1,
   toPoints: toPoints_1$2,
-  toString: toString_1$5,
-  transform: transform_1$6,
+  toString: toString_1$4,
+  transform: transform_1$4,
   validate: validate_1$2
 };
-const poly3$z = poly3$A;
-const create$l = create_1$8;
-const fromPoints$7 = (listofpoints) => {
+const poly3$l = poly3$m;
+const create$i = create_1$6;
+const fromPoints$6 = (listofpoints) => {
   if (!Array.isArray(listofpoints)) {
     throw new Error("the given points must be an array");
   }
   const polygons = listofpoints.map((points, index) => {
-    const polygon2 = poly3$z.create(points);
-    return polygon2;
+    const polygon = poly3$l.create(points);
+    return polygon;
   });
-  const result = create$l(polygons);
+  const result = create$i(polygons);
   return result;
 };
-var fromPoints_1$4 = fromPoints$7;
-const vec3$I = vec3$Y;
-const mat4$j = mat4$r;
-const poly3$y = poly3$A;
-const create$k = create_1$8;
+var fromPoints_1$3 = fromPoints$6;
+const vec3$m = vec3$C;
+const mat4$9 = mat4$h;
+const poly3$k = poly3$m;
+const create$h = create_1$6;
 const fromCompactBinary$1 = (data) => {
   if (data[0] !== 1)
     throw new Error("invalid compact binary data");
-  const created = create$k();
-  created.transforms = mat4$j.clone(data.slice(1, 17));
+  const created = create$h();
+  created.transforms = mat4$9.clone(data.slice(1, 17));
   const numberOfVertices = data[21];
   let ci = 22;
   let vi = data.length - numberOfVertices * 3;
@@ -23656,10 +23822,10 @@ const fromCompactBinary$1 = (data) => {
     ci++;
     const vertices = [];
     for (let i = 0; i < verticesPerPolygon; i++) {
-      vertices.push(vec3$I.fromValues(data[vi], data[vi + 1], data[vi + 2]));
+      vertices.push(vec3$m.fromValues(data[vi], data[vi + 1], data[vi + 2]));
       vi += 3;
     }
-    created.polygons.push(poly3$y.create(vertices));
+    created.polygons.push(poly3$k.create(vertices));
   }
   if (data[17] >= 0) {
     created.color = [data[17], data[18], data[19], data[20]];
@@ -23667,26 +23833,26 @@ const fromCompactBinary$1 = (data) => {
   return created;
 };
 var fromCompactBinary_1$1 = fromCompactBinary$1;
-const mat4$i = mat4$r;
-const poly3$x = poly3$A;
+const mat4$8 = mat4$h;
+const poly3$j = poly3$m;
 const applyTransforms$3 = (geometry) => {
-  if (mat4$i.isIdentity(geometry.transforms))
+  if (mat4$8.isIdentity(geometry.transforms))
     return geometry;
-  geometry.polygons = geometry.polygons.map((polygon2) => poly3$x.transform(geometry.transforms, polygon2));
-  geometry.transforms = mat4$i.create();
+  geometry.polygons = geometry.polygons.map((polygon) => poly3$j.transform(geometry.transforms, polygon));
+  geometry.transforms = mat4$8.create();
   return geometry;
 };
 var applyTransforms_1$1 = applyTransforms$3;
 const applyTransforms$2 = applyTransforms_1$1;
 const toPolygons$4 = (geometry) => applyTransforms$2(geometry).polygons;
 var toPolygons_1$1 = toPolygons$4;
-const poly3$w = poly3$A;
-const create$j = create_1$8;
+const poly3$i = poly3$m;
+const create$g = create_1$6;
 const toPolygons$3 = toPolygons_1$1;
 const invert = (geometry) => {
   const polygons = toPolygons$3(geometry);
-  const newpolygons = polygons.map((polygon2) => poly3$w.invert(polygon2));
-  return create$j(newpolygons);
+  const newpolygons = polygons.map((polygon) => poly3$i.invert(polygon));
+  return create$g(newpolygons);
 };
 var invert_1 = invert;
 const isA$4 = (object) => {
@@ -23700,52 +23866,52 @@ const isA$4 = (object) => {
   return false;
 };
 var isA_1$2 = isA$4;
-const poly3$v = poly3$A;
+const poly3$h = poly3$m;
 const toPolygons$2 = toPolygons_1$1;
 const toPoints$6 = (geometry) => {
   const polygons = toPolygons$2(geometry);
-  const listofpoints = polygons.map((polygon2) => poly3$v.toPoints(polygon2));
+  const listofpoints = polygons.map((polygon) => poly3$h.toPoints(polygon));
   return listofpoints;
 };
 var toPoints_1$1 = toPoints$6;
-const poly3$u = poly3$A;
+const poly3$g = poly3$m;
 const toPolygons$1 = toPolygons_1$1;
-const toString$6 = (geometry) => {
+const toString$5 = (geometry) => {
   const polygons = toPolygons$1(geometry);
   let result = "geom3 (" + polygons.length + " polygons):\n";
-  polygons.forEach((polygon2) => {
-    result += "  " + poly3$u.toString(polygon2) + "\n";
+  polygons.forEach((polygon) => {
+    result += "  " + poly3$g.toString(polygon) + "\n";
   });
   return result;
 };
-var toString_1$4 = toString$6;
-const poly3$t = poly3$A;
+var toString_1$3 = toString$5;
+const poly3$f = poly3$m;
 const toCompactBinary$1 = (geometry) => {
   const polygons = geometry.polygons;
-  const transforms2 = geometry.transforms;
+  const transforms = geometry.transforms;
   const numberOfPolygons = polygons.length;
-  const numberOfVertices = polygons.reduce((count, polygon2) => count + polygon2.vertices.length, 0);
+  const numberOfVertices = polygons.reduce((count, polygon) => count + polygon.vertices.length, 0);
   let color = [-1, -1, -1, -1];
   if (geometry.color)
     color = geometry.color;
   const compacted = new Float32Array(1 + 16 + 4 + 1 + numberOfPolygons + numberOfVertices * 3);
   compacted[0] = 1;
-  compacted[1] = transforms2[0];
-  compacted[2] = transforms2[1];
-  compacted[3] = transforms2[2];
-  compacted[4] = transforms2[3];
-  compacted[5] = transforms2[4];
-  compacted[6] = transforms2[5];
-  compacted[7] = transforms2[6];
-  compacted[8] = transforms2[7];
-  compacted[9] = transforms2[8];
-  compacted[10] = transforms2[9];
-  compacted[11] = transforms2[10];
-  compacted[12] = transforms2[11];
-  compacted[13] = transforms2[12];
-  compacted[14] = transforms2[13];
-  compacted[15] = transforms2[14];
-  compacted[16] = transforms2[15];
+  compacted[1] = transforms[0];
+  compacted[2] = transforms[1];
+  compacted[3] = transforms[2];
+  compacted[4] = transforms[3];
+  compacted[5] = transforms[4];
+  compacted[6] = transforms[5];
+  compacted[7] = transforms[6];
+  compacted[8] = transforms[7];
+  compacted[9] = transforms[8];
+  compacted[10] = transforms[9];
+  compacted[11] = transforms[10];
+  compacted[12] = transforms[11];
+  compacted[13] = transforms[12];
+  compacted[14] = transforms[13];
+  compacted[15] = transforms[14];
+  compacted[16] = transforms[15];
   compacted[17] = color[0];
   compacted[18] = color[1];
   compacted[19] = color[2];
@@ -23753,8 +23919,8 @@ const toCompactBinary$1 = (geometry) => {
   compacted[21] = numberOfVertices;
   let ci = 22;
   let vi = ci + numberOfPolygons;
-  polygons.forEach((polygon2) => {
-    const points = poly3$t.toPoints(polygon2);
+  polygons.forEach((polygon) => {
+    const points = poly3$f.toPoints(polygon);
     compacted[ci] = points.length;
     ci++;
     for (let i = 0; i < points.length; i++) {
@@ -23768,19 +23934,19 @@ const toCompactBinary$1 = (geometry) => {
   return compacted;
 };
 var toCompactBinary_1$1 = toCompactBinary$1;
-const mat4$h = mat4$r;
-const transform$5 = (matrix, geometry) => {
-  const transforms2 = mat4$h.multiply(mat4$h.create(), matrix, geometry.transforms);
-  return Object.assign({}, geometry, { transforms: transforms2 });
+const mat4$7 = mat4$h;
+const transform$3 = (matrix, geometry) => {
+  const transforms = mat4$7.multiply(mat4$7.create(), matrix, geometry.transforms);
+  return Object.assign({}, geometry, { transforms });
 };
-var transform_1$5 = transform$5;
-const poly3$s = poly3$A;
+var transform_1$3 = transform$3;
+const poly3$e = poly3$m;
 const isA$3 = isA_1$2;
 const validate$1 = (object) => {
   if (!isA$3(object)) {
     throw new Error("invalid geom3 structure");
   }
-  object.polygons.forEach(poly3$s.validate);
+  object.polygons.forEach(poly3$e.validate);
   validateManifold(object);
   if (!object.transforms.every(Number.isFinite)) {
     throw new Error(`geom3 invalid transforms ${object.transforms}`);
@@ -23811,35 +23977,35 @@ ${nonManifold.join("\n")}`);
   }
 };
 var validate_1$1 = validate$1;
-var geom3$K = {
-  clone: clone_1$6,
-  create: create_1$8,
-  fromPoints: fromPoints_1$4,
+var geom3$d = {
+  clone: clone_1$5,
+  create: create_1$6,
+  fromPoints: fromPoints_1$3,
   fromCompactBinary: fromCompactBinary_1$1,
   invert: invert_1,
   isA: isA_1$2,
   toPoints: toPoints_1$1,
   toPolygons: toPolygons_1$1,
-  toString: toString_1$4,
+  toString: toString_1$3,
   toCompactBinary: toCompactBinary_1$1,
-  transform: transform_1$5,
+  transform: transform_1$3,
   validate: validate_1$1
 };
-const clone$5 = (geometry) => Object.assign({}, geometry);
-var clone_1$3 = clone$5;
-const { EPS: EPS$g } = constants$3;
-const vec2$x = vec2$E;
-const clone$4 = clone_1$3;
+const clone$4 = (geometry) => Object.assign({}, geometry);
+var clone_1$2 = clone$4;
+const { EPS: EPS$8 } = constants$3;
+const vec2$m = vec2$w;
+const clone$3 = clone_1$2;
 const close$1 = (geometry) => {
   if (geometry.isClosed)
     return geometry;
-  const cloned = clone$4(geometry);
+  const cloned = clone$3(geometry);
   cloned.isClosed = true;
   if (cloned.points.length > 1) {
     const points = cloned.points;
     const p0 = points[0];
     let pn = points[points.length - 1];
-    while (vec2$x.distance(p0, pn) < EPS$g * EPS$g) {
+    while (vec2$m.distance(p0, pn) < EPS$8 * EPS$8) {
       points.pop();
       if (points.length === 1)
         break;
@@ -23849,31 +24015,31 @@ const close$1 = (geometry) => {
   return cloned;
 };
 var close_1 = close$1;
-const mat4$g = mat4$r;
-const create$i = (points) => {
+const mat4$6 = mat4$h;
+const create$f = (points) => {
   if (points === void 0) {
     points = [];
   }
   return {
     points,
     isClosed: false,
-    transforms: mat4$g.create()
+    transforms: mat4$6.create()
   };
 };
-var create_1$5 = create$i;
-const { EPS: EPS$f } = constants$3;
-const vec2$w = vec2$E;
+var create_1$3 = create$f;
+const { EPS: EPS$7 } = constants$3;
+const vec2$l = vec2$w;
 const close = close_1;
-const create$h = create_1$5;
-const fromPoints$6 = (options, points) => {
+const create$e = create_1$3;
+const fromPoints$5 = (options, points) => {
   const defaults = { closed: false };
   let { closed } = Object.assign({}, defaults, options);
-  let created = create$h();
-  created.points = points.map((point) => vec2$w.clone(point));
+  let created = create$e();
+  created.points = points.map((point) => vec2$l.clone(point));
   if (created.points.length > 1) {
     const p0 = created.points[0];
     const pn = created.points[created.points.length - 1];
-    if (vec2$w.distance(p0, pn) < EPS$f * EPS$f) {
+    if (vec2$l.distance(p0, pn) < EPS$7 * EPS$7) {
       closed = true;
     }
   }
@@ -23881,23 +24047,23 @@ const fromPoints$6 = (options, points) => {
     created = close(created);
   return created;
 };
-var fromPoints_1$3 = fromPoints$6;
-const mat4$f = mat4$r;
-const vec2$v = vec2$E;
+var fromPoints_1$2 = fromPoints$5;
+const mat4$5 = mat4$h;
+const vec2$k = vec2$w;
 const applyTransforms$1 = (geometry) => {
-  if (mat4$f.isIdentity(geometry.transforms))
+  if (mat4$5.isIdentity(geometry.transforms))
     return geometry;
-  geometry.points = geometry.points.map((point) => vec2$v.transform(vec2$v.create(), point, geometry.transforms));
-  geometry.transforms = mat4$f.create();
+  geometry.points = geometry.points.map((point) => vec2$k.transform(vec2$k.create(), point, geometry.transforms));
+  geometry.transforms = mat4$5.create();
   return geometry;
 };
 var applyTransforms_1 = applyTransforms$1;
 const applyTransforms = applyTransforms_1;
 const toPoints$5 = (geometry) => applyTransforms(geometry).points;
 var toPoints_1 = toPoints$5;
-const { TAU: TAU$g } = constants$3;
-const vec2$u = vec2$E;
-const fromPoints$5 = fromPoints_1$3;
+const { TAU: TAU$3 } = constants$3;
+const vec2$j = vec2$w;
+const fromPoints$4 = fromPoints_1$2;
 const toPoints$4 = toPoints_1;
 const appendArc = (options, geometry) => {
   const defaults = {
@@ -23913,7 +24079,7 @@ const appendArc = (options, geometry) => {
     throw new Error("endpoint must be an array of X and Y values");
   if (endpoint.length < 2)
     throw new Error("endpoint must contain X and Y values");
-  endpoint = vec2$u.clone(endpoint);
+  endpoint = vec2$j.clone(endpoint);
   if (!Array.isArray(radius))
     throw new Error("radius must be an array of X and Y values");
   if (radius.length < 2)
@@ -23933,7 +24099,7 @@ const appendArc = (options, geometry) => {
   const startpoint = points[points.length - 1];
   xradius = Math.round(xradius * decimals) / decimals;
   yradius = Math.round(yradius * decimals) / decimals;
-  endpoint = vec2$u.fromValues(Math.round(endpoint[0] * decimals) / decimals, Math.round(endpoint[1] * decimals) / decimals);
+  endpoint = vec2$j.fromValues(Math.round(endpoint[0] * decimals) / decimals, Math.round(endpoint[1] * decimals) / decimals);
   const sweepFlag = !clockwise;
   let newpoints = [];
   if (xradius === 0 || yradius === 0) {
@@ -23944,11 +24110,11 @@ const appendArc = (options, geometry) => {
     const phi = xaxisrotation;
     const cosphi = Math.cos(phi);
     const sinphi = Math.sin(phi);
-    const minushalfdistance = vec2$u.subtract(vec2$u.create(), startpoint, endpoint);
-    vec2$u.scale(minushalfdistance, minushalfdistance, 0.5);
+    const minushalfdistance = vec2$j.subtract(vec2$j.create(), startpoint, endpoint);
+    vec2$j.scale(minushalfdistance, minushalfdistance, 0.5);
     const x = Math.round((cosphi * minushalfdistance[0] + sinphi * minushalfdistance[1]) * decimals) / decimals;
     const y = Math.round((-sinphi * minushalfdistance[0] + cosphi * minushalfdistance[1]) * decimals) / decimals;
-    const startTranslated = vec2$u.fromValues(x, y);
+    const startTranslated = vec2$j.fromValues(x, y);
     const biglambda = startTranslated[0] * startTranslated[0] / (xradius * xradius) + startTranslated[1] * startTranslated[1] / (yradius * yradius);
     if (biglambda > 1) {
       const sqrtbiglambda = Math.sqrt(biglambda);
@@ -23960,49 +24126,49 @@ const appendArc = (options, geometry) => {
     let multiplier1 = Math.sqrt((xradius * xradius * yradius * yradius - xradius * xradius * startTranslated[1] * startTranslated[1] - yradius * yradius * startTranslated[0] * startTranslated[0]) / (xradius * xradius * startTranslated[1] * startTranslated[1] + yradius * yradius * startTranslated[0] * startTranslated[0]));
     if (sweepFlag === large)
       multiplier1 = -multiplier1;
-    const centerTranslated = vec2$u.fromValues(xradius * startTranslated[1] / yradius, -yradius * startTranslated[0] / xradius);
-    vec2$u.scale(centerTranslated, centerTranslated, multiplier1);
-    let center2 = vec2$u.fromValues(cosphi * centerTranslated[0] - sinphi * centerTranslated[1], sinphi * centerTranslated[0] + cosphi * centerTranslated[1]);
-    center2 = vec2$u.add(center2, center2, vec2$u.scale(vec2$u.create(), vec2$u.add(vec2$u.create(), startpoint, endpoint), 0.5));
-    const vector1 = vec2$u.fromValues((startTranslated[0] - centerTranslated[0]) / xradius, (startTranslated[1] - centerTranslated[1]) / yradius);
-    const vector2 = vec2$u.fromValues((-startTranslated[0] - centerTranslated[0]) / xradius, (-startTranslated[1] - centerTranslated[1]) / yradius);
-    const theta1 = vec2$u.angleRadians(vector1);
-    const theta2 = vec2$u.angleRadians(vector2);
+    const centerTranslated = vec2$j.fromValues(xradius * startTranslated[1] / yradius, -yradius * startTranslated[0] / xradius);
+    vec2$j.scale(centerTranslated, centerTranslated, multiplier1);
+    let center2 = vec2$j.fromValues(cosphi * centerTranslated[0] - sinphi * centerTranslated[1], sinphi * centerTranslated[0] + cosphi * centerTranslated[1]);
+    center2 = vec2$j.add(center2, center2, vec2$j.scale(vec2$j.create(), vec2$j.add(vec2$j.create(), startpoint, endpoint), 0.5));
+    const vector1 = vec2$j.fromValues((startTranslated[0] - centerTranslated[0]) / xradius, (startTranslated[1] - centerTranslated[1]) / yradius);
+    const vector2 = vec2$j.fromValues((-startTranslated[0] - centerTranslated[0]) / xradius, (-startTranslated[1] - centerTranslated[1]) / yradius);
+    const theta1 = vec2$j.angleRadians(vector1);
+    const theta2 = vec2$j.angleRadians(vector2);
     let deltatheta = theta2 - theta1;
-    deltatheta = deltatheta % TAU$g;
+    deltatheta = deltatheta % TAU$3;
     if (!sweepFlag && deltatheta > 0) {
-      deltatheta -= TAU$g;
+      deltatheta -= TAU$3;
     } else if (sweepFlag && deltatheta < 0) {
-      deltatheta += TAU$g;
+      deltatheta += TAU$3;
     }
-    let numsteps = Math.ceil(Math.abs(deltatheta) / TAU$g * segments) + 1;
+    let numsteps = Math.ceil(Math.abs(deltatheta) / TAU$3 * segments) + 1;
     if (numsteps < 1)
       numsteps = 1;
     for (let step = 1; step < numsteps; step++) {
       const theta = theta1 + step / numsteps * deltatheta;
       const costheta = Math.cos(theta);
       const sintheta = Math.sin(theta);
-      const point = vec2$u.fromValues(cosphi * xradius * costheta - sinphi * yradius * sintheta, sinphi * xradius * costheta + cosphi * yradius * sintheta);
-      vec2$u.add(point, point, center2);
+      const point = vec2$j.fromValues(cosphi * xradius * costheta - sinphi * yradius * sintheta, sinphi * xradius * costheta + cosphi * yradius * sintheta);
+      vec2$j.add(point, point, center2);
       newpoints.push(point);
     }
     if (numsteps)
       newpoints.push(options.endpoint);
   }
   newpoints = points.concat(newpoints);
-  const result = fromPoints$5({}, newpoints);
+  const result = fromPoints$4({}, newpoints);
   return result;
 };
 var appendArc_1 = appendArc;
-const fromPoints$4 = fromPoints_1$3;
+const fromPoints$3 = fromPoints_1$2;
 const toPoints$3 = toPoints_1;
-const { equals: equals$6 } = vec2$E;
+const { equals: equals$5 } = vec2$w;
 const concat$1 = (...paths) => {
   let isClosed = false;
   let newpoints = [];
   paths.forEach((path, i) => {
     const tmp2 = toPoints$3(path).slice();
-    if (newpoints.length > 0 && tmp2.length > 0 && equals$6(tmp2[0], newpoints[newpoints.length - 1]))
+    if (newpoints.length > 0 && tmp2.length > 0 && equals$5(tmp2[0], newpoints[newpoints.length - 1]))
       tmp2.shift();
     if (tmp2.length > 0 && isClosed) {
       throw new Error(`Cannot concatenate to a closed path; check the ${i}th path`);
@@ -24010,16 +24176,16 @@ const concat$1 = (...paths) => {
     isClosed = path.isClosed;
     newpoints = newpoints.concat(tmp2);
   });
-  return fromPoints$4({ closed: isClosed }, newpoints);
+  return fromPoints$3({ closed: isClosed }, newpoints);
 };
 var concat_1 = concat$1;
 const concat = concat_1;
-const create$g = create_1$5;
-const appendPoints$1 = (points, geometry) => concat(geometry, create$g(points));
+const create$d = create_1$3;
+const appendPoints$1 = (points, geometry) => concat(geometry, create$d(points));
 var appendPoints_1 = appendPoints$1;
-const { TAU: TAU$f } = constants$3;
-const vec2$t = vec2$E;
-const vec3$H = vec2$E;
+const { TAU: TAU$2 } = constants$3;
+const vec2$i = vec2$w;
+const vec3$l = vec2$w;
 const appendPoints = appendPoints_1;
 const toPoints$2 = toPoints_1;
 const appendBezier = (options, geometry) => {
@@ -24053,8 +24219,8 @@ const appendBezier = (options, geometry) => {
     if (!Array.isArray(lastBezierControlPoint)) {
       throw new Error("the given path must contain TWO or more points if given a null control point");
     }
-    const controlpoint = vec2$t.scale(vec2$t.create(), points[points.length - 1], 2);
-    vec2$t.subtract(controlpoint, controlpoint, lastBezierControlPoint);
+    const controlpoint = vec2$i.scale(vec2$i.create(), points[points.length - 1], 2);
+    vec2$i.subtract(controlpoint, controlpoint, lastBezierControlPoint);
     controlPoints[0] = controlpoint;
   }
   controlPoints.unshift(points[points.length - 1]);
@@ -24071,20 +24237,20 @@ const appendBezier = (options, geometry) => {
     const binomial = factorials[bezierOrder] / (factorials[i] * factorials[bezierOrder - i]);
     binomials.push(binomial);
   }
-  const v0 = vec2$t.create();
-  const v12 = vec2$t.create();
-  const v3 = vec3$H.create();
+  const v0 = vec2$i.create();
+  const v12 = vec2$i.create();
+  const v3 = vec3$l.create();
   const getPointForT = (t) => {
     let tk = 1;
     let oneMinusTNMinusK = Math.pow(1 - t, bezierOrder);
     const invOneMinusT = t !== 1 ? 1 / (1 - t) : 1;
-    const point = vec2$t.create();
+    const point = vec2$i.create();
     for (let k = 0; k <= bezierOrder; ++k) {
       if (k === bezierOrder)
         oneMinusTNMinusK = 1;
       const bernsteinCoefficient = binomials[k] * tk * oneMinusTNMinusK;
-      const derivativePoint = vec2$t.scale(v0, controlPoints[k], bernsteinCoefficient);
-      vec2$t.add(point, point, derivativePoint);
+      const derivativePoint = vec2$i.scale(v0, controlPoints[k], bernsteinCoefficient);
+      vec2$i.add(point, point, derivativePoint);
       tk *= t;
       oneMinusTNMinusK *= invOneMinusT;
     }
@@ -24100,14 +24266,14 @@ const appendBezier = (options, geometry) => {
     newpointsT.push(t);
   }
   let subdivideBase = 1;
-  const maxangle = TAU$f / segments;
+  const maxangle = TAU$2 / segments;
   const maxsinangle = Math.sin(maxangle);
   while (subdivideBase < newpoints.length - 1) {
-    const dir1 = vec2$t.subtract(v0, newpoints[subdivideBase], newpoints[subdivideBase - 1]);
-    vec2$t.normalize(dir1, dir1);
-    const dir2 = vec2$t.subtract(v12, newpoints[subdivideBase + 1], newpoints[subdivideBase]);
-    vec2$t.normalize(dir2, dir2);
-    const sinangle = vec2$t.cross(v3, dir1, dir2);
+    const dir1 = vec2$i.subtract(v0, newpoints[subdivideBase], newpoints[subdivideBase - 1]);
+    vec2$i.normalize(dir1, dir1);
+    const dir2 = vec2$i.subtract(v12, newpoints[subdivideBase + 1], newpoints[subdivideBase]);
+    vec2$i.normalize(dir2, dir2);
+    const sinangle = vec2$i.cross(v3, dir1, dir2);
     if (Math.abs(sinangle[2]) > maxsinangle) {
       const t0 = newpointsT[subdivideBase - 1];
       const t1 = newpointsT[subdivideBase + 1];
@@ -24130,9 +24296,9 @@ const appendBezier = (options, geometry) => {
   return result;
 };
 var appendBezier_1 = appendBezier;
-const vec2$s = vec2$E;
+const vec2$h = vec2$w;
 const toPoints$1 = toPoints_1;
-const equals$5 = (a, b) => {
+const equals$4 = (a, b) => {
   if (a.isClosed !== b.isClosed) {
     return false;
   }
@@ -24146,7 +24312,7 @@ const equals$5 = (a, b) => {
   do {
     let unequal = false;
     for (let i = 0; i < length2; i++) {
-      if (!vec2$s.equals(apoints[i], bpoints[(i + offset2) % length2])) {
+      if (!vec2$h.equals(apoints[i], bpoints[(i + offset2) % length2])) {
         unequal = true;
         break;
       }
@@ -24160,18 +24326,18 @@ const equals$5 = (a, b) => {
   } while (++offset2 < length2);
   return false;
 };
-var equals_1$3 = equals$5;
-const mat4$e = mat4$r;
-const vec2$r = vec2$E;
-const create$f = create_1$5;
+var equals_1$2 = equals$4;
+const mat4$4 = mat4$h;
+const vec2$g = vec2$w;
+const create$c = create_1$3;
 const fromCompactBinary = (data) => {
   if (data[0] !== 2)
     throw new Error("invalid compact binary data");
-  const created = create$f();
-  created.transforms = mat4$e.clone(data.slice(1, 17));
+  const created = create$c();
+  created.transforms = mat4$4.clone(data.slice(1, 17));
   created.isClosed = !!data[17];
   for (let i = 22; i < data.length; i += 2) {
-    const point = vec2$r.fromValues(data[i], data[i + 1]);
+    const point = vec2$g.fromValues(data[i], data[i + 1]);
     created.points.push(point);
   }
   if (data[18] >= 0) {
@@ -24191,49 +24357,49 @@ const isA$2 = (object) => {
   return false;
 };
 var isA_1$1 = isA$2;
-const clone$3 = clone_1$3;
-const reverse$3 = (geometry) => {
-  const cloned = clone$3(geometry);
+const clone$2 = clone_1$2;
+const reverse$2 = (geometry) => {
+  const cloned = clone$2(geometry);
   cloned.points = geometry.points.slice().reverse();
   return cloned;
 };
-var reverse_1$3 = reverse$3;
-const vec2$q = vec2$E;
+var reverse_1$2 = reverse$2;
+const vec2$f = vec2$w;
 const toPoints = toPoints_1;
-const toString$5 = (geometry) => {
+const toString$4 = (geometry) => {
   const points = toPoints(geometry);
   let result = "path (" + points.length + " points, " + geometry.isClosed + "):\n[\n";
   points.forEach((point) => {
-    result += "  " + vec2$q.toString(point) + ",\n";
+    result += "  " + vec2$f.toString(point) + ",\n";
   });
   result += "]\n";
   return result;
 };
-var toString_1$3 = toString$5;
+var toString_1$2 = toString$4;
 const toCompactBinary = (geometry) => {
   const points = geometry.points;
-  const transforms2 = geometry.transforms;
+  const transforms = geometry.transforms;
   let color = [-1, -1, -1, -1];
   if (geometry.color)
     color = geometry.color;
   const compacted = new Float32Array(1 + 16 + 1 + 4 + points.length * 2);
   compacted[0] = 2;
-  compacted[1] = transforms2[0];
-  compacted[2] = transforms2[1];
-  compacted[3] = transforms2[2];
-  compacted[4] = transforms2[3];
-  compacted[5] = transforms2[4];
-  compacted[6] = transforms2[5];
-  compacted[7] = transforms2[6];
-  compacted[8] = transforms2[7];
-  compacted[9] = transforms2[8];
-  compacted[10] = transforms2[9];
-  compacted[11] = transforms2[10];
-  compacted[12] = transforms2[11];
-  compacted[13] = transforms2[12];
-  compacted[14] = transforms2[13];
-  compacted[15] = transforms2[14];
-  compacted[16] = transforms2[15];
+  compacted[1] = transforms[0];
+  compacted[2] = transforms[1];
+  compacted[3] = transforms[2];
+  compacted[4] = transforms[3];
+  compacted[5] = transforms[4];
+  compacted[6] = transforms[5];
+  compacted[7] = transforms[6];
+  compacted[8] = transforms[7];
+  compacted[9] = transforms[8];
+  compacted[10] = transforms[9];
+  compacted[11] = transforms[10];
+  compacted[12] = transforms[11];
+  compacted[13] = transforms[12];
+  compacted[14] = transforms[13];
+  compacted[15] = transforms[14];
+  compacted[16] = transforms[15];
   compacted[17] = geometry.isClosed ? 1 : 0;
   compacted[18] = color[0];
   compacted[19] = color[1];
@@ -24248,13 +24414,13 @@ const toCompactBinary = (geometry) => {
   return compacted;
 };
 var toCompactBinary_1 = toCompactBinary;
-const mat4$d = mat4$r;
-const transform$4 = (matrix, geometry) => {
-  const transforms2 = mat4$d.multiply(mat4$d.create(), matrix, geometry.transforms);
-  return Object.assign({}, geometry, { transforms: transforms2 });
+const mat4$3 = mat4$h;
+const transform$2 = (matrix, geometry) => {
+  const transforms = mat4$3.multiply(mat4$3.create(), matrix, geometry.transforms);
+  return Object.assign({}, geometry, { transforms });
 };
-var transform_1$4 = transform$4;
-const vec2$p = vec2$E;
+var transform_1$2 = transform$2;
+const vec2$e = vec2$w;
 const isA$1 = isA_1$1;
 const validate = (object) => {
   if (!isA$1(object)) {
@@ -24262,7 +24428,7 @@ const validate = (object) => {
   }
   if (object.points.length > 1) {
     for (let i = 0; i < object.points.length; i++) {
-      if (vec2$p.equals(object.points[i], object.points[(i + 1) % object.points.length])) {
+      if (vec2$e.equals(object.points[i], object.points[(i + 1) % object.points.length])) {
         throw new Error(`path2 duplicate points ${object.points[i]}`);
       }
     }
@@ -24277,574 +24443,118 @@ const validate = (object) => {
   }
 };
 var validate_1 = validate;
-var path2$u = {
+var path2$8 = {
   appendArc: appendArc_1,
   appendBezier: appendBezier_1,
   appendPoints: appendPoints_1,
-  clone: clone_1$3,
+  clone: clone_1$2,
   close: close_1,
   concat: concat_1,
-  create: create_1$5,
-  equals: equals_1$3,
-  fromPoints: fromPoints_1$3,
+  create: create_1$3,
+  equals: equals_1$2,
+  fromPoints: fromPoints_1$2,
   fromCompactBinary: fromCompactBinary_1,
   isA: isA_1$1,
-  reverse: reverse_1$3,
+  reverse: reverse_1$2,
   toPoints: toPoints_1,
-  toString: toString_1$3,
+  toString: toString_1$2,
   toCompactBinary: toCompactBinary_1,
-  transform: transform_1$4,
+  transform: transform_1$2,
   validate: validate_1
 };
-const flatten$K = flatten_1;
-const geom2$J = geom2$K;
-const geom3$J = geom3$K;
-const path2$t = path2$u;
-const poly3$r = poly3$A;
-const colorGeom2 = (color, object) => {
-  const newgeom2 = geom2$J.clone(object);
-  newgeom2.color = color;
-  return newgeom2;
+const flatten$a = flatten_1;
+const vec2$d = vec2$w;
+const vec3$k = vec3$C;
+const geom2$e = geom2$i;
+const geom3$c = geom3$d;
+const path2$7 = path2$8;
+const poly3$d = poly3$m;
+const cache = /* @__PURE__ */ new WeakMap();
+const measureBoundingBoxOfPath2 = (geometry) => {
+  let boundingBox = cache.get(geometry);
+  if (boundingBox)
+    return boundingBox;
+  const points = path2$7.toPoints(geometry);
+  let minpoint;
+  if (points.length === 0) {
+    minpoint = vec2$d.create();
+  } else {
+    minpoint = vec2$d.clone(points[0]);
+  }
+  let maxpoint = vec2$d.clone(minpoint);
+  points.forEach((point) => {
+    vec2$d.min(minpoint, minpoint, point);
+    vec2$d.max(maxpoint, maxpoint, point);
+  });
+  minpoint = [minpoint[0], minpoint[1], 0];
+  maxpoint = [maxpoint[0], maxpoint[1], 0];
+  boundingBox = [minpoint, maxpoint];
+  cache.set(geometry, boundingBox);
+  return boundingBox;
 };
-const colorGeom3 = (color, object) => {
-  const newgeom3 = geom3$J.clone(object);
-  newgeom3.color = color;
-  return newgeom3;
+const measureBoundingBoxOfGeom2 = (geometry) => {
+  let boundingBox = cache.get(geometry);
+  if (boundingBox)
+    return boundingBox;
+  const points = geom2$e.toPoints(geometry);
+  let minpoint;
+  if (points.length === 0) {
+    minpoint = vec2$d.create();
+  } else {
+    minpoint = vec2$d.clone(points[0]);
+  }
+  let maxpoint = vec2$d.clone(minpoint);
+  points.forEach((point) => {
+    vec2$d.min(minpoint, minpoint, point);
+    vec2$d.max(maxpoint, maxpoint, point);
+  });
+  minpoint = [minpoint[0], minpoint[1], 0];
+  maxpoint = [maxpoint[0], maxpoint[1], 0];
+  boundingBox = [minpoint, maxpoint];
+  cache.set(geometry, boundingBox);
+  return boundingBox;
 };
-const colorPath2 = (color, object) => {
-  const newpath2 = path2$t.clone(object);
-  newpath2.color = color;
-  return newpath2;
+const measureBoundingBoxOfGeom3 = (geometry) => {
+  let boundingBox = cache.get(geometry);
+  if (boundingBox)
+    return boundingBox;
+  const polygons = geom3$c.toPolygons(geometry);
+  let minpoint = vec3$k.create();
+  if (polygons.length > 0) {
+    const points = poly3$d.toPoints(polygons[0]);
+    vec3$k.copy(minpoint, points[0]);
+  }
+  let maxpoint = vec3$k.clone(minpoint);
+  polygons.forEach((polygon) => {
+    poly3$d.toPoints(polygon).forEach((point) => {
+      vec3$k.min(minpoint, minpoint, point);
+      vec3$k.max(maxpoint, maxpoint, point);
+    });
+  });
+  minpoint = [minpoint[0], minpoint[1], minpoint[2]];
+  maxpoint = [maxpoint[0], maxpoint[1], maxpoint[2]];
+  boundingBox = [minpoint, maxpoint];
+  cache.set(geometry, boundingBox);
+  return boundingBox;
 };
-const colorPoly3 = (color, object) => {
-  const newpoly = poly3$r.clone(object);
-  newpoly.color = color;
-  return newpoly;
-};
-const colorize = (color, ...objects) => {
-  if (!Array.isArray(color))
-    throw new Error("color must be an array");
-  if (color.length < 3)
-    throw new Error("color must contain R, G and B values");
-  if (color.length === 3)
-    color = [color[0], color[1], color[2], 1];
-  objects = flatten$K(objects);
-  if (objects.length === 0)
+const measureBoundingBox$2 = (...geometries2) => {
+  geometries2 = flatten$a(geometries2);
+  if (geometries2.length === 0)
     throw new Error("wrong number of arguments");
-  const results = objects.map((object) => {
-    if (geom2$J.isA(object))
-      return colorGeom2(color, object);
-    if (geom3$J.isA(object))
-      return colorGeom3(color, object);
-    if (path2$t.isA(object))
-      return colorPath2(color, object);
-    if (poly3$r.isA(object))
-      return colorPoly3(color, object);
-    object.color = color;
-    return object;
+  const results = geometries2.map((geometry) => {
+    if (path2$7.isA(geometry))
+      return measureBoundingBoxOfPath2(geometry);
+    if (geom2$e.isA(geometry))
+      return measureBoundingBoxOfGeom2(geometry);
+    if (geom3$c.isA(geometry))
+      return measureBoundingBoxOfGeom3(geometry);
+    return [[0, 0, 0], [0, 0, 0]];
   });
   return results.length === 1 ? results[0] : results;
 };
-var colorize_1 = colorize;
-const cssColors$1 = {
-  // basic color keywords
-  black: [0 / 255, 0 / 255, 0 / 255],
-  silver: [192 / 255, 192 / 255, 192 / 255],
-  gray: [128 / 255, 128 / 255, 128 / 255],
-  white: [255 / 255, 255 / 255, 255 / 255],
-  maroon: [128 / 255, 0 / 255, 0 / 255],
-  red: [255 / 255, 0 / 255, 0 / 255],
-  purple: [128 / 255, 0 / 255, 128 / 255],
-  fuchsia: [255 / 255, 0 / 255, 255 / 255],
-  green: [0 / 255, 128 / 255, 0 / 255],
-  lime: [0 / 255, 255 / 255, 0 / 255],
-  olive: [128 / 255, 128 / 255, 0 / 255],
-  yellow: [255 / 255, 255 / 255, 0 / 255],
-  navy: [0 / 255, 0 / 255, 128 / 255],
-  blue: [0 / 255, 0 / 255, 255 / 255],
-  teal: [0 / 255, 128 / 255, 128 / 255],
-  aqua: [0 / 255, 255 / 255, 255 / 255],
-  // extended color keywords
-  aliceblue: [240 / 255, 248 / 255, 255 / 255],
-  antiquewhite: [250 / 255, 235 / 255, 215 / 255],
-  // 'aqua': [ 0 / 255, 255 / 255, 255 / 255 ],
-  aquamarine: [127 / 255, 255 / 255, 212 / 255],
-  azure: [240 / 255, 255 / 255, 255 / 255],
-  beige: [245 / 255, 245 / 255, 220 / 255],
-  bisque: [255 / 255, 228 / 255, 196 / 255],
-  // 'black': [ 0 / 255, 0 / 255, 0 / 255 ],
-  blanchedalmond: [255 / 255, 235 / 255, 205 / 255],
-  // 'blue': [ 0 / 255, 0 / 255, 255 / 255 ],
-  blueviolet: [138 / 255, 43 / 255, 226 / 255],
-  brown: [165 / 255, 42 / 255, 42 / 255],
-  burlywood: [222 / 255, 184 / 255, 135 / 255],
-  cadetblue: [95 / 255, 158 / 255, 160 / 255],
-  chartreuse: [127 / 255, 255 / 255, 0 / 255],
-  chocolate: [210 / 255, 105 / 255, 30 / 255],
-  coral: [255 / 255, 127 / 255, 80 / 255],
-  cornflowerblue: [100 / 255, 149 / 255, 237 / 255],
-  cornsilk: [255 / 255, 248 / 255, 220 / 255],
-  crimson: [220 / 255, 20 / 255, 60 / 255],
-  cyan: [0 / 255, 255 / 255, 255 / 255],
-  darkblue: [0 / 255, 0 / 255, 139 / 255],
-  darkcyan: [0 / 255, 139 / 255, 139 / 255],
-  darkgoldenrod: [184 / 255, 134 / 255, 11 / 255],
-  darkgray: [169 / 255, 169 / 255, 169 / 255],
-  darkgreen: [0 / 255, 100 / 255, 0 / 255],
-  darkgrey: [169 / 255, 169 / 255, 169 / 255],
-  darkkhaki: [189 / 255, 183 / 255, 107 / 255],
-  darkmagenta: [139 / 255, 0 / 255, 139 / 255],
-  darkolivegreen: [85 / 255, 107 / 255, 47 / 255],
-  darkorange: [255 / 255, 140 / 255, 0 / 255],
-  darkorchid: [153 / 255, 50 / 255, 204 / 255],
-  darkred: [139 / 255, 0 / 255, 0 / 255],
-  darksalmon: [233 / 255, 150 / 255, 122 / 255],
-  darkseagreen: [143 / 255, 188 / 255, 143 / 255],
-  darkslateblue: [72 / 255, 61 / 255, 139 / 255],
-  darkslategray: [47 / 255, 79 / 255, 79 / 255],
-  darkslategrey: [47 / 255, 79 / 255, 79 / 255],
-  darkturquoise: [0 / 255, 206 / 255, 209 / 255],
-  darkviolet: [148 / 255, 0 / 255, 211 / 255],
-  deeppink: [255 / 255, 20 / 255, 147 / 255],
-  deepskyblue: [0 / 255, 191 / 255, 255 / 255],
-  dimgray: [105 / 255, 105 / 255, 105 / 255],
-  dimgrey: [105 / 255, 105 / 255, 105 / 255],
-  dodgerblue: [30 / 255, 144 / 255, 255 / 255],
-  firebrick: [178 / 255, 34 / 255, 34 / 255],
-  floralwhite: [255 / 255, 250 / 255, 240 / 255],
-  forestgreen: [34 / 255, 139 / 255, 34 / 255],
-  // 'fuchsia': [ 255 / 255, 0 / 255, 255 / 255 ],
-  gainsboro: [220 / 255, 220 / 255, 220 / 255],
-  ghostwhite: [248 / 255, 248 / 255, 255 / 255],
-  gold: [255 / 255, 215 / 255, 0 / 255],
-  goldenrod: [218 / 255, 165 / 255, 32 / 255],
-  // 'gray': [ 128 / 255, 128 / 255, 128 / 255 ],
-  // 'green': [ 0 / 255, 128 / 255, 0 / 255 ],
-  greenyellow: [173 / 255, 255 / 255, 47 / 255],
-  grey: [128 / 255, 128 / 255, 128 / 255],
-  honeydew: [240 / 255, 255 / 255, 240 / 255],
-  hotpink: [255 / 255, 105 / 255, 180 / 255],
-  indianred: [205 / 255, 92 / 255, 92 / 255],
-  indigo: [75 / 255, 0 / 255, 130 / 255],
-  ivory: [255 / 255, 255 / 255, 240 / 255],
-  khaki: [240 / 255, 230 / 255, 140 / 255],
-  lavender: [230 / 255, 230 / 255, 250 / 255],
-  lavenderblush: [255 / 255, 240 / 255, 245 / 255],
-  lawngreen: [124 / 255, 252 / 255, 0 / 255],
-  lemonchiffon: [255 / 255, 250 / 255, 205 / 255],
-  lightblue: [173 / 255, 216 / 255, 230 / 255],
-  lightcoral: [240 / 255, 128 / 255, 128 / 255],
-  lightcyan: [224 / 255, 255 / 255, 255 / 255],
-  lightgoldenrodyellow: [250 / 255, 250 / 255, 210 / 255],
-  lightgray: [211 / 255, 211 / 255, 211 / 255],
-  lightgreen: [144 / 255, 238 / 255, 144 / 255],
-  lightgrey: [211 / 255, 211 / 255, 211 / 255],
-  lightpink: [255 / 255, 182 / 255, 193 / 255],
-  lightsalmon: [255 / 255, 160 / 255, 122 / 255],
-  lightseagreen: [32 / 255, 178 / 255, 170 / 255],
-  lightskyblue: [135 / 255, 206 / 255, 250 / 255],
-  lightslategray: [119 / 255, 136 / 255, 153 / 255],
-  lightslategrey: [119 / 255, 136 / 255, 153 / 255],
-  lightsteelblue: [176 / 255, 196 / 255, 222 / 255],
-  lightyellow: [255 / 255, 255 / 255, 224 / 255],
-  // 'lime': [ 0 / 255, 255 / 255, 0 / 255 ],
-  limegreen: [50 / 255, 205 / 255, 50 / 255],
-  linen: [250 / 255, 240 / 255, 230 / 255],
-  magenta: [255 / 255, 0 / 255, 255 / 255],
-  // 'maroon': [ 128 / 255, 0 / 255, 0 / 255 ],
-  mediumaquamarine: [102 / 255, 205 / 255, 170 / 255],
-  mediumblue: [0 / 255, 0 / 255, 205 / 255],
-  mediumorchid: [186 / 255, 85 / 255, 211 / 255],
-  mediumpurple: [147 / 255, 112 / 255, 219 / 255],
-  mediumseagreen: [60 / 255, 179 / 255, 113 / 255],
-  mediumslateblue: [123 / 255, 104 / 255, 238 / 255],
-  mediumspringgreen: [0 / 255, 250 / 255, 154 / 255],
-  mediumturquoise: [72 / 255, 209 / 255, 204 / 255],
-  mediumvioletred: [199 / 255, 21 / 255, 133 / 255],
-  midnightblue: [25 / 255, 25 / 255, 112 / 255],
-  mintcream: [245 / 255, 255 / 255, 250 / 255],
-  mistyrose: [255 / 255, 228 / 255, 225 / 255],
-  moccasin: [255 / 255, 228 / 255, 181 / 255],
-  navajowhite: [255 / 255, 222 / 255, 173 / 255],
-  // 'navy': [ 0 / 255, 0 / 255, 128 / 255 ],
-  oldlace: [253 / 255, 245 / 255, 230 / 255],
-  // 'olive': [ 128 / 255, 128 / 255, 0 / 255 ],
-  olivedrab: [107 / 255, 142 / 255, 35 / 255],
-  orange: [255 / 255, 165 / 255, 0 / 255],
-  orangered: [255 / 255, 69 / 255, 0 / 255],
-  orchid: [218 / 255, 112 / 255, 214 / 255],
-  palegoldenrod: [238 / 255, 232 / 255, 170 / 255],
-  palegreen: [152 / 255, 251 / 255, 152 / 255],
-  paleturquoise: [175 / 255, 238 / 255, 238 / 255],
-  palevioletred: [219 / 255, 112 / 255, 147 / 255],
-  papayawhip: [255 / 255, 239 / 255, 213 / 255],
-  peachpuff: [255 / 255, 218 / 255, 185 / 255],
-  peru: [205 / 255, 133 / 255, 63 / 255],
-  pink: [255 / 255, 192 / 255, 203 / 255],
-  plum: [221 / 255, 160 / 255, 221 / 255],
-  powderblue: [176 / 255, 224 / 255, 230 / 255],
-  // 'purple': [ 128 / 255, 0 / 255, 128 / 255 ],
-  // 'red': [ 255 / 255, 0 / 255, 0 / 255 ],
-  rosybrown: [188 / 255, 143 / 255, 143 / 255],
-  royalblue: [65 / 255, 105 / 255, 225 / 255],
-  saddlebrown: [139 / 255, 69 / 255, 19 / 255],
-  salmon: [250 / 255, 128 / 255, 114 / 255],
-  sandybrown: [244 / 255, 164 / 255, 96 / 255],
-  seagreen: [46 / 255, 139 / 255, 87 / 255],
-  seashell: [255 / 255, 245 / 255, 238 / 255],
-  sienna: [160 / 255, 82 / 255, 45 / 255],
-  // 'silver': [ 192 / 255, 192 / 255, 192 / 255 ],
-  skyblue: [135 / 255, 206 / 255, 235 / 255],
-  slateblue: [106 / 255, 90 / 255, 205 / 255],
-  slategray: [112 / 255, 128 / 255, 144 / 255],
-  slategrey: [112 / 255, 128 / 255, 144 / 255],
-  snow: [255 / 255, 250 / 255, 250 / 255],
-  springgreen: [0 / 255, 255 / 255, 127 / 255],
-  steelblue: [70 / 255, 130 / 255, 180 / 255],
-  tan: [210 / 255, 180 / 255, 140 / 255],
-  // 'teal': [ 0 / 255, 128 / 255, 128 / 255 ],
-  thistle: [216 / 255, 191 / 255, 216 / 255],
-  tomato: [255 / 255, 99 / 255, 71 / 255],
-  turquoise: [64 / 255, 224 / 255, 208 / 255],
-  violet: [238 / 255, 130 / 255, 238 / 255],
-  wheat: [245 / 255, 222 / 255, 179 / 255],
-  // 'white': [ 255 / 255, 255 / 255, 255 / 255 ],
-  whitesmoke: [245 / 255, 245 / 255, 245 / 255],
-  // 'yellow': [ 255 / 255, 255 / 255, 0 / 255 ],
-  yellowgreen: [154 / 255, 205 / 255, 50 / 255]
-};
-var cssColors_1 = cssColors$1;
-const cssColors = cssColors_1;
-const colorNameToRgb = (s) => cssColors[s.toLowerCase()];
-var colorNameToRgb_1 = colorNameToRgb;
-const hexToRgb = (notation) => {
-  notation = notation.replace("#", "");
-  if (notation.length < 6)
-    throw new Error("the given notation must contain 3 or more hex values");
-  const r = parseInt(notation.substring(0, 2), 16) / 255;
-  const g = parseInt(notation.substring(2, 4), 16) / 255;
-  const b = parseInt(notation.substring(4, 6), 16) / 255;
-  if (notation.length >= 8) {
-    const a = parseInt(notation.substring(6, 8), 16) / 255;
-    return [r, g, b, a];
-  }
-  return [r, g, b];
-};
-var hexToRgb_1 = hexToRgb;
-const hueToColorComponent$1 = (p, q, t) => {
-  if (t < 0)
-    t += 1;
-  if (t > 1)
-    t -= 1;
-  if (t < 1 / 6)
-    return p + (q - p) * 6 * t;
-  if (t < 1 / 2)
-    return q;
-  if (t < 2 / 3)
-    return p + (q - p) * (2 / 3 - t) * 6;
-  return p;
-};
-var hueToColorComponent_1 = hueToColorComponent$1;
-const flatten$J = flatten_1;
-const hueToColorComponent = hueToColorComponent_1;
-const hslToRgb = (...values2) => {
-  values2 = flatten$J(values2);
-  if (values2.length < 3)
-    throw new Error("values must contain H, S and L values");
-  const h = values2[0];
-  const s = values2[1];
-  const l = values2[2];
-  let r = l;
-  let g = l;
-  let b = l;
-  if (s !== 0) {
-    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-    const p = 2 * l - q;
-    r = hueToColorComponent(p, q, h + 1 / 3);
-    g = hueToColorComponent(p, q, h);
-    b = hueToColorComponent(p, q, h - 1 / 3);
-  }
-  if (values2.length > 3) {
-    const a = values2[3];
-    return [r, g, b, a];
-  }
-  return [r, g, b];
-};
-var hslToRgb_1 = hslToRgb;
-const flatten$I = flatten_1;
-const hsvToRgb = (...values2) => {
-  values2 = flatten$I(values2);
-  if (values2.length < 3)
-    throw new Error("values must contain H, S and V values");
-  const h = values2[0];
-  const s = values2[1];
-  const v = values2[2];
-  let r = 0;
-  let g = 0;
-  let b = 0;
-  const i = Math.floor(h * 6);
-  const f = h * 6 - i;
-  const p = v * (1 - s);
-  const q = v * (1 - f * s);
-  const t = v * (1 - (1 - f) * s);
-  switch (i % 6) {
-    case 0:
-      r = v;
-      g = t;
-      b = p;
-      break;
-    case 1:
-      r = q;
-      g = v;
-      b = p;
-      break;
-    case 2:
-      r = p;
-      g = v;
-      b = t;
-      break;
-    case 3:
-      r = p;
-      g = q;
-      b = v;
-      break;
-    case 4:
-      r = t;
-      g = p;
-      b = v;
-      break;
-    case 5:
-      r = v;
-      g = p;
-      b = q;
-      break;
-  }
-  if (values2.length > 3) {
-    const a = values2[3];
-    return [r, g, b, a];
-  }
-  return [r, g, b];
-};
-var hsvToRgb_1 = hsvToRgb;
-const flatten$H = flatten_1;
-const rgbToHex = (...values2) => {
-  values2 = flatten$H(values2);
-  if (values2.length < 3)
-    throw new Error("values must contain R, G and B values");
-  const r = values2[0] * 255;
-  const g = values2[1] * 255;
-  const b = values2[2] * 255;
-  let s = `#${Number(16777216 + r * 65536 + g * 256 + b).toString(16).substring(1, 7)}`;
-  if (values2.length > 3) {
-    s = s + Number(values2[3] * 255).toString(16);
-  }
-  return s;
-};
-var rgbToHex_1 = rgbToHex;
-const flatten$G = flatten_1;
-const rgbToHsl = (...values2) => {
-  values2 = flatten$G(values2);
-  if (values2.length < 3)
-    throw new Error("values must contain R, G and B values");
-  const r = values2[0];
-  const g = values2[1];
-  const b = values2[2];
-  const max2 = Math.max(r, g, b);
-  const min2 = Math.min(r, g, b);
-  let h;
-  let s;
-  const l = (max2 + min2) / 2;
-  if (max2 === min2) {
-    h = s = 0;
-  } else {
-    const d = max2 - min2;
-    s = l > 0.5 ? d / (2 - max2 - min2) : d / (max2 + min2);
-    switch (max2) {
-      case r:
-        h = (g - b) / d + (g < b ? 6 : 0);
-        break;
-      case g:
-        h = (b - r) / d + 2;
-        break;
-      case b:
-        h = (r - g) / d + 4;
-        break;
-    }
-    h /= 6;
-  }
-  if (values2.length > 3) {
-    const a = values2[3];
-    return [h, s, l, a];
-  }
-  return [h, s, l];
-};
-var rgbToHsl_1 = rgbToHsl;
-const flatten$F = flatten_1;
-const rgbToHsv = (...values2) => {
-  values2 = flatten$F(values2);
-  if (values2.length < 3)
-    throw new Error("values must contain R, G and B values");
-  const r = values2[0];
-  const g = values2[1];
-  const b = values2[2];
-  const max2 = Math.max(r, g, b);
-  const min2 = Math.min(r, g, b);
-  let h;
-  const v = max2;
-  const d = max2 - min2;
-  const s = max2 === 0 ? 0 : d / max2;
-  if (max2 === min2) {
-    h = 0;
-  } else {
-    switch (max2) {
-      case r:
-        h = (g - b) / d + (g < b ? 6 : 0);
-        break;
-      case g:
-        h = (b - r) / d + 2;
-        break;
-      case b:
-        h = (r - g) / d + 4;
-        break;
-    }
-    h /= 6;
-  }
-  if (values2.length > 3) {
-    const a = values2[3];
-    return [h, s, v, a];
-  }
-  return [h, s, v];
-};
-var rgbToHsv_1 = rgbToHsv;
-var colors = {
-  colorize: colorize_1,
-  colorNameToRgb: colorNameToRgb_1,
-  cssColors: cssColors_1,
-  hexToRgb: hexToRgb_1,
-  hslToRgb: hslToRgb_1,
-  hsvToRgb: hsvToRgb_1,
-  hueToColorComponent: hueToColorComponent_1,
-  rgbToHex: rgbToHex_1,
-  rgbToHsl: rgbToHsl_1,
-  rgbToHsv: rgbToHsv_1
-};
-const create$e = (points) => {
-  if (!Array.isArray(points))
-    throw new Error("Bezier points must be a valid array/");
-  if (points.length < 2)
-    throw new Error("Bezier points must contain at least 2 values.");
-  const pointType = getPointType(points);
-  return {
-    points,
-    pointType,
-    dimensions: pointType === "float_single" ? 0 : points[0].length,
-    permutations: getPermutations(points.length - 1),
-    tangentPermutations: getPermutations(points.length - 2)
-  };
-};
-const getPointType = function(points) {
-  let firstPointType = null;
-  points.forEach((point) => {
-    let pType = "";
-    if (Number.isFinite(point)) {
-      pType = "float_single";
-    } else if (Array.isArray(point)) {
-      point.forEach((val) => {
-        if (!Number.isFinite(val))
-          throw new Error("Bezier point values must all be numbers.");
-      });
-      pType = "float_" + point.length;
-    } else
-      throw new Error("Bezier points must all be numbers or arrays of number.");
-    if (firstPointType == null) {
-      firstPointType = pType;
-    } else {
-      if (firstPointType !== pType) {
-        throw new Error("Bezier points must be either all numbers or all arrays of numbers of the same size.");
-      }
-    }
-  });
-  return firstPointType;
-};
-const getPermutations = function(c2) {
-  const permutations = [];
-  for (let i = 0; i <= c2; i++) {
-    permutations.push(factorial(c2) / (factorial(i) * factorial(c2 - i)));
-  }
-  return permutations;
-};
-const factorial = function(b) {
-  let out = 1;
-  for (let i = 2; i <= b; i++) {
-    out *= i;
-  }
-  return out;
-};
-var create_1$4 = create$e;
-const valueAt = (t, bezier2) => {
-  if (t < 0 || t > 1) {
-    throw new Error("Bezier valueAt() input must be between 0 and 1");
-  }
-  if (bezier2.pointType === "float_single") {
-    return bezierFunction(bezier2, bezier2.points, t);
-  } else {
-    const result = [];
-    for (let i = 0; i < bezier2.dimensions; i++) {
-      const singleDimensionPoints = [];
-      for (let j = 0; j < bezier2.points.length; j++) {
-        singleDimensionPoints.push(bezier2.points[j][i]);
-      }
-      result.push(bezierFunction(bezier2, singleDimensionPoints, t));
-    }
-    return result;
-  }
-};
-const bezierFunction = function(bezier2, p, t) {
-  const n = p.length - 1;
-  let result = 0;
-  for (let i = 0; i <= n; i++) {
-    result += bezier2.permutations[i] * Math.pow(1 - t, n - i) * Math.pow(t, i) * p[i];
-  }
-  return result;
-};
-var valueAt_1 = valueAt;
-const tangentAt = (t, bezier2) => {
-  if (t < 0 || t > 1) {
-    throw new Error("Bezier tangentAt() input must be between 0 and 1");
-  }
-  if (bezier2.pointType === "float_single") {
-    return bezierTangent(bezier2, bezier2.points, t);
-  } else {
-    const result = [];
-    for (let i = 0; i < bezier2.dimensions; i++) {
-      const singleDimensionPoints = [];
-      for (let j = 0; j < bezier2.points.length; j++) {
-        singleDimensionPoints.push(bezier2.points[j][i]);
-      }
-      result.push(bezierTangent(bezier2, singleDimensionPoints, t));
-    }
-    return result;
-  }
-};
-const bezierTangent = function(bezier2, p, t) {
-  const n = p.length - 1;
-  let result = 0;
-  for (let i = 0; i < n; i++) {
-    const q = n * (p[i + 1] - p[i]);
-    result += bezier2.tangentPermutations[i] * Math.pow(1 - t, n - 1 - i) * Math.pow(t, i) * q;
-  }
-  return result;
-};
-var tangentAt_1 = tangentAt;
-var bezier = {
-  create: create_1$4,
-  valueAt: valueAt_1,
-  tangentAt: tangentAt_1
-};
-var curves = {
-  bezier
-};
-const area$a = (points) => {
+var measureBoundingBox_1 = measureBoundingBox$2;
+const measureBoundingBox$3 = /* @__PURE__ */ getDefaultExportFromCjs(measureBoundingBox_1);
+const area$8 = (points) => {
   let area2 = 0;
   for (let i = 0; i < points.length; i++) {
     const j = (i + 1) % points.length;
@@ -24853,43 +24563,43 @@ const area$a = (points) => {
   }
   return area2 / 2;
 };
-var area_1 = area$a;
-const area$9 = area_1;
-const measureArea$3 = (polygon2) => area$9(polygon2.vertices);
-var measureArea_1$1 = measureArea$3;
-const create$d = (vertices) => {
+var area_1 = area$8;
+const area$7 = area_1;
+const measureArea$1 = (polygon) => area$7(polygon.vertices);
+var measureArea_1 = measureArea$1;
+const create$b = (vertices) => {
   if (vertices === void 0 || vertices.length < 3) {
     vertices = [];
   }
   return { vertices };
 };
-var create_1$3 = create$d;
-const create$c = create_1$3;
-const flip$1 = (polygon2) => {
-  const vertices = polygon2.vertices.slice().reverse();
-  return create$c(vertices);
+var create_1$2 = create$b;
+const create$a = create_1$2;
+const flip$1 = (polygon) => {
+  const vertices = polygon.vertices.slice().reverse();
+  return create$a(vertices);
 };
 var flip_1 = flip$1;
-const measureArea$2 = measureArea_1$1;
+const measureArea = measureArea_1;
 const flip = flip_1;
-const arePointsInside$1 = (points, polygon2) => {
+const arePointsInside$1 = (points, polygon) => {
   if (points.length === 0)
     return 0;
-  const vertices = polygon2.vertices;
+  const vertices = polygon.vertices;
   if (vertices.length < 3)
     return 0;
-  if (measureArea$2(polygon2) < 0) {
-    polygon2 = flip(polygon2);
+  if (measureArea(polygon) < 0) {
+    polygon = flip(polygon);
   }
   const sum2 = points.reduce((acc, point) => acc + isPointInside(point, vertices), 0);
   return sum2 === points.length ? 1 : 0;
 };
-const isPointInside = (point, polygon2) => {
-  const numverts = polygon2.length;
+const isPointInside = (point, polygon) => {
+  const numverts = polygon.length;
   const tx = point[0];
   const ty = point[1];
-  let vtx0 = polygon2[numverts - 1];
-  let vtx1 = polygon2[0];
+  let vtx0 = polygon[numverts - 1];
+  let vtx1 = polygon[0];
   let yflag0 = vtx0[1] > ty;
   let insideFlag = 0;
   let i = 0;
@@ -24908,101 +24618,112 @@ const isPointInside = (point, polygon2) => {
     }
     yflag0 = yflag1;
     vtx0 = vtx1;
-    vtx1 = polygon2[++i];
+    vtx1 = polygon[++i];
   }
   return insideFlag;
 };
 var arePointsInside_1 = arePointsInside$1;
 var poly2$1 = {
   arePointsInside: arePointsInside_1,
-  create: create_1$3,
+  create: create_1$2,
   flip: flip_1,
-  measureArea: measureArea_1$1
+  measureArea: measureArea_1
 };
-var geometries = {
-  geom2: geom2$K,
-  geom3: geom3$K,
-  path2: path2$u,
-  poly2: poly2$1,
-  poly3: poly3$A
+const intersect$5 = (p1, p2, p3, p4) => {
+  if (p1[0] === p2[0] && p1[1] === p2[1] || p3[0] === p4[0] && p3[1] === p4[1]) {
+    return void 0;
+  }
+  const denominator = (p4[1] - p3[1]) * (p2[0] - p1[0]) - (p4[0] - p3[0]) * (p2[1] - p1[1]);
+  if (Math.abs(denominator) < Number.MIN_VALUE) {
+    return void 0;
+  }
+  const ua = ((p4[0] - p3[0]) * (p1[1] - p3[1]) - (p4[1] - p3[1]) * (p1[0] - p3[0])) / denominator;
+  const ub = ((p2[0] - p1[0]) * (p1[1] - p3[1]) - (p2[1] - p1[1]) * (p1[0] - p3[0])) / denominator;
+  if (ua < 0 || ua > 1 || ub < 0 || ub > 1) {
+    return void 0;
+  }
+  const x = p1[0] + ua * (p2[0] - p1[0]);
+  const y = p1[1] + ua * (p2[1] - p1[1]);
+  return [x, y];
 };
-const create$b = () => [0, 1, 0];
-var create_1$2 = create$b;
-const create$a = create_1$2;
-const clone$2 = (line4) => {
-  const out = create$a();
-  out[0] = line4[0];
-  out[1] = line4[1];
-  out[2] = line4[2];
+var intersect_1$1 = intersect$5;
+const create$9 = () => [0, 1, 0];
+var create_1$1 = create$9;
+const create$8 = create_1$1;
+const clone$1 = (line) => {
+  const out = create$8();
+  out[0] = line[0];
+  out[1] = line[1];
+  out[2] = line[2];
   return out;
 };
-var clone_1$2 = clone$2;
-const vec2$o = vec2$E;
-const direction$3 = (line4) => {
-  const vector = vec2$o.normal(vec2$o.create(), line4);
-  vec2$o.negate(vector, vector);
+var clone_1$1 = clone$1;
+const vec2$c = vec2$w;
+const direction$2 = (line) => {
+  const vector = vec2$c.normal(vec2$c.create(), line);
+  vec2$c.negate(vector, vector);
   return vector;
 };
-var direction_1$1 = direction$3;
-const vec2$n = vec2$E;
-const origin$4 = (line4) => vec2$n.scale(vec2$n.create(), line4, line4[2]);
-var origin_1$1 = origin$4;
-const vec2$m = vec2$E;
-const direction$2 = direction_1$1;
-const origin$3 = origin_1$1;
-const closestPoint$2 = (line4, point) => {
-  const a = origin$3(line4);
-  const b = direction$2(line4);
+var direction_1 = direction$2;
+const vec2$b = vec2$w;
+const origin$3 = (line) => vec2$b.scale(vec2$b.create(), line, line[2]);
+var origin_1 = origin$3;
+const vec2$a = vec2$w;
+const direction$1 = direction_1;
+const origin$2 = origin_1;
+const closestPoint = (line, point) => {
+  const a = origin$2(line);
+  const b = direction$1(line);
   const m1 = (b[1] - a[1]) / (b[0] - a[0]);
   const t1 = a[1] - m1 * a[0];
   const m2 = -1 / m1;
   const t2 = point[1] - m2 * point[0];
   const x = (t2 - t1) / (m1 - m2);
   const y = m1 * x + t1;
-  const closest = vec2$m.fromValues(x, y);
+  const closest = vec2$a.fromValues(x, y);
   return closest;
 };
-var closestPoint_1$1 = closestPoint$2;
-const copy$3 = (out, line4) => {
-  out[0] = line4[0];
-  out[1] = line4[1];
-  out[2] = line4[2];
+var closestPoint_1 = closestPoint;
+const copy$1 = (out, line) => {
+  out[0] = line[0];
+  out[1] = line[1];
+  out[2] = line[2];
   return out;
 };
-var copy_1$1 = copy$3;
-const vec2$l = vec2$E;
-const distanceToPoint$1 = (line4, point) => {
-  let distance2 = vec2$l.dot(point, line4);
-  distance2 = Math.abs(distance2 - line4[2]);
+var copy_1 = copy$1;
+const vec2$9 = vec2$w;
+const distanceToPoint = (line, point) => {
+  let distance2 = vec2$9.dot(point, line);
+  distance2 = Math.abs(distance2 - line[2]);
   return distance2;
 };
-var distanceToPoint_1$1 = distanceToPoint$1;
-const equals$4 = (line1, line22) => line1[0] === line22[0] && (line1[1] === line22[1] && line1[2] === line22[2]);
-var equals_1$2 = equals$4;
-const vec2$k = vec2$E;
-const fromPoints$3 = (out, point1, point2) => {
-  const vector = vec2$k.subtract(vec2$k.create(), point2, point1);
-  vec2$k.normal(vector, vector);
-  vec2$k.normalize(vector, vector);
-  const distance2 = vec2$k.dot(point1, vector);
+var distanceToPoint_1 = distanceToPoint;
+const equals$3 = (line1, line22) => line1[0] === line22[0] && (line1[1] === line22[1] && line1[2] === line22[2]);
+var equals_1$1 = equals$3;
+const vec2$8 = vec2$w;
+const fromPoints$2 = (out, point1, point2) => {
+  const vector = vec2$8.subtract(vec2$8.create(), point2, point1);
+  vec2$8.normal(vector, vector);
+  vec2$8.normalize(vector, vector);
+  const distance2 = vec2$8.dot(point1, vector);
   out[0] = vector[0];
   out[1] = vector[1];
   out[2] = distance2;
   return out;
 };
-var fromPoints_1$2 = fromPoints$3;
-const create$9 = create_1$2;
+var fromPoints_1$1 = fromPoints$2;
+const create$7 = create_1$1;
 const fromValues$1 = (x, y, d) => {
-  const out = create$9();
+  const out = create$7();
   out[0] = x;
   out[1] = y;
   out[2] = d;
   return out;
 };
 var fromValues_1 = fromValues$1;
-const { NEPS: NEPS$1 } = constants$3;
-const aboutEqualNormals$3 = (a, b) => Math.abs(a[0] - b[0]) <= NEPS$1 && Math.abs(a[1] - b[1]) <= NEPS$1 && Math.abs(a[2] - b[2]) <= NEPS$1;
-var aboutEqualNormals_1 = aboutEqualNormals$3;
+const { NEPS } = constants$3;
+const aboutEqualNormals$2 = (a, b) => Math.abs(a[0] - b[0]) <= NEPS && Math.abs(a[1] - b[1]) <= NEPS && Math.abs(a[2] - b[2]) <= NEPS;
+var aboutEqualNormals_1 = aboutEqualNormals$2;
 const interpolateBetween2DPointsForY$1 = (point1, point2, y) => {
   let f1 = y - point1[1];
   let f2 = point2[1] - point1[1];
@@ -25024,25 +24745,7 @@ const interpolateBetween2DPointsForY$1 = (point1, point2, y) => {
   return result;
 };
 var interpolateBetween2DPointsForY_1 = interpolateBetween2DPointsForY$1;
-const intersect$4 = (p1, p2, p3, p4) => {
-  if (p1[0] === p2[0] && p1[1] === p2[1] || p3[0] === p4[0] && p3[1] === p4[1]) {
-    return void 0;
-  }
-  const denominator = (p4[1] - p3[1]) * (p2[0] - p1[0]) - (p4[0] - p3[0]) * (p2[1] - p1[1]);
-  if (Math.abs(denominator) < Number.MIN_VALUE) {
-    return void 0;
-  }
-  const ua = ((p4[0] - p3[0]) * (p1[1] - p3[1]) - (p4[1] - p3[1]) * (p1[0] - p3[0])) / denominator;
-  const ub = ((p2[0] - p1[0]) * (p1[1] - p3[1]) - (p2[1] - p1[1]) * (p1[0] - p3[0])) / denominator;
-  if (ua < 0 || ua > 1 || ub < 0 || ub > 1) {
-    return void 0;
-  }
-  const x = p1[0] + ua * (p2[0] - p1[0]);
-  const y = p1[1] + ua * (p2[1] - p1[1]);
-  return [x, y];
-};
-var intersect_1$1 = intersect$4;
-const solve2Linear$2 = (a, b, c2, d, u, v) => {
+const solve2Linear$1 = (a, b, c2, d, u, v) => {
   const det = a * d - b * c2;
   const invdet = 1 / det;
   let x = u * d - b * v;
@@ -25051,7 +24754,7 @@ const solve2Linear$2 = (a, b, c2, d, u, v) => {
   y *= invdet;
   return [x, y];
 };
-var solve2Linear_1 = solve2Linear$2;
+var solve2Linear_1 = solve2Linear$1;
 var utils$8 = {
   aboutEqualNormals: aboutEqualNormals_1,
   area: area_1,
@@ -25061,203 +24764,47 @@ var utils$8 = {
   sin: trigonometry.sin,
   solve2Linear: solve2Linear_1
 };
-const vec2$j = vec2$E;
-const { solve2Linear: solve2Linear$1 } = utils$8;
+const vec2$7 = vec2$w;
+const { solve2Linear } = utils$8;
 const intersectToLine = (line1, line22) => {
-  const point = solve2Linear$1(line1[0], line1[1], line22[0], line22[1], line1[2], line22[2]);
-  return vec2$j.clone(point);
+  const point = solve2Linear(line1[0], line1[1], line22[0], line22[1], line1[2], line22[2]);
+  return vec2$7.clone(point);
 };
 var intersectPointOfLines = intersectToLine;
-const vec2$i = vec2$E;
-const copy$2 = copy_1$1;
+const vec2$6 = vec2$w;
+const copy = copy_1;
 const fromValues = fromValues_1;
-const reverse$2 = (out, line4) => {
-  const normal2 = vec2$i.negate(vec2$i.create(), line4);
-  const distance2 = -line4[2];
-  return copy$2(out, fromValues(normal2[0], normal2[1], distance2));
+const reverse$1 = (out, line) => {
+  const normal2 = vec2$6.negate(vec2$6.create(), line);
+  const distance2 = -line[2];
+  return copy(out, fromValues(normal2[0], normal2[1], distance2));
 };
-var reverse_1$2 = reverse$2;
-const toString$4 = (line4) => `line2: (${line4[0].toFixed(7)}, ${line4[1].toFixed(7)}, ${line4[2].toFixed(7)})`;
-var toString_1$2 = toString$4;
-const vec2$h = vec2$E;
-const fromPoints$2 = fromPoints_1$2;
-const origin$2 = origin_1$1;
-const direction$1 = direction_1$1;
-const transform$3 = (out, line4, matrix) => {
-  const org = origin$2(line4);
-  const dir = direction$1(line4);
-  vec2$h.transform(org, org, matrix);
-  vec2$h.transform(dir, dir, matrix);
-  return fromPoints$2(out, org, dir);
+var reverse_1$1 = reverse$1;
+const toString$3 = (line) => `line2: (${line[0].toFixed(7)}, ${line[1].toFixed(7)}, ${line[2].toFixed(7)})`;
+var toString_1$1 = toString$3;
+const vec2$5 = vec2$w;
+const fromPoints$1 = fromPoints_1$1;
+const origin$1 = origin_1;
+const direction = direction_1;
+const transform$1 = (out, line, matrix) => {
+  const org = origin$1(line);
+  const dir = direction(line);
+  vec2$5.transform(org, org, matrix);
+  vec2$5.transform(dir, dir, matrix);
+  return fromPoints$1(out, org, dir);
 };
-var transform_1$3 = transform$3;
-const origin$1 = origin_1$1;
-const xAtY = (line4, y) => {
-  let x = (line4[2] - line4[1] * y) / line4[0];
+var transform_1$1 = transform$1;
+const origin = origin_1;
+const xAtY = (line, y) => {
+  let x = (line[2] - line[1] * y) / line[0];
   if (Number.isNaN(x)) {
-    const org = origin$1(line4);
+    const org = origin(line);
     x = org[0];
   }
   return x;
 };
 var xAtY_1 = xAtY;
 var line2$2 = {
-  clone: clone_1$2,
-  closestPoint: closestPoint_1$1,
-  copy: copy_1$1,
-  create: create_1$2,
-  direction: direction_1$1,
-  distanceToPoint: distanceToPoint_1$1,
-  equals: equals_1$2,
-  fromPoints: fromPoints_1$2,
-  fromValues: fromValues_1,
-  intersectPointOfLines,
-  origin: origin_1$1,
-  reverse: reverse_1$2,
-  toString: toString_1$2,
-  transform: transform_1$3,
-  xAtY: xAtY_1
-};
-const vec3$G = vec3$Y;
-const create$8 = () => [
-  vec3$G.fromValues(0, 0, 0),
-  // origin
-  vec3$G.fromValues(0, 0, 1)
-  // direction
-];
-var create_1$1 = create$8;
-const vec3$F = vec3$Y;
-const create$7 = create_1$1;
-const clone$1 = (line4) => {
-  const out = create$7();
-  vec3$F.copy(out[0], line4[0]);
-  vec3$F.copy(out[1], line4[1]);
-  return out;
-};
-var clone_1$1 = clone$1;
-const vec3$E = vec3$Y;
-const closestPoint$1 = (line4, point) => {
-  const lpoint = line4[0];
-  const ldirection = line4[1];
-  const a = vec3$E.dot(vec3$E.subtract(vec3$E.create(), point, lpoint), ldirection);
-  const b = vec3$E.dot(ldirection, ldirection);
-  const t = a / b;
-  const closestpoint = vec3$E.scale(vec3$E.create(), ldirection, t);
-  vec3$E.add(closestpoint, closestpoint, lpoint);
-  return closestpoint;
-};
-var closestPoint_1 = closestPoint$1;
-const vec3$D = vec3$Y;
-const copy$1 = (out, line4) => {
-  vec3$D.copy(out[0], line4[0]);
-  vec3$D.copy(out[1], line4[1]);
-  return out;
-};
-var copy_1 = copy$1;
-const direction = (line4) => line4[1];
-var direction_1 = direction;
-const vec3$C = vec3$Y;
-const closestPoint = closestPoint_1;
-const distanceToPoint = (line4, point) => {
-  const closest = closestPoint(line4, point);
-  const distancevector = vec3$C.subtract(vec3$C.create(), point, closest);
-  return vec3$C.length(distancevector);
-};
-var distanceToPoint_1 = distanceToPoint;
-const vec3$B = vec3$Y;
-const equals$3 = (line1, line22) => {
-  if (!vec3$B.equals(line1[1], line22[1]))
-    return false;
-  if (!vec3$B.equals(line1[0], line22[0]))
-    return false;
-  return true;
-};
-var equals_1$1 = equals$3;
-const vec3$A = vec3$Y;
-const fromPointAndDirection$4 = (out, point, direction2) => {
-  const unit = vec3$A.normalize(vec3$A.create(), direction2);
-  vec3$A.copy(out[0], point);
-  vec3$A.copy(out[1], unit);
-  return out;
-};
-var fromPointAndDirection_1 = fromPointAndDirection$4;
-const vec3$z = vec3$Y;
-const { solve2Linear } = utils$8;
-const { EPS: EPS$e } = constants$3;
-const fromPointAndDirection$3 = fromPointAndDirection_1;
-const fromPlanes = (out, plane1, plane2) => {
-  let direction2 = vec3$z.cross(vec3$z.create(), plane1, plane2);
-  let length2 = vec3$z.length(direction2);
-  if (length2 < EPS$e) {
-    throw new Error("parallel planes do not intersect");
-  }
-  length2 = 1 / length2;
-  direction2 = vec3$z.scale(direction2, direction2, length2);
-  const absx = Math.abs(direction2[0]);
-  const absy = Math.abs(direction2[1]);
-  const absz = Math.abs(direction2[2]);
-  let origin2;
-  let r;
-  if (absx >= absy && absx >= absz) {
-    r = solve2Linear(plane1[1], plane1[2], plane2[1], plane2[2], plane1[3], plane2[3]);
-    origin2 = vec3$z.fromValues(0, r[0], r[1]);
-  } else if (absy >= absx && absy >= absz) {
-    r = solve2Linear(plane1[0], plane1[2], plane2[0], plane2[2], plane1[3], plane2[3]);
-    origin2 = vec3$z.fromValues(r[0], 0, r[1]);
-  } else {
-    r = solve2Linear(plane1[0], plane1[1], plane2[0], plane2[1], plane1[3], plane2[3]);
-    origin2 = vec3$z.fromValues(r[0], r[1], 0);
-  }
-  return fromPointAndDirection$3(out, origin2, direction2);
-};
-var fromPlanes_1 = fromPlanes;
-const vec3$y = vec3$Y;
-const fromPointAndDirection$2 = fromPointAndDirection_1;
-const fromPoints$1 = (out, point1, point2) => {
-  const direction2 = vec3$y.subtract(vec3$y.create(), point2, point1);
-  return fromPointAndDirection$2(out, point1, direction2);
-};
-var fromPoints_1$1 = fromPoints$1;
-const vec3$x = vec3$Y;
-const intersectToPlane = (line4, plane2) => {
-  const pnormal = plane2;
-  const pw = plane2[3];
-  const lpoint = line4[0];
-  const ldirection = line4[1];
-  const labda = (pw - vec3$x.dot(pnormal, lpoint)) / vec3$x.dot(pnormal, ldirection);
-  const point = vec3$x.add(vec3$x.create(), lpoint, vec3$x.scale(vec3$x.create(), ldirection, labda));
-  return point;
-};
-var intersectPointOfLineAndPlane = intersectToPlane;
-const origin = (line4) => line4[0];
-var origin_1 = origin;
-const vec3$w = vec3$Y;
-const fromPointAndDirection$1 = fromPointAndDirection_1;
-const reverse$1 = (out, line4) => {
-  const point = vec3$w.clone(line4[0]);
-  const direction2 = vec3$w.negate(vec3$w.create(), line4[1]);
-  return fromPointAndDirection$1(out, point, direction2);
-};
-var reverse_1$1 = reverse$1;
-const toString$3 = (line4) => {
-  const point = line4[0];
-  const direction2 = line4[1];
-  return `line3: point: (${point[0].toFixed(7)}, ${point[1].toFixed(7)}, ${point[2].toFixed(7)}) direction: (${direction2[0].toFixed(7)}, ${direction2[1].toFixed(7)}, ${direction2[2].toFixed(7)})`;
-};
-var toString_1$1 = toString$3;
-const vec3$v = vec3$Y;
-const fromPointAndDirection = fromPointAndDirection_1;
-const transform$2 = (out, line4, matrix) => {
-  const point = line4[0];
-  const direction2 = line4[1];
-  const pointPlusDirection = vec3$v.add(vec3$v.create(), point, direction2);
-  const newpoint = vec3$v.transform(vec3$v.create(), point, matrix);
-  const newPointPlusDirection = vec3$v.transform(pointPlusDirection, pointPlusDirection, matrix);
-  const newdirection = vec3$v.subtract(newPointPlusDirection, newPointPlusDirection, newpoint);
-  return fromPointAndDirection(out, newpoint, newdirection);
-};
-var transform_1$2 = transform$2;
-var line3 = {
   clone: clone_1$1,
   closestPoint: closestPoint_1,
   copy: copy_1,
@@ -25265,3101 +24812,226 @@ var line3 = {
   direction: direction_1,
   distanceToPoint: distanceToPoint_1,
   equals: equals_1$1,
-  fromPlanes: fromPlanes_1,
-  fromPointAndDirection: fromPointAndDirection_1,
   fromPoints: fromPoints_1$1,
-  intersectPointOfLineAndPlane,
+  fromValues: fromValues_1,
+  intersectPointOfLines,
   origin: origin_1,
   reverse: reverse_1$1,
   toString: toString_1$1,
-  transform: transform_1$2
+  transform: transform_1$1,
+  xAtY: xAtY_1
 };
-var maths = {
-  constants: constants$3,
-  line2: line2$2,
-  line3,
-  mat4: mat4$r,
-  plane: plane$b,
-  utils: utils$8,
-  vec2: vec2$E,
-  vec3: vec3$Y,
-  vec4: vec4$1
-};
-const flatten$E = flatten_1;
-const geom2$I = geom2$K;
-const geom3$I = geom3$K;
-const path2$s = path2$u;
-const poly3$q = poly3$A;
-const cache$2 = /* @__PURE__ */ new WeakMap();
-const measureAreaOfPath2 = () => 0;
-const measureAreaOfGeom2 = (geometry) => {
-  let area2 = cache$2.get(geometry);
-  if (area2)
-    return area2;
-  const sides = geom2$I.toSides(geometry);
-  area2 = sides.reduce((area3, side) => area3 + (side[0][0] * side[1][1] - side[0][1] * side[1][0]), 0);
-  area2 *= 0.5;
-  cache$2.set(geometry, area2);
-  return area2;
-};
-const measureAreaOfGeom3 = (geometry) => {
-  let area2 = cache$2.get(geometry);
-  if (area2)
-    return area2;
-  const polygons = geom3$I.toPolygons(geometry);
-  area2 = polygons.reduce((area3, polygon2) => area3 + poly3$q.measureArea(polygon2), 0);
-  cache$2.set(geometry, area2);
-  return area2;
-};
-const measureArea$1 = (...geometries2) => {
-  geometries2 = flatten$E(geometries2);
-  if (geometries2.length === 0)
-    throw new Error("wrong number of arguments");
-  const results = geometries2.map((geometry) => {
-    if (path2$s.isA(geometry))
-      return measureAreaOfPath2();
-    if (geom2$I.isA(geometry))
-      return measureAreaOfGeom2(geometry);
-    if (geom3$I.isA(geometry))
-      return measureAreaOfGeom3(geometry);
-    return 0;
-  });
-  return results.length === 1 ? results[0] : results;
-};
-var measureArea_1 = measureArea$1;
-const flatten$D = flatten_1;
-const measureArea = measureArea_1;
-const measureAggregateArea = (...geometries2) => {
-  geometries2 = flatten$D(geometries2);
-  if (geometries2.length === 0)
-    throw new Error("measureAggregateArea: no geometries supplied");
-  const areas = measureArea(geometries2);
-  if (geometries2.length === 1) {
-    return areas;
-  }
-  const result = 0;
-  return areas.reduce((result2, area2) => result2 + area2, result);
-};
-var measureAggregateArea_1 = measureAggregateArea;
-const flatten$C = flatten_1;
-const vec2$g = vec2$E;
-const vec3$u = vec3$Y;
-const geom2$H = geom2$K;
-const geom3$H = geom3$K;
-const path2$r = path2$u;
-const poly3$p = poly3$A;
-const cache$1 = /* @__PURE__ */ new WeakMap();
-const measureBoundingBoxOfPath2 = (geometry) => {
-  let boundingBox = cache$1.get(geometry);
-  if (boundingBox)
-    return boundingBox;
-  const points = path2$r.toPoints(geometry);
-  let minpoint;
-  if (points.length === 0) {
-    minpoint = vec2$g.create();
-  } else {
-    minpoint = vec2$g.clone(points[0]);
-  }
-  let maxpoint = vec2$g.clone(minpoint);
-  points.forEach((point) => {
-    vec2$g.min(minpoint, minpoint, point);
-    vec2$g.max(maxpoint, maxpoint, point);
-  });
-  minpoint = [minpoint[0], minpoint[1], 0];
-  maxpoint = [maxpoint[0], maxpoint[1], 0];
-  boundingBox = [minpoint, maxpoint];
-  cache$1.set(geometry, boundingBox);
-  return boundingBox;
-};
-const measureBoundingBoxOfGeom2 = (geometry) => {
-  let boundingBox = cache$1.get(geometry);
-  if (boundingBox)
-    return boundingBox;
-  const points = geom2$H.toPoints(geometry);
-  let minpoint;
-  if (points.length === 0) {
-    minpoint = vec2$g.create();
-  } else {
-    minpoint = vec2$g.clone(points[0]);
-  }
-  let maxpoint = vec2$g.clone(minpoint);
-  points.forEach((point) => {
-    vec2$g.min(minpoint, minpoint, point);
-    vec2$g.max(maxpoint, maxpoint, point);
-  });
-  minpoint = [minpoint[0], minpoint[1], 0];
-  maxpoint = [maxpoint[0], maxpoint[1], 0];
-  boundingBox = [minpoint, maxpoint];
-  cache$1.set(geometry, boundingBox);
-  return boundingBox;
-};
-const measureBoundingBoxOfGeom3 = (geometry) => {
-  let boundingBox = cache$1.get(geometry);
-  if (boundingBox)
-    return boundingBox;
-  const polygons = geom3$H.toPolygons(geometry);
-  let minpoint = vec3$u.create();
-  if (polygons.length > 0) {
-    const points = poly3$p.toPoints(polygons[0]);
-    vec3$u.copy(minpoint, points[0]);
-  }
-  let maxpoint = vec3$u.clone(minpoint);
-  polygons.forEach((polygon2) => {
-    poly3$p.toPoints(polygon2).forEach((point) => {
-      vec3$u.min(minpoint, minpoint, point);
-      vec3$u.max(maxpoint, maxpoint, point);
-    });
-  });
-  minpoint = [minpoint[0], minpoint[1], minpoint[2]];
-  maxpoint = [maxpoint[0], maxpoint[1], maxpoint[2]];
-  boundingBox = [minpoint, maxpoint];
-  cache$1.set(geometry, boundingBox);
-  return boundingBox;
-};
-const measureBoundingBox$6 = (...geometries2) => {
-  geometries2 = flatten$C(geometries2);
-  if (geometries2.length === 0)
-    throw new Error("wrong number of arguments");
-  const results = geometries2.map((geometry) => {
-    if (path2$r.isA(geometry))
-      return measureBoundingBoxOfPath2(geometry);
-    if (geom2$H.isA(geometry))
-      return measureBoundingBoxOfGeom2(geometry);
-    if (geom3$H.isA(geometry))
-      return measureBoundingBoxOfGeom3(geometry);
-    return [[0, 0, 0], [0, 0, 0]];
-  });
-  return results.length === 1 ? results[0] : results;
-};
-var measureBoundingBox_1 = measureBoundingBox$6;
-const flatten$B = flatten_1;
-const vec3min = min_1$1;
-const vec3max = max_1$1;
-const measureBoundingBox$5 = measureBoundingBox_1;
-const measureAggregateBoundingBox$2 = (...geometries2) => {
-  geometries2 = flatten$B(geometries2);
-  if (geometries2.length === 0)
-    throw new Error("measureAggregateBoundingBox: no geometries supplied");
-  const bounds = measureBoundingBox$5(geometries2);
-  if (geometries2.length === 1) {
-    return bounds;
-  }
-  const result = [[Number.MAX_VALUE, Number.MAX_VALUE, Number.MAX_VALUE], [-Number.MAX_VALUE, -Number.MAX_VALUE, -Number.MAX_VALUE]];
-  return bounds.reduce((result2, item) => {
-    result2 = [vec3min(result2[0], result2[0], item[0]), vec3max(result2[1], result2[1], item[1])];
-    return result2;
-  }, result);
-};
-var measureAggregateBoundingBox_1 = measureAggregateBoundingBox$2;
-const { EPS: EPS$d } = constants$3;
-const calculateEpsilonFromBounds$2 = (bounds, dimensions) => {
-  let total = 0;
-  for (let i = 0; i < dimensions; i++) {
-    total += bounds[1][i] - bounds[0][i];
-  }
-  return EPS$d * total / dimensions;
-};
-var calculateEpsilonFromBounds_1 = calculateEpsilonFromBounds$2;
-const flatten$A = flatten_1;
-const measureAggregateBoundingBox$1 = measureAggregateBoundingBox_1;
-const calculateEpsilonFromBounds$1 = calculateEpsilonFromBounds_1;
-const { geom2: geom2$G, geom3: geom3$G, path2: path2$q } = geometries;
-const measureAggregateEpsilon = (...geometries2) => {
-  geometries2 = flatten$A(geometries2);
-  if (geometries2.length === 0)
-    throw new Error("measureAggregateEpsilon: no geometries supplied");
-  const bounds = measureAggregateBoundingBox$1(geometries2);
-  let dimensions = 0;
-  dimensions = geometries2.reduce((dimensions2, geometry) => {
-    if (path2$q.isA(geometry) || geom2$G.isA(geometry))
-      return Math.max(dimensions2, 2);
-    if (geom3$G.isA(geometry))
-      return Math.max(dimensions2, 3);
-    return 0;
-  }, dimensions);
-  return calculateEpsilonFromBounds$1(bounds, dimensions);
-};
-var measureAggregateEpsilon_1 = measureAggregateEpsilon;
-const flatten$z = flatten_1;
-const geom2$F = geom2$K;
-const geom3$F = geom3$K;
-const path2$p = path2$u;
-const poly3$o = poly3$A;
-const cache = /* @__PURE__ */ new WeakMap();
-const measureVolumeOfPath2 = () => 0;
-const measureVolumeOfGeom2 = () => 0;
-const measureVolumeOfGeom3 = (geometry) => {
-  let volume = cache.get(geometry);
-  if (volume)
-    return volume;
-  const polygons = geom3$F.toPolygons(geometry);
-  volume = polygons.reduce((volume2, polygon2) => volume2 + poly3$o.measureSignedVolume(polygon2), 0);
-  cache.set(geometry, volume);
-  return volume;
-};
-const measureVolume$1 = (...geometries2) => {
-  geometries2 = flatten$z(geometries2);
-  if (geometries2.length === 0)
-    throw new Error("wrong number of arguments");
-  const results = geometries2.map((geometry) => {
-    if (path2$p.isA(geometry))
-      return measureVolumeOfPath2();
-    if (geom2$F.isA(geometry))
-      return measureVolumeOfGeom2();
-    if (geom3$F.isA(geometry))
-      return measureVolumeOfGeom3(geometry);
-    return 0;
-  });
-  return results.length === 1 ? results[0] : results;
-};
-var measureVolume_1 = measureVolume$1;
-const flatten$y = flatten_1;
-const measureVolume = measureVolume_1;
-const measureAggregateVolume = (...geometries2) => {
-  geometries2 = flatten$y(geometries2);
-  if (geometries2.length === 0)
-    throw new Error("measureAggregateVolume: no geometries supplied");
-  const volumes = measureVolume(geometries2);
-  if (geometries2.length === 1) {
-    return volumes;
-  }
-  const result = 0;
-  return volumes.reduce((result2, volume) => result2 + volume, result);
-};
-var measureAggregateVolume_1 = measureAggregateVolume;
-const flatten$x = flatten_1;
-const vec2$f = vec2$E;
-const vec3$t = vec3$Y;
-const geom2$E = geom2$K;
-const geom3$E = geom3$K;
-const path2$o = path2$u;
-const poly3$n = poly3$A;
-const cacheOfBoundingSpheres = /* @__PURE__ */ new WeakMap();
-const measureBoundingSphereOfPath2 = (geometry) => {
-  let boundingSphere = cacheOfBoundingSpheres.get(geometry);
-  if (boundingSphere !== void 0)
-    return boundingSphere;
-  const centroid = vec3$t.create();
-  let radius = 0;
-  const points = path2$o.toPoints(geometry);
-  if (points.length > 0) {
-    let numPoints = 0;
-    const temp = vec3$t.create();
-    points.forEach((point) => {
-      vec3$t.add(centroid, centroid, vec3$t.fromVec2(temp, point, 0));
-      numPoints++;
-    });
-    vec3$t.scale(centroid, centroid, 1 / numPoints);
-    points.forEach((point) => {
-      radius = Math.max(radius, vec2$f.squaredDistance(centroid, point));
-    });
-    radius = Math.sqrt(radius);
-  }
-  boundingSphere = [centroid, radius];
-  cacheOfBoundingSpheres.set(geometry, boundingSphere);
-  return boundingSphere;
-};
-const measureBoundingSphereOfGeom2 = (geometry) => {
-  let boundingSphere = cacheOfBoundingSpheres.get(geometry);
-  if (boundingSphere !== void 0)
-    return boundingSphere;
-  const centroid = vec3$t.create();
-  let radius = 0;
-  const sides = geom2$E.toSides(geometry);
-  if (sides.length > 0) {
-    let numPoints = 0;
-    const temp = vec3$t.create();
-    sides.forEach((side) => {
-      vec3$t.add(centroid, centroid, vec3$t.fromVec2(temp, side[0], 0));
-      numPoints++;
-    });
-    vec3$t.scale(centroid, centroid, 1 / numPoints);
-    sides.forEach((side) => {
-      radius = Math.max(radius, vec2$f.squaredDistance(centroid, side[0]));
-    });
-    radius = Math.sqrt(radius);
-  }
-  boundingSphere = [centroid, radius];
-  cacheOfBoundingSpheres.set(geometry, boundingSphere);
-  return boundingSphere;
-};
-const measureBoundingSphereOfGeom3 = (geometry) => {
-  let boundingSphere = cacheOfBoundingSpheres.get(geometry);
-  if (boundingSphere !== void 0)
-    return boundingSphere;
-  const centroid = vec3$t.create();
-  let radius = 0;
-  const polygons = geom3$E.toPolygons(geometry);
-  if (polygons.length > 0) {
-    let numPoints = 0;
-    polygons.forEach((polygon2) => {
-      poly3$n.toPoints(polygon2).forEach((point) => {
-        vec3$t.add(centroid, centroid, point);
-        numPoints++;
-      });
-    });
-    vec3$t.scale(centroid, centroid, 1 / numPoints);
-    polygons.forEach((polygon2) => {
-      poly3$n.toPoints(polygon2).forEach((point) => {
-        radius = Math.max(radius, vec3$t.squaredDistance(centroid, point));
-      });
-    });
-    radius = Math.sqrt(radius);
-  }
-  boundingSphere = [centroid, radius];
-  cacheOfBoundingSpheres.set(geometry, boundingSphere);
-  return boundingSphere;
-};
-const measureBoundingSphere = (...geometries2) => {
-  geometries2 = flatten$x(geometries2);
-  const results = geometries2.map((geometry) => {
-    if (path2$o.isA(geometry))
-      return measureBoundingSphereOfPath2(geometry);
-    if (geom2$E.isA(geometry))
-      return measureBoundingSphereOfGeom2(geometry);
-    if (geom3$E.isA(geometry))
-      return measureBoundingSphereOfGeom3(geometry);
-    return [[0, 0, 0], 0];
-  });
-  return results.length === 1 ? results[0] : results;
-};
-var measureBoundingSphere_1 = measureBoundingSphere;
-const flatten$w = flatten_1;
-const measureBoundingBox$4 = measureBoundingBox_1;
-const measureCenter = (...geometries2) => {
-  geometries2 = flatten$w(geometries2);
-  const results = geometries2.map((geometry) => {
-    const bounds = measureBoundingBox$4(geometry);
-    return [
-      bounds[0][0] + (bounds[1][0] - bounds[0][0]) / 2,
-      bounds[0][1] + (bounds[1][1] - bounds[0][1]) / 2,
-      bounds[0][2] + (bounds[1][2] - bounds[0][2]) / 2
-    ];
-  });
-  return results.length === 1 ? results[0] : results;
-};
-var measureCenter_1 = measureCenter;
-const flatten$v = flatten_1;
-const vec3$s = vec3$Y;
-const geom2$D = geom2$K;
-const geom3$D = geom3$K;
-const cacheOfCenterOfMass = /* @__PURE__ */ new WeakMap();
-const measureCenterOfMassGeom2 = (geometry) => {
-  let centerOfMass = cacheOfCenterOfMass.get(geometry);
-  if (centerOfMass !== void 0)
-    return centerOfMass;
-  const sides = geom2$D.toSides(geometry);
-  let area2 = 0;
-  let x = 0;
-  let y = 0;
-  if (sides.length > 0) {
-    for (let i = 0; i < sides.length; i++) {
-      const p1 = sides[i][0];
-      const p2 = sides[i][1];
-      const a = p1[0] * p2[1] - p1[1] * p2[0];
-      area2 += a;
-      x += (p1[0] + p2[0]) * a;
-      y += (p1[1] + p2[1]) * a;
-    }
-    area2 /= 2;
-    const f = 1 / (area2 * 6);
-    x *= f;
-    y *= f;
-  }
-  centerOfMass = vec3$s.fromValues(x, y, 0);
-  cacheOfCenterOfMass.set(geometry, centerOfMass);
-  return centerOfMass;
-};
-const measureCenterOfMassGeom3 = (geometry) => {
-  let centerOfMass = cacheOfCenterOfMass.get(geometry);
-  if (centerOfMass !== void 0)
-    return centerOfMass;
-  centerOfMass = vec3$s.create();
-  const polygons = geom3$D.toPolygons(geometry);
-  if (polygons.length === 0)
-    return centerOfMass;
-  let totalVolume = 0;
-  const vector = vec3$s.create();
-  polygons.forEach((polygon2) => {
-    const vertices = polygon2.vertices;
-    for (let i = 0; i < vertices.length - 2; i++) {
-      vec3$s.cross(vector, vertices[i + 1], vertices[i + 2]);
-      const volume = vec3$s.dot(vertices[0], vector) / 6;
-      totalVolume += volume;
-      vec3$s.add(vector, vertices[0], vertices[i + 1]);
-      vec3$s.add(vector, vector, vertices[i + 2]);
-      const weightedCenter = vec3$s.scale(vector, vector, 1 / 4 * volume);
-      vec3$s.add(centerOfMass, centerOfMass, weightedCenter);
-    }
-  });
-  vec3$s.scale(centerOfMass, centerOfMass, 1 / totalVolume);
-  cacheOfCenterOfMass.set(geometry, centerOfMass);
-  return centerOfMass;
-};
-const measureCenterOfMass = (...geometries2) => {
-  geometries2 = flatten$v(geometries2);
-  const results = geometries2.map((geometry) => {
-    if (geom2$D.isA(geometry))
-      return measureCenterOfMassGeom2(geometry);
-    if (geom3$D.isA(geometry))
-      return measureCenterOfMassGeom3(geometry);
-    return [0, 0, 0];
-  });
-  return results.length === 1 ? results[0] : results;
-};
-var measureCenterOfMass_1 = measureCenterOfMass;
-const flatten$u = flatten_1;
-const measureBoundingBox$3 = measureBoundingBox_1;
-const measureDimensions = (...geometries2) => {
-  geometries2 = flatten$u(geometries2);
-  const results = geometries2.map((geometry) => {
-    const boundingBox = measureBoundingBox$3(geometry);
-    return [
-      boundingBox[1][0] - boundingBox[0][0],
-      boundingBox[1][1] - boundingBox[0][1],
-      boundingBox[1][2] - boundingBox[0][2]
-    ];
-  });
-  return results.length === 1 ? results[0] : results;
-};
-var measureDimensions_1 = measureDimensions;
-const flatten$t = flatten_1;
-const { geom2: geom2$C, geom3: geom3$C, path2: path2$n } = geometries;
-const calculateEpsilonFromBounds = calculateEpsilonFromBounds_1;
-const measureBoundingBox$2 = measureBoundingBox_1;
-const measureEpsilonOfPath2 = (geometry) => calculateEpsilonFromBounds(measureBoundingBox$2(geometry), 2);
-const measureEpsilonOfGeom2 = (geometry) => calculateEpsilonFromBounds(measureBoundingBox$2(geometry), 2);
-const measureEpsilonOfGeom3 = (geometry) => calculateEpsilonFromBounds(measureBoundingBox$2(geometry), 3);
-const measureEpsilon$7 = (...geometries2) => {
-  geometries2 = flatten$t(geometries2);
-  if (geometries2.length === 0)
-    throw new Error("wrong number of arguments");
-  const results = geometries2.map((geometry) => {
-    if (path2$n.isA(geometry))
-      return measureEpsilonOfPath2(geometry);
-    if (geom2$C.isA(geometry))
-      return measureEpsilonOfGeom2(geometry);
-    if (geom3$C.isA(geometry))
-      return measureEpsilonOfGeom3(geometry);
-    return 0;
-  });
-  return results.length === 1 ? results[0] : results;
-};
-var measureEpsilon_1 = measureEpsilon$7;
-var measurements = {
-  measureAggregateArea: measureAggregateArea_1,
-  measureAggregateBoundingBox: measureAggregateBoundingBox_1,
-  measureAggregateEpsilon: measureAggregateEpsilon_1,
-  measureAggregateVolume: measureAggregateVolume_1,
-  measureArea: measureArea_1,
-  measureBoundingBox: measureBoundingBox_1,
-  measureBoundingSphere: measureBoundingSphere_1,
-  measureCenter: measureCenter_1,
-  measureCenterOfMass: measureCenterOfMass_1,
-  measureDimensions: measureDimensions_1,
-  measureEpsilon: measureEpsilon_1,
-  measureVolume: measureVolume_1
-};
-const isNumberArray$c = (array, dimension) => {
-  if (Array.isArray(array) && array.length >= dimension) {
-    return array.every((n) => Number.isFinite(n));
-  }
-  return false;
-};
-const isGT$d = (value, constant) => Number.isFinite(value) && value > constant;
-const isGTE$a = (value, constant) => Number.isFinite(value) && value >= constant;
-var commonChecks = {
-  isNumberArray: isNumberArray$c,
-  isGT: isGT$d,
-  isGTE: isGTE$a
-};
-const { EPS: EPS$c, TAU: TAU$e } = constants$3;
-const vec2$e = vec2$E;
-const path2$m = path2$u;
-const { isGT: isGT$c, isGTE: isGTE$9, isNumberArray: isNumberArray$b } = commonChecks;
-const arc = (options) => {
+const { EPS: EPS$6, TAU: TAU$1 } = constants$3;
+const intersect$4 = intersect_1$1;
+const line2$1 = line2$2;
+const vec2$4 = vec2$w;
+const area$6 = area_1;
+const offsetFromPoints$2 = (options, points) => {
   const defaults = {
-    center: [0, 0],
-    radius: 1,
-    startAngle: 0,
-    endAngle: TAU$e,
-    makeTangent: false,
-    segments: 32
+    delta: 1,
+    corners: "edge",
+    closed: false,
+    segments: 16
   };
-  let { center: center2, radius, startAngle, endAngle, makeTangent, segments } = Object.assign({}, defaults, options);
-  if (!isNumberArray$b(center2, 2))
-    throw new Error("center must be an array of X and Y values");
-  if (!isGT$c(radius, 0))
-    throw new Error("radius must be greater than zero");
-  if (!isGTE$9(startAngle, 0))
-    throw new Error("startAngle must be positive");
-  if (!isGTE$9(endAngle, 0))
-    throw new Error("endAngle must be positive");
-  if (!isGTE$9(segments, 4))
-    throw new Error("segments must be four or more");
-  startAngle = startAngle % TAU$e;
-  endAngle = endAngle % TAU$e;
-  let rotation = TAU$e;
-  if (startAngle < endAngle) {
-    rotation = endAngle - startAngle;
-  }
-  if (startAngle > endAngle) {
-    rotation = endAngle + (TAU$e - startAngle);
-  }
-  const minangle = Math.acos((radius * radius + radius * radius - EPS$c * EPS$c) / (2 * radius * radius));
-  const centerv = vec2$e.clone(center2);
-  let point;
-  const pointArray = [];
-  if (rotation < minangle) {
-    point = vec2$e.fromAngleRadians(vec2$e.create(), startAngle);
-    vec2$e.scale(point, point, radius);
-    vec2$e.add(point, point, centerv);
-    pointArray.push(point);
-  } else {
-    const numsteps = Math.max(1, Math.floor(segments * (rotation / TAU$e))) + 1;
-    let edgestepsize = numsteps * 0.5 / rotation;
-    if (edgestepsize > 0.25)
-      edgestepsize = 0.25;
-    const totalsteps = makeTangent ? numsteps + 2 : numsteps;
-    for (let i = 0; i <= totalsteps; i++) {
-      let step = i;
-      if (makeTangent) {
-        step = (i - 1) * (numsteps - 2 * edgestepsize) / numsteps + edgestepsize;
-        if (step < 0)
-          step = 0;
-        if (step > numsteps)
-          step = numsteps;
-      }
-      const angle2 = startAngle + step * (rotation / numsteps);
-      point = vec2$e.fromAngleRadians(vec2$e.create(), angle2);
-      vec2$e.scale(point, point, radius);
-      vec2$e.add(point, point, centerv);
-      pointArray.push(point);
-    }
-  }
-  return path2$m.fromPoints({ closed: false }, pointArray);
-};
-var arc_1 = arc;
-const { EPS: EPS$b, TAU: TAU$d } = constants$3;
-const vec2$d = vec2$E;
-const geom2$B = geom2$K;
-const { sin: sin$5, cos: cos$5 } = trigonometry;
-const { isGTE: isGTE$8, isNumberArray: isNumberArray$a } = commonChecks;
-const ellipse$1 = (options) => {
-  const defaults = {
-    center: [0, 0],
-    radius: [1, 1],
-    startAngle: 0,
-    endAngle: TAU$d,
-    segments: 32
-  };
-  let { center: center2, radius, startAngle, endAngle, segments } = Object.assign({}, defaults, options);
-  if (!isNumberArray$a(center2, 2))
-    throw new Error("center must be an array of X and Y values");
-  if (!isNumberArray$a(radius, 2))
-    throw new Error("radius must be an array of X and Y values");
-  if (!radius.every((n) => n > 0))
-    throw new Error("radius values must be greater than zero");
-  if (!isGTE$8(startAngle, 0))
-    throw new Error("startAngle must be positive");
-  if (!isGTE$8(endAngle, 0))
-    throw new Error("endAngle must be positive");
-  if (!isGTE$8(segments, 3))
-    throw new Error("segments must be three or more");
-  startAngle = startAngle % TAU$d;
-  endAngle = endAngle % TAU$d;
-  let rotation = TAU$d;
-  if (startAngle < endAngle) {
-    rotation = endAngle - startAngle;
-  }
-  if (startAngle > endAngle) {
-    rotation = endAngle + (TAU$d - startAngle);
-  }
-  const minradius = Math.min(radius[0], radius[1]);
-  const minangle = Math.acos((minradius * minradius + minradius * minradius - EPS$b * EPS$b) / (2 * minradius * minradius));
-  if (rotation < minangle)
-    throw new Error("startAngle and endAngle do not define a significant rotation");
-  segments = Math.floor(segments * (rotation / TAU$d));
-  const centerv = vec2$d.clone(center2);
-  const step = rotation / segments;
-  const points = [];
-  segments = rotation < TAU$d ? segments + 1 : segments;
-  for (let i = 0; i < segments; i++) {
-    const angle2 = step * i + startAngle;
-    const point = vec2$d.fromValues(radius[0] * cos$5(angle2), radius[1] * sin$5(angle2));
-    vec2$d.add(point, centerv, point);
-    points.push(point);
-  }
-  if (rotation < TAU$d)
-    points.push(centerv);
-  return geom2$B.fromPoints(points);
-};
-var ellipse_1 = ellipse$1;
-const { TAU: TAU$c } = constants$3;
-const ellipse = ellipse_1;
-const { isGT: isGT$b } = commonChecks;
-const circle$1 = (options) => {
-  const defaults = {
-    center: [0, 0],
-    radius: 1,
-    startAngle: 0,
-    endAngle: TAU$c,
-    segments: 32
-  };
-  let { center: center2, radius, startAngle, endAngle, segments } = Object.assign({}, defaults, options);
-  if (!isGT$b(radius, 0))
-    throw new Error("radius must be greater than zero");
-  radius = [radius, radius];
-  return ellipse({ center: center2, radius, startAngle, endAngle, segments });
-};
-var circle_1 = circle$1;
-const geom3$B = geom3$K;
-const poly3$m = poly3$A;
-const { isNumberArray: isNumberArray$9 } = commonChecks;
-const cuboid$1 = (options) => {
-  const defaults = {
-    center: [0, 0, 0],
-    size: [2, 2, 2]
-  };
-  const { center: center2, size } = Object.assign({}, defaults, options);
-  if (!isNumberArray$9(center2, 3))
-    throw new Error("center must be an array of X, Y and Z values");
-  if (!isNumberArray$9(size, 3))
-    throw new Error("size must be an array of width, depth and height values");
-  if (!size.every((n) => n > 0))
-    throw new Error("size values must be greater than zero");
-  const result = geom3$B.create(
-    // adjust a basic shape to size
-    [
-      [[0, 4, 6, 2], [-1, 0, 0]],
-      [[1, 3, 7, 5], [1, 0, 0]],
-      [[0, 1, 5, 4], [0, -1, 0]],
-      [[2, 6, 7, 3], [0, 1, 0]],
-      [[0, 2, 3, 1], [0, 0, -1]],
-      [[4, 5, 7, 6], [0, 0, 1]]
-    ].map((info) => {
-      const points = info[0].map((i) => {
-        const pos = [
-          center2[0] + size[0] / 2 * (2 * !!(i & 1) - 1),
-          center2[1] + size[1] / 2 * (2 * !!(i & 2) - 1),
-          center2[2] + size[2] / 2 * (2 * !!(i & 4) - 1)
-        ];
-        return pos;
-      });
-      return poly3$m.create(points);
-    })
-  );
-  return result;
-};
-var cuboid_1 = cuboid$1;
-const cuboid = cuboid_1;
-const { isGT: isGT$a } = commonChecks;
-const cube = (options) => {
-  const defaults = {
-    center: [0, 0, 0],
-    size: 2
-  };
-  let { center: center2, size } = Object.assign({}, defaults, options);
-  if (!isGT$a(size, 0))
-    throw new Error("size must be greater than zero");
-  size = [size, size, size];
-  return cuboid({ center: center2, size });
-};
-var cube_1 = cube;
-const { EPS: EPS$a, TAU: TAU$b } = constants$3;
-const vec3$r = vec3$Y;
-const geom3$A = geom3$K;
-const poly3$l = poly3$A;
-const { sin: sin$4, cos: cos$4 } = trigonometry;
-const { isGT: isGT$9, isGTE: isGTE$7, isNumberArray: isNumberArray$8 } = commonChecks;
-const cylinderElliptic$1 = (options) => {
-  const defaults = {
-    center: [0, 0, 0],
-    height: 2,
-    startRadius: [1, 1],
-    startAngle: 0,
-    endRadius: [1, 1],
-    endAngle: TAU$b,
-    segments: 32
-  };
-  let { center: center2, height, startRadius, startAngle, endRadius, endAngle, segments } = Object.assign({}, defaults, options);
-  if (!isNumberArray$8(center2, 3))
-    throw new Error("center must be an array of X, Y and Z values");
-  if (!isGT$9(height, 0))
-    throw new Error("height must be greater then zero");
-  if (!isNumberArray$8(startRadius, 2))
-    throw new Error("startRadius must be an array of X and Y values");
-  if (!startRadius.every((n) => n >= 0))
-    throw new Error("startRadius values must be positive");
-  if (!isNumberArray$8(endRadius, 2))
-    throw new Error("endRadius must be an array of X and Y values");
-  if (!endRadius.every((n) => n >= 0))
-    throw new Error("endRadius values must be positive");
-  if (endRadius.every((n) => n === 0) && startRadius.every((n) => n === 0))
-    throw new Error("at least one radius must be positive");
-  if (!isGTE$7(startAngle, 0))
-    throw new Error("startAngle must be positive");
-  if (!isGTE$7(endAngle, 0))
-    throw new Error("endAngle must be positive");
-  if (!isGTE$7(segments, 4))
-    throw new Error("segments must be four or more");
-  startAngle = startAngle % TAU$b;
-  endAngle = endAngle % TAU$b;
-  let rotation = TAU$b;
-  if (startAngle < endAngle) {
-    rotation = endAngle - startAngle;
-  }
-  if (startAngle > endAngle) {
-    rotation = endAngle + (TAU$b - startAngle);
-  }
-  const minradius = Math.min(startRadius[0], startRadius[1], endRadius[0], endRadius[1]);
-  const minangle = Math.acos((minradius * minradius + minradius * minradius - EPS$a * EPS$a) / (2 * minradius * minradius));
-  if (rotation < minangle)
-    throw new Error("startAngle and endAngle do not define a significant rotation");
-  const slices = Math.floor(segments * (rotation / TAU$b));
-  const start = vec3$r.fromValues(0, 0, -(height / 2));
-  const end = vec3$r.fromValues(0, 0, height / 2);
-  const ray = vec3$r.subtract(vec3$r.create(), end, start);
-  const axisX = vec3$r.fromValues(1, 0, 0);
-  const axisY = vec3$r.fromValues(0, 1, 0);
-  const v12 = vec3$r.create();
-  const v22 = vec3$r.create();
-  const v3 = vec3$r.create();
-  const point = (stack, slice2, radius) => {
-    const angle2 = slice2 * rotation + startAngle;
-    vec3$r.scale(v12, axisX, radius[0] * cos$4(angle2));
-    vec3$r.scale(v22, axisY, radius[1] * sin$4(angle2));
-    vec3$r.add(v12, v12, v22);
-    vec3$r.scale(v3, ray, stack);
-    vec3$r.add(v3, v3, start);
-    return vec3$r.add(vec3$r.create(), v12, v3);
-  };
-  const fromPoints2 = (...points) => {
-    const newpoints = points.map((point2) => vec3$r.add(vec3$r.create(), point2, center2));
-    return poly3$l.create(newpoints);
-  };
-  const polygons = [];
-  for (let i = 0; i < slices; i++) {
-    const t0 = i / slices;
-    let t1 = (i + 1) / slices;
-    if (rotation === TAU$b && i === slices - 1)
-      t1 = 0;
-    if (endRadius[0] === startRadius[0] && endRadius[1] === startRadius[1]) {
-      polygons.push(fromPoints2(start, point(0, t1, endRadius), point(0, t0, endRadius)));
-      polygons.push(fromPoints2(point(0, t1, endRadius), point(1, t1, endRadius), point(1, t0, endRadius), point(0, t0, endRadius)));
-      polygons.push(fromPoints2(end, point(1, t0, endRadius), point(1, t1, endRadius)));
-    } else {
-      if (startRadius[0] > 0 && startRadius[1] > 0) {
-        polygons.push(fromPoints2(start, point(0, t1, startRadius), point(0, t0, startRadius)));
-      }
-      if (startRadius[0] > 0 || startRadius[1] > 0) {
-        polygons.push(fromPoints2(point(0, t0, startRadius), point(0, t1, startRadius), point(1, t0, endRadius)));
-      }
-      if (endRadius[0] > 0 && endRadius[1] > 0) {
-        polygons.push(fromPoints2(end, point(1, t0, endRadius), point(1, t1, endRadius)));
-      }
-      if (endRadius[0] > 0 || endRadius[1] > 0) {
-        polygons.push(fromPoints2(point(1, t0, endRadius), point(0, t1, startRadius), point(1, t1, endRadius)));
-      }
-    }
-  }
-  if (rotation < TAU$b) {
-    polygons.push(fromPoints2(start, point(0, 0, startRadius), end));
-    polygons.push(fromPoints2(point(0, 0, startRadius), point(1, 0, endRadius), end));
-    polygons.push(fromPoints2(start, end, point(0, 1, startRadius)));
-    polygons.push(fromPoints2(point(0, 1, startRadius), end, point(1, 1, endRadius)));
-  }
-  const result = geom3$A.create(polygons);
-  return result;
-};
-var cylinderElliptic_1 = cylinderElliptic$1;
-const cylinderElliptic = cylinderElliptic_1;
-const { isGT: isGT$8 } = commonChecks;
-const cylinder = (options) => {
-  const defaults = {
-    center: [0, 0, 0],
-    height: 2,
-    radius: 1,
-    segments: 32
-  };
-  const { center: center2, height, radius, segments } = Object.assign({}, defaults, options);
-  if (!isGT$8(radius, 0))
-    throw new Error("radius must be greater than zero");
-  const newoptions = {
-    center: center2,
-    height,
-    startRadius: [radius, radius],
-    endRadius: [radius, radius],
-    segments
-  };
-  return cylinderElliptic(newoptions);
-};
-var cylinder_1 = cylinder;
-const { TAU: TAU$a } = constants$3;
-const vec3$q = vec3$Y;
-const geom3$z = geom3$K;
-const poly3$k = poly3$A;
-const { sin: sin$3, cos: cos$3 } = trigonometry;
-const { isGTE: isGTE$6, isNumberArray: isNumberArray$7 } = commonChecks;
-const ellipsoid$1 = (options) => {
-  const defaults = {
-    center: [0, 0, 0],
-    radius: [1, 1, 1],
-    segments: 32,
-    axes: [[1, 0, 0], [0, -1, 0], [0, 0, 1]]
-  };
-  const { center: center2, radius, segments, axes } = Object.assign({}, defaults, options);
-  if (!isNumberArray$7(center2, 3))
-    throw new Error("center must be an array of X, Y and Z values");
-  if (!isNumberArray$7(radius, 3))
-    throw new Error("radius must be an array of X, Y and Z values");
-  if (!radius.every((n) => n > 0))
-    throw new Error("radius values must be greater than zero");
-  if (!isGTE$6(segments, 4))
-    throw new Error("segments must be four or more");
-  const xvector = vec3$q.scale(vec3$q.create(), vec3$q.normalize(vec3$q.create(), axes[0]), radius[0]);
-  const yvector = vec3$q.scale(vec3$q.create(), vec3$q.normalize(vec3$q.create(), axes[1]), radius[1]);
-  const zvector = vec3$q.scale(vec3$q.create(), vec3$q.normalize(vec3$q.create(), axes[2]), radius[2]);
-  const qsegments = Math.round(segments / 4);
-  let prevcylinderpoint;
-  const polygons = [];
-  const p1 = vec3$q.create();
-  const p2 = vec3$q.create();
-  for (let slice1 = 0; slice1 <= segments; slice1++) {
-    const angle2 = TAU$a * slice1 / segments;
-    const cylinderpoint = vec3$q.add(vec3$q.create(), vec3$q.scale(p1, xvector, cos$3(angle2)), vec3$q.scale(p2, yvector, sin$3(angle2)));
-    if (slice1 > 0) {
-      let prevcospitch, prevsinpitch;
-      for (let slice2 = 0; slice2 <= qsegments; slice2++) {
-        const pitch = TAU$a / 4 * slice2 / qsegments;
-        const cospitch = cos$3(pitch);
-        const sinpitch = sin$3(pitch);
-        if (slice2 > 0) {
-          let points = [];
-          let point;
-          point = vec3$q.subtract(vec3$q.create(), vec3$q.scale(p1, prevcylinderpoint, prevcospitch), vec3$q.scale(p2, zvector, prevsinpitch));
-          points.push(vec3$q.add(point, point, center2));
-          point = vec3$q.subtract(vec3$q.create(), vec3$q.scale(p1, cylinderpoint, prevcospitch), vec3$q.scale(p2, zvector, prevsinpitch));
-          points.push(vec3$q.add(point, point, center2));
-          if (slice2 < qsegments) {
-            point = vec3$q.subtract(vec3$q.create(), vec3$q.scale(p1, cylinderpoint, cospitch), vec3$q.scale(p2, zvector, sinpitch));
-            points.push(vec3$q.add(point, point, center2));
-          }
-          point = vec3$q.subtract(vec3$q.create(), vec3$q.scale(p1, prevcylinderpoint, cospitch), vec3$q.scale(p2, zvector, sinpitch));
-          points.push(vec3$q.add(point, point, center2));
-          polygons.push(poly3$k.create(points));
-          points = [];
-          point = vec3$q.add(vec3$q.create(), vec3$q.scale(p1, prevcylinderpoint, prevcospitch), vec3$q.scale(p2, zvector, prevsinpitch));
-          points.push(vec3$q.add(vec3$q.create(), center2, point));
-          point = vec3$q.add(point, vec3$q.scale(p1, cylinderpoint, prevcospitch), vec3$q.scale(p2, zvector, prevsinpitch));
-          points.push(vec3$q.add(vec3$q.create(), center2, point));
-          if (slice2 < qsegments) {
-            point = vec3$q.add(point, vec3$q.scale(p1, cylinderpoint, cospitch), vec3$q.scale(p2, zvector, sinpitch));
-            points.push(vec3$q.add(vec3$q.create(), center2, point));
-          }
-          point = vec3$q.add(point, vec3$q.scale(p1, prevcylinderpoint, cospitch), vec3$q.scale(p2, zvector, sinpitch));
-          points.push(vec3$q.add(vec3$q.create(), center2, point));
-          points.reverse();
-          polygons.push(poly3$k.create(points));
-        }
-        prevcospitch = cospitch;
-        prevsinpitch = sinpitch;
-      }
-    }
-    prevcylinderpoint = cylinderpoint;
-  }
-  return geom3$z.create(polygons);
-};
-var ellipsoid_1 = ellipsoid$1;
-const geom3$y = geom3$K;
-const poly3$j = poly3$A;
-const { isNumberArray: isNumberArray$6 } = commonChecks;
-const polyhedron$1 = (options) => {
-  const defaults = {
-    points: [],
-    faces: [],
-    colors: void 0,
-    orientation: "outward"
-  };
-  const { points, faces, colors: colors2, orientation } = Object.assign({}, defaults, options);
-  if (!(Array.isArray(points) && Array.isArray(faces))) {
-    throw new Error("points and faces must be arrays");
-  }
-  if (points.length < 3) {
-    throw new Error("three or more points are required");
-  }
-  if (faces.length < 1) {
-    throw new Error("one or more faces are required");
-  }
-  if (colors2) {
-    if (!Array.isArray(colors2)) {
-      throw new Error("colors must be an array");
-    }
-    if (colors2.length !== faces.length) {
-      throw new Error("faces and colors must have the same length");
-    }
-  }
-  points.forEach((point, i) => {
-    if (!isNumberArray$6(point, 3))
-      throw new Error(`point ${i} must be an array of X, Y, Z values`);
-  });
-  faces.forEach((face, i) => {
-    if (face.length < 3)
-      throw new Error(`face ${i} must contain 3 or more indexes`);
-    if (!isNumberArray$6(face, face.length))
-      throw new Error(`face ${i} must be an array of numbers`);
-  });
-  if (orientation !== "outward") {
-    faces.forEach((face) => face.reverse());
-  }
-  const polygons = faces.map((face, findex) => {
-    const polygon2 = poly3$j.create(face.map((pindex) => points[pindex]));
-    if (colors2 && colors2[findex])
-      polygon2.color = colors2[findex];
-    return polygon2;
-  });
-  return geom3$y.create(polygons);
-};
-var polyhedron_1 = polyhedron$1;
-const mat4$c = mat4$r;
-const vec3$p = vec3$Y;
-const geom3$x = geom3$K;
-const polyhedron = polyhedron_1;
-const { isGT: isGT$7, isGTE: isGTE$5 } = commonChecks;
-const geodesicSphere = (options) => {
-  const defaults = {
-    radius: 1,
-    frequency: 6
-  };
-  let { radius, frequency } = Object.assign({}, defaults, options);
-  if (!isGT$7(radius, 0))
-    throw new Error("radius must be greater than zero");
-  if (!isGTE$5(frequency, 6))
-    throw new Error("frequency must be six or more");
-  frequency = Math.floor(frequency / 6);
-  const ci = [
-    // hard-coded data of icosahedron (20 faces, all triangles)
-    [0.850651, 0, -0.525731],
-    [0.850651, -0, 0.525731],
-    [-0.850651, -0, 0.525731],
-    [-0.850651, 0, -0.525731],
-    [0, -0.525731, 0.850651],
-    [0, 0.525731, 0.850651],
-    [0, 0.525731, -0.850651],
-    [0, -0.525731, -0.850651],
-    [-0.525731, -0.850651, -0],
-    [0.525731, -0.850651, -0],
-    [0.525731, 0.850651, 0],
-    [-0.525731, 0.850651, 0]
-  ];
-  const ti = [
-    [0, 9, 1],
-    [1, 10, 0],
-    [6, 7, 0],
-    [10, 6, 0],
-    [7, 9, 0],
-    [5, 1, 4],
-    [4, 1, 9],
-    [5, 10, 1],
-    [2, 8, 3],
-    [3, 11, 2],
-    [2, 5, 4],
-    [4, 8, 2],
-    [2, 11, 5],
-    [3, 7, 6],
-    [6, 11, 3],
-    [8, 7, 3],
-    [9, 8, 4],
-    [11, 10, 5],
-    [10, 11, 6],
-    [8, 9, 7]
-  ];
-  const geodesicSubDivide = (p, frequency2, offset3) => {
-    const p1 = p[0];
-    const p2 = p[1];
-    const p3 = p[2];
-    let n = offset3;
-    const c2 = [];
-    const f = [];
-    for (let i = 0; i < frequency2; i++) {
-      for (let j = 0; j < frequency2 - i; j++) {
-        const t0 = i / frequency2;
-        const t1 = (i + 1) / frequency2;
-        const s0 = j / (frequency2 - i);
-        const s1 = (j + 1) / (frequency2 - i);
-        const s2 = frequency2 - i - 1 ? j / (frequency2 - i - 1) : 1;
-        const q = [];
-        q[0] = mix3(mix3(p1, p2, s0), p3, t0);
-        q[1] = mix3(mix3(p1, p2, s1), p3, t0);
-        q[2] = mix3(mix3(p1, p2, s2), p3, t1);
-        for (let k = 0; k < 3; k++) {
-          const r = vec3$p.length(q[k]);
-          for (let l = 0; l < 3; l++) {
-            q[k][l] /= r;
-          }
-        }
-        c2.push(q[0], q[1], q[2]);
-        f.push([n, n + 1, n + 2]);
-        n += 3;
-        if (j < frequency2 - i - 1) {
-          const s3 = frequency2 - i - 1 ? (j + 1) / (frequency2 - i - 1) : 1;
-          q[0] = mix3(mix3(p1, p2, s1), p3, t0);
-          q[1] = mix3(mix3(p1, p2, s3), p3, t1);
-          q[2] = mix3(mix3(p1, p2, s2), p3, t1);
-          for (let k = 0; k < 3; k++) {
-            const r = vec3$p.length(q[k]);
-            for (let l = 0; l < 3; l++) {
-              q[k][l] /= r;
-            }
-          }
-          c2.push(q[0], q[1], q[2]);
-          f.push([n, n + 1, n + 2]);
-          n += 3;
-        }
-      }
-    }
-    return { points: c2, triangles: f, offset: n };
-  };
-  const mix3 = (a, b, f) => {
-    const _f = 1 - f;
-    const c2 = [];
-    for (let i = 0; i < 3; i++) {
-      c2[i] = a[i] * _f + b[i] * f;
-    }
-    return c2;
-  };
-  let points = [];
-  let faces = [];
-  let offset2 = 0;
-  for (let i = 0; i < ti.length; i++) {
-    const g = geodesicSubDivide([ci[ti[i][0]], ci[ti[i][1]], ci[ti[i][2]]], frequency, offset2);
-    points = points.concat(g.points);
-    faces = faces.concat(g.triangles);
-    offset2 = g.offset;
-  }
-  let geometry = polyhedron({ points, faces, orientation: "inward" });
-  if (radius !== 1)
-    geometry = geom3$x.transform(mat4$c.fromScaling(mat4$c.create(), [radius, radius, radius]), geometry);
-  return geometry;
-};
-var geodesicSphere_1 = geodesicSphere;
-const path2$l = path2$u;
-const line = (points) => {
-  if (!Array.isArray(points))
-    throw new Error("points must be an array");
-  return path2$l.fromPoints({}, points);
-};
-var line_1 = line;
-const geom2$A = geom2$K;
-const polygon = (options) => {
-  const defaults = {
-    points: [],
-    paths: []
-  };
-  const { points, paths } = Object.assign({}, defaults, options);
-  if (!(Array.isArray(points) && Array.isArray(paths)))
-    throw new Error("points and paths must be arrays");
-  let listofpolys = points;
-  if (Array.isArray(points[0])) {
-    if (!Array.isArray(points[0][0])) {
-      listofpolys = [points];
-    }
-  }
-  listofpolys.forEach((list, i) => {
-    if (!Array.isArray(list))
-      throw new Error("list of points " + i + " must be an array");
-    if (list.length < 3)
-      throw new Error("list of points " + i + " must contain three or more points");
-    list.forEach((point, j) => {
-      if (!Array.isArray(point))
-        throw new Error("list of points " + i + ", point " + j + " must be an array");
-      if (point.length < 2)
-        throw new Error("list of points " + i + ", point " + j + " must contain by X and Y values");
-    });
-  });
-  let listofpaths = paths;
-  if (paths.length === 0) {
-    let count = 0;
-    listofpaths = listofpolys.map((list) => list.map((point) => count++));
-  }
-  const allpoints = [];
-  listofpolys.forEach((list) => list.forEach((point) => allpoints.push(point)));
-  let sides = [];
-  listofpaths.forEach((path) => {
-    const setofpoints = path.map((index) => allpoints[index]);
-    const geometry = geom2$A.fromPoints(setofpoints);
-    sides = sides.concat(geom2$A.toSides(geometry));
-  });
-  return geom2$A.create(sides);
-};
-var polygon_1 = polygon;
-const vec2$c = vec2$E;
-const geom2$z = geom2$K;
-const { isNumberArray: isNumberArray$5 } = commonChecks;
-const rectangle$1 = (options) => {
-  const defaults = {
-    center: [0, 0],
-    size: [2, 2]
-  };
-  const { center: center2, size } = Object.assign({}, defaults, options);
-  if (!isNumberArray$5(center2, 2))
-    throw new Error("center must be an array of X and Y values");
-  if (!isNumberArray$5(size, 2))
-    throw new Error("size must be an array of X and Y values");
-  if (!size.every((n) => n > 0))
-    throw new Error("size values must be greater than zero");
-  const point = [size[0] / 2, size[1] / 2];
-  const pswap = [point[0], -point[1]];
-  const points = [
-    vec2$c.subtract(vec2$c.create(), center2, point),
-    vec2$c.add(vec2$c.create(), center2, pswap),
-    vec2$c.add(vec2$c.create(), center2, point),
-    vec2$c.subtract(vec2$c.create(), center2, pswap)
-  ];
-  return geom2$z.fromPoints(points);
-};
-var rectangle_1 = rectangle$1;
-const { EPS: EPS$9, TAU: TAU$9 } = constants$3;
-const vec2$b = vec2$E;
-const vec3$o = vec3$Y;
-const geom3$w = geom3$K;
-const poly3$i = poly3$A;
-const { sin: sin$2, cos: cos$2 } = trigonometry;
-const { isGT: isGT$6, isGTE: isGTE$4, isNumberArray: isNumberArray$4 } = commonChecks;
-const createCorners = (center2, size, radius, segments, slice2, positive) => {
-  const pitch = TAU$9 / 4 * slice2 / segments;
-  const cospitch = cos$2(pitch);
-  const sinpitch = sin$2(pitch);
-  const layersegments = segments - slice2;
-  let layerradius = radius * cospitch;
-  let layeroffset = size[2] - (radius - radius * sinpitch);
-  if (!positive)
-    layeroffset = radius - radius * sinpitch - size[2];
-  layerradius = layerradius > EPS$9 ? layerradius : 0;
-  const corner0 = vec3$o.add(vec3$o.create(), center2, [size[0] - radius, size[1] - radius, layeroffset]);
-  const corner1 = vec3$o.add(vec3$o.create(), center2, [radius - size[0], size[1] - radius, layeroffset]);
-  const corner2 = vec3$o.add(vec3$o.create(), center2, [radius - size[0], radius - size[1], layeroffset]);
-  const corner3 = vec3$o.add(vec3$o.create(), center2, [size[0] - radius, radius - size[1], layeroffset]);
-  const corner0Points = [];
-  const corner1Points = [];
-  const corner2Points = [];
-  const corner3Points = [];
-  for (let i = 0; i <= layersegments; i++) {
-    const radians = layersegments > 0 ? TAU$9 / 4 * i / layersegments : 0;
-    const point2d = vec2$b.fromAngleRadians(vec2$b.create(), radians);
-    vec2$b.scale(point2d, point2d, layerradius);
-    const point3d = vec3$o.fromVec2(vec3$o.create(), point2d);
-    corner0Points.push(vec3$o.add(vec3$o.create(), corner0, point3d));
-    vec3$o.rotateZ(point3d, point3d, [0, 0, 0], TAU$9 / 4);
-    corner1Points.push(vec3$o.add(vec3$o.create(), corner1, point3d));
-    vec3$o.rotateZ(point3d, point3d, [0, 0, 0], TAU$9 / 4);
-    corner2Points.push(vec3$o.add(vec3$o.create(), corner2, point3d));
-    vec3$o.rotateZ(point3d, point3d, [0, 0, 0], TAU$9 / 4);
-    corner3Points.push(vec3$o.add(vec3$o.create(), corner3, point3d));
-  }
-  if (!positive) {
-    corner0Points.reverse();
-    corner1Points.reverse();
-    corner2Points.reverse();
-    corner3Points.reverse();
-    return [corner3Points, corner2Points, corner1Points, corner0Points];
-  }
-  return [corner0Points, corner1Points, corner2Points, corner3Points];
-};
-const stitchCorners = (previousCorners, currentCorners) => {
-  const polygons = [];
-  for (let i = 0; i < previousCorners.length; i++) {
-    const previous = previousCorners[i];
-    const current = currentCorners[i];
-    for (let j = 0; j < previous.length - 1; j++) {
-      polygons.push(poly3$i.create([previous[j], previous[j + 1], current[j]]));
-      if (j < current.length - 1) {
-        polygons.push(poly3$i.create([current[j], previous[j + 1], current[j + 1]]));
-      }
-    }
-  }
-  return polygons;
-};
-const stitchWalls = (previousCorners, currentCorners) => {
-  const polygons = [];
-  for (let i = 0; i < previousCorners.length; i++) {
-    let previous = previousCorners[i];
-    let current = currentCorners[i];
-    const p0 = previous[previous.length - 1];
-    const c0 = current[current.length - 1];
-    const j = (i + 1) % previousCorners.length;
-    previous = previousCorners[j];
-    current = currentCorners[j];
-    const p1 = previous[0];
-    const c1 = current[0];
-    polygons.push(poly3$i.create([p0, p1, c1, c0]));
-  }
-  return polygons;
-};
-const stitchSides = (bottomCorners, topCorners) => {
-  bottomCorners = [bottomCorners[3], bottomCorners[2], bottomCorners[1], bottomCorners[0]];
-  bottomCorners = bottomCorners.map((corner) => corner.slice().reverse());
-  const bottomPoints = [];
-  bottomCorners.forEach((corner) => {
-    corner.forEach((point) => bottomPoints.push(point));
-  });
-  const topPoints = [];
-  topCorners.forEach((corner) => {
-    corner.forEach((point) => topPoints.push(point));
-  });
-  const polygons = [];
-  for (let i = 0; i < topPoints.length; i++) {
-    const j = (i + 1) % topPoints.length;
-    polygons.push(poly3$i.create([bottomPoints[i], bottomPoints[j], topPoints[j], topPoints[i]]));
-  }
-  return polygons;
-};
-const roundedCuboid = (options) => {
-  const defaults = {
-    center: [0, 0, 0],
-    size: [2, 2, 2],
-    roundRadius: 0.2,
-    segments: 32
-  };
-  let { center: center2, size, roundRadius, segments } = Object.assign({}, defaults, options);
-  if (!isNumberArray$4(center2, 3))
-    throw new Error("center must be an array of X, Y and Z values");
-  if (!isNumberArray$4(size, 3))
-    throw new Error("size must be an array of X, Y and Z values");
-  if (!size.every((n) => n > 0))
-    throw new Error("size values must be greater than zero");
-  if (!isGT$6(roundRadius, 0))
-    throw new Error("roundRadius must be greater than zero");
-  if (!isGTE$4(segments, 4))
-    throw new Error("segments must be four or more");
-  size = size.map((v) => v / 2);
-  if (roundRadius > size[0] - EPS$9 || roundRadius > size[1] - EPS$9 || roundRadius > size[2] - EPS$9)
-    throw new Error("roundRadius must be smaller then the radius of all dimensions");
-  segments = Math.floor(segments / 4);
-  let prevCornersPos = null;
-  let prevCornersNeg = null;
-  let polygons = [];
-  for (let slice2 = 0; slice2 <= segments; slice2++) {
-    const cornersPos = createCorners(center2, size, roundRadius, segments, slice2, true);
-    const cornersNeg = createCorners(center2, size, roundRadius, segments, slice2, false);
-    if (slice2 === 0) {
-      polygons = polygons.concat(stitchSides(cornersNeg, cornersPos));
-    }
-    if (prevCornersPos) {
-      polygons = polygons.concat(
-        stitchCorners(prevCornersPos, cornersPos),
-        stitchWalls(prevCornersPos, cornersPos)
-      );
-    }
-    if (prevCornersNeg) {
-      polygons = polygons.concat(
-        stitchCorners(prevCornersNeg, cornersNeg),
-        stitchWalls(prevCornersNeg, cornersNeg)
-      );
-    }
-    if (slice2 === segments) {
-      let points = cornersPos.map((corner) => corner[0]);
-      polygons.push(poly3$i.create(points));
-      points = cornersNeg.map((corner) => corner[0]);
-      polygons.push(poly3$i.create(points));
-    }
-    prevCornersPos = cornersPos;
-    prevCornersNeg = cornersNeg;
-  }
-  return geom3$w.create(polygons);
-};
-var roundedCuboid_1 = roundedCuboid;
-const { EPS: EPS$8, TAU: TAU$8 } = constants$3;
-const vec3$n = vec3$Y;
-const geom3$v = geom3$K;
-const poly3$h = poly3$A;
-const { sin: sin$1, cos: cos$1 } = trigonometry;
-const { isGT: isGT$5, isGTE: isGTE$3, isNumberArray: isNumberArray$3 } = commonChecks;
-const roundedCylinder = (options) => {
-  const defaults = {
-    center: [0, 0, 0],
-    height: 2,
-    radius: 1,
-    roundRadius: 0.2,
-    segments: 32
-  };
-  const { center: center2, height, radius, roundRadius, segments } = Object.assign({}, defaults, options);
-  if (!isNumberArray$3(center2, 3))
-    throw new Error("center must be an array of X, Y and Z values");
-  if (!isGT$5(height, 0))
-    throw new Error("height must be greater then zero");
-  if (!isGT$5(radius, 0))
-    throw new Error("radius must be greater then zero");
-  if (!isGT$5(roundRadius, 0))
-    throw new Error("roundRadius must be greater then zero");
-  if (roundRadius > radius - EPS$8)
-    throw new Error("roundRadius must be smaller then the radius");
-  if (!isGTE$3(segments, 4))
-    throw new Error("segments must be four or more");
-  const start = [0, 0, -(height / 2)];
-  const end = [0, 0, height / 2];
-  const direction2 = vec3$n.subtract(vec3$n.create(), end, start);
-  const length2 = vec3$n.length(direction2);
-  if (2 * roundRadius > length2 - EPS$8)
-    throw new Error("height must be larger than twice roundRadius");
-  let defaultnormal;
-  if (Math.abs(direction2[0]) > Math.abs(direction2[1])) {
-    defaultnormal = vec3$n.fromValues(0, 1, 0);
-  } else {
-    defaultnormal = vec3$n.fromValues(1, 0, 0);
-  }
-  const zvector = vec3$n.scale(vec3$n.create(), vec3$n.normalize(vec3$n.create(), direction2), roundRadius);
-  const xvector = vec3$n.scale(vec3$n.create(), vec3$n.normalize(vec3$n.create(), vec3$n.cross(vec3$n.create(), zvector, defaultnormal)), radius);
-  const yvector = vec3$n.scale(vec3$n.create(), vec3$n.normalize(vec3$n.create(), vec3$n.cross(vec3$n.create(), xvector, zvector)), radius);
-  vec3$n.add(start, start, zvector);
-  vec3$n.subtract(end, end, zvector);
-  const qsegments = Math.floor(0.25 * segments);
-  const fromPoints2 = (points) => {
-    const newpoints = points.map((point) => vec3$n.add(point, point, center2));
-    return poly3$h.create(newpoints);
-  };
-  const polygons = [];
-  const v12 = vec3$n.create();
-  const v22 = vec3$n.create();
-  let prevcylinderpoint;
-  for (let slice1 = 0; slice1 <= segments; slice1++) {
-    const angle2 = TAU$8 * slice1 / segments;
-    const cylinderpoint = vec3$n.add(vec3$n.create(), vec3$n.scale(v12, xvector, cos$1(angle2)), vec3$n.scale(v22, yvector, sin$1(angle2)));
-    if (slice1 > 0) {
-      let points = [];
-      points.push(vec3$n.add(vec3$n.create(), start, cylinderpoint));
-      points.push(vec3$n.add(vec3$n.create(), start, prevcylinderpoint));
-      points.push(vec3$n.add(vec3$n.create(), end, prevcylinderpoint));
-      points.push(vec3$n.add(vec3$n.create(), end, cylinderpoint));
-      polygons.push(fromPoints2(points));
-      let prevcospitch, prevsinpitch;
-      for (let slice2 = 0; slice2 <= qsegments; slice2++) {
-        const pitch = TAU$8 / 4 * slice2 / qsegments;
-        const cospitch = cos$1(pitch);
-        const sinpitch = sin$1(pitch);
-        if (slice2 > 0) {
-          points = [];
-          let point;
-          point = vec3$n.add(vec3$n.create(), start, vec3$n.subtract(v12, vec3$n.scale(v12, prevcylinderpoint, prevcospitch), vec3$n.scale(v22, zvector, prevsinpitch)));
-          points.push(point);
-          point = vec3$n.add(vec3$n.create(), start, vec3$n.subtract(v12, vec3$n.scale(v12, cylinderpoint, prevcospitch), vec3$n.scale(v22, zvector, prevsinpitch)));
-          points.push(point);
-          if (slice2 < qsegments) {
-            point = vec3$n.add(vec3$n.create(), start, vec3$n.subtract(v12, vec3$n.scale(v12, cylinderpoint, cospitch), vec3$n.scale(v22, zvector, sinpitch)));
-            points.push(point);
-          }
-          point = vec3$n.add(vec3$n.create(), start, vec3$n.subtract(v12, vec3$n.scale(v12, prevcylinderpoint, cospitch), vec3$n.scale(v22, zvector, sinpitch)));
-          points.push(point);
-          polygons.push(fromPoints2(points));
-          points = [];
-          point = vec3$n.add(vec3$n.create(), vec3$n.scale(v12, prevcylinderpoint, prevcospitch), vec3$n.scale(v22, zvector, prevsinpitch));
-          vec3$n.add(point, point, end);
-          points.push(point);
-          point = vec3$n.add(vec3$n.create(), vec3$n.scale(v12, cylinderpoint, prevcospitch), vec3$n.scale(v22, zvector, prevsinpitch));
-          vec3$n.add(point, point, end);
-          points.push(point);
-          if (slice2 < qsegments) {
-            point = vec3$n.add(vec3$n.create(), vec3$n.scale(v12, cylinderpoint, cospitch), vec3$n.scale(v22, zvector, sinpitch));
-            vec3$n.add(point, point, end);
-            points.push(point);
-          }
-          point = vec3$n.add(vec3$n.create(), vec3$n.scale(v12, prevcylinderpoint, cospitch), vec3$n.scale(v22, zvector, sinpitch));
-          vec3$n.add(point, point, end);
-          points.push(point);
-          points.reverse();
-          polygons.push(fromPoints2(points));
-        }
-        prevcospitch = cospitch;
-        prevsinpitch = sinpitch;
-      }
-    }
-    prevcylinderpoint = cylinderpoint;
-  }
-  const result = geom3$v.create(polygons);
-  return result;
-};
-var roundedCylinder_1 = roundedCylinder;
-const { EPS: EPS$7, TAU: TAU$7 } = constants$3;
-const vec2$a = vec2$E;
-const geom2$y = geom2$K;
-const { isGT: isGT$4, isGTE: isGTE$2, isNumberArray: isNumberArray$2 } = commonChecks;
-const roundedRectangle = (options) => {
-  const defaults = {
-    center: [0, 0],
-    size: [2, 2],
-    roundRadius: 0.2,
-    segments: 32
-  };
-  let { center: center2, size, roundRadius, segments } = Object.assign({}, defaults, options);
-  if (!isNumberArray$2(center2, 2))
-    throw new Error("center must be an array of X and Y values");
-  if (!isNumberArray$2(size, 2))
-    throw new Error("size must be an array of X and Y values");
-  if (!size.every((n) => n > 0))
-    throw new Error("size values must be greater than zero");
-  if (!isGT$4(roundRadius, 0))
-    throw new Error("roundRadius must be greater than zero");
-  if (!isGTE$2(segments, 4))
-    throw new Error("segments must be four or more");
-  size = size.map((v) => v / 2);
-  if (roundRadius > size[0] - EPS$7 || roundRadius > size[1] - EPS$7)
-    throw new Error("roundRadius must be smaller then the radius of all dimensions");
-  const cornersegments = Math.floor(segments / 4);
-  const corner0 = vec2$a.add(vec2$a.create(), center2, [size[0] - roundRadius, size[1] - roundRadius]);
-  const corner1 = vec2$a.add(vec2$a.create(), center2, [roundRadius - size[0], size[1] - roundRadius]);
-  const corner2 = vec2$a.add(vec2$a.create(), center2, [roundRadius - size[0], roundRadius - size[1]]);
-  const corner3 = vec2$a.add(vec2$a.create(), center2, [size[0] - roundRadius, roundRadius - size[1]]);
-  const corner0Points = [];
-  const corner1Points = [];
-  const corner2Points = [];
-  const corner3Points = [];
-  for (let i = 0; i <= cornersegments; i++) {
-    const radians = TAU$7 / 4 * i / cornersegments;
-    const point = vec2$a.fromAngleRadians(vec2$a.create(), radians);
-    vec2$a.scale(point, point, roundRadius);
-    corner0Points.push(vec2$a.add(vec2$a.create(), corner0, point));
-    vec2$a.rotate(point, point, vec2$a.create(), TAU$7 / 4);
-    corner1Points.push(vec2$a.add(vec2$a.create(), corner1, point));
-    vec2$a.rotate(point, point, vec2$a.create(), TAU$7 / 4);
-    corner2Points.push(vec2$a.add(vec2$a.create(), corner2, point));
-    vec2$a.rotate(point, point, vec2$a.create(), TAU$7 / 4);
-    corner3Points.push(vec2$a.add(vec2$a.create(), corner3, point));
-  }
-  return geom2$y.fromPoints(corner0Points.concat(corner1Points, corner2Points, corner3Points));
-};
-var roundedRectangle_1 = roundedRectangle;
-const ellipsoid = ellipsoid_1;
-const { isGT: isGT$3 } = commonChecks;
-const sphere$1 = (options) => {
-  const defaults = {
-    center: [0, 0, 0],
-    radius: 1,
-    segments: 32,
-    axes: [[1, 0, 0], [0, -1, 0], [0, 0, 1]]
-  };
-  let { center: center2, radius, segments, axes } = Object.assign({}, defaults, options);
-  if (!isGT$3(radius, 0))
-    throw new Error("radius must be greater than zero");
-  radius = [radius, radius, radius];
-  return ellipsoid({ center: center2, radius, segments, axes });
-};
-var sphere_1 = sphere$1;
-const rectangle = rectangle_1;
-const { isGT: isGT$2 } = commonChecks;
-const square = (options) => {
-  const defaults = {
-    center: [0, 0],
-    size: 2
-  };
-  let { center: center2, size } = Object.assign({}, defaults, options);
-  if (!isGT$2(size, 0))
-    throw new Error("size must be greater than zero");
-  size = [size, size];
-  return rectangle({ center: center2, size });
-};
-var square_1 = square;
-const { TAU: TAU$6 } = constants$3;
-const vec2$9 = vec2$E;
-const geom2$x = geom2$K;
-const { isGT: isGT$1, isGTE: isGTE$1, isNumberArray: isNumberArray$1 } = commonChecks;
-const getRadiusRatio = (vertices, density) => {
-  if (vertices > 0 && density > 1 && density < vertices / 2) {
-    return Math.cos(Math.PI * density / vertices) / Math.cos(Math.PI * (density - 1) / vertices);
-  }
-  return 0;
-};
-const getPoints = (vertices, radius, startAngle, center2) => {
-  const a = TAU$6 / vertices;
-  const points = [];
-  for (let i = 0; i < vertices; i++) {
-    const point = vec2$9.fromAngleRadians(vec2$9.create(), a * i + startAngle);
-    vec2$9.scale(point, point, radius);
-    vec2$9.add(point, center2, point);
-    points.push(point);
-  }
-  return points;
-};
-const star = (options) => {
-  const defaults = {
-    center: [0, 0],
-    vertices: 5,
-    outerRadius: 1,
-    innerRadius: 0,
-    density: 2,
-    startAngle: 0
-  };
-  let { center: center2, vertices, outerRadius, innerRadius, density, startAngle } = Object.assign({}, defaults, options);
-  if (!isNumberArray$1(center2, 2))
-    throw new Error("center must be an array of X and Y values");
-  if (!isGTE$1(vertices, 2))
-    throw new Error("vertices must be two or more");
-  if (!isGT$1(outerRadius, 0))
-    throw new Error("outerRadius must be greater than zero");
-  if (!isGTE$1(innerRadius, 0))
-    throw new Error("innerRadius must be greater than zero");
-  if (!isGTE$1(startAngle, 0))
-    throw new Error("startAngle must be greater than zero");
-  vertices = Math.floor(vertices);
-  density = Math.floor(density);
-  startAngle = startAngle % TAU$6;
-  if (innerRadius === 0) {
-    if (!isGTE$1(density, 2))
-      throw new Error("density must be two or more");
-    innerRadius = outerRadius * getRadiusRatio(vertices, density);
-  }
-  const centerv = vec2$9.clone(center2);
-  const outerPoints = getPoints(vertices, outerRadius, startAngle, centerv);
-  const innerPoints = getPoints(vertices, innerRadius, startAngle + Math.PI / vertices, centerv);
-  const allPoints = [];
-  for (let i = 0; i < vertices; i++) {
-    allPoints.push(outerPoints[i]);
-    allPoints.push(innerPoints[i]);
-  }
-  return geom2$x.fromPoints(allPoints);
-};
-var star_1 = star;
-const flatten$s = flatten_1;
-const mat4$b = mat4$r;
-const plane$5 = plane$b;
-const geom2$w = geom2$K;
-const geom3$u = geom3$K;
-const path2$k = path2$u;
-const mirror = (options, ...objects) => {
-  const defaults = {
-    origin: [0, 0, 0],
-    normal: [0, 0, 1]
-    // Z axis
-  };
-  const { origin: origin2, normal: normal2 } = Object.assign({}, defaults, options);
-  objects = flatten$s(objects);
-  if (objects.length === 0)
-    throw new Error("wrong number of arguments");
-  const planeOfMirror = plane$5.fromNormalAndPoint(plane$5.create(), normal2, origin2);
-  if (Number.isNaN(planeOfMirror[0])) {
-    throw new Error("the given origin and normal do not define a proper plane");
-  }
-  const matrix = mat4$b.mirrorByPlane(mat4$b.create(), planeOfMirror);
-  const results = objects.map((object) => {
-    if (path2$k.isA(object))
-      return path2$k.transform(matrix, object);
-    if (geom2$w.isA(object))
-      return geom2$w.transform(matrix, object);
-    if (geom3$u.isA(object))
-      return geom3$u.transform(matrix, object);
-    return object;
-  });
-  return results.length === 1 ? results[0] : results;
-};
-const mirrorX$1 = (...objects) => mirror({ normal: [1, 0, 0] }, objects);
-const mirrorY = (...objects) => mirror({ normal: [0, 1, 0] }, objects);
-const mirrorZ = (...objects) => mirror({ normal: [0, 0, 1] }, objects);
-var mirror_1 = {
-  mirror,
-  mirrorX: mirrorX$1,
-  mirrorY,
-  mirrorZ
-};
-const plane$4 = plane$b;
-const vec3$m = vec3$Y;
-const calculatePlane$1 = (slice2) => {
-  const edges = slice2.edges;
-  if (edges.length < 3)
-    throw new Error("slices must have 3 or more edges to calculate a plane");
-  const midpoint = edges.reduce((point, edge) => vec3$m.add(vec3$m.create(), point, edge[0]), vec3$m.create());
-  vec3$m.scale(midpoint, midpoint, 1 / edges.length);
-  let farthestEdge;
-  let distance2 = 0;
-  edges.forEach((edge) => {
-    if (!vec3$m.equals(edge[0], edge[1])) {
-      const d = vec3$m.squaredDistance(midpoint, edge[0]);
-      if (d > distance2) {
-        farthestEdge = edge;
-        distance2 = d;
-      }
-    }
-  });
-  const beforeEdge = edges.find((edge) => vec3$m.equals(edge[1], farthestEdge[0]));
-  return plane$4.fromPoints(plane$4.create(), beforeEdge[0], farthestEdge[0], farthestEdge[1]);
-};
-var calculatePlane_1 = calculatePlane$1;
-const create$6 = (edges) => {
-  if (!edges) {
-    edges = [];
-  }
-  return { edges };
-};
-var create_1 = create$6;
-const create$5 = create_1;
-const vec3$l = vec3$Y;
-const clone = (...params) => {
-  let out;
-  let slice2;
-  if (params.length === 1) {
-    out = create$5();
-    slice2 = params[0];
-  } else {
-    out = params[0];
-    slice2 = params[1];
-  }
-  out.edges = slice2.edges.map((edge) => [vec3$l.clone(edge[0]), vec3$l.clone(edge[1])]);
-  return out;
-};
-var clone_1 = clone;
-const vec3$k = vec3$Y;
-const equals$2 = (a, b) => {
-  const aedges = a.edges;
-  const bedges = b.edges;
-  if (aedges.length !== bedges.length) {
-    return false;
-  }
-  const isEqual = aedges.reduce((acc, aedge, i) => {
-    const bedge = bedges[i];
-    const d = vec3$k.squaredDistance(aedge[0], bedge[0]);
-    return acc && d < Number.EPSILON;
-  }, true);
-  return isEqual;
-};
-var equals_1 = equals$2;
-const vec3$j = vec3$Y;
-const create$4 = create_1;
-const fromPoints = (points) => {
-  if (!Array.isArray(points))
-    throw new Error("the given points must be an array");
-  if (points.length < 3)
-    throw new Error("the given points must contain THREE or more points");
-  const edges = [];
-  let prevpoint = points[points.length - 1];
-  points.forEach((point) => {
-    if (point.length === 2)
-      edges.push([vec3$j.fromVec2(vec3$j.create(), prevpoint), vec3$j.fromVec2(vec3$j.create(), point)]);
-    if (point.length === 3)
-      edges.push([prevpoint, point]);
-    prevpoint = point;
-  });
-  return create$4(edges);
-};
-var fromPoints_1 = fromPoints;
-const vec3$i = vec3$Y;
-const create$3 = create_1;
-const fromSides = (sides) => {
-  if (!Array.isArray(sides))
-    throw new Error("the given sides must be an array");
-  const edges = [];
-  sides.forEach((side) => {
-    edges.push([vec3$i.fromVec2(vec3$i.create(), side[0]), vec3$i.fromVec2(vec3$i.create(), side[1])]);
-  });
-  return create$3(edges);
-};
-var fromSides_1 = fromSides;
-const isA = (object) => {
-  if (object && typeof object === "object") {
-    if ("edges" in object) {
-      if (Array.isArray(object.edges)) {
-        return true;
-      }
-    }
-  }
-  return false;
-};
-var isA_1 = isA;
-const create$2 = create_1;
-const reverse = (...params) => {
-  let out;
-  let slice2;
-  if (params.length === 1) {
-    out = create$2();
-    slice2 = params[0];
-  } else {
-    out = params[0];
-    slice2 = params[1];
-  }
-  out.edges = slice2.edges.map((edge) => [edge[1], edge[0]]);
-  return out;
-};
-var reverse_1 = reverse;
-const toEdges = (slice2) => slice2.edges;
-var toEdges_1 = toEdges;
-const sortLinked$3 = (list, fn) => {
-  let i, p, q, e, numMerges;
-  let inSize = 1;
-  do {
-    p = list;
-    list = null;
-    let tail = null;
-    numMerges = 0;
-    while (p) {
-      numMerges++;
-      q = p;
-      let pSize = 0;
-      for (i = 0; i < inSize; i++) {
-        pSize++;
-        q = q.nextZ;
-        if (!q)
-          break;
-      }
-      let qSize = inSize;
-      while (pSize > 0 || qSize > 0 && q) {
-        if (pSize !== 0 && (qSize === 0 || !q || fn(p) <= fn(q))) {
-          e = p;
-          p = p.nextZ;
-          pSize--;
+  let { delta, corners, closed, segments } = Object.assign({}, defaults, options);
+  if (Math.abs(delta) < EPS$6)
+    return points;
+  let rotation = options.closed ? area$6(points) : 1;
+  if (rotation === 0)
+    rotation = 1;
+  const orientation = rotation > 0 && delta >= 0 || rotation < 0 && delta < 0;
+  delta = Math.abs(delta);
+  let previousSegment = null;
+  let newPoints = [];
+  const newCorners = [];
+  const of = vec2$4.create();
+  const n = points.length;
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    const p0 = points[i];
+    const p1 = points[j];
+    orientation ? vec2$4.subtract(of, p0, p1) : vec2$4.subtract(of, p1, p0);
+    vec2$4.normal(of, of);
+    vec2$4.normalize(of, of);
+    vec2$4.scale(of, of, delta);
+    const n0 = vec2$4.add(vec2$4.create(), p0, of);
+    const n1 = vec2$4.add(vec2$4.create(), p1, of);
+    const currentSegment = [n0, n1];
+    if (previousSegment != null) {
+      if (closed || !closed && j !== 0) {
+        const ip = intersect$4(previousSegment[0], previousSegment[1], currentSegment[0], currentSegment[1]);
+        if (ip) {
+          newPoints.pop();
+          currentSegment[0] = ip;
         } else {
-          e = q;
-          q = q.nextZ;
-          qSize--;
+          newCorners.push({ c: p0, s0: previousSegment, s1: currentSegment });
         }
-        if (tail)
-          tail.nextZ = e;
-        else
-          list = e;
-        e.prevZ = tail;
-        tail = e;
-      }
-      p = q;
-    }
-    tail.nextZ = null;
-    inSize *= 2;
-  } while (numMerges > 1);
-  return list;
-};
-var linkedListSort = sortLinked$3;
-const sortLinked$2 = linkedListSort;
-let Node$4 = class Node {
-  constructor(i, x, y) {
-    this.i = i;
-    this.x = x;
-    this.y = y;
-    this.prev = null;
-    this.next = null;
-    this.z = null;
-    this.prevZ = null;
-    this.nextZ = null;
-    this.steiner = false;
-  }
-};
-const insertNode$2 = (i, x, y, last2) => {
-  const p = new Node$4(i, x, y);
-  if (!last2) {
-    p.prev = p;
-    p.next = p;
-  } else {
-    p.next = last2.next;
-    p.prev = last2;
-    last2.next.prev = p;
-    last2.next = p;
-  }
-  return p;
-};
-const removeNode$3 = (p) => {
-  p.next.prev = p.prev;
-  p.prev.next = p.next;
-  if (p.prevZ)
-    p.prevZ.nextZ = p.nextZ;
-  if (p.nextZ)
-    p.nextZ.prevZ = p.prevZ;
-};
-var linkedList$1 = { Node: Node$4, insertNode: insertNode$2, removeNode: removeNode$3, sortLinked: sortLinked$2 };
-const pointInTriangle$3 = (ax, ay, bx, by, cx2, cy2, px2, py2) => (cx2 - px2) * (ay - py2) - (ax - px2) * (cy2 - py2) >= 0 && (ax - px2) * (by - py2) - (bx - px2) * (ay - py2) >= 0 && (bx - px2) * (cy2 - py2) - (cx2 - px2) * (by - py2) >= 0;
-const area$8 = (p, q, r) => (q.y - p.y) * (r.x - q.x) - (q.x - p.x) * (r.y - q.y);
-var triangle$1 = { area: area$8, pointInTriangle: pointInTriangle$3 };
-const { Node: Node$3, insertNode: insertNode$1, removeNode: removeNode$2 } = linkedList$1;
-const { area: area$7 } = triangle$1;
-const linkedPolygon$2 = (data, start, end, dim, clockwise) => {
-  let last2;
-  if (clockwise === signedArea$1(data, start, end, dim) > 0) {
-    for (let i = start; i < end; i += dim) {
-      last2 = insertNode$1(i, data[i], data[i + 1], last2);
-    }
-  } else {
-    for (let i = end - dim; i >= start; i -= dim) {
-      last2 = insertNode$1(i, data[i], data[i + 1], last2);
-    }
-  }
-  if (last2 && equals$1(last2, last2.next)) {
-    removeNode$2(last2);
-    last2 = last2.next;
-  }
-  return last2;
-};
-const filterPoints$3 = (start, end) => {
-  if (!start)
-    return start;
-  if (!end)
-    end = start;
-  let p = start;
-  let again;
-  do {
-    again = false;
-    if (!p.steiner && (equals$1(p, p.next) || area$7(p.prev, p, p.next) === 0)) {
-      removeNode$2(p);
-      p = end = p.prev;
-      if (p === p.next)
-        break;
-      again = true;
-    } else {
-      p = p.next;
-    }
-  } while (again || p !== end);
-  return end;
-};
-const cureLocalIntersections$2 = (start, triangles, dim) => {
-  let p = start;
-  do {
-    const a = p.prev;
-    const b = p.next.next;
-    if (!equals$1(a, b) && intersects$1(a, p, p.next, b) && locallyInside$2(a, b) && locallyInside$2(b, a)) {
-      triangles.push(a.i / dim);
-      triangles.push(p.i / dim);
-      triangles.push(b.i / dim);
-      removeNode$2(p);
-      removeNode$2(p.next);
-      p = start = b;
-    }
-    p = p.next;
-  } while (p !== start);
-  return filterPoints$3(p);
-};
-const intersectsPolygon$1 = (a, b) => {
-  let p = a;
-  do {
-    if (p.i !== a.i && p.next.i !== a.i && p.i !== b.i && p.next.i !== b.i && intersects$1(p, p.next, a, b))
-      return true;
-    p = p.next;
-  } while (p !== a);
-  return false;
-};
-const locallyInside$2 = (a, b) => area$7(a.prev, a, a.next) < 0 ? area$7(a, b, a.next) >= 0 && area$7(a, a.prev, b) >= 0 : area$7(a, b, a.prev) < 0 || area$7(a, a.next, b) < 0;
-const middleInside$1 = (a, b) => {
-  let p = a;
-  let inside = false;
-  const px2 = (a.x + b.x) / 2;
-  const py2 = (a.y + b.y) / 2;
-  do {
-    if (p.y > py2 !== p.next.y > py2 && p.next.y !== p.y && px2 < (p.next.x - p.x) * (py2 - p.y) / (p.next.y - p.y) + p.x) {
-      inside = !inside;
-    }
-    p = p.next;
-  } while (p !== a);
-  return inside;
-};
-const splitPolygon$3 = (a, b) => {
-  const a2 = new Node$3(a.i, a.x, a.y);
-  const b2 = new Node$3(b.i, b.x, b.y);
-  const an = a.next;
-  const bp = b.prev;
-  a.next = b;
-  b.prev = a;
-  a2.next = an;
-  an.prev = a2;
-  b2.next = a2;
-  a2.prev = b2;
-  bp.next = b2;
-  b2.prev = bp;
-  return b2;
-};
-const isValidDiagonal$2 = (a, b) => a.next.i !== b.i && a.prev.i !== b.i && !intersectsPolygon$1(a, b) && // doesn't intersect other edges
-(locallyInside$2(a, b) && locallyInside$2(b, a) && middleInside$1(a, b) && // locally visible
-(area$7(a.prev, a, b.prev) || area$7(a, b.prev, b)) || // does not create opposite-facing sectors
-equals$1(a, b) && area$7(a.prev, a, a.next) > 0 && area$7(b.prev, b, b.next) > 0);
-const intersects$1 = (p1, q1, p2, q2) => {
-  const o1 = Math.sign(area$7(p1, q1, p2));
-  const o2 = Math.sign(area$7(p1, q1, q2));
-  const o3 = Math.sign(area$7(p2, q2, p1));
-  const o4 = Math.sign(area$7(p2, q2, q1));
-  if (o1 !== o2 && o3 !== o4)
-    return true;
-  if (o1 === 0 && onSegment$1(p1, p2, q1))
-    return true;
-  if (o2 === 0 && onSegment$1(p1, q2, q1))
-    return true;
-  if (o3 === 0 && onSegment$1(p2, p1, q2))
-    return true;
-  if (o4 === 0 && onSegment$1(p2, q1, q2))
-    return true;
-  return false;
-};
-const onSegment$1 = (p, q, r) => q.x <= Math.max(p.x, r.x) && q.x >= Math.min(p.x, r.x) && q.y <= Math.max(p.y, r.y) && q.y >= Math.min(p.y, r.y);
-const signedArea$1 = (data, start, end, dim) => {
-  let sum2 = 0;
-  for (let i = start, j = end - dim; i < end; i += dim) {
-    sum2 += (data[j] - data[i]) * (data[i + 1] + data[j + 1]);
-    j = i;
-  }
-  return sum2;
-};
-const equals$1 = (p1, p2) => p1.x === p2.x && p1.y === p2.y;
-var linkedPolygon_1 = { cureLocalIntersections: cureLocalIntersections$2, filterPoints: filterPoints$3, isValidDiagonal: isValidDiagonal$2, linkedPolygon: linkedPolygon$2, locallyInside: locallyInside$2, splitPolygon: splitPolygon$3 };
-const { filterPoints: filterPoints$2, linkedPolygon: linkedPolygon$1, locallyInside: locallyInside$1, splitPolygon: splitPolygon$2 } = linkedPolygon_1;
-const { area: area$6, pointInTriangle: pointInTriangle$2 } = triangle$1;
-const eliminateHoles$2 = (data, holeIndices, outerNode, dim) => {
-  const queue = [];
-  for (let i = 0, len = holeIndices.length; i < len; i++) {
-    const start = holeIndices[i] * dim;
-    const end = i < len - 1 ? holeIndices[i + 1] * dim : data.length;
-    const list = linkedPolygon$1(data, start, end, dim, false);
-    if (list === list.next)
-      list.steiner = true;
-    queue.push(getLeftmost$1(list));
-  }
-  queue.sort((a, b) => a.x - b.x);
-  for (let i = 0; i < queue.length; i++) {
-    outerNode = eliminateHole$1(queue[i], outerNode);
-    outerNode = filterPoints$2(outerNode, outerNode.next);
-  }
-  return outerNode;
-};
-const eliminateHole$1 = (hole, outerNode) => {
-  const bridge = findHoleBridge$1(hole, outerNode);
-  if (!bridge) {
-    return outerNode;
-  }
-  const bridgeReverse = splitPolygon$2(bridge, hole);
-  const filteredBridge = filterPoints$2(bridge, bridge.next);
-  filterPoints$2(bridgeReverse, bridgeReverse.next);
-  return outerNode === bridge ? filteredBridge : outerNode;
-};
-const findHoleBridge$1 = (hole, outerNode) => {
-  let p = outerNode;
-  const hx = hole.x;
-  const hy = hole.y;
-  let qx = -Infinity;
-  let m;
-  do {
-    if (hy <= p.y && hy >= p.next.y && p.next.y !== p.y) {
-      const x = p.x + (hy - p.y) * (p.next.x - p.x) / (p.next.y - p.y);
-      if (x <= hx && x > qx) {
-        qx = x;
-        if (x === hx) {
-          if (hy === p.y)
-            return p;
-          if (hy === p.next.y)
-            return p.next;
-        }
-        m = p.x < p.next.x ? p : p.next;
       }
     }
-    p = p.next;
-  } while (p !== outerNode);
-  if (!m)
-    return null;
-  if (hx === qx)
-    return m;
-  const stop = m;
-  const mx = m.x;
-  const my = m.y;
-  let tanMin = Infinity;
-  p = m;
-  do {
-    if (hx >= p.x && p.x >= mx && hx !== p.x && pointInTriangle$2(hy < my ? hx : qx, hy, mx, my, hy < my ? qx : hx, hy, p.x, p.y)) {
-      const tan2 = Math.abs(hy - p.y) / (hx - p.x);
-      if (locallyInside$1(p, hole) && (tan2 < tanMin || tan2 === tanMin && (p.x > m.x || p.x === m.x && sectorContainsSector$1(m, p)))) {
-        m = p;
-        tanMin = tan2;
-      }
-    }
-    p = p.next;
-  } while (p !== stop);
-  return m;
-};
-const sectorContainsSector$1 = (m, p) => area$6(m.prev, m, p.prev) < 0 && area$6(p.next, m, m.next) < 0;
-const getLeftmost$1 = (start) => {
-  let p = start;
-  let leftmost = start;
-  do {
-    if (p.x < leftmost.x || p.x === leftmost.x && p.y < leftmost.y)
-      leftmost = p;
-    p = p.next;
-  } while (p !== start);
-  return leftmost;
-};
-var eliminateHoles_1 = eliminateHoles$2;
-const eliminateHoles$1 = eliminateHoles_1;
-const { removeNode: removeNode$1, sortLinked: sortLinked$1 } = linkedList$1;
-const { cureLocalIntersections: cureLocalIntersections$1, filterPoints: filterPoints$1, isValidDiagonal: isValidDiagonal$1, linkedPolygon, splitPolygon: splitPolygon$1 } = linkedPolygon_1;
-const { area: area$5, pointInTriangle: pointInTriangle$1 } = triangle$1;
-const triangulate = (data, holeIndices, dim = 2) => {
-  const hasHoles = holeIndices && holeIndices.length;
-  const outerLen = hasHoles ? holeIndices[0] * dim : data.length;
-  let outerNode = linkedPolygon(data, 0, outerLen, dim, true);
-  const triangles = [];
-  if (!outerNode || outerNode.next === outerNode.prev)
-    return triangles;
-  let minX, minY, maxX, maxY, invSize;
-  if (hasHoles)
-    outerNode = eliminateHoles$1(data, holeIndices, outerNode, dim);
-  if (data.length > 80 * dim) {
-    minX = maxX = data[0];
-    minY = maxY = data[1];
-    for (let i = dim; i < outerLen; i += dim) {
-      const x = data[i];
-      const y = data[i + 1];
-      if (x < minX)
-        minX = x;
-      if (y < minY)
-        minY = y;
-      if (x > maxX)
-        maxX = x;
-      if (y > maxY)
-        maxY = y;
-    }
-    invSize = Math.max(maxX - minX, maxY - minY);
-    invSize = invSize !== 0 ? 1 / invSize : 0;
-  }
-  earcutLinked$1(outerNode, triangles, dim, minX, minY, invSize);
-  return triangles;
-};
-const earcutLinked$1 = (ear, triangles, dim, minX, minY, invSize, pass) => {
-  if (!ear)
-    return;
-  if (!pass && invSize)
-    indexCurve$1(ear, minX, minY, invSize);
-  let stop = ear;
-  let prev;
-  let next;
-  while (ear.prev !== ear.next) {
-    prev = ear.prev;
-    next = ear.next;
-    if (invSize ? isEarHashed$1(ear, minX, minY, invSize) : isEar$1(ear)) {
-      triangles.push(prev.i / dim);
-      triangles.push(ear.i / dim);
-      triangles.push(next.i / dim);
-      removeNode$1(ear);
-      ear = next.next;
-      stop = next.next;
+    previousSegment = [n0, n1];
+    if (j === 0 && !closed)
       continue;
-    }
-    ear = next;
-    if (ear === stop) {
-      if (!pass) {
-        earcutLinked$1(filterPoints$1(ear), triangles, dim, minX, minY, invSize, 1);
-      } else if (pass === 1) {
-        ear = cureLocalIntersections$1(filterPoints$1(ear), triangles, dim);
-        earcutLinked$1(ear, triangles, dim, minX, minY, invSize, 2);
-      } else if (pass === 2) {
-        splitEarcut$1(ear, triangles, dim, minX, minY, invSize);
-      }
-      break;
-    }
+    newPoints.push(currentSegment[0]);
+    newPoints.push(currentSegment[1]);
   }
-};
-const isEar$1 = (ear) => {
-  const a = ear.prev;
-  const b = ear;
-  const c2 = ear.next;
-  if (area$5(a, b, c2) >= 0)
-    return false;
-  let p = ear.next.next;
-  while (p !== ear.prev) {
-    if (pointInTriangle$1(a.x, a.y, b.x, b.y, c2.x, c2.y, p.x, p.y) && area$5(p.prev, p, p.next) >= 0) {
-      return false;
-    }
-    p = p.next;
-  }
-  return true;
-};
-const isEarHashed$1 = (ear, minX, minY, invSize) => {
-  const a = ear.prev;
-  const b = ear;
-  const c2 = ear.next;
-  if (area$5(a, b, c2) >= 0)
-    return false;
-  const minTX = a.x < b.x ? a.x < c2.x ? a.x : c2.x : b.x < c2.x ? b.x : c2.x;
-  const minTY = a.y < b.y ? a.y < c2.y ? a.y : c2.y : b.y < c2.y ? b.y : c2.y;
-  const maxTX = a.x > b.x ? a.x > c2.x ? a.x : c2.x : b.x > c2.x ? b.x : c2.x;
-  const maxTY = a.y > b.y ? a.y > c2.y ? a.y : c2.y : b.y > c2.y ? b.y : c2.y;
-  const minZ = zOrder$1(minTX, minTY, minX, minY, invSize);
-  const maxZ = zOrder$1(maxTX, maxTY, minX, minY, invSize);
-  let p = ear.prevZ;
-  let n = ear.nextZ;
-  while (p && p.z >= minZ && n && n.z <= maxZ) {
-    if (p !== ear.prev && p !== ear.next && pointInTriangle$1(a.x, a.y, b.x, b.y, c2.x, c2.y, p.x, p.y) && area$5(p.prev, p, p.next) >= 0)
-      return false;
-    p = p.prevZ;
-    if (n !== ear.prev && n !== ear.next && pointInTriangle$1(a.x, a.y, b.x, b.y, c2.x, c2.y, n.x, n.y) && area$5(n.prev, n, n.next) >= 0)
-      return false;
-    n = n.nextZ;
-  }
-  while (p && p.z >= minZ) {
-    if (p !== ear.prev && p !== ear.next && pointInTriangle$1(a.x, a.y, b.x, b.y, c2.x, c2.y, p.x, p.y) && area$5(p.prev, p, p.next) >= 0)
-      return false;
-    p = p.prevZ;
-  }
-  while (n && n.z <= maxZ) {
-    if (n !== ear.prev && n !== ear.next && pointInTriangle$1(a.x, a.y, b.x, b.y, c2.x, c2.y, n.x, n.y) && area$5(n.prev, n, n.next) >= 0)
-      return false;
-    n = n.nextZ;
-  }
-  return true;
-};
-const splitEarcut$1 = (start, triangles, dim, minX, minY, invSize) => {
-  let a = start;
-  do {
-    let b = a.next.next;
-    while (b !== a.prev) {
-      if (a.i !== b.i && isValidDiagonal$1(a, b)) {
-        let c2 = splitPolygon$1(a, b);
-        a = filterPoints$1(a, a.next);
-        c2 = filterPoints$1(c2, c2.next);
-        earcutLinked$1(a, triangles, dim, minX, minY, invSize);
-        earcutLinked$1(c2, triangles, dim, minX, minY, invSize);
-        return;
-      }
-      b = b.next;
-    }
-    a = a.next;
-  } while (a !== start);
-};
-const indexCurve$1 = (start, minX, minY, invSize) => {
-  let p = start;
-  do {
-    if (p.z === null)
-      p.z = zOrder$1(p.x, p.y, minX, minY, invSize);
-    p.prevZ = p.prev;
-    p.nextZ = p.next;
-    p = p.next;
-  } while (p !== start);
-  p.prevZ.nextZ = null;
-  p.prevZ = null;
-  sortLinked$1(p, (p2) => p2.z);
-};
-const zOrder$1 = (x, y, minX, minY, invSize) => {
-  x = 32767 * (x - minX) * invSize;
-  y = 32767 * (y - minY) * invSize;
-  x = (x | x << 8) & 16711935;
-  x = (x | x << 4) & 252645135;
-  x = (x | x << 2) & 858993459;
-  x = (x | x << 1) & 1431655765;
-  y = (y | y << 8) & 16711935;
-  y = (y | y << 4) & 252645135;
-  y = (y | y << 2) & 858993459;
-  y = (y | y << 1) & 1431655765;
-  return x | y << 1;
-};
-var earcut$3 = triangulate;
-const { area: area$4 } = utils$8;
-const { toOutlines } = geom2$K;
-const { arePointsInside } = poly2$1;
-const assignHoles$1 = (geometry) => {
-  const outlines = toOutlines(geometry);
-  const solids = [];
-  const holes = [];
-  outlines.forEach((outline, i) => {
-    const a = area$4(outline);
-    if (a < 0) {
-      holes.push(i);
-    } else if (a > 0) {
-      solids.push(i);
-    }
-  });
-  const children = [];
-  const parents = [];
-  solids.forEach((s, i) => {
-    const solid = outlines[s];
-    children[i] = [];
-    holes.forEach((h, j) => {
-      const hole = outlines[h];
-      if (arePointsInside([hole[0]], { vertices: solid })) {
-        children[i].push(h);
-        if (!parents[j])
-          parents[j] = [];
-        parents[j].push(i);
-      }
-    });
-  });
-  holes.forEach((h, j) => {
-    if (parents[j] && parents[j].length > 1) {
-      const directParent = minIndex(parents[j], (p) => children[p].length);
-      parents[j].forEach((p, i) => {
-        if (i !== directParent) {
-          children[p] = children[p].filter((c2) => c2 !== h);
-        }
-      });
-    }
-  });
-  return children.map((holes2, i) => ({
-    solid: outlines[solids[i]],
-    holes: holes2.map((h) => outlines[h])
-  }));
-};
-const minIndex = (list, score) => {
-  let bestIndex;
-  let best;
-  list.forEach((item, index) => {
-    const value = score(item);
-    if (best === void 0 || value < best) {
-      bestIndex = index;
-      best = value;
-    }
-  });
-  return bestIndex;
-};
-var assignHoles_1 = assignHoles$1;
-const geom2$v = geom2$K;
-const plane$3 = plane$b;
-const vec2$8 = vec2$E;
-const vec3$h = vec3$Y;
-const calculatePlane = calculatePlane_1;
-const assignHoles = assignHoles_1;
-let PolygonHierarchy$1 = class PolygonHierarchy {
-  constructor(slice2) {
-    this.plane = calculatePlane(slice2);
-    const rightvector = vec3$h.orthogonal(vec3$h.create(), this.plane);
-    const perp = vec3$h.cross(vec3$h.create(), this.plane, rightvector);
-    this.v = vec3$h.normalize(perp, perp);
-    this.u = vec3$h.cross(vec3$h.create(), this.v, this.plane);
-    this.basisMap = /* @__PURE__ */ new Map();
-    const projected = slice2.edges.map((e) => e.map((v) => this.to2D(v)));
-    const geometry = geom2$v.create(projected);
-    this.roots = assignHoles(geometry);
-  }
-  /*
-   * project a 3D point onto the 2D plane
-   */
-  to2D(vector3) {
-    const vector2 = vec2$8.fromValues(vec3$h.dot(vector3, this.u), vec3$h.dot(vector3, this.v));
-    this.basisMap.set(vector2, vector3);
-    return vector2;
-  }
-  /*
-   * un-project a 2D point back into 3D
-   */
-  to3D(vector2) {
-    const original = this.basisMap.get(vector2);
-    if (original) {
-      return original;
+  if (closed && previousSegment != null) {
+    const n0 = newPoints[0];
+    const n1 = newPoints[1];
+    const ip = intersect$4(previousSegment[0], previousSegment[1], n0, n1);
+    if (ip) {
+      newPoints[0] = ip;
+      newPoints.pop();
     } else {
-      console.log("Warning: point not in original slice");
-      const v12 = vec3$h.scale(vec3$h.create(), this.u, vector2[0]);
-      const v22 = vec3$h.scale(vec3$h.create(), this.v, vector2[1]);
-      const planeOrigin = vec3$h.scale(vec3$h.create(), plane$3, plane$3[3]);
-      const v3 = vec3$h.add(v12, v12, planeOrigin);
-      return vec3$h.add(v22, v22, v3);
+      const p0 = points[0];
+      const cursegment = [n0, n1];
+      newCorners.push({ c: p0, s0: previousSegment, s1: cursegment });
     }
   }
-};
-var polygonHierarchy = PolygonHierarchy$1;
-const poly3$g = poly3$A;
-const earcut$2 = earcut$3;
-const PolygonHierarchy2 = polygonHierarchy;
-const toPolygons = (slice2) => {
-  const hierarchy = new PolygonHierarchy2(slice2);
-  const polygons = [];
-  hierarchy.roots.forEach(({ solid, holes }) => {
-    let index = solid.length;
-    const holesIndex = [];
-    holes.forEach((hole, i) => {
-      holesIndex.push(index);
-      index += hole.length;
-    });
-    const vertices = [solid, ...holes].flat();
-    const data = vertices.flat();
-    const getVertex = (i) => hierarchy.to3D(vertices[i]);
-    const indices = earcut$2(data, holesIndex);
-    for (let i = 0; i < indices.length; i += 3) {
-      const tri = indices.slice(i, i + 3).map(getVertex);
-      polygons.push(poly3$g.fromPointsAndPlane(tri, hierarchy.plane));
-    }
-  });
-  return polygons;
-};
-var toPolygons_1 = toPolygons;
-const vec3$g = vec3$Y;
-const edgesToString = (edges) => edges.reduce((result, edge) => result += `[${vec3$g.toString(edge[0])}, ${vec3$g.toString(edge[1])}], `, "");
-const toString$2 = (slice2) => `[${edgesToString(slice2.edges)}]`;
-var toString_1 = toString$2;
-const vec3$f = vec3$Y;
-const create$1 = create_1;
-const transform$1 = (matrix, slice2) => {
-  const edges = slice2.edges.map((edge) => [vec3$f.transform(vec3$f.create(), edge[0], matrix), vec3$f.transform(vec3$f.create(), edge[1], matrix)]);
-  return create$1(edges);
-};
-var transform_1$1 = transform$1;
-var slice$5 = {
-  calculatePlane: calculatePlane_1,
-  clone: clone_1,
-  create: create_1,
-  equals: equals_1,
-  fromPoints: fromPoints_1,
-  fromSides: fromSides_1,
-  isA: isA_1,
-  reverse: reverse_1,
-  toEdges: toEdges_1,
-  toPolygons: toPolygons_1,
-  toString: toString_1,
-  transform: transform_1$1
-};
-const vec3$e = vec3$Y;
-const create = create_1;
-const repair = (slice2) => {
-  if (!slice2.edges)
-    return slice2;
-  let edges = slice2.edges;
-  const vertexMap = /* @__PURE__ */ new Map();
-  const edgeCount = /* @__PURE__ */ new Map();
-  edges = edges.filter((e) => !vec3$e.equals(e[0], e[1]));
-  edges.forEach((edge) => {
-    const inKey = edge[0].toString();
-    const outKey = edge[1].toString();
-    vertexMap.set(inKey, edge[0]);
-    vertexMap.set(outKey, edge[1]);
-    edgeCount.set(inKey, (edgeCount.get(inKey) || 0) + 1);
-    edgeCount.set(outKey, (edgeCount.get(outKey) || 0) - 1);
-  });
-  const missingIn = [];
-  const missingOut = [];
-  edgeCount.forEach((count, vertex2) => {
-    if (count < 0)
-      missingIn.push(vertex2);
-    if (count > 0)
-      missingOut.push(vertex2);
-  });
-  missingIn.forEach((key1) => {
-    const v12 = vertexMap.get(key1);
-    let bestDistance = Infinity;
-    let bestReplacement;
-    missingOut.forEach((key2) => {
-      const v22 = vertexMap.get(key2);
-      const distance2 = vec3$e.distance(v12, v22);
-      if (distance2 < bestDistance) {
-        bestDistance = distance2;
-        bestReplacement = v22;
+  if (corners === "edge") {
+    const pointIndex = /* @__PURE__ */ new Map();
+    newPoints.forEach((point, index) => pointIndex.set(point, index));
+    const line0 = line2$1.create();
+    const line1 = line2$1.create();
+    newCorners.forEach((corner) => {
+      line2$1.fromPoints(line0, corner.s0[0], corner.s0[1]);
+      line2$1.fromPoints(line1, corner.s1[0], corner.s1[1]);
+      const ip = line2$1.intersectPointOfLines(line0, line1);
+      if (Number.isFinite(ip[0]) && Number.isFinite(ip[1])) {
+        const p0 = corner.s0[1];
+        const i = pointIndex.get(p0);
+        newPoints[i] = ip;
+        newPoints[(i + 1) % newPoints.length] = void 0;
+      } else {
+        const p0 = corner.s1[0];
+        const i = pointIndex.get(p0);
+        newPoints[i] = void 0;
       }
     });
-    console.warn(`slice.repair: repairing vertex gap ${v12} to ${bestReplacement} distance ${bestDistance}`);
-    edges = edges.map((edge) => {
-      if (edge[0].toString() === key1)
-        return [bestReplacement, edge[1]];
-      if (edge[1].toString() === key1)
-        return [edge[0], bestReplacement];
-      return edge;
-    });
-  });
-  return create(edges);
-};
-var repair_1 = repair;
-const { EPS: EPS$6 } = constants$3;
-const vec3$d = vec3$Y;
-const poly3$f = poly3$A;
-const slice$4 = slice$5;
-const gcd = (a, b) => {
-  if (a === b) {
-    return a;
+    newPoints = newPoints.filter((p) => p !== void 0);
   }
-  if (a < b) {
-    return gcd(b, a);
-  }
-  if (b === 1) {
-    return 1;
-  }
-  if (b === 0) {
-    return a;
-  }
-  return gcd(b, a % b);
-};
-const lcm = (a, b) => a * b / gcd(a, b);
-const repartitionEdges = (newlength, edges) => {
-  const multiple = newlength / edges.length;
-  if (multiple === 1) {
-    return edges;
-  }
-  const divisor = vec3$d.fromValues(multiple, multiple, multiple);
-  const newEdges = [];
-  edges.forEach((edge) => {
-    const increment = vec3$d.subtract(vec3$d.create(), edge[1], edge[0]);
-    vec3$d.divide(increment, increment, divisor);
-    let prev = edge[0];
-    for (let i = 1; i <= multiple; ++i) {
-      const next = vec3$d.add(vec3$d.create(), prev, increment);
-      newEdges.push([prev, next]);
-      prev = next;
-    }
-  });
-  return newEdges;
-};
-const EPSAREA = EPS$6 * EPS$6 / 2 * Math.sin(Math.PI / 3);
-const extrudeWalls$1 = (slice0, slice1) => {
-  let edges0 = slice$4.toEdges(slice0);
-  let edges1 = slice$4.toEdges(slice1);
-  if (edges0.length !== edges1.length) {
-    const newlength = lcm(edges0.length, edges1.length);
-    if (newlength !== edges0.length)
-      edges0 = repartitionEdges(newlength, edges0);
-    if (newlength !== edges1.length)
-      edges1 = repartitionEdges(newlength, edges1);
-  }
-  const walls = [];
-  edges0.forEach((edge0, i) => {
-    const edge1 = edges1[i];
-    const poly0 = poly3$f.create([edge0[0], edge0[1], edge1[1]]);
-    const poly0area = poly3$f.measureArea(poly0);
-    if (Number.isFinite(poly0area) && poly0area > EPSAREA)
-      walls.push(poly0);
-    const poly1 = poly3$f.create([edge0[0], edge1[1], edge1[0]]);
-    const poly1area = poly3$f.measureArea(poly1);
-    if (Number.isFinite(poly1area) && poly1area > EPSAREA)
-      walls.push(poly1);
-  });
-  return walls;
-};
-var extrudeWalls_1 = extrudeWalls$1;
-const mat4$a = mat4$r;
-const geom2$u = geom2$K;
-const geom3$t = geom3$K;
-const poly3$e = poly3$A;
-const slice$3 = slice$5;
-const repairSlice = repair_1;
-const extrudeWalls = extrudeWalls_1;
-const defaultCallback = (progress, index, base) => {
-  let baseSlice = null;
-  if (geom2$u.isA(base))
-    baseSlice = slice$3.fromSides(geom2$u.toSides(base));
-  if (poly3$e.isA(base))
-    baseSlice = slice$3.fromPoints(poly3$e.toPoints(base));
-  return progress === 0 || progress === 1 ? slice$3.transform(mat4$a.fromTranslation(mat4$a.create(), [0, 0, progress]), baseSlice) : null;
-};
-const extrudeFromSlices$3 = (options, base) => {
-  const defaults = {
-    numberOfSlices: 2,
-    capStart: true,
-    capEnd: true,
-    close: false,
-    repair: true,
-    callback: defaultCallback
-  };
-  const { numberOfSlices, capStart, capEnd, close: close2, repair: repair2, callback: generate } = Object.assign({}, defaults, options);
-  if (numberOfSlices < 2)
-    throw new Error("numberOfSlices must be 2 or more");
-  if (repair2) {
-    base = repairSlice(base);
-  }
-  const sMax = numberOfSlices - 1;
-  let startSlice = null;
-  let endSlice = null;
-  let prevSlice = null;
-  let polygons = [];
-  for (let s = 0; s < numberOfSlices; s++) {
-    const currentSlice = generate(s / sMax, s, base);
-    if (currentSlice) {
-      if (!slice$3.isA(currentSlice))
-        throw new Error("the callback function must return slice objects");
-      const edges = slice$3.toEdges(currentSlice);
-      if (edges.length === 0)
-        throw new Error("the callback function must return slices with one or more edges");
-      if (prevSlice) {
-        polygons = polygons.concat(extrudeWalls(prevSlice, currentSlice));
+  if (corners === "round") {
+    let cornersegments = Math.floor(segments / 4);
+    const v0 = vec2$4.create();
+    newCorners.forEach((corner) => {
+      let rotation2 = vec2$4.angle(vec2$4.subtract(v0, corner.s1[0], corner.c));
+      rotation2 -= vec2$4.angle(vec2$4.subtract(v0, corner.s0[1], corner.c));
+      if (orientation && rotation2 < 0) {
+        rotation2 = rotation2 + Math.PI;
+        if (rotation2 < 0)
+          rotation2 = rotation2 + Math.PI;
       }
-      if (s === 0)
-        startSlice = currentSlice;
-      if (s === numberOfSlices - 1)
-        endSlice = currentSlice;
-      prevSlice = currentSlice;
-    }
+      if (!orientation && rotation2 > 0) {
+        rotation2 = rotation2 - Math.PI;
+        if (rotation2 > 0)
+          rotation2 = rotation2 - Math.PI;
+      }
+      if (rotation2 !== 0) {
+        cornersegments = Math.floor(segments * (Math.abs(rotation2) / TAU$1));
+        const step = rotation2 / cornersegments;
+        const start = vec2$4.angle(vec2$4.subtract(v0, corner.s0[1], corner.c));
+        const cornerpoints = [];
+        for (let i = 1; i < cornersegments; i++) {
+          const radians = start + step * i;
+          const point = vec2$4.fromAngleRadians(vec2$4.create(), radians);
+          vec2$4.scale(point, point, delta);
+          vec2$4.add(point, point, corner.c);
+          cornerpoints.push(point);
+        }
+        if (cornerpoints.length > 0) {
+          const p0 = corner.s0[1];
+          let i = newPoints.findIndex((point) => vec2$4.equals(p0, point));
+          i = (i + 1) % newPoints.length;
+          newPoints.splice(i, 0, ...cornerpoints);
+        }
+      } else {
+        const p0 = corner.s1[0];
+        const i = newPoints.findIndex((point) => vec2$4.equals(p0, point));
+        newPoints.splice(i, 1);
+      }
+    });
   }
-  if (capEnd) {
-    const endPolygons = slice$3.toPolygons(endSlice);
-    polygons = polygons.concat(endPolygons);
-  }
-  if (capStart) {
-    const startPolygons = slice$3.toPolygons(startSlice).map(poly3$e.invert);
-    polygons = polygons.concat(startPolygons);
-  }
-  if (!capStart && !capEnd) {
-    if (close2 && !slice$3.equals(endSlice, startSlice)) {
-      polygons = polygons.concat(extrudeWalls(endSlice, startSlice));
-    }
-  }
-  return geom3$t.create(polygons);
+  return newPoints;
 };
-var extrudeFromSlices_1 = extrudeFromSlices$3;
-const { TAU: TAU$5 } = constants$3;
-const mat4$9 = mat4$r;
-const { mirrorX } = mirror_1;
-const geom2$t = geom2$K;
-const slice$2 = slice$5;
-const extrudeFromSlices$2 = extrudeFromSlices_1;
-const extrudeRotate$1 = (options, geometry) => {
+var offsetFromPoints_1 = offsetFromPoints$2;
+const geom2$d = geom2$i;
+const poly2 = poly2$1;
+const offsetFromPoints$1 = offsetFromPoints_1;
+const offsetGeom2$1 = (options, geometry) => {
   const defaults = {
-    segments: 12,
-    startAngle: 0,
-    angle: TAU$5,
-    overflow: "cap"
+    delta: 1,
+    corners: "edge",
+    segments: 0
   };
-  let { segments, startAngle, angle: angle2, overflow } = Object.assign({}, defaults, options);
-  if (segments < 3)
-    throw new Error("segments must be greater then 3");
-  startAngle = Math.abs(startAngle) > TAU$5 ? startAngle % TAU$5 : startAngle;
-  angle2 = Math.abs(angle2) > TAU$5 ? angle2 % TAU$5 : angle2;
-  let endAngle = startAngle + angle2;
-  endAngle = Math.abs(endAngle) > TAU$5 ? endAngle % TAU$5 : endAngle;
-  if (endAngle < startAngle) {
-    const x = startAngle;
-    startAngle = endAngle;
-    endAngle = x;
+  const { delta, corners, segments } = Object.assign({}, defaults, options);
+  if (!(corners === "edge" || corners === "chamfer" || corners === "round")) {
+    throw new Error('corners must be "edge", "chamfer", or "round"');
   }
-  let totalRotation = endAngle - startAngle;
-  if (totalRotation <= 0)
-    totalRotation = TAU$5;
-  if (Math.abs(totalRotation) < TAU$5) {
-    const anglePerSegment = TAU$5 / segments;
-    segments = Math.floor(Math.abs(totalRotation) / anglePerSegment);
-    if (Math.abs(totalRotation) > segments * anglePerSegment)
-      segments++;
-  }
-  let shapeSides = geom2$t.toSides(geometry);
-  if (shapeSides.length === 0)
-    throw new Error("the given geometry cannot be empty");
-  const pointsWithNegativeX = shapeSides.filter((s) => s[0][0] < 0);
-  const pointsWithPositiveX = shapeSides.filter((s) => s[0][0] >= 0);
-  const arePointsWithNegAndPosX = pointsWithNegativeX.length > 0 && pointsWithPositiveX.length > 0;
-  if (arePointsWithNegAndPosX && overflow === "cap") {
-    if (pointsWithNegativeX.length > pointsWithPositiveX.length) {
-      shapeSides = shapeSides.map((side) => {
-        let point0 = side[0];
-        let point1 = side[1];
-        point0 = [Math.min(point0[0], 0), point0[1]];
-        point1 = [Math.min(point1[0], 0), point1[1]];
-        return [point0, point1];
-      });
-      geometry = geom2$t.reverse(geom2$t.create(shapeSides));
-      geometry = mirrorX(geometry);
-    } else if (pointsWithPositiveX.length >= pointsWithNegativeX.length) {
-      shapeSides = shapeSides.map((side) => {
-        let point0 = side[0];
-        let point1 = side[1];
-        point0 = [Math.max(point0[0], 0), point0[1]];
-        point1 = [Math.max(point1[0], 0), point1[1]];
-        return [point0, point1];
-      });
-      geometry = geom2$t.create(shapeSides);
-    }
-  }
-  const rotationPerSlice = totalRotation / segments;
-  const isCapped = Math.abs(totalRotation) < TAU$5;
-  const baseSlice = slice$2.fromSides(geom2$t.toSides(geometry));
-  slice$2.reverse(baseSlice, baseSlice);
-  const matrix = mat4$9.create();
-  const createSlice = (progress, index, base) => {
-    let Zrotation = rotationPerSlice * index + startAngle;
-    if (totalRotation === TAU$5 && index === segments) {
-      Zrotation = startAngle;
-    }
-    mat4$9.multiply(matrix, mat4$9.fromZRotation(matrix, Zrotation), mat4$9.fromXRotation(mat4$9.create(), TAU$5 / 4));
-    return slice$2.transform(matrix, base);
-  };
-  options = {
-    numberOfSlices: segments + 1,
-    capStart: isCapped,
-    capEnd: isCapped,
-    close: !isCapped,
-    callback: createSlice
-  };
-  return extrudeFromSlices$2(options, baseSlice);
+  const outlines = geom2$d.toOutlines(geometry);
+  const newoutlines = outlines.map((outline) => {
+    const level = outlines.reduce((acc, polygon) => acc + poly2.arePointsInside(outline, poly2.create(polygon)), 0);
+    const outside = level % 2 === 0;
+    options = {
+      delta: outside ? delta : -delta,
+      corners,
+      closed: true,
+      segments
+    };
+    return offsetFromPoints$1(options, outline);
+  });
+  const allsides = newoutlines.reduce((sides, newoutline) => sides.concat(geom2$d.toSides(geom2$d.fromPoints(newoutline))), []);
+  return geom2$d.create(allsides);
 };
-var extrudeRotate_1 = extrudeRotate$1;
-const flatten$r = flatten_1;
-const mat4$8 = mat4$r;
-const geom2$s = geom2$K;
-const geom3$s = geom3$K;
-const path2$j = path2$u;
-const rotate$1 = (angles, ...objects) => {
-  if (!Array.isArray(angles))
-    throw new Error("angles must be an array");
-  objects = flatten$r(objects);
+var offsetGeom2_1 = offsetGeom2$1;
+const path2$6 = path2$8;
+const offsetFromPoints = offsetFromPoints_1;
+const offsetPath2$1 = (options, geometry) => {
+  const defaults = {
+    delta: 1,
+    corners: "edge",
+    closed: geometry.isClosed,
+    segments: 16
+  };
+  const { delta, corners, closed, segments } = Object.assign({}, defaults, options);
+  if (!(corners === "edge" || corners === "chamfer" || corners === "round")) {
+    throw new Error('corners must be "edge", "chamfer", or "round"');
+  }
+  options = { delta, corners, closed, segments };
+  const newpoints = offsetFromPoints(options, path2$6.toPoints(geometry));
+  return path2$6.fromPoints({ closed }, newpoints);
+};
+var offsetPath2_1 = offsetPath2$1;
+const flatten$9 = flatten_1;
+const geom2$c = geom2$i;
+const path2$5 = path2$8;
+const offsetGeom2 = offsetGeom2_1;
+const offsetPath2 = offsetPath2_1;
+const offset = (options, ...objects) => {
+  objects = flatten$9(objects);
   if (objects.length === 0)
     throw new Error("wrong number of arguments");
-  angles = angles.slice();
-  while (angles.length < 3)
-    angles.push(0);
-  const yaw = angles[2];
-  const pitch = angles[1];
-  const roll = angles[0];
-  const matrix = mat4$8.fromTaitBryanRotation(mat4$8.create(), yaw, pitch, roll);
   const results = objects.map((object) => {
-    if (path2$j.isA(object))
-      return path2$j.transform(matrix, object);
-    if (geom2$s.isA(object))
-      return geom2$s.transform(matrix, object);
-    if (geom3$s.isA(object))
-      return geom3$s.transform(matrix, object);
+    if (path2$5.isA(object))
+      return offsetPath2(options, object);
+    if (geom2$c.isA(object))
+      return offsetGeom2(options, object);
     return object;
   });
   return results.length === 1 ? results[0] : results;
 };
-const rotateX = (angle2, ...objects) => rotate$1([angle2, 0, 0], objects);
-const rotateY = (angle2, ...objects) => rotate$1([0, angle2, 0], objects);
-const rotateZ = (angle2, ...objects) => rotate$1([0, 0, angle2], objects);
-var rotate_1 = {
-  rotate: rotate$1,
-  rotateX,
-  rotateY,
-  rotateZ
-};
-const flatten$q = flatten_1;
-const mat4$7 = mat4$r;
-const geom2$r = geom2$K;
-const geom3$r = geom3$K;
-const path2$i = path2$u;
-const translate$4 = (offset2, ...objects) => {
-  if (!Array.isArray(offset2))
-    throw new Error("offset must be an array");
-  objects = flatten$q(objects);
-  if (objects.length === 0)
-    throw new Error("wrong number of arguments");
-  offset2 = offset2.slice();
-  while (offset2.length < 3)
-    offset2.push(0);
-  const matrix = mat4$7.fromTranslation(mat4$7.create(), offset2);
-  const results = objects.map((object) => {
-    if (path2$i.isA(object))
-      return path2$i.transform(matrix, object);
-    if (geom2$r.isA(object))
-      return geom2$r.transform(matrix, object);
-    if (geom3$r.isA(object))
-      return geom3$r.transform(matrix, object);
-    return object;
-  });
-  return results.length === 1 ? results[0] : results;
-};
-const translateX = (offset2, ...objects) => translate$4([offset2, 0, 0], objects);
-const translateY = (offset2, ...objects) => translate$4([0, offset2, 0], objects);
-const translateZ = (offset2, ...objects) => translate$4([0, 0, offset2], objects);
-var translate_1 = {
-  translate: translate$4,
-  translateX,
-  translateY,
-  translateZ
-};
-const { TAU: TAU$4 } = constants$3;
-const extrudeRotate = extrudeRotate_1;
-const { rotate } = rotate_1;
-const { translate: translate$3 } = translate_1;
-const circle = circle_1;
-const { isGT, isGTE } = commonChecks;
-const torus = (options) => {
-  const defaults = {
-    innerRadius: 1,
-    innerSegments: 32,
-    outerRadius: 4,
-    outerSegments: 32,
-    innerRotation: 0,
-    startAngle: 0,
-    outerRotation: TAU$4
-  };
-  const { innerRadius, innerSegments, outerRadius, outerSegments, innerRotation, startAngle, outerRotation } = Object.assign({}, defaults, options);
-  if (!isGT(innerRadius, 0))
-    throw new Error("innerRadius must be greater than zero");
-  if (!isGTE(innerSegments, 3))
-    throw new Error("innerSegments must be three or more");
-  if (!isGT(outerRadius, 0))
-    throw new Error("outerRadius must be greater than zero");
-  if (!isGTE(outerSegments, 3))
-    throw new Error("outerSegments must be three or more");
-  if (!isGTE(startAngle, 0))
-    throw new Error("startAngle must be positive");
-  if (!isGT(outerRotation, 0))
-    throw new Error("outerRotation must be greater than zero");
-  if (innerRadius >= outerRadius)
-    throw new Error("inner circle is two large to rotate about the outer circle");
-  let innerCircle = circle({ radius: innerRadius, segments: innerSegments });
-  if (innerRotation !== 0) {
-    innerCircle = rotate([0, 0, innerRotation], innerCircle);
-  }
-  innerCircle = translate$3([outerRadius, 0], innerCircle);
-  const extrudeOptions = {
-    startAngle,
-    angle: outerRotation,
-    segments: outerSegments
-  };
-  return extrudeRotate(extrudeOptions, innerCircle);
-};
-var torus_1 = torus;
-const { NEPS } = constants$3;
-const vec2$7 = vec2$E;
-const geom2$q = geom2$K;
-const { isNumberArray } = commonChecks;
-const solveAngleFromSSS = (a, b, c2) => Math.acos((a * a + b * b - c2 * c2) / (2 * a * b));
-const solveSideFromSAS = (a, C, b) => {
-  if (C > NEPS) {
-    return Math.sqrt(a * a + b * b - 2 * a * b * Math.cos(C));
-  }
-  return Math.sqrt((a - b) * (a - b) + a * b * C * C * (1 - C * C / 12));
-};
-const solveAAA = (angles) => {
-  const eps = Math.abs(angles[0] + angles[1] + angles[2] - Math.PI);
-  if (eps > NEPS)
-    throw new Error("AAA triangles require angles that sum to PI");
-  const A = angles[0];
-  const B = angles[1];
-  const C = Math.PI - A - B;
-  const c2 = 1;
-  const a = c2 / Math.sin(C) * Math.sin(A);
-  const b = c2 / Math.sin(C) * Math.sin(B);
-  return createTriangle(A, B, C, a, b, c2);
-};
-const solveAAS = (values2) => {
-  const A = values2[0];
-  const B = values2[1];
-  const C = Math.PI + NEPS - A - B;
-  if (C < NEPS)
-    throw new Error("AAS triangles require angles that sum to PI");
-  const a = values2[2];
-  const b = a / Math.sin(A) * Math.sin(B);
-  const c2 = a / Math.sin(A) * Math.sin(C);
-  return createTriangle(A, B, C, a, b, c2);
-};
-const solveASA = (values2) => {
-  const A = values2[0];
-  const B = values2[2];
-  const C = Math.PI + NEPS - A - B;
-  if (C < NEPS)
-    throw new Error("ASA triangles require angles that sum to PI");
-  const c2 = values2[1];
-  const a = c2 / Math.sin(C) * Math.sin(A);
-  const b = c2 / Math.sin(C) * Math.sin(B);
-  return createTriangle(A, B, C, a, b, c2);
-};
-const solveSAS = (values2) => {
-  const c2 = values2[0];
-  const B = values2[1];
-  const a = values2[2];
-  const b = solveSideFromSAS(c2, B, a);
-  const A = solveAngleFromSSS(b, c2, a);
-  const C = Math.PI - A - B;
-  return createTriangle(A, B, C, a, b, c2);
-};
-const solveSSA = (values2) => {
-  const c2 = values2[0];
-  const a = values2[1];
-  const C = values2[2];
-  const A = Math.asin(a * Math.sin(C) / c2);
-  const B = Math.PI - A - C;
-  const b = c2 / Math.sin(C) * Math.sin(B);
-  return createTriangle(A, B, C, a, b, c2);
-};
-const solveSSS = (lengths) => {
-  const a = lengths[1];
-  const b = lengths[2];
-  const c2 = lengths[0];
-  if (a + b <= c2 || b + c2 <= a || c2 + a <= b) {
-    throw new Error("SSS triangle is incorrect, as the longest side is longer than the sum of the other sides");
-  }
-  const A = solveAngleFromSSS(b, c2, a);
-  const B = solveAngleFromSSS(c2, a, b);
-  const C = Math.PI - A - B;
-  return createTriangle(A, B, C, a, b, c2);
-};
-const createTriangle = (A, B, C, a, b, c2) => {
-  const p0 = vec2$7.fromValues(0, 0);
-  const p1 = vec2$7.fromValues(c2, 0);
-  const p2 = vec2$7.fromValues(a, 0);
-  vec2$7.add(p2, vec2$7.rotate(p2, p2, [0, 0], Math.PI - B), p1);
-  return geom2$q.fromPoints([p0, p1, p2]);
-};
-const triangle = (options) => {
-  const defaults = {
-    type: "SSS",
-    values: [1, 1, 1]
-  };
-  let { type, values: values2 } = Object.assign({}, defaults, options);
-  if (typeof type !== "string")
-    throw new Error("triangle type must be a string");
-  type = type.toUpperCase();
-  if (!((type[0] === "A" || type[0] === "S") && (type[1] === "A" || type[1] === "S") && (type[2] === "A" || type[2] === "S")))
-    throw new Error("triangle type must contain three letters; A or S");
-  if (!isNumberArray(values2, 3))
-    throw new Error("triangle values must contain three values");
-  if (!values2.every((n) => n > 0))
-    throw new Error("triangle values must be greater than zero");
-  switch (type) {
-    case "AAA":
-      return solveAAA(values2);
-    case "AAS":
-      return solveAAS(values2);
-    case "ASA":
-      return solveASA(values2);
-    case "SAS":
-      return solveSAS(values2);
-    case "SSA":
-      return solveSSA(values2);
-    case "SSS":
-      return solveSSS(values2);
-    default:
-      throw new Error("invalid triangle type, try again");
-  }
-};
-var triangle_1 = triangle;
-var primitives = {
-  arc: arc_1,
-  circle: circle_1,
-  cube: cube_1,
-  cuboid: cuboid_1,
-  cylinder: cylinder_1,
-  cylinderElliptic: cylinderElliptic_1,
-  ellipse: ellipse_1,
-  ellipsoid: ellipsoid_1,
-  geodesicSphere: geodesicSphere_1,
-  line: line_1,
-  polygon: polygon_1,
-  polyhedron: polyhedron_1,
-  rectangle: rectangle_1,
-  roundedCuboid: roundedCuboid_1,
-  roundedCylinder: roundedCylinder_1,
-  roundedRectangle: roundedRectangle_1,
-  sphere: sphere_1,
-  square: square_1,
-  star: star_1,
-  torus: torus_1,
-  triangle: triangle_1
-};
-var simplex = {
-  height: 14,
-  32: [16],
-  33: [10, 5, 21, 5, 7, void 0, 5, 2, 4, 1, 5, 0, 6, 1, 5, 2],
-  34: [16, 4, 21, 4, 14, void 0, 12, 21, 12, 14],
-  35: [21, 11, 25, 4, -7, void 0, 17, 25, 10, -7, void 0, 4, 12, 18, 12, void 0, 3, 6, 17, 6],
-  36: [20, 8, 25, 8, -4, void 0, 12, 25, 12, -4, void 0, 17, 18, 15, 20, 12, 21, 8, 21, 5, 20, 3, 18, 3, 16, 4, 14, 5, 13, 7, 12, 13, 10, 15, 9, 16, 8, 17, 6, 17, 3, 15, 1, 12, 0, 8, 0, 5, 1, 3, 3],
-  37: [24, 21, 21, 3, 0, void 0, 8, 21, 10, 19, 10, 17, 9, 15, 7, 14, 5, 14, 3, 16, 3, 18, 4, 20, 6, 21, 8, 21, 10, 20, 13, 19, 16, 19, 19, 20, 21, 21, void 0, 17, 7, 15, 6, 14, 4, 14, 2, 16, 0, 18, 0, 20, 1, 21, 3, 21, 5, 19, 7, 17, 7],
-  38: [26, 23, 12, 23, 13, 22, 14, 21, 14, 20, 13, 19, 11, 17, 6, 15, 3, 13, 1, 11, 0, 7, 0, 5, 1, 4, 2, 3, 4, 3, 6, 4, 8, 5, 9, 12, 13, 13, 14, 14, 16, 14, 18, 13, 20, 11, 21, 9, 20, 8, 18, 8, 16, 9, 13, 11, 10, 16, 3, 18, 1, 20, 0, 22, 0, 23, 1, 23, 2],
-  39: [10, 5, 19, 4, 20, 5, 21, 6, 20, 6, 18, 5, 16, 4, 15],
-  40: [14, 11, 25, 9, 23, 7, 20, 5, 16, 4, 11, 4, 7, 5, 2, 7, -2, 9, -5, 11, -7],
-  41: [14, 3, 25, 5, 23, 7, 20, 9, 16, 10, 11, 10, 7, 9, 2, 7, -2, 5, -5, 3, -7],
-  42: [16, 8, 21, 8, 9, void 0, 3, 18, 13, 12, void 0, 13, 18, 3, 12],
-  43: [26, 13, 18, 13, 0, void 0, 4, 9, 22, 9],
-  44: [10, 6, 1, 5, 0, 4, 1, 5, 2, 6, 1, 6, -1, 5, -3, 4, -4],
-  45: [26, 4, 9, 22, 9],
-  46: [10, 5, 2, 4, 1, 5, 0, 6, 1, 5, 2],
-  47: [22, 20, 25, 2, -7],
-  48: [20, 9, 21, 6, 20, 4, 17, 3, 12, 3, 9, 4, 4, 6, 1, 9, 0, 11, 0, 14, 1, 16, 4, 17, 9, 17, 12, 16, 17, 14, 20, 11, 21, 9, 21],
-  49: [20, 6, 17, 8, 18, 11, 21, 11, 0],
-  50: [20, 4, 16, 4, 17, 5, 19, 6, 20, 8, 21, 12, 21, 14, 20, 15, 19, 16, 17, 16, 15, 15, 13, 13, 10, 3, 0, 17, 0],
-  51: [20, 5, 21, 16, 21, 10, 13, 13, 13, 15, 12, 16, 11, 17, 8, 17, 6, 16, 3, 14, 1, 11, 0, 8, 0, 5, 1, 4, 2, 3, 4],
-  52: [20, 13, 21, 3, 7, 18, 7, void 0, 13, 21, 13, 0],
-  53: [20, 15, 21, 5, 21, 4, 12, 5, 13, 8, 14, 11, 14, 14, 13, 16, 11, 17, 8, 17, 6, 16, 3, 14, 1, 11, 0, 8, 0, 5, 1, 4, 2, 3, 4],
-  54: [20, 16, 18, 15, 20, 12, 21, 10, 21, 7, 20, 5, 17, 4, 12, 4, 7, 5, 3, 7, 1, 10, 0, 11, 0, 14, 1, 16, 3, 17, 6, 17, 7, 16, 10, 14, 12, 11, 13, 10, 13, 7, 12, 5, 10, 4, 7],
-  55: [20, 17, 21, 7, 0, void 0, 3, 21, 17, 21],
-  56: [20, 8, 21, 5, 20, 4, 18, 4, 16, 5, 14, 7, 13, 11, 12, 14, 11, 16, 9, 17, 7, 17, 4, 16, 2, 15, 1, 12, 0, 8, 0, 5, 1, 4, 2, 3, 4, 3, 7, 4, 9, 6, 11, 9, 12, 13, 13, 15, 14, 16, 16, 16, 18, 15, 20, 12, 21, 8, 21],
-  57: [20, 16, 14, 15, 11, 13, 9, 10, 8, 9, 8, 6, 9, 4, 11, 3, 14, 3, 15, 4, 18, 6, 20, 9, 21, 10, 21, 13, 20, 15, 18, 16, 14, 16, 9, 15, 4, 13, 1, 10, 0, 8, 0, 5, 1, 4, 3],
-  58: [10, 5, 14, 4, 13, 5, 12, 6, 13, 5, 14, void 0, 5, 2, 4, 1, 5, 0, 6, 1, 5, 2],
-  59: [10, 5, 14, 4, 13, 5, 12, 6, 13, 5, 14, void 0, 6, 1, 5, 0, 4, 1, 5, 2, 6, 1, 6, -1, 5, -3, 4, -4],
-  60: [24, 20, 18, 4, 9, 20, 0],
-  61: [26, 4, 12, 22, 12, void 0, 4, 6, 22, 6],
-  62: [24, 4, 18, 20, 9, 4, 0],
-  63: [18, 3, 16, 3, 17, 4, 19, 5, 20, 7, 21, 11, 21, 13, 20, 14, 19, 15, 17, 15, 15, 14, 13, 13, 12, 9, 10, 9, 7, void 0, 9, 2, 8, 1, 9, 0, 10, 1, 9, 2],
-  64: [27, 18, 13, 17, 15, 15, 16, 12, 16, 10, 15, 9, 14, 8, 11, 8, 8, 9, 6, 11, 5, 14, 5, 16, 6, 17, 8, void 0, 12, 16, 10, 14, 9, 11, 9, 8, 10, 6, 11, 5, void 0, 18, 16, 17, 8, 17, 6, 19, 5, 21, 5, 23, 7, 24, 10, 24, 12, 23, 15, 22, 17, 20, 19, 18, 20, 15, 21, 12, 21, 9, 20, 7, 19, 5, 17, 4, 15, 3, 12, 3, 9, 4, 6, 5, 4, 7, 2, 9, 1, 12, 0, 15, 0, 18, 1, 20, 2, 21, 3, void 0, 19, 16, 18, 8, 18, 6, 19, 5],
-  65: [18, 9, 21, 1, 0, void 0, 9, 21, 17, 0, void 0, 4, 7, 14, 7],
-  66: [21, 4, 21, 4, 0, void 0, 4, 21, 13, 21, 16, 20, 17, 19, 18, 17, 18, 15, 17, 13, 16, 12, 13, 11, void 0, 4, 11, 13, 11, 16, 10, 17, 9, 18, 7, 18, 4, 17, 2, 16, 1, 13, 0, 4, 0],
-  67: [21, 18, 16, 17, 18, 15, 20, 13, 21, 9, 21, 7, 20, 5, 18, 4, 16, 3, 13, 3, 8, 4, 5, 5, 3, 7, 1, 9, 0, 13, 0, 15, 1, 17, 3, 18, 5],
-  68: [21, 4, 21, 4, 0, void 0, 4, 21, 11, 21, 14, 20, 16, 18, 17, 16, 18, 13, 18, 8, 17, 5, 16, 3, 14, 1, 11, 0, 4, 0],
-  69: [19, 4, 21, 4, 0, void 0, 4, 21, 17, 21, void 0, 4, 11, 12, 11, void 0, 4, 0, 17, 0],
-  70: [18, 4, 21, 4, 0, void 0, 4, 21, 17, 21, void 0, 4, 11, 12, 11],
-  71: [21, 18, 16, 17, 18, 15, 20, 13, 21, 9, 21, 7, 20, 5, 18, 4, 16, 3, 13, 3, 8, 4, 5, 5, 3, 7, 1, 9, 0, 13, 0, 15, 1, 17, 3, 18, 5, 18, 8, void 0, 13, 8, 18, 8],
-  72: [22, 4, 21, 4, 0, void 0, 18, 21, 18, 0, void 0, 4, 11, 18, 11],
-  73: [8, 4, 21, 4, 0],
-  74: [16, 12, 21, 12, 5, 11, 2, 10, 1, 8, 0, 6, 0, 4, 1, 3, 2, 2, 5, 2, 7],
-  75: [21, 4, 21, 4, 0, void 0, 18, 21, 4, 7, void 0, 9, 12, 18, 0],
-  76: [17, 4, 21, 4, 0, void 0, 4, 0, 16, 0],
-  77: [24, 4, 21, 4, 0, void 0, 4, 21, 12, 0, void 0, 20, 21, 12, 0, void 0, 20, 21, 20, 0],
-  78: [22, 4, 21, 4, 0, void 0, 4, 21, 18, 0, void 0, 18, 21, 18, 0],
-  79: [22, 9, 21, 7, 20, 5, 18, 4, 16, 3, 13, 3, 8, 4, 5, 5, 3, 7, 1, 9, 0, 13, 0, 15, 1, 17, 3, 18, 5, 19, 8, 19, 13, 18, 16, 17, 18, 15, 20, 13, 21, 9, 21],
-  80: [21, 4, 21, 4, 0, void 0, 4, 21, 13, 21, 16, 20, 17, 19, 18, 17, 18, 14, 17, 12, 16, 11, 13, 10, 4, 10],
-  81: [22, 9, 21, 7, 20, 5, 18, 4, 16, 3, 13, 3, 8, 4, 5, 5, 3, 7, 1, 9, 0, 13, 0, 15, 1, 17, 3, 18, 5, 19, 8, 19, 13, 18, 16, 17, 18, 15, 20, 13, 21, 9, 21, void 0, 12, 4, 18, -2],
-  82: [21, 4, 21, 4, 0, void 0, 4, 21, 13, 21, 16, 20, 17, 19, 18, 17, 18, 15, 17, 13, 16, 12, 13, 11, 4, 11, void 0, 11, 11, 18, 0],
-  83: [20, 17, 18, 15, 20, 12, 21, 8, 21, 5, 20, 3, 18, 3, 16, 4, 14, 5, 13, 7, 12, 13, 10, 15, 9, 16, 8, 17, 6, 17, 3, 15, 1, 12, 0, 8, 0, 5, 1, 3, 3],
-  84: [16, 8, 21, 8, 0, void 0, 1, 21, 15, 21],
-  85: [22, 4, 21, 4, 6, 5, 3, 7, 1, 10, 0, 12, 0, 15, 1, 17, 3, 18, 6, 18, 21],
-  86: [18, 1, 21, 9, 0, void 0, 17, 21, 9, 0],
-  87: [24, 2, 21, 7, 0, void 0, 12, 21, 7, 0, void 0, 12, 21, 17, 0, void 0, 22, 21, 17, 0],
-  88: [20, 3, 21, 17, 0, void 0, 17, 21, 3, 0],
-  89: [18, 1, 21, 9, 11, 9, 0, void 0, 17, 21, 9, 11],
-  90: [20, 17, 21, 3, 0, void 0, 3, 21, 17, 21, void 0, 3, 0, 17, 0],
-  91: [14, 4, 25, 4, -7, void 0, 5, 25, 5, -7, void 0, 4, 25, 11, 25, void 0, 4, -7, 11, -7],
-  92: [14, 0, 21, 14, -3],
-  93: [14, 9, 25, 9, -7, void 0, 10, 25, 10, -7, void 0, 3, 25, 10, 25, void 0, 3, -7, 10, -7],
-  94: [16, 6, 15, 8, 18, 10, 15, void 0, 3, 12, 8, 17, 13, 12, void 0, 8, 17, 8, 0],
-  95: [16, 0, -2, 16, -2],
-  96: [10, 6, 21, 5, 20, 4, 18, 4, 16, 5, 15, 6, 16, 5, 17],
-  97: [19, 15, 14, 15, 0, void 0, 15, 11, 13, 13, 11, 14, 8, 14, 6, 13, 4, 11, 3, 8, 3, 6, 4, 3, 6, 1, 8, 0, 11, 0, 13, 1, 15, 3],
-  98: [19, 4, 21, 4, 0, void 0, 4, 11, 6, 13, 8, 14, 11, 14, 13, 13, 15, 11, 16, 8, 16, 6, 15, 3, 13, 1, 11, 0, 8, 0, 6, 1, 4, 3],
-  99: [18, 15, 11, 13, 13, 11, 14, 8, 14, 6, 13, 4, 11, 3, 8, 3, 6, 4, 3, 6, 1, 8, 0, 11, 0, 13, 1, 15, 3],
-  100: [19, 15, 21, 15, 0, void 0, 15, 11, 13, 13, 11, 14, 8, 14, 6, 13, 4, 11, 3, 8, 3, 6, 4, 3, 6, 1, 8, 0, 11, 0, 13, 1, 15, 3],
-  101: [18, 3, 8, 15, 8, 15, 10, 14, 12, 13, 13, 11, 14, 8, 14, 6, 13, 4, 11, 3, 8, 3, 6, 4, 3, 6, 1, 8, 0, 11, 0, 13, 1, 15, 3],
-  102: [12, 10, 21, 8, 21, 6, 20, 5, 17, 5, 0, void 0, 2, 14, 9, 14],
-  103: [19, 15, 14, 15, -2, 14, -5, 13, -6, 11, -7, 8, -7, 6, -6, void 0, 15, 11, 13, 13, 11, 14, 8, 14, 6, 13, 4, 11, 3, 8, 3, 6, 4, 3, 6, 1, 8, 0, 11, 0, 13, 1, 15, 3],
-  104: [19, 4, 21, 4, 0, void 0, 4, 10, 7, 13, 9, 14, 12, 14, 14, 13, 15, 10, 15, 0],
-  105: [8, 3, 21, 4, 20, 5, 21, 4, 22, 3, 21, void 0, 4, 14, 4, 0],
-  106: [10, 5, 21, 6, 20, 7, 21, 6, 22, 5, 21, void 0, 6, 14, 6, -3, 5, -6, 3, -7, 1, -7],
-  107: [17, 4, 21, 4, 0, void 0, 14, 14, 4, 4, void 0, 8, 8, 15, 0],
-  108: [8, 4, 21, 4, 0],
-  109: [30, 4, 14, 4, 0, void 0, 4, 10, 7, 13, 9, 14, 12, 14, 14, 13, 15, 10, 15, 0, void 0, 15, 10, 18, 13, 20, 14, 23, 14, 25, 13, 26, 10, 26, 0],
-  110: [19, 4, 14, 4, 0, void 0, 4, 10, 7, 13, 9, 14, 12, 14, 14, 13, 15, 10, 15, 0],
-  111: [19, 8, 14, 6, 13, 4, 11, 3, 8, 3, 6, 4, 3, 6, 1, 8, 0, 11, 0, 13, 1, 15, 3, 16, 6, 16, 8, 15, 11, 13, 13, 11, 14, 8, 14],
-  112: [19, 4, 14, 4, -7, void 0, 4, 11, 6, 13, 8, 14, 11, 14, 13, 13, 15, 11, 16, 8, 16, 6, 15, 3, 13, 1, 11, 0, 8, 0, 6, 1, 4, 3],
-  113: [19, 15, 14, 15, -7, void 0, 15, 11, 13, 13, 11, 14, 8, 14, 6, 13, 4, 11, 3, 8, 3, 6, 4, 3, 6, 1, 8, 0, 11, 0, 13, 1, 15, 3],
-  114: [13, 4, 14, 4, 0, void 0, 4, 8, 5, 11, 7, 13, 9, 14, 12, 14],
-  115: [17, 14, 11, 13, 13, 10, 14, 7, 14, 4, 13, 3, 11, 4, 9, 6, 8, 11, 7, 13, 6, 14, 4, 14, 3, 13, 1, 10, 0, 7, 0, 4, 1, 3, 3],
-  116: [12, 5, 21, 5, 4, 6, 1, 8, 0, 10, 0, void 0, 2, 14, 9, 14],
-  117: [19, 4, 14, 4, 4, 5, 1, 7, 0, 10, 0, 12, 1, 15, 4, void 0, 15, 14, 15, 0],
-  118: [16, 2, 14, 8, 0, void 0, 14, 14, 8, 0],
-  119: [22, 3, 14, 7, 0, void 0, 11, 14, 7, 0, void 0, 11, 14, 15, 0, void 0, 19, 14, 15, 0],
-  120: [17, 3, 14, 14, 0, void 0, 14, 14, 3, 0],
-  121: [16, 2, 14, 8, 0, void 0, 14, 14, 8, 0, 6, -4, 4, -6, 2, -7, 1, -7],
-  122: [17, 14, 14, 3, 0, void 0, 3, 14, 14, 14, void 0, 3, 0, 14, 0],
-  123: [14, 9, 25, 7, 24, 6, 23, 5, 21, 5, 19, 6, 17, 7, 16, 8, 14, 8, 12, 6, 10, void 0, 7, 24, 6, 22, 6, 20, 7, 18, 8, 17, 9, 15, 9, 13, 8, 11, 4, 9, 8, 7, 9, 5, 9, 3, 8, 1, 7, 0, 6, -2, 6, -4, 7, -6, void 0, 6, 8, 8, 6, 8, 4, 7, 2, 6, 1, 5, -1, 5, -3, 6, -5, 7, -6, 9, -7],
-  124: [8, 4, 25, 4, -7],
-  125: [14, 5, 25, 7, 24, 8, 23, 9, 21, 9, 19, 8, 17, 7, 16, 6, 14, 6, 12, 8, 10, void 0, 7, 24, 8, 22, 8, 20, 7, 18, 6, 17, 5, 15, 5, 13, 6, 11, 10, 9, 6, 7, 5, 5, 5, 3, 6, 1, 7, 0, 8, -2, 8, -4, 7, -6, void 0, 8, 8, 6, 6, 6, 4, 7, 2, 8, 1, 9, -1, 9, -3, 8, -5, 7, -6, 5, -7],
-  126: [24, 3, 6, 3, 8, 4, 11, 6, 12, 8, 12, 10, 11, 14, 8, 16, 7, 18, 7, 20, 8, 21, 10, void 0, 3, 8, 4, 10, 6, 11, 8, 11, 10, 10, 14, 7, 16, 6, 18, 6, 20, 7, 21, 10, 21, 12]
-};
-const defaultFont = simplex;
-const defaultsVectorParams = {
-  xOffset: 0,
-  yOffset: 0,
-  input: "?",
-  align: "left",
-  font: defaultFont,
-  height: 14,
-  // == old vector_xxx simplex font height
-  lineSpacing: 2.142857142857143,
-  // == 30/14 == old vector_xxx ratio
-  letterSpacing: 1,
-  extrudeOffset: 0
-};
-const vectorParams$2 = (options, input) => {
-  if (!input && typeof options === "string") {
-    options = { input: options };
-  }
-  options = options || {};
-  const params = Object.assign({}, defaultsVectorParams, options);
-  params.input = input || params.input;
-  return params;
-};
-var vectorParams_1 = vectorParams$2;
-const vectorParams$1 = vectorParams_1;
-const vectorChar$1 = (options, char) => {
-  const {
-    xOffset,
-    yOffset,
-    input,
-    font,
-    height,
-    extrudeOffset
-  } = vectorParams$1(options, char);
-  let code = input.charCodeAt(0);
-  if (!code || !font[code]) {
-    code = 63;
-  }
-  const glyph = [].concat(font[code]);
-  const ratio = (height - extrudeOffset) / font.height;
-  const extrudeYOffset = extrudeOffset / 2;
-  const width = glyph.shift() * ratio;
-  const segments = [];
-  let polyline = [];
-  for (let i = 0, il = glyph.length; i < il; i += 2) {
-    const gx = ratio * glyph[i] + xOffset;
-    const gy = ratio * glyph[i + 1] + yOffset + extrudeYOffset;
-    if (glyph[i] !== void 0) {
-      polyline.push([gx, gy]);
-      continue;
-    }
-    segments.push(polyline);
-    polyline = [];
-    i--;
-  }
-  if (polyline.length) {
-    segments.push(polyline);
-  }
-  return { width, height, segments };
-};
-var vectorChar_1 = vectorChar$1;
-const vectorChar = vectorChar_1;
-const vectorParams = vectorParams_1;
-const translateLine = (options, line4) => {
-  const { x, y } = Object.assign({ x: 0, y: 0 }, options || {});
-  const segments = line4.segments;
-  let segment = null;
-  let point = null;
-  for (let i = 0, il = segments.length; i < il; i++) {
-    segment = segments[i];
-    for (let j = 0, jl = segment.length; j < jl; j++) {
-      point = segment[j];
-      segment[j] = [point[0] + x, point[1] + y];
-    }
-  }
-  return line4;
-};
-const vectorText = (options, text2) => {
-  const {
-    xOffset,
-    yOffset,
-    input,
-    font,
-    height,
-    align: align2,
-    extrudeOffset,
-    lineSpacing,
-    letterSpacing
-  } = vectorParams(options, text2);
-  let [x, y] = [xOffset, yOffset];
-  let i, il, char, vect, width, diff;
-  let line4 = { width: 0, segments: [] };
-  const lines = [];
-  let output = [];
-  let maxWidth = 0;
-  const lineStart = x;
-  const pushLine = () => {
-    lines.push(line4);
-    maxWidth = Math.max(maxWidth, line4.width);
-    line4 = { width: 0, segments: [] };
-  };
-  for (i = 0, il = input.length; i < il; i++) {
-    char = input[i];
-    vect = vectorChar({ xOffset: x, yOffset: y, font, height, extrudeOffset }, char);
-    if (char === "\n") {
-      x = lineStart;
-      y -= vect.height * lineSpacing;
-      pushLine();
-      continue;
-    }
-    width = vect.width * letterSpacing;
-    line4.width += width;
-    x += width;
-    if (char !== " ") {
-      line4.segments = line4.segments.concat(vect.segments);
-    }
-  }
-  if (line4.segments.length) {
-    pushLine();
-  }
-  for (i = 0, il = lines.length; i < il; i++) {
-    line4 = lines[i];
-    if (maxWidth > line4.width) {
-      diff = maxWidth - line4.width;
-      if (align2 === "right") {
-        line4 = translateLine({ x: diff }, line4);
-      } else if (align2 === "center") {
-        line4 = translateLine({ x: diff / 2 }, line4);
-      }
-    }
-    output = output.concat(line4.segments);
-  }
-  return output;
-};
-var vectorText_1 = vectorText;
-var text = {
-  vectorChar: vectorChar_1,
-  vectorText: vectorText_1
-};
-const geom2$p = geom2$K;
-const geom3$q = geom3$K;
-const path2$h = path2$u;
-const areAllShapesTheSameType$4 = (shapes) => {
+var offset_1 = offset;
+const offset$1 = /* @__PURE__ */ getDefaultExportFromCjs(offset_1);
+const geom2$b = geom2$i;
+const geom3$b = geom3$d;
+const path2$4 = path2$8;
+const areAllShapesTheSameType$2 = (shapes) => {
   let previousType;
   for (const shape of shapes) {
     let currentType = 0;
-    if (geom2$p.isA(shape))
+    if (geom2$b.isA(shape))
       currentType = 1;
-    if (geom3$q.isA(shape))
+    if (geom3$b.isA(shape))
       currentType = 2;
-    if (path2$h.isA(shape))
+    if (path2$4.isA(shape))
       currentType = 3;
     if (previousType && currentType !== previousType)
       return false;
@@ -28367,53 +25039,54 @@ const areAllShapesTheSameType$4 = (shapes) => {
   }
   return true;
 };
-var areAllShapesTheSameType_1 = areAllShapesTheSameType$4;
-const degToRad = (degrees2) => degrees2 * 0.017453292519943295;
-var degToRad_1 = degToRad;
-const fnNumberSort$2 = (a, b) => a - b;
-var fnNumberSort_1 = fnNumberSort$2;
-const insertSorted$1 = (array, element, comparefunc) => {
-  let leftbound = 0;
-  let rightbound = array.length;
-  while (rightbound > leftbound) {
-    const testindex = Math.floor((leftbound + rightbound) / 2);
-    const testelement = array[testindex];
-    const compareresult = comparefunc(element, testelement);
-    if (compareresult > 0) {
-      leftbound = testindex + 1;
-    } else {
-      rightbound = testindex;
-    }
+var areAllShapesTheSameType_1 = areAllShapesTheSameType$2;
+var geometries = {
+  geom2: geom2$i,
+  geom3: geom3$d,
+  path2: path2$8,
+  poly2: poly2$1,
+  poly3: poly3$m
+};
+const { EPS: EPS$5 } = constants$3;
+const calculateEpsilonFromBounds$1 = (bounds, dimensions) => {
+  let total = 0;
+  for (let i = 0; i < dimensions; i++) {
+    total += bounds[1][i] - bounds[0][i];
   }
-  array.splice(leftbound, 0, element);
+  return EPS$5 * total / dimensions;
 };
-var insertSorted_1 = insertSorted$1;
-const { TAU: TAU$3 } = constants$3;
-const radiusToSegments = (radius, minimumLength, minimumAngle) => {
-  const ss = minimumLength > 0 ? radius * TAU$3 / minimumLength : 0;
-  const as = minimumAngle > 0 ? TAU$3 / minimumAngle : 0;
-  return Math.ceil(Math.max(ss, as, 4));
+var calculateEpsilonFromBounds_1 = calculateEpsilonFromBounds$1;
+const flatten$8 = flatten_1;
+const { geom2: geom2$a, geom3: geom3$a, path2: path2$3 } = geometries;
+const calculateEpsilonFromBounds = calculateEpsilonFromBounds_1;
+const measureBoundingBox$1 = measureBoundingBox_1;
+const measureEpsilonOfPath2 = (geometry) => calculateEpsilonFromBounds(measureBoundingBox$1(geometry), 2);
+const measureEpsilonOfGeom2 = (geometry) => calculateEpsilonFromBounds(measureBoundingBox$1(geometry), 2);
+const measureEpsilonOfGeom3 = (geometry) => calculateEpsilonFromBounds(measureBoundingBox$1(geometry), 3);
+const measureEpsilon$3 = (...geometries2) => {
+  geometries2 = flatten$8(geometries2);
+  if (geometries2.length === 0)
+    throw new Error("wrong number of arguments");
+  const results = geometries2.map((geometry) => {
+    if (path2$3.isA(geometry))
+      return measureEpsilonOfPath2(geometry);
+    if (geom2$a.isA(geometry))
+      return measureEpsilonOfGeom2(geometry);
+    if (geom3$a.isA(geometry))
+      return measureEpsilonOfGeom3(geometry);
+    return 0;
+  });
+  return results.length === 1 ? results[0] : results;
 };
-var radiusToSegments_1 = radiusToSegments;
-const radToDeg = (radians) => radians * 57.29577951308232;
-var radToDeg_1 = radToDeg;
-var utils$7 = {
-  areAllShapesTheSameType: areAllShapesTheSameType_1,
-  degToRad: degToRad_1,
-  flatten: flatten_1,
-  fnNumberSort: fnNumberSort_1,
-  insertSorted: insertSorted_1,
-  radiusToSegments: radiusToSegments_1,
-  radToDeg: radToDeg_1
-};
-const vec2$6 = vec2$E;
-const geom2$o = geom2$K;
-const fromFakePolygon = (epsilon, polygon2) => {
-  if (polygon2.vertices.length < 4) {
+var measureEpsilon_1 = measureEpsilon$3;
+const vec2$3 = vec2$w;
+const geom2$9 = geom2$i;
+const fromFakePolygon = (epsilon, polygon) => {
+  if (polygon.vertices.length < 4) {
     return null;
   }
   const vert1Indices = [];
-  const points3D = polygon2.vertices.filter((vertex2, i) => {
+  const points3D = polygon.vertices.filter((vertex2, i) => {
     if (vertex2[2] > 0) {
       vert1Indices.push(i);
       return true;
@@ -28426,9 +25099,9 @@ const fromFakePolygon = (epsilon, polygon2) => {
   const points2D = points3D.map((v3) => {
     const x = Math.round(v3[0] / epsilon) * epsilon + 0;
     const y = Math.round(v3[1] / epsilon) * epsilon + 0;
-    return vec2$6.fromValues(x, y);
+    return vec2$3.fromValues(x, y);
   });
-  if (vec2$6.equals(points2D[0], points2D[1]))
+  if (vec2$3.equals(points2D[0], points2D[1]))
     return null;
   const d = vert1Indices[1] - vert1Indices[0];
   if (d === 1 || d === 3) {
@@ -28440,42 +25113,42 @@ const fromFakePolygon = (epsilon, polygon2) => {
   }
   return points2D;
 };
-const fromFakePolygons$3 = (epsilon, polygons) => {
-  const sides = polygons.map((polygon2) => fromFakePolygon(epsilon, polygon2)).filter((polygon2) => polygon2 !== null);
-  return geom2$o.create(sides);
+const fromFakePolygons$2 = (epsilon, polygons) => {
+  const sides = polygons.map((polygon) => fromFakePolygon(epsilon, polygon)).filter((polygon) => polygon !== null);
+  return geom2$9.create(sides);
 };
-var fromFakePolygons_1 = fromFakePolygons$3;
-const vec3$c = vec3$Y;
-const geom2$n = geom2$K;
-const geom3$p = geom3$K;
-const poly3$d = poly3$A;
+var fromFakePolygons_1 = fromFakePolygons$2;
+const vec3$j = vec3$C;
+const geom2$8 = geom2$i;
+const geom3$9 = geom3$d;
+const poly3$c = poly3$m;
 const to3DWall = (z0, z1, side) => {
   const points = [
-    vec3$c.fromVec2(vec3$c.create(), side[0], z0),
-    vec3$c.fromVec2(vec3$c.create(), side[1], z0),
-    vec3$c.fromVec2(vec3$c.create(), side[1], z1),
-    vec3$c.fromVec2(vec3$c.create(), side[0], z1)
+    vec3$j.fromVec2(vec3$j.create(), side[0], z0),
+    vec3$j.fromVec2(vec3$j.create(), side[1], z0),
+    vec3$j.fromVec2(vec3$j.create(), side[1], z1),
+    vec3$j.fromVec2(vec3$j.create(), side[0], z1)
   ];
-  return poly3$d.create(points);
+  return poly3$c.create(points);
 };
-const to3DWalls$3 = (options, geometry) => {
-  const sides = geom2$n.toSides(geometry);
+const to3DWalls$2 = (options, geometry) => {
+  const sides = geom2$8.toSides(geometry);
   const polygons = sides.map((side) => to3DWall(options.z0, options.z1, side));
-  const result = geom3$p.create(polygons);
+  const result = geom3$9.create(polygons);
   return result;
 };
-var to3DWalls_1 = to3DWalls$3;
-const mat4$6 = mat4$r;
-const vec2$5 = vec2$E;
-const vec3$b = vec3$Y;
+var to3DWalls_1 = to3DWalls$2;
+const mat4$2 = mat4$h;
+const vec2$2 = vec2$w;
+const vec3$i = vec3$C;
 const OrthoNormalBasis$1 = function(plane2, rightvector) {
   if (arguments.length < 2) {
-    rightvector = vec3$b.orthogonal(vec3$b.create(), plane2);
+    rightvector = vec3$i.orthogonal(vec3$i.create(), plane2);
   }
-  this.v = vec3$b.normalize(vec3$b.create(), vec3$b.cross(vec3$b.create(), plane2, rightvector));
-  this.u = vec3$b.cross(vec3$b.create(), this.v, plane2);
+  this.v = vec3$i.normalize(vec3$i.create(), vec3$i.cross(vec3$i.create(), plane2, rightvector));
+  this.u = vec3$i.cross(vec3$i.create(), this.v, plane2);
   this.plane = plane2;
-  this.planeorigin = vec3$b.scale(vec3$b.create(), plane2, plane2[3]);
+  this.planeorigin = vec3$i.scale(vec3$i.create(), plane2, plane2[3]);
 };
 OrthoNormalBasis$1.GetCartesian = function(xaxisid, yaxisid) {
   const axisid = xaxisid + "/" + yaxisid;
@@ -28563,7 +25236,7 @@ OrthoNormalBasis$1.Z0Plane = function() {
 };
 OrthoNormalBasis$1.prototype = {
   getProjectionMatrix: function() {
-    return mat4$6.fromValues(
+    return mat4$2.fromValues(
       this.u[0],
       this.v[0],
       this.plane[0],
@@ -28583,8 +25256,8 @@ OrthoNormalBasis$1.prototype = {
     );
   },
   getInverseProjectionMatrix: function() {
-    const p = vec3$b.scale(vec3$b.create(), this.plane, this.plane[3]);
-    return mat4$6.fromValues(
+    const p = vec3$i.scale(vec3$i.create(), this.plane, this.plane[3]);
+    return mat4$2.fromValues(
       this.u[0],
       this.u[1],
       this.u[2],
@@ -28604,13 +25277,13 @@ OrthoNormalBasis$1.prototype = {
     );
   },
   to2D: function(point) {
-    return vec2$5.fromValues(vec3$b.dot(point, this.u), vec3$b.dot(point, this.v));
+    return vec2$2.fromValues(vec3$i.dot(point, this.u), vec3$i.dot(point, this.v));
   },
   to3D: function(point) {
-    const v12 = vec3$b.scale(vec3$b.create(), this.u, point[0]);
-    const v22 = vec3$b.scale(vec3$b.create(), this.v, point[1]);
-    const v3 = vec3$b.add(v12, v12, this.planeorigin);
-    const v4 = vec3$b.add(v22, v22, v3);
+    const v12 = vec3$i.scale(vec3$i.create(), this.u, point[0]);
+    const v22 = vec3$i.scale(vec3$i.create(), this.v, point[1]);
+    const v3 = vec3$i.add(v12, v12, this.planeorigin);
+    const v4 = vec3$i.add(v22, v22, v3);
     return v4;
   },
   line3Dto2D: function(line3d) {
@@ -28637,26 +25310,65 @@ OrthoNormalBasis$1.prototype = {
   }
 };
 var OrthoNormalBasis_1 = OrthoNormalBasis$1;
-const { EPS: EPS$5 } = constants$3;
-const line2$1 = line2$2;
-const vec2$4 = vec2$E;
+const degToRad = (degrees2) => degrees2 * 0.017453292519943295;
+var degToRad_1 = degToRad;
+const degToRad$1 = /* @__PURE__ */ getDefaultExportFromCjs(degToRad_1);
+const fnNumberSort$1 = (a, b) => a - b;
+var fnNumberSort_1 = fnNumberSort$1;
+const insertSorted$1 = (array, element, comparefunc) => {
+  let leftbound = 0;
+  let rightbound = array.length;
+  while (rightbound > leftbound) {
+    const testindex = Math.floor((leftbound + rightbound) / 2);
+    const testelement = array[testindex];
+    const compareresult = comparefunc(element, testelement);
+    if (compareresult > 0) {
+      leftbound = testindex + 1;
+    } else {
+      rightbound = testindex;
+    }
+  }
+  array.splice(leftbound, 0, element);
+};
+var insertSorted_1 = insertSorted$1;
+const { TAU } = constants$3;
+const radiusToSegments = (radius, minimumLength, minimumAngle) => {
+  const ss = minimumLength > 0 ? radius * TAU / minimumLength : 0;
+  const as = minimumAngle > 0 ? TAU / minimumAngle : 0;
+  return Math.ceil(Math.max(ss, as, 4));
+};
+var radiusToSegments_1 = radiusToSegments;
+const radToDeg = (radians) => radians * 57.29577951308232;
+var radToDeg_1 = radToDeg;
+var utils$7 = {
+  areAllShapesTheSameType: areAllShapesTheSameType_1,
+  degToRad: degToRad_1,
+  flatten: flatten_1,
+  fnNumberSort: fnNumberSort_1,
+  insertSorted: insertSorted_1,
+  radiusToSegments: radiusToSegments_1,
+  radToDeg: radToDeg_1
+};
+const { EPS: EPS$4 } = constants$3;
+const line2 = line2$2;
+const vec2$1 = vec2$w;
 const OrthoNormalBasis = OrthoNormalBasis_1;
 const interpolateBetween2DPointsForY = interpolateBetween2DPointsForY_1;
-const { insertSorted, fnNumberSort: fnNumberSort$1 } = utils$7;
-const poly3$c = poly3$A;
+const { insertSorted, fnNumberSort } = utils$7;
+const poly3$b = poly3$m;
 const reTesselateCoplanarPolygons$1 = (sourcepolygons) => {
   if (sourcepolygons.length < 2)
     return sourcepolygons;
   const destpolygons = [];
   const numpolygons = sourcepolygons.length;
-  const plane2 = poly3$c.plane(sourcepolygons[0]);
+  const plane2 = poly3$b.plane(sourcepolygons[0]);
   const orthobasis = new OrthoNormalBasis(plane2);
   const polygonvertices2d = [];
   const polygontopvertexindexes = [];
   const topy2polygonindexes = /* @__PURE__ */ new Map();
   const ycoordinatetopolygonindexes = /* @__PURE__ */ new Map();
   const ycoordinatebins = /* @__PURE__ */ new Map();
-  const ycoordinateBinningFactor = 10 / EPS$5;
+  const ycoordinateBinningFactor = 10 / EPS$4;
   for (let polygonindex = 0; polygonindex < numpolygons; polygonindex++) {
     const poly3d = sourcepolygons[polygonindex];
     let vertices2d = [];
@@ -28679,7 +25391,7 @@ const reTesselateCoplanarPolygons$1 = (sourcepolygons) => {
           newy = pos2d[1];
           ycoordinatebins.set(ycoordinatebin, pos2d[1]);
         }
-        pos2d = vec2$4.fromValues(pos2d[0], newy);
+        pos2d = vec2$1.fromValues(pos2d[0], newy);
         vertices2d.push(pos2d);
         const y = pos2d[1];
         if (i === 0 || y < miny) {
@@ -28716,7 +25428,7 @@ const reTesselateCoplanarPolygons$1 = (sourcepolygons) => {
   }
   const ycoordinates = [];
   ycoordinatetopolygonindexes.forEach((polylist, y) => ycoordinates.push(y));
-  ycoordinates.sort(fnNumberSort$1);
+  ycoordinates.sort(fnNumberSort);
   let activepolygons = [];
   let prevoutpolygonrow = [];
   for (let yindex = 0; yindex < ycoordinates.length; yindex++) {
@@ -28828,26 +25540,26 @@ const reTesselateCoplanarPolygons$1 = (sourcepolygons) => {
     for (const activepolygonKey in activepolygons) {
       const activepolygon = activepolygons[activepolygonKey];
       let x = interpolateBetween2DPointsForY(activepolygon.topleft, activepolygon.bottomleft, ycoordinate);
-      const topleft = vec2$4.fromValues(x, ycoordinate);
+      const topleft = vec2$1.fromValues(x, ycoordinate);
       x = interpolateBetween2DPointsForY(activepolygon.topright, activepolygon.bottomright, ycoordinate);
-      const topright = vec2$4.fromValues(x, ycoordinate);
+      const topright = vec2$1.fromValues(x, ycoordinate);
       x = interpolateBetween2DPointsForY(activepolygon.topleft, activepolygon.bottomleft, nextycoordinate);
-      const bottomleft = vec2$4.fromValues(x, nextycoordinate);
+      const bottomleft = vec2$1.fromValues(x, nextycoordinate);
       x = interpolateBetween2DPointsForY(activepolygon.topright, activepolygon.bottomright, nextycoordinate);
-      const bottomright = vec2$4.fromValues(x, nextycoordinate);
+      const bottomright = vec2$1.fromValues(x, nextycoordinate);
       const outpolygon = {
         topleft,
         topright,
         bottomleft,
         bottomright,
-        leftline: line2$1.fromPoints(line2$1.create(), topleft, bottomleft),
-        rightline: line2$1.fromPoints(line2$1.create(), bottomright, topright)
+        leftline: line2.fromPoints(line2.create(), topleft, bottomleft),
+        rightline: line2.fromPoints(line2.create(), bottomright, topright)
       };
       if (newoutpolygonrow.length > 0) {
         const prevoutpolygon = newoutpolygonrow[newoutpolygonrow.length - 1];
-        const d1 = vec2$4.distance(outpolygon.topleft, prevoutpolygon.topright);
-        const d2 = vec2$4.distance(outpolygon.bottomleft, prevoutpolygon.bottomright);
-        if (d1 < EPS$5 && d2 < EPS$5) {
+        const d1 = vec2$1.distance(outpolygon.topleft, prevoutpolygon.topright);
+        const d2 = vec2$1.distance(outpolygon.bottomleft, prevoutpolygon.bottomright);
+        if (d1 < EPS$4 && d2 < EPS$4) {
           outpolygon.topleft = prevoutpolygon.topleft;
           outpolygon.leftline = prevoutpolygon.leftline;
           outpolygon.bottomleft = prevoutpolygon.bottomleft;
@@ -28864,17 +25576,17 @@ const reTesselateCoplanarPolygons$1 = (sourcepolygons) => {
         for (let ii = 0; ii < prevoutpolygonrow.length; ii++) {
           if (!matchedindexes.has(ii)) {
             const prevpolygon = prevoutpolygonrow[ii];
-            if (vec2$4.distance(prevpolygon.bottomleft, thispolygon.topleft) < EPS$5) {
-              if (vec2$4.distance(prevpolygon.bottomright, thispolygon.topright) < EPS$5) {
+            if (vec2$1.distance(prevpolygon.bottomleft, thispolygon.topleft) < EPS$4) {
+              if (vec2$1.distance(prevpolygon.bottomright, thispolygon.topright) < EPS$4) {
                 matchedindexes.add(ii);
-                const v12 = line2$1.direction(thispolygon.leftline);
-                const v22 = line2$1.direction(prevpolygon.leftline);
+                const v12 = line2.direction(thispolygon.leftline);
+                const v22 = line2.direction(prevpolygon.leftline);
                 const d1 = v12[0] - v22[0];
-                const v3 = line2$1.direction(thispolygon.rightline);
-                const v4 = line2$1.direction(prevpolygon.rightline);
+                const v3 = line2.direction(thispolygon.rightline);
+                const v4 = line2.direction(prevpolygon.rightline);
                 const d2 = v3[0] - v4[0];
-                const leftlinecontinues = Math.abs(d1) < EPS$5;
-                const rightlinecontinues = Math.abs(d2) < EPS$5;
+                const leftlinecontinues = Math.abs(d1) < EPS$4;
+                const rightlinecontinues = Math.abs(d2) < EPS$4;
                 const leftlineisconvex = leftlinecontinues || d1 >= 0;
                 const rightlineisconvex = rightlinecontinues || d2 >= 0;
                 if (leftlineisconvex && rightlineisconvex) {
@@ -28893,15 +25605,15 @@ const reTesselateCoplanarPolygons$1 = (sourcepolygons) => {
         if (!prevcontinuedindexes.has(ii)) {
           const prevpolygon = prevoutpolygonrow[ii];
           prevpolygon.outpolygon.rightpoints.push(prevpolygon.bottomright);
-          if (vec2$4.distance(prevpolygon.bottomright, prevpolygon.bottomleft) > EPS$5) {
+          if (vec2$1.distance(prevpolygon.bottomright, prevpolygon.bottomleft) > EPS$4) {
             prevpolygon.outpolygon.leftpoints.push(prevpolygon.bottomleft);
           }
           prevpolygon.outpolygon.leftpoints.reverse();
           const points2d = prevpolygon.outpolygon.rightpoints.concat(prevpolygon.outpolygon.leftpoints);
           const vertices3d = points2d.map((point2d) => orthobasis.to3D(point2d));
-          const polygon2 = poly3$c.fromPointsAndPlane(vertices3d, plane2);
-          if (polygon2.vertices.length)
-            destpolygons.push(polygon2);
+          const polygon = poly3$b.fromPointsAndPlane(vertices3d, plane2);
+          if (polygon.vertices.length)
+            destpolygons.push(polygon);
         }
       }
     }
@@ -28913,7 +25625,7 @@ const reTesselateCoplanarPolygons$1 = (sourcepolygons) => {
           rightpoints: []
         };
         thispolygon.outpolygon.leftpoints.push(thispolygon.topleft);
-        if (vec2$4.distance(thispolygon.topleft, thispolygon.topright) > EPS$5) {
+        if (vec2$1.distance(thispolygon.topleft, thispolygon.topright) > EPS$4) {
           thispolygon.outpolygon.rightpoints.push(thispolygon.topright);
         }
       } else {
@@ -28930,29 +25642,29 @@ const reTesselateCoplanarPolygons$1 = (sourcepolygons) => {
   return destpolygons;
 };
 var reTesselateCoplanarPolygons_1 = reTesselateCoplanarPolygons$1;
-const geom3$o = geom3$K;
-const poly3$b = poly3$A;
-const aboutEqualNormals$2 = aboutEqualNormals_1;
+const geom3$8 = geom3$d;
+const poly3$a = poly3$m;
+const aboutEqualNormals$1 = aboutEqualNormals_1;
 const reTesselateCoplanarPolygons = reTesselateCoplanarPolygons_1;
 const coplanar$1 = (plane1, plane2) => {
   if (Math.abs(plane1[3] - plane2[3]) < 15e-8) {
-    return aboutEqualNormals$2(plane1, plane2);
+    return aboutEqualNormals$1(plane1, plane2);
   }
   return false;
 };
-const retessellate$4 = (geometry) => {
+const retessellate$2 = (geometry) => {
   if (geometry.isRetesselated) {
     return geometry;
   }
-  const polygons = geom3$o.toPolygons(geometry);
+  const polygons = geom3$8.toPolygons(geometry);
   const polygonsPerPlane = [];
-  polygons.forEach((polygon2) => {
-    const mapping = polygonsPerPlane.find((element) => coplanar$1(element[0], poly3$b.plane(polygon2)));
+  polygons.forEach((polygon) => {
+    const mapping = polygonsPerPlane.find((element) => coplanar$1(element[0], poly3$a.plane(polygon)));
     if (mapping) {
       const polygons2 = mapping[1];
-      polygons2.push(polygon2);
+      polygons2.push(polygon);
     } else {
-      polygonsPerPlane.push([poly3$b.plane(polygon2), [polygon2]]);
+      polygonsPerPlane.push([poly3$a.plane(polygon), [polygon]]);
     }
   });
   let destpolygons = [];
@@ -28961,41 +25673,41 @@ const retessellate$4 = (geometry) => {
     const retesselayedpolygons = reTesselateCoplanarPolygons(sourcepolygons);
     destpolygons = destpolygons.concat(retesselayedpolygons);
   });
-  const result = geom3$o.create(destpolygons);
+  const result = geom3$8.create(destpolygons);
   result.isRetesselated = true;
   return result;
 };
-var retessellate_1 = retessellate$4;
-const { EPS: EPS$4 } = constants$3;
-const measureBoundingBox$1 = measureBoundingBox_1;
-const mayOverlap$3 = (geometry1, geometry2) => {
+var retessellate_1 = retessellate$2;
+const { EPS: EPS$3 } = constants$3;
+const measureBoundingBox = measureBoundingBox_1;
+const mayOverlap$2 = (geometry1, geometry2) => {
   if (geometry1.polygons.length === 0 || geometry2.polygons.length === 0) {
     return false;
   }
-  const bounds1 = measureBoundingBox$1(geometry1);
+  const bounds1 = measureBoundingBox(geometry1);
   const min1 = bounds1[0];
   const max1 = bounds1[1];
-  const bounds2 = measureBoundingBox$1(geometry2);
+  const bounds2 = measureBoundingBox(geometry2);
   const min2 = bounds2[0];
   const max2 = bounds2[1];
-  if (min2[0] - max1[0] > EPS$4)
+  if (min2[0] - max1[0] > EPS$3)
     return false;
-  if (min1[0] - max2[0] > EPS$4)
+  if (min1[0] - max2[0] > EPS$3)
     return false;
-  if (min2[1] - max1[1] > EPS$4)
+  if (min2[1] - max1[1] > EPS$3)
     return false;
-  if (min1[1] - max2[1] > EPS$4)
+  if (min1[1] - max2[1] > EPS$3)
     return false;
-  if (min2[2] - max1[2] > EPS$4)
+  if (min2[2] - max1[2] > EPS$3)
     return false;
-  if (min1[2] - max2[2] > EPS$4)
+  if (min1[2] - max2[2] > EPS$3)
     return false;
   return true;
 };
-var mayOverlap_1 = mayOverlap$3;
-const plane$2 = plane$b;
-const poly3$a = poly3$A;
-let Node$2 = class Node2 {
+var mayOverlap_1 = mayOverlap$2;
+const plane$3 = plane$9;
+const poly3$9 = poly3$m;
+let Node$4 = class Node {
   constructor(parent) {
     this.plane = null;
     this.front = null;
@@ -29010,7 +25722,7 @@ let Node$2 = class Node2 {
     for (let i = 0; i < queue.length; i++) {
       node = queue[i];
       if (node.plane)
-        node.plane = plane$2.flip(plane$2.create(), node.plane);
+        node.plane = plane$3.flip(plane$3.create(), node.plane);
       if (node.front)
         queue.push(node.front);
       if (node.back)
@@ -29086,7 +25798,7 @@ let Node$2 = class Node2 {
         let index = 0;
         index = Math.floor(polygontreenodes.length / 2);
         const bestpoly = polygontreenodes[index].getPolygon();
-        node.plane = poly3$a.plane(bestpoly);
+        node.plane = poly3$9.plane(bestpoly);
       }
       const frontnodes = [];
       const backnodes = [];
@@ -29096,7 +25808,7 @@ let Node$2 = class Node2 {
       }
       if (frontnodes.length > 0) {
         if (!node.front)
-          node.front = new Node2(node);
+          node.front = new Node(node);
         const stopCondition = n === frontnodes.length && backnodes.length === 0;
         if (stopCondition)
           node.front.polygontreenodes = frontnodes;
@@ -29105,7 +25817,7 @@ let Node$2 = class Node2 {
       }
       if (backnodes.length > 0) {
         if (!node.back)
-          node.back = new Node2(node);
+          node.back = new Node(node);
         const stopCondition = n === backnodes.length && frontnodes.length === 0;
         if (stopCondition)
           node.back.polygontreenodes = backnodes;
@@ -29116,54 +25828,54 @@ let Node$2 = class Node2 {
     } while (current !== void 0);
   }
 };
-var Node_1 = Node$2;
-const vec3$a = vec3$Y;
+var Node_1 = Node$4;
+const vec3$h = vec3$C;
 const splitLineSegmentByPlane$1 = (plane2, p1, p2) => {
-  const direction2 = vec3$a.subtract(vec3$a.create(), p2, p1);
-  let lambda = (plane2[3] - vec3$a.dot(plane2, p1)) / vec3$a.dot(plane2, direction2);
+  const direction2 = vec3$h.subtract(vec3$h.create(), p2, p1);
+  let lambda = (plane2[3] - vec3$h.dot(plane2, p1)) / vec3$h.dot(plane2, direction2);
   if (Number.isNaN(lambda))
     lambda = 0;
   if (lambda > 1)
     lambda = 1;
   if (lambda < 0)
     lambda = 0;
-  vec3$a.scale(direction2, direction2, lambda);
-  vec3$a.add(direction2, p1, direction2);
+  vec3$h.scale(direction2, direction2, lambda);
+  vec3$h.add(direction2, p1, direction2);
   return direction2;
 };
 var splitLineSegmentByPlane_1 = splitLineSegmentByPlane$1;
-const { EPS: EPS$3 } = constants$3;
-const plane$1 = plane$b;
-const vec3$9 = vec3$Y;
-const poly3$9 = poly3$A;
+const { EPS: EPS$2 } = constants$3;
+const plane$2 = plane$9;
+const vec3$g = vec3$C;
+const poly3$8 = poly3$m;
 const splitLineSegmentByPlane = splitLineSegmentByPlane_1;
-const splitPolygonByPlane$1 = (splane, polygon2) => {
+const splitPolygonByPlane$1 = (splane, polygon) => {
   const result = {
     type: null,
     front: null,
     back: null
   };
-  const vertices = polygon2.vertices;
+  const vertices = polygon.vertices;
   const numvertices = vertices.length;
-  const pplane = poly3$9.plane(polygon2);
-  if (plane$1.equals(pplane, splane)) {
+  const pplane = poly3$8.plane(polygon);
+  if (plane$2.equals(pplane, splane)) {
     result.type = 0;
   } else {
     let hasfront = false;
     let hasback = false;
     const vertexIsBack = [];
-    const MINEPS = -EPS$3;
+    const MINEPS = -EPS$2;
     for (let i = 0; i < numvertices; i++) {
-      const t = vec3$9.dot(splane, vertices[i]) - splane[3];
+      const t = vec3$g.dot(splane, vertices[i]) - splane[3];
       const isback = t < MINEPS;
       vertexIsBack.push(isback);
-      if (t > EPS$3)
+      if (t > EPS$2)
         hasfront = true;
       if (t < MINEPS)
         hasback = true;
     }
     if (!hasfront && !hasback) {
-      const t = vec3$9.dot(splane, pplane);
+      const t = vec3$g.dot(splane, pplane);
       result.type = t >= 0 ? 0 : 1;
     } else if (!hasback) {
       result.type = 2;
@@ -29201,12 +25913,12 @@ const splitPolygonByPlane$1 = (splane, polygon2) => {
         }
         isback = nextisback;
       }
-      const EPS_SQUARED = EPS$3 * EPS$3;
+      const EPS_SQUARED = EPS$2 * EPS$2;
       if (backvertices.length >= 3) {
         let prevvertex = backvertices[backvertices.length - 1];
         for (let vertexindex = 0; vertexindex < backvertices.length; vertexindex++) {
           const vertex2 = backvertices[vertexindex];
-          if (vec3$9.squaredDistance(vertex2, prevvertex) < EPS_SQUARED) {
+          if (vec3$g.squaredDistance(vertex2, prevvertex) < EPS_SQUARED) {
             backvertices.splice(vertexindex, 1);
             vertexindex--;
           }
@@ -29217,7 +25929,7 @@ const splitPolygonByPlane$1 = (splane, polygon2) => {
         let prevvertex = frontvertices[frontvertices.length - 1];
         for (let vertexindex = 0; vertexindex < frontvertices.length; vertexindex++) {
           const vertex2 = frontvertices[vertexindex];
-          if (vec3$9.squaredDistance(vertex2, prevvertex) < EPS_SQUARED) {
+          if (vec3$g.squaredDistance(vertex2, prevvertex) < EPS_SQUARED) {
             frontvertices.splice(vertexindex, 1);
             vertexindex--;
           }
@@ -29225,26 +25937,26 @@ const splitPolygonByPlane$1 = (splane, polygon2) => {
         }
       }
       if (frontvertices.length >= 3) {
-        result.front = poly3$9.fromPointsAndPlane(frontvertices, pplane);
+        result.front = poly3$8.fromPointsAndPlane(frontvertices, pplane);
       }
       if (backvertices.length >= 3) {
-        result.back = poly3$9.fromPointsAndPlane(backvertices, pplane);
+        result.back = poly3$8.fromPointsAndPlane(backvertices, pplane);
       }
     }
   }
   return result;
 };
 var splitPolygonByPlane_1 = splitPolygonByPlane$1;
-const { EPS: EPS$2 } = constants$3;
-const vec3$8 = vec3$Y;
-const poly3$8 = poly3$A;
+const { EPS: EPS$1 } = constants$3;
+const vec3$f = vec3$C;
+const poly3$7 = poly3$m;
 const splitPolygonByPlane = splitPolygonByPlane_1;
 let PolygonTreeNode$1 = class PolygonTreeNode {
   // constructor creates the root node
-  constructor(parent, polygon2) {
+  constructor(parent, polygon) {
     this.parent = parent;
     this.children = [];
-    this.polygon = polygon2;
+    this.polygon = polygon;
     this.removed = false;
   }
   // fill the tree with polygons. Should be called on the root node only; child nodes must
@@ -29254,8 +25966,8 @@ let PolygonTreeNode$1 = class PolygonTreeNode {
       throw new Error("Assertion failed");
     }
     const _this = this;
-    polygons.forEach((polygon2) => {
-      _this.addChild(polygon2);
+    polygons.forEach((polygon) => {
+      _this.addChild(polygon);
     });
   }
   // remove a node
@@ -29336,18 +26048,18 @@ let PolygonTreeNode$1 = class PolygonTreeNode {
   }
   // only to be called for nodes with no children
   _splitByPlane(splane, coplanarfrontnodes, coplanarbacknodes, frontnodes, backnodes) {
-    const polygon2 = this.polygon;
-    if (polygon2) {
-      const bound = poly3$8.measureBoundingSphere(polygon2);
-      const sphereradius = bound[3] + EPS$2;
+    const polygon = this.polygon;
+    if (polygon) {
+      const bound = poly3$7.measureBoundingSphere(polygon);
+      const sphereradius = bound[3] + EPS$1;
       const spherecenter = bound;
-      const d = vec3$8.dot(splane, spherecenter) - splane[3];
+      const d = vec3$f.dot(splane, spherecenter) - splane[3];
       if (d > sphereradius) {
         frontnodes.push(this);
       } else if (d < -sphereradius) {
         backnodes.push(this);
       } else {
-        const splitresult = splitPolygonByPlane(splane, polygon2);
+        const splitresult = splitPolygonByPlane(splane, polygon);
         switch (splitresult.type) {
           case 0:
             coplanarfrontnodes.push(this);
@@ -29380,8 +26092,8 @@ let PolygonTreeNode$1 = class PolygonTreeNode {
   // this should be called whenever the polygon is split
   // a child should be created for every fragment of the split polygon
   // returns the newly created child
-  addChild(polygon2) {
-    const newchild = new PolygonTreeNode(this, polygon2);
+  addChild(polygon) {
+    const newchild = new PolygonTreeNode(this, polygon);
     this.children.push(newchild);
     return newchild;
   }
@@ -29394,7 +26106,7 @@ let PolygonTreeNode$1 = class PolygonTreeNode {
       for (j = 0, l = children.length; j < l; j++) {
         node = children[j];
         if (node.polygon) {
-          node.polygon = poly3$8.invert(node.polygon);
+          node.polygon = poly3$7.invert(node.polygon);
         }
         if (node.children.length > 0)
           queue.push(node.children);
@@ -29456,12 +26168,12 @@ let PolygonTreeNode$1 = class PolygonTreeNode {
   }
 };
 var PolygonTreeNode_1 = PolygonTreeNode$1;
-const Node$1 = Node_1;
+const Node$3 = Node_1;
 const PolygonTreeNode2 = PolygonTreeNode_1;
-let Tree$3 = class Tree {
+let Tree$2 = class Tree {
   constructor(polygons) {
     this.polygonTree = new PolygonTreeNode2();
-    this.rootnode = new Node$1(null);
+    this.rootnode = new Node$3(null);
     if (polygons)
       this.addPolygons(polygons);
   }
@@ -29494,19 +26206,19 @@ let Tree$3 = class Tree {
     return result;
   }
 };
-var Tree_1 = Tree$3;
+var Tree_1 = Tree$2;
 var trees$2 = {
   Tree: Tree_1
 };
-const geom3$n = geom3$K;
-const mayOverlap$2 = mayOverlap_1;
-const { Tree: Tree$2 } = trees$2;
+const geom3$7 = geom3$d;
+const mayOverlap$1 = mayOverlap_1;
+const { Tree: Tree$1 } = trees$2;
 const intersectGeom3Sub = (geometry1, geometry2) => {
-  if (!mayOverlap$2(geometry1, geometry2)) {
-    return geom3$n.create();
+  if (!mayOverlap$1(geometry1, geometry2)) {
+    return geom3$7.create();
   }
-  const a = new Tree$2(geom3$n.toPolygons(geometry1));
-  const b = new Tree$2(geom3$n.toPolygons(geometry2));
+  const a = new Tree$1(geom3$7.toPolygons(geometry1));
+  const b = new Tree$1(geom3$7.toPolygons(geometry2));
   a.invert();
   b.clipTo(a);
   b.invert();
@@ -29515,829 +26227,1049 @@ const intersectGeom3Sub = (geometry1, geometry2) => {
   a.addPolygons(b.allPolygons());
   a.invert();
   const newpolygons = a.allPolygons();
-  return geom3$n.create(newpolygons);
+  return geom3$7.create(newpolygons);
 };
 var intersectGeom3Sub_1 = intersectGeom3Sub;
-const flatten$p = flatten_1;
-const retessellate$3 = retessellate_1;
+const flatten$7 = flatten_1;
+const retessellate$1 = retessellate_1;
 const intersectSub = intersectGeom3Sub_1;
 const intersect$3 = (...geometries2) => {
-  geometries2 = flatten$p(geometries2);
+  geometries2 = flatten$7(geometries2);
   let newgeometry = geometries2.shift();
   geometries2.forEach((geometry) => {
     newgeometry = intersectSub(newgeometry, geometry);
   });
-  newgeometry = retessellate$3(newgeometry);
+  newgeometry = retessellate$1(newgeometry);
   return newgeometry;
 };
 var intersectGeom3$2 = intersect$3;
-const flatten$o = flatten_1;
-const geom3$m = geom3$K;
-const measureEpsilon$6 = measureEpsilon_1;
-const fromFakePolygons$2 = fromFakePolygons_1;
-const to3DWalls$2 = to3DWalls_1;
+const flatten$6 = flatten_1;
+const geom3$6 = geom3$d;
+const measureEpsilon$2 = measureEpsilon_1;
+const fromFakePolygons$1 = fromFakePolygons_1;
+const to3DWalls$1 = to3DWalls_1;
 const intersectGeom3$1 = intersectGeom3$2;
 const intersect$2 = (...geometries2) => {
-  geometries2 = flatten$o(geometries2);
-  const newgeometries = geometries2.map((geometry) => to3DWalls$2({ z0: -1, z1: 1 }, geometry));
+  geometries2 = flatten$6(geometries2);
+  const newgeometries = geometries2.map((geometry) => to3DWalls$1({ z0: -1, z1: 1 }, geometry));
   const newgeom3 = intersectGeom3$1(newgeometries);
-  const epsilon = measureEpsilon$6(newgeom3);
-  return fromFakePolygons$2(epsilon, geom3$m.toPolygons(newgeom3));
+  const epsilon = measureEpsilon$2(newgeom3);
+  return fromFakePolygons$1(epsilon, geom3$6.toPolygons(newgeom3));
 };
 var intersectGeom2$1 = intersect$2;
-const flatten$n = flatten_1;
-const areAllShapesTheSameType$3 = areAllShapesTheSameType_1;
-const geom2$m = geom2$K;
-const geom3$l = geom3$K;
+const flatten$5 = flatten_1;
+const areAllShapesTheSameType$1 = areAllShapesTheSameType_1;
+const geom2$7 = geom2$i;
+const geom3$5 = geom3$d;
 const intersectGeom2 = intersectGeom2$1;
 const intersectGeom3 = intersectGeom3$2;
-const intersect$1 = (...geometries2) => {
-  geometries2 = flatten$n(geometries2);
+const intersect = (...geometries2) => {
+  geometries2 = flatten$5(geometries2);
   if (geometries2.length === 0)
     throw new Error("wrong number of arguments");
-  if (!areAllShapesTheSameType$3(geometries2)) {
+  if (!areAllShapesTheSameType$1(geometries2)) {
     throw new Error("only intersect of the types are supported");
   }
   const geometry = geometries2[0];
-  if (geom2$m.isA(geometry))
+  if (geom2$7.isA(geometry))
     return intersectGeom2(geometries2);
-  if (geom3$l.isA(geometry))
+  if (geom3$5.isA(geometry))
     return intersectGeom3(geometries2);
   return geometry;
 };
-var intersect_1 = intersect$1;
-const vec3$7 = vec3$Y;
-const measureEpsilon$5 = measureEpsilon_1;
-const geom3$k = geom3$K;
-const sortNb = (array) => array.sort((a, b) => a - b).filter((item, pos, ary) => !pos || item !== ary[pos - 1]);
-const insertMapping = (map, point, index) => {
-  const key = `${point}`;
-  const mapping = map.get(key);
-  if (mapping === void 0) {
-    map.set(key, [index]);
-  } else {
-    mapping.push(index);
-  }
-};
-const findMapping = (map, point) => {
-  const key = `${point}`;
-  return map.get(key);
-};
-const scissionGeom3$1 = (geometry) => {
-  const eps = measureEpsilon$5(geometry);
-  const polygons = geom3$k.toPolygons(geometry);
-  const pl = polygons.length;
-  const indexesPerPoint = /* @__PURE__ */ new Map();
-  const temp = vec3$7.create();
-  polygons.forEach((polygon2, index) => {
-    polygon2.vertices.forEach((point) => {
-      insertMapping(indexesPerPoint, vec3$7.snap(temp, point, eps), index);
-    });
-  });
-  const indexesPerPolygon = polygons.map((polygon2) => {
-    let indexes = [];
-    polygon2.vertices.forEach((point) => {
-      indexes = indexes.concat(findMapping(indexesPerPoint, vec3$7.snap(temp, point, eps)));
-    });
-    return { e: 1, d: sortNb(indexes) };
-  });
-  indexesPerPoint.clear();
-  let merges = 0;
-  const ippl = indexesPerPolygon.length;
-  for (let i = 0; i < ippl; i++) {
-    const mapi = indexesPerPolygon[i];
-    if (mapi.e > 0) {
-      const indexes = new Array(pl);
-      indexes[i] = true;
-      do {
-        merges = 0;
-        indexes.forEach((e, j) => {
-          const mapj = indexesPerPolygon[j];
-          if (mapj.e > 0) {
-            mapj.e = -1;
-            for (let d = 0; d < mapj.d.length; d++) {
-              indexes[mapj.d[d]] = true;
-            }
-            merges++;
-          }
-        });
-      } while (merges > 0);
-      mapi.indexes = indexes;
-    }
-  }
-  const newgeometries = [];
-  for (let i = 0; i < ippl; i++) {
-    if (indexesPerPolygon[i].indexes) {
-      const newpolygons = [];
-      indexesPerPolygon[i].indexes.forEach((e, p) => newpolygons.push(polygons[p]));
-      newgeometries.push(geom3$k.create(newpolygons));
-    }
-  }
-  return newgeometries;
-};
-var scissionGeom3_1 = scissionGeom3$1;
-const flatten$m = flatten_1;
-const geom3$j = geom3$K;
-const scissionGeom3 = scissionGeom3_1;
-const scission = (...objects) => {
-  objects = flatten$m(objects);
-  if (objects.length === 0)
-    throw new Error("wrong number of arguments");
-  const results = objects.map((object) => {
-    if (geom3$j.isA(object))
-      return scissionGeom3(object);
-    return object;
-  });
-  return results.length === 1 ? results[0] : results;
-};
-var scission_1 = scission;
-const geom3$i = geom3$K;
-const mayOverlap$1 = mayOverlap_1;
-const { Tree: Tree$1 } = trees$2;
-const subtractGeom3Sub = (geometry1, geometry2) => {
-  if (!mayOverlap$1(geometry1, geometry2)) {
-    return geom3$i.clone(geometry1);
-  }
-  const a = new Tree$1(geom3$i.toPolygons(geometry1));
-  const b = new Tree$1(geom3$i.toPolygons(geometry2));
-  a.invert();
-  a.clipTo(b);
-  b.clipTo(a, true);
-  a.addPolygons(b.allPolygons());
-  a.invert();
-  const newpolygons = a.allPolygons();
-  return geom3$i.create(newpolygons);
-};
-var subtractGeom3Sub_1 = subtractGeom3Sub;
-const flatten$l = flatten_1;
-const retessellate$2 = retessellate_1;
-const subtractSub = subtractGeom3Sub_1;
-const subtract$5 = (...geometries2) => {
-  geometries2 = flatten$l(geometries2);
-  let newgeometry = geometries2.shift();
-  geometries2.forEach((geometry) => {
-    newgeometry = subtractSub(newgeometry, geometry);
-  });
-  newgeometry = retessellate$2(newgeometry);
-  return newgeometry;
-};
-var subtractGeom3$2 = subtract$5;
-const flatten$k = flatten_1;
-const geom3$h = geom3$K;
-const measureEpsilon$4 = measureEpsilon_1;
-const fromFakePolygons$1 = fromFakePolygons_1;
-const to3DWalls$1 = to3DWalls_1;
-const subtractGeom3$1 = subtractGeom3$2;
-const subtract$4 = (...geometries2) => {
-  geometries2 = flatten$k(geometries2);
-  const newgeometries = geometries2.map((geometry) => to3DWalls$1({ z0: -1, z1: 1 }, geometry));
-  const newgeom3 = subtractGeom3$1(newgeometries);
-  const epsilon = measureEpsilon$4(newgeom3);
-  return fromFakePolygons$1(epsilon, geom3$h.toPolygons(newgeom3));
-};
-var subtractGeom2$1 = subtract$4;
-const flatten$j = flatten_1;
-const areAllShapesTheSameType$2 = areAllShapesTheSameType_1;
-const geom2$l = geom2$K;
-const geom3$g = geom3$K;
-const subtractGeom2 = subtractGeom2$1;
-const subtractGeom3 = subtractGeom3$2;
-const subtract$3 = (...geometries2) => {
-  geometries2 = flatten$j(geometries2);
-  if (geometries2.length === 0)
-    throw new Error("wrong number of arguments");
-  if (!areAllShapesTheSameType$2(geometries2)) {
-    throw new Error("only subtract of the types are supported");
-  }
-  const geometry = geometries2[0];
-  if (geom2$l.isA(geometry))
-    return subtractGeom2(geometries2);
-  if (geom3$g.isA(geometry))
-    return subtractGeom3(geometries2);
-  return geometry;
-};
-var subtract_1 = subtract$3;
-const geom3$f = geom3$K;
+var intersect_1 = intersect;
+const intersect$1 = /* @__PURE__ */ getDefaultExportFromCjs(intersect_1);
+const geom3$4 = geom3$d;
 const mayOverlap = mayOverlap_1;
 const { Tree: Tree2 } = trees$2;
 const unionSub$1 = (geometry1, geometry2) => {
   if (!mayOverlap(geometry1, geometry2)) {
     return unionForNonIntersecting(geometry1, geometry2);
   }
-  const a = new Tree2(geom3$f.toPolygons(geometry1));
-  const b = new Tree2(geom3$f.toPolygons(geometry2));
+  const a = new Tree2(geom3$4.toPolygons(geometry1));
+  const b = new Tree2(geom3$4.toPolygons(geometry2));
   a.clipTo(b, false);
   b.clipTo(a);
   b.invert();
   b.clipTo(a);
   b.invert();
   const newpolygons = a.allPolygons().concat(b.allPolygons());
-  const result = geom3$f.create(newpolygons);
+  const result = geom3$4.create(newpolygons);
   return result;
 };
 const unionForNonIntersecting = (geometry1, geometry2) => {
-  let newpolygons = geom3$f.toPolygons(geometry1);
-  newpolygons = newpolygons.concat(geom3$f.toPolygons(geometry2));
-  return geom3$f.create(newpolygons);
+  let newpolygons = geom3$4.toPolygons(geometry1);
+  newpolygons = newpolygons.concat(geom3$4.toPolygons(geometry2));
+  return geom3$4.create(newpolygons);
 };
-var unionGeom3Sub$1 = unionSub$1;
-const flatten$i = flatten_1;
-const retessellate$1 = retessellate_1;
-const unionSub = unionGeom3Sub$1;
-const union$4 = (...geometries2) => {
-  geometries2 = flatten$i(geometries2);
+var unionGeom3Sub = unionSub$1;
+const flatten$4 = flatten_1;
+const retessellate = retessellate_1;
+const unionSub = unionGeom3Sub;
+const union$3 = (...geometries2) => {
+  geometries2 = flatten$4(geometries2);
   let i;
   for (i = 1; i < geometries2.length; i += 2) {
     geometries2.push(unionSub(geometries2[i - 1], geometries2[i]));
   }
   let newgeometry = geometries2[i - 1];
-  newgeometry = retessellate$1(newgeometry);
+  newgeometry = retessellate(newgeometry);
   return newgeometry;
 };
-var unionGeom3$2 = union$4;
-const flatten$h = flatten_1;
-const geom3$e = geom3$K;
-const measureEpsilon$3 = measureEpsilon_1;
+var unionGeom3$2 = union$3;
+const flatten$3 = flatten_1;
+const geom3$3 = geom3$d;
+const measureEpsilon$1 = measureEpsilon_1;
 const fromFakePolygons = fromFakePolygons_1;
 const to3DWalls = to3DWalls_1;
 const unionGeom3$1 = unionGeom3$2;
-const union$3 = (...geometries2) => {
-  geometries2 = flatten$h(geometries2);
+const union$2 = (...geometries2) => {
+  geometries2 = flatten$3(geometries2);
   const newgeometries = geometries2.map((geometry) => to3DWalls({ z0: -1, z1: 1 }, geometry));
   const newgeom3 = unionGeom3$1(newgeometries);
-  const epsilon = measureEpsilon$3(newgeom3);
-  return fromFakePolygons(epsilon, geom3$e.toPolygons(newgeom3));
+  const epsilon = measureEpsilon$1(newgeom3);
+  return fromFakePolygons(epsilon, geom3$3.toPolygons(newgeom3));
 };
-var unionGeom2$2 = union$3;
-const flatten$g = flatten_1;
-const areAllShapesTheSameType$1 = areAllShapesTheSameType_1;
-const geom2$k = geom2$K;
-const geom3$d = geom3$K;
-const unionGeom2$1 = unionGeom2$2;
+var unionGeom2$1 = union$2;
+const flatten$2 = flatten_1;
+const areAllShapesTheSameType = areAllShapesTheSameType_1;
+const geom2$6 = geom2$i;
+const geom3$2 = geom3$d;
+const unionGeom2 = unionGeom2$1;
 const unionGeom3 = unionGeom3$2;
-const union$2 = (...geometries2) => {
-  geometries2 = flatten$g(geometries2);
+const union = (...geometries2) => {
+  geometries2 = flatten$2(geometries2);
   if (geometries2.length === 0)
     throw new Error("wrong number of arguments");
-  if (!areAllShapesTheSameType$1(geometries2)) {
+  if (!areAllShapesTheSameType(geometries2)) {
     throw new Error("only unions of the same type are supported");
   }
   const geometry = geometries2[0];
-  if (geom2$k.isA(geometry))
-    return unionGeom2$1(geometries2);
-  if (geom3$d.isA(geometry))
+  if (geom2$6.isA(geometry))
+    return unionGeom2(geometries2);
+  if (geom3$2.isA(geometry))
     return unionGeom3(geometries2);
   return geometry;
 };
-var union_1 = union$2;
-var booleans = {
-  intersect: intersect_1,
-  scission: scission_1,
-  subtract: subtract_1,
-  union: union_1
+var union_1 = union;
+const union$1 = /* @__PURE__ */ getDefaultExportFromCjs(union_1);
+const plane$1 = plane$9;
+const vec3$e = vec3$C;
+const calculatePlane$1 = (slice2) => {
+  const edges = slice2.edges;
+  if (edges.length < 3)
+    throw new Error("slices must have 3 or more edges to calculate a plane");
+  const midpoint = edges.reduce((point, edge) => vec3$e.add(vec3$e.create(), point, edge[0]), vec3$e.create());
+  vec3$e.scale(midpoint, midpoint, 1 / edges.length);
+  let farthestEdge;
+  let distance2 = 0;
+  edges.forEach((edge) => {
+    if (!vec3$e.equals(edge[0], edge[1])) {
+      const d = vec3$e.squaredDistance(midpoint, edge[0]);
+      if (d > distance2) {
+        farthestEdge = edge;
+        distance2 = d;
+      }
+    }
+  });
+  const beforeEdge = edges.find((edge) => vec3$e.equals(edge[1], farthestEdge[0]));
+  return plane$1.fromPoints(plane$1.create(), beforeEdge[0], farthestEdge[0], farthestEdge[1]);
 };
-const { EPS: EPS$1, TAU: TAU$2 } = constants$3;
-const intersect = intersect_1$1;
-const line2 = line2$2;
-const vec2$3 = vec2$E;
-const area$3 = area_1;
-const offsetFromPoints$4 = (options, points) => {
-  const defaults = {
-    delta: 1,
-    corners: "edge",
-    closed: false,
-    segments: 16
-  };
-  let { delta, corners, closed, segments } = Object.assign({}, defaults, options);
-  if (Math.abs(delta) < EPS$1)
-    return points;
-  let rotation = options.closed ? area$3(points) : 1;
-  if (rotation === 0)
-    rotation = 1;
-  const orientation = rotation > 0 && delta >= 0 || rotation < 0 && delta < 0;
-  delta = Math.abs(delta);
-  let previousSegment = null;
-  let newPoints = [];
-  const newCorners = [];
-  const of = vec2$3.create();
-  const n = points.length;
-  for (let i = 0; i < n; i++) {
-    const j = (i + 1) % n;
-    const p0 = points[i];
-    const p1 = points[j];
-    orientation ? vec2$3.subtract(of, p0, p1) : vec2$3.subtract(of, p1, p0);
-    vec2$3.normal(of, of);
-    vec2$3.normalize(of, of);
-    vec2$3.scale(of, of, delta);
-    const n0 = vec2$3.add(vec2$3.create(), p0, of);
-    const n1 = vec2$3.add(vec2$3.create(), p1, of);
-    const currentSegment = [n0, n1];
-    if (previousSegment != null) {
-      if (closed || !closed && j !== 0) {
-        const ip = intersect(previousSegment[0], previousSegment[1], currentSegment[0], currentSegment[1]);
-        if (ip) {
-          newPoints.pop();
-          currentSegment[0] = ip;
+var calculatePlane_1 = calculatePlane$1;
+const create$6 = (edges) => {
+  if (!edges) {
+    edges = [];
+  }
+  return { edges };
+};
+var create_1 = create$6;
+const create$5 = create_1;
+const vec3$d = vec3$C;
+const clone = (...params) => {
+  let out;
+  let slice2;
+  if (params.length === 1) {
+    out = create$5();
+    slice2 = params[0];
+  } else {
+    out = params[0];
+    slice2 = params[1];
+  }
+  out.edges = slice2.edges.map((edge) => [vec3$d.clone(edge[0]), vec3$d.clone(edge[1])]);
+  return out;
+};
+var clone_1 = clone;
+const vec3$c = vec3$C;
+const equals$2 = (a, b) => {
+  const aedges = a.edges;
+  const bedges = b.edges;
+  if (aedges.length !== bedges.length) {
+    return false;
+  }
+  const isEqual = aedges.reduce((acc, aedge, i) => {
+    const bedge = bedges[i];
+    const d = vec3$c.squaredDistance(aedge[0], bedge[0]);
+    return acc && d < Number.EPSILON;
+  }, true);
+  return isEqual;
+};
+var equals_1 = equals$2;
+const vec3$b = vec3$C;
+const create$4 = create_1;
+const fromPoints = (points) => {
+  if (!Array.isArray(points))
+    throw new Error("the given points must be an array");
+  if (points.length < 3)
+    throw new Error("the given points must contain THREE or more points");
+  const edges = [];
+  let prevpoint = points[points.length - 1];
+  points.forEach((point) => {
+    if (point.length === 2)
+      edges.push([vec3$b.fromVec2(vec3$b.create(), prevpoint), vec3$b.fromVec2(vec3$b.create(), point)]);
+    if (point.length === 3)
+      edges.push([prevpoint, point]);
+    prevpoint = point;
+  });
+  return create$4(edges);
+};
+var fromPoints_1 = fromPoints;
+const vec3$a = vec3$C;
+const create$3 = create_1;
+const fromSides = (sides) => {
+  if (!Array.isArray(sides))
+    throw new Error("the given sides must be an array");
+  const edges = [];
+  sides.forEach((side) => {
+    edges.push([vec3$a.fromVec2(vec3$a.create(), side[0]), vec3$a.fromVec2(vec3$a.create(), side[1])]);
+  });
+  return create$3(edges);
+};
+var fromSides_1 = fromSides;
+const isA = (object) => {
+  if (object && typeof object === "object") {
+    if ("edges" in object) {
+      if (Array.isArray(object.edges)) {
+        return true;
+      }
+    }
+  }
+  return false;
+};
+var isA_1 = isA;
+const create$2 = create_1;
+const reverse = (...params) => {
+  let out;
+  let slice2;
+  if (params.length === 1) {
+    out = create$2();
+    slice2 = params[0];
+  } else {
+    out = params[0];
+    slice2 = params[1];
+  }
+  out.edges = slice2.edges.map((edge) => [edge[1], edge[0]]);
+  return out;
+};
+var reverse_1 = reverse;
+const toEdges = (slice2) => slice2.edges;
+var toEdges_1 = toEdges;
+const sortLinked$3 = (list, fn) => {
+  let i, p, q, e, numMerges;
+  let inSize = 1;
+  do {
+    p = list;
+    list = null;
+    let tail = null;
+    numMerges = 0;
+    while (p) {
+      numMerges++;
+      q = p;
+      let pSize = 0;
+      for (i = 0; i < inSize; i++) {
+        pSize++;
+        q = q.nextZ;
+        if (!q)
+          break;
+      }
+      let qSize = inSize;
+      while (pSize > 0 || qSize > 0 && q) {
+        if (pSize !== 0 && (qSize === 0 || !q || fn(p) <= fn(q))) {
+          e = p;
+          p = p.nextZ;
+          pSize--;
         } else {
-          newCorners.push({ c: p0, s0: previousSegment, s1: currentSegment });
+          e = q;
+          q = q.nextZ;
+          qSize--;
         }
+        if (tail)
+          tail.nextZ = e;
+        else
+          list = e;
+        e.prevZ = tail;
+        tail = e;
       }
+      p = q;
     }
-    previousSegment = [n0, n1];
-    if (j === 0 && !closed)
-      continue;
-    newPoints.push(currentSegment[0]);
-    newPoints.push(currentSegment[1]);
+    tail.nextZ = null;
+    inSize *= 2;
+  } while (numMerges > 1);
+  return list;
+};
+var linkedListSort = sortLinked$3;
+const sortLinked$2 = linkedListSort;
+let Node$2 = class Node2 {
+  constructor(i, x, y) {
+    this.i = i;
+    this.x = x;
+    this.y = y;
+    this.prev = null;
+    this.next = null;
+    this.z = null;
+    this.prevZ = null;
+    this.nextZ = null;
+    this.steiner = false;
   }
-  if (closed && previousSegment != null) {
-    const n0 = newPoints[0];
-    const n1 = newPoints[1];
-    const ip = intersect(previousSegment[0], previousSegment[1], n0, n1);
-    if (ip) {
-      newPoints[0] = ip;
-      newPoints.pop();
+};
+const insertNode$2 = (i, x, y, last2) => {
+  const p = new Node$2(i, x, y);
+  if (!last2) {
+    p.prev = p;
+    p.next = p;
+  } else {
+    p.next = last2.next;
+    p.prev = last2;
+    last2.next.prev = p;
+    last2.next = p;
+  }
+  return p;
+};
+const removeNode$3 = (p) => {
+  p.next.prev = p.prev;
+  p.prev.next = p.next;
+  if (p.prevZ)
+    p.prevZ.nextZ = p.nextZ;
+  if (p.nextZ)
+    p.nextZ.prevZ = p.prevZ;
+};
+var linkedList$1 = { Node: Node$2, insertNode: insertNode$2, removeNode: removeNode$3, sortLinked: sortLinked$2 };
+const pointInTriangle$3 = (ax, ay, bx, by, cx2, cy2, px2, py2) => (cx2 - px2) * (ay - py2) - (ax - px2) * (cy2 - py2) >= 0 && (ax - px2) * (by - py2) - (bx - px2) * (ay - py2) >= 0 && (bx - px2) * (cy2 - py2) - (cx2 - px2) * (by - py2) >= 0;
+const area$5 = (p, q, r) => (q.y - p.y) * (r.x - q.x) - (q.x - p.x) * (r.y - q.y);
+var triangle = { area: area$5, pointInTriangle: pointInTriangle$3 };
+const { Node: Node$1, insertNode: insertNode$1, removeNode: removeNode$2 } = linkedList$1;
+const { area: area$4 } = triangle;
+const linkedPolygon$2 = (data, start, end, dim, clockwise) => {
+  let last2;
+  if (clockwise === signedArea$1(data, start, end, dim) > 0) {
+    for (let i = start; i < end; i += dim) {
+      last2 = insertNode$1(i, data[i], data[i + 1], last2);
+    }
+  } else {
+    for (let i = end - dim; i >= start; i -= dim) {
+      last2 = insertNode$1(i, data[i], data[i + 1], last2);
+    }
+  }
+  if (last2 && equals$1(last2, last2.next)) {
+    removeNode$2(last2);
+    last2 = last2.next;
+  }
+  return last2;
+};
+const filterPoints$3 = (start, end) => {
+  if (!start)
+    return start;
+  if (!end)
+    end = start;
+  let p = start;
+  let again;
+  do {
+    again = false;
+    if (!p.steiner && (equals$1(p, p.next) || area$4(p.prev, p, p.next) === 0)) {
+      removeNode$2(p);
+      p = end = p.prev;
+      if (p === p.next)
+        break;
+      again = true;
     } else {
-      const p0 = points[0];
-      const cursegment = [n0, n1];
-      newCorners.push({ c: p0, s0: previousSegment, s1: cursegment });
+      p = p.next;
+    }
+  } while (again || p !== end);
+  return end;
+};
+const cureLocalIntersections$2 = (start, triangles, dim) => {
+  let p = start;
+  do {
+    const a = p.prev;
+    const b = p.next.next;
+    if (!equals$1(a, b) && intersects$1(a, p, p.next, b) && locallyInside$2(a, b) && locallyInside$2(b, a)) {
+      triangles.push(a.i / dim);
+      triangles.push(p.i / dim);
+      triangles.push(b.i / dim);
+      removeNode$2(p);
+      removeNode$2(p.next);
+      p = start = b;
+    }
+    p = p.next;
+  } while (p !== start);
+  return filterPoints$3(p);
+};
+const intersectsPolygon$1 = (a, b) => {
+  let p = a;
+  do {
+    if (p.i !== a.i && p.next.i !== a.i && p.i !== b.i && p.next.i !== b.i && intersects$1(p, p.next, a, b))
+      return true;
+    p = p.next;
+  } while (p !== a);
+  return false;
+};
+const locallyInside$2 = (a, b) => area$4(a.prev, a, a.next) < 0 ? area$4(a, b, a.next) >= 0 && area$4(a, a.prev, b) >= 0 : area$4(a, b, a.prev) < 0 || area$4(a, a.next, b) < 0;
+const middleInside$1 = (a, b) => {
+  let p = a;
+  let inside = false;
+  const px2 = (a.x + b.x) / 2;
+  const py2 = (a.y + b.y) / 2;
+  do {
+    if (p.y > py2 !== p.next.y > py2 && p.next.y !== p.y && px2 < (p.next.x - p.x) * (py2 - p.y) / (p.next.y - p.y) + p.x) {
+      inside = !inside;
+    }
+    p = p.next;
+  } while (p !== a);
+  return inside;
+};
+const splitPolygon$3 = (a, b) => {
+  const a2 = new Node$1(a.i, a.x, a.y);
+  const b2 = new Node$1(b.i, b.x, b.y);
+  const an = a.next;
+  const bp = b.prev;
+  a.next = b;
+  b.prev = a;
+  a2.next = an;
+  an.prev = a2;
+  b2.next = a2;
+  a2.prev = b2;
+  bp.next = b2;
+  b2.prev = bp;
+  return b2;
+};
+const isValidDiagonal$2 = (a, b) => a.next.i !== b.i && a.prev.i !== b.i && !intersectsPolygon$1(a, b) && // doesn't intersect other edges
+(locallyInside$2(a, b) && locallyInside$2(b, a) && middleInside$1(a, b) && // locally visible
+(area$4(a.prev, a, b.prev) || area$4(a, b.prev, b)) || // does not create opposite-facing sectors
+equals$1(a, b) && area$4(a.prev, a, a.next) > 0 && area$4(b.prev, b, b.next) > 0);
+const intersects$1 = (p1, q1, p2, q2) => {
+  const o1 = Math.sign(area$4(p1, q1, p2));
+  const o2 = Math.sign(area$4(p1, q1, q2));
+  const o3 = Math.sign(area$4(p2, q2, p1));
+  const o4 = Math.sign(area$4(p2, q2, q1));
+  if (o1 !== o2 && o3 !== o4)
+    return true;
+  if (o1 === 0 && onSegment$1(p1, p2, q1))
+    return true;
+  if (o2 === 0 && onSegment$1(p1, q2, q1))
+    return true;
+  if (o3 === 0 && onSegment$1(p2, p1, q2))
+    return true;
+  if (o4 === 0 && onSegment$1(p2, q1, q2))
+    return true;
+  return false;
+};
+const onSegment$1 = (p, q, r) => q.x <= Math.max(p.x, r.x) && q.x >= Math.min(p.x, r.x) && q.y <= Math.max(p.y, r.y) && q.y >= Math.min(p.y, r.y);
+const signedArea$1 = (data, start, end, dim) => {
+  let sum2 = 0;
+  for (let i = start, j = end - dim; i < end; i += dim) {
+    sum2 += (data[j] - data[i]) * (data[i + 1] + data[j + 1]);
+    j = i;
+  }
+  return sum2;
+};
+const equals$1 = (p1, p2) => p1.x === p2.x && p1.y === p2.y;
+var linkedPolygon_1 = { cureLocalIntersections: cureLocalIntersections$2, filterPoints: filterPoints$3, isValidDiagonal: isValidDiagonal$2, linkedPolygon: linkedPolygon$2, locallyInside: locallyInside$2, splitPolygon: splitPolygon$3 };
+const { filterPoints: filterPoints$2, linkedPolygon: linkedPolygon$1, locallyInside: locallyInside$1, splitPolygon: splitPolygon$2 } = linkedPolygon_1;
+const { area: area$3, pointInTriangle: pointInTriangle$2 } = triangle;
+const eliminateHoles$2 = (data, holeIndices, outerNode, dim) => {
+  const queue = [];
+  for (let i = 0, len = holeIndices.length; i < len; i++) {
+    const start = holeIndices[i] * dim;
+    const end = i < len - 1 ? holeIndices[i + 1] * dim : data.length;
+    const list = linkedPolygon$1(data, start, end, dim, false);
+    if (list === list.next)
+      list.steiner = true;
+    queue.push(getLeftmost$1(list));
+  }
+  queue.sort((a, b) => a.x - b.x);
+  for (let i = 0; i < queue.length; i++) {
+    outerNode = eliminateHole$1(queue[i], outerNode);
+    outerNode = filterPoints$2(outerNode, outerNode.next);
+  }
+  return outerNode;
+};
+const eliminateHole$1 = (hole, outerNode) => {
+  const bridge = findHoleBridge$1(hole, outerNode);
+  if (!bridge) {
+    return outerNode;
+  }
+  const bridgeReverse = splitPolygon$2(bridge, hole);
+  const filteredBridge = filterPoints$2(bridge, bridge.next);
+  filterPoints$2(bridgeReverse, bridgeReverse.next);
+  return outerNode === bridge ? filteredBridge : outerNode;
+};
+const findHoleBridge$1 = (hole, outerNode) => {
+  let p = outerNode;
+  const hx = hole.x;
+  const hy = hole.y;
+  let qx = -Infinity;
+  let m;
+  do {
+    if (hy <= p.y && hy >= p.next.y && p.next.y !== p.y) {
+      const x = p.x + (hy - p.y) * (p.next.x - p.x) / (p.next.y - p.y);
+      if (x <= hx && x > qx) {
+        qx = x;
+        if (x === hx) {
+          if (hy === p.y)
+            return p;
+          if (hy === p.next.y)
+            return p.next;
+        }
+        m = p.x < p.next.x ? p : p.next;
+      }
+    }
+    p = p.next;
+  } while (p !== outerNode);
+  if (!m)
+    return null;
+  if (hx === qx)
+    return m;
+  const stop = m;
+  const mx = m.x;
+  const my = m.y;
+  let tanMin = Infinity;
+  p = m;
+  do {
+    if (hx >= p.x && p.x >= mx && hx !== p.x && pointInTriangle$2(hy < my ? hx : qx, hy, mx, my, hy < my ? qx : hx, hy, p.x, p.y)) {
+      const tan2 = Math.abs(hy - p.y) / (hx - p.x);
+      if (locallyInside$1(p, hole) && (tan2 < tanMin || tan2 === tanMin && (p.x > m.x || p.x === m.x && sectorContainsSector$1(m, p)))) {
+        m = p;
+        tanMin = tan2;
+      }
+    }
+    p = p.next;
+  } while (p !== stop);
+  return m;
+};
+const sectorContainsSector$1 = (m, p) => area$3(m.prev, m, p.prev) < 0 && area$3(p.next, m, m.next) < 0;
+const getLeftmost$1 = (start) => {
+  let p = start;
+  let leftmost = start;
+  do {
+    if (p.x < leftmost.x || p.x === leftmost.x && p.y < leftmost.y)
+      leftmost = p;
+    p = p.next;
+  } while (p !== start);
+  return leftmost;
+};
+var eliminateHoles_1 = eliminateHoles$2;
+const eliminateHoles$1 = eliminateHoles_1;
+const { removeNode: removeNode$1, sortLinked: sortLinked$1 } = linkedList$1;
+const { cureLocalIntersections: cureLocalIntersections$1, filterPoints: filterPoints$1, isValidDiagonal: isValidDiagonal$1, linkedPolygon, splitPolygon: splitPolygon$1 } = linkedPolygon_1;
+const { area: area$2, pointInTriangle: pointInTriangle$1 } = triangle;
+const triangulate = (data, holeIndices, dim = 2) => {
+  const hasHoles = holeIndices && holeIndices.length;
+  const outerLen = hasHoles ? holeIndices[0] * dim : data.length;
+  let outerNode = linkedPolygon(data, 0, outerLen, dim, true);
+  const triangles = [];
+  if (!outerNode || outerNode.next === outerNode.prev)
+    return triangles;
+  let minX, minY, maxX, maxY, invSize;
+  if (hasHoles)
+    outerNode = eliminateHoles$1(data, holeIndices, outerNode, dim);
+  if (data.length > 80 * dim) {
+    minX = maxX = data[0];
+    minY = maxY = data[1];
+    for (let i = dim; i < outerLen; i += dim) {
+      const x = data[i];
+      const y = data[i + 1];
+      if (x < minX)
+        minX = x;
+      if (y < minY)
+        minY = y;
+      if (x > maxX)
+        maxX = x;
+      if (y > maxY)
+        maxY = y;
+    }
+    invSize = Math.max(maxX - minX, maxY - minY);
+    invSize = invSize !== 0 ? 1 / invSize : 0;
+  }
+  earcutLinked$1(outerNode, triangles, dim, minX, minY, invSize);
+  return triangles;
+};
+const earcutLinked$1 = (ear, triangles, dim, minX, minY, invSize, pass) => {
+  if (!ear)
+    return;
+  if (!pass && invSize)
+    indexCurve$1(ear, minX, minY, invSize);
+  let stop = ear;
+  let prev;
+  let next;
+  while (ear.prev !== ear.next) {
+    prev = ear.prev;
+    next = ear.next;
+    if (invSize ? isEarHashed$1(ear, minX, minY, invSize) : isEar$1(ear)) {
+      triangles.push(prev.i / dim);
+      triangles.push(ear.i / dim);
+      triangles.push(next.i / dim);
+      removeNode$1(ear);
+      ear = next.next;
+      stop = next.next;
+      continue;
+    }
+    ear = next;
+    if (ear === stop) {
+      if (!pass) {
+        earcutLinked$1(filterPoints$1(ear), triangles, dim, minX, minY, invSize, 1);
+      } else if (pass === 1) {
+        ear = cureLocalIntersections$1(filterPoints$1(ear), triangles, dim);
+        earcutLinked$1(ear, triangles, dim, minX, minY, invSize, 2);
+      } else if (pass === 2) {
+        splitEarcut$1(ear, triangles, dim, minX, minY, invSize);
+      }
+      break;
     }
   }
-  if (corners === "edge") {
-    const pointIndex = /* @__PURE__ */ new Map();
-    newPoints.forEach((point, index) => pointIndex.set(point, index));
-    const line0 = line2.create();
-    const line1 = line2.create();
-    newCorners.forEach((corner) => {
-      line2.fromPoints(line0, corner.s0[0], corner.s0[1]);
-      line2.fromPoints(line1, corner.s1[0], corner.s1[1]);
-      const ip = line2.intersectPointOfLines(line0, line1);
-      if (Number.isFinite(ip[0]) && Number.isFinite(ip[1])) {
-        const p0 = corner.s0[1];
-        const i = pointIndex.get(p0);
-        newPoints[i] = ip;
-        newPoints[(i + 1) % newPoints.length] = void 0;
-      } else {
-        const p0 = corner.s1[0];
-        const i = pointIndex.get(p0);
-        newPoints[i] = void 0;
+};
+const isEar$1 = (ear) => {
+  const a = ear.prev;
+  const b = ear;
+  const c2 = ear.next;
+  if (area$2(a, b, c2) >= 0)
+    return false;
+  let p = ear.next.next;
+  while (p !== ear.prev) {
+    if (pointInTriangle$1(a.x, a.y, b.x, b.y, c2.x, c2.y, p.x, p.y) && area$2(p.prev, p, p.next) >= 0) {
+      return false;
+    }
+    p = p.next;
+  }
+  return true;
+};
+const isEarHashed$1 = (ear, minX, minY, invSize) => {
+  const a = ear.prev;
+  const b = ear;
+  const c2 = ear.next;
+  if (area$2(a, b, c2) >= 0)
+    return false;
+  const minTX = a.x < b.x ? a.x < c2.x ? a.x : c2.x : b.x < c2.x ? b.x : c2.x;
+  const minTY = a.y < b.y ? a.y < c2.y ? a.y : c2.y : b.y < c2.y ? b.y : c2.y;
+  const maxTX = a.x > b.x ? a.x > c2.x ? a.x : c2.x : b.x > c2.x ? b.x : c2.x;
+  const maxTY = a.y > b.y ? a.y > c2.y ? a.y : c2.y : b.y > c2.y ? b.y : c2.y;
+  const minZ = zOrder$1(minTX, minTY, minX, minY, invSize);
+  const maxZ = zOrder$1(maxTX, maxTY, minX, minY, invSize);
+  let p = ear.prevZ;
+  let n = ear.nextZ;
+  while (p && p.z >= minZ && n && n.z <= maxZ) {
+    if (p !== ear.prev && p !== ear.next && pointInTriangle$1(a.x, a.y, b.x, b.y, c2.x, c2.y, p.x, p.y) && area$2(p.prev, p, p.next) >= 0)
+      return false;
+    p = p.prevZ;
+    if (n !== ear.prev && n !== ear.next && pointInTriangle$1(a.x, a.y, b.x, b.y, c2.x, c2.y, n.x, n.y) && area$2(n.prev, n, n.next) >= 0)
+      return false;
+    n = n.nextZ;
+  }
+  while (p && p.z >= minZ) {
+    if (p !== ear.prev && p !== ear.next && pointInTriangle$1(a.x, a.y, b.x, b.y, c2.x, c2.y, p.x, p.y) && area$2(p.prev, p, p.next) >= 0)
+      return false;
+    p = p.prevZ;
+  }
+  while (n && n.z <= maxZ) {
+    if (n !== ear.prev && n !== ear.next && pointInTriangle$1(a.x, a.y, b.x, b.y, c2.x, c2.y, n.x, n.y) && area$2(n.prev, n, n.next) >= 0)
+      return false;
+    n = n.nextZ;
+  }
+  return true;
+};
+const splitEarcut$1 = (start, triangles, dim, minX, minY, invSize) => {
+  let a = start;
+  do {
+    let b = a.next.next;
+    while (b !== a.prev) {
+      if (a.i !== b.i && isValidDiagonal$1(a, b)) {
+        let c2 = splitPolygon$1(a, b);
+        a = filterPoints$1(a, a.next);
+        c2 = filterPoints$1(c2, c2.next);
+        earcutLinked$1(a, triangles, dim, minX, minY, invSize);
+        earcutLinked$1(c2, triangles, dim, minX, minY, invSize);
+        return;
+      }
+      b = b.next;
+    }
+    a = a.next;
+  } while (a !== start);
+};
+const indexCurve$1 = (start, minX, minY, invSize) => {
+  let p = start;
+  do {
+    if (p.z === null)
+      p.z = zOrder$1(p.x, p.y, minX, minY, invSize);
+    p.prevZ = p.prev;
+    p.nextZ = p.next;
+    p = p.next;
+  } while (p !== start);
+  p.prevZ.nextZ = null;
+  p.prevZ = null;
+  sortLinked$1(p, (p2) => p2.z);
+};
+const zOrder$1 = (x, y, minX, minY, invSize) => {
+  x = 32767 * (x - minX) * invSize;
+  y = 32767 * (y - minY) * invSize;
+  x = (x | x << 8) & 16711935;
+  x = (x | x << 4) & 252645135;
+  x = (x | x << 2) & 858993459;
+  x = (x | x << 1) & 1431655765;
+  y = (y | y << 8) & 16711935;
+  y = (y | y << 4) & 252645135;
+  y = (y | y << 2) & 858993459;
+  y = (y | y << 1) & 1431655765;
+  return x | y << 1;
+};
+var earcut$3 = triangulate;
+const { area: area$1 } = utils$8;
+const { toOutlines } = geom2$i;
+const { arePointsInside } = poly2$1;
+const assignHoles$1 = (geometry) => {
+  const outlines = toOutlines(geometry);
+  const solids = [];
+  const holes = [];
+  outlines.forEach((outline, i) => {
+    const a = area$1(outline);
+    if (a < 0) {
+      holes.push(i);
+    } else if (a > 0) {
+      solids.push(i);
+    }
+  });
+  const children = [];
+  const parents = [];
+  solids.forEach((s, i) => {
+    const solid = outlines[s];
+    children[i] = [];
+    holes.forEach((h, j) => {
+      const hole = outlines[h];
+      if (arePointsInside([hole[0]], { vertices: solid })) {
+        children[i].push(h);
+        if (!parents[j])
+          parents[j] = [];
+        parents[j].push(i);
       }
     });
-    newPoints = newPoints.filter((p) => p !== void 0);
+  });
+  holes.forEach((h, j) => {
+    if (parents[j] && parents[j].length > 1) {
+      const directParent = minIndex(parents[j], (p) => children[p].length);
+      parents[j].forEach((p, i) => {
+        if (i !== directParent) {
+          children[p] = children[p].filter((c2) => c2 !== h);
+        }
+      });
+    }
+  });
+  return children.map((holes2, i) => ({
+    solid: outlines[solids[i]],
+    holes: holes2.map((h) => outlines[h])
+  }));
+};
+const minIndex = (list, score) => {
+  let bestIndex;
+  let best;
+  list.forEach((item, index) => {
+    const value = score(item);
+    if (best === void 0 || value < best) {
+      bestIndex = index;
+      best = value;
+    }
+  });
+  return bestIndex;
+};
+var assignHoles_1 = assignHoles$1;
+const geom2$5 = geom2$i;
+const plane = plane$9;
+const vec2 = vec2$w;
+const vec3$9 = vec3$C;
+const calculatePlane = calculatePlane_1;
+const assignHoles = assignHoles_1;
+let PolygonHierarchy$1 = class PolygonHierarchy {
+  constructor(slice2) {
+    this.plane = calculatePlane(slice2);
+    const rightvector = vec3$9.orthogonal(vec3$9.create(), this.plane);
+    const perp = vec3$9.cross(vec3$9.create(), this.plane, rightvector);
+    this.v = vec3$9.normalize(perp, perp);
+    this.u = vec3$9.cross(vec3$9.create(), this.v, this.plane);
+    this.basisMap = /* @__PURE__ */ new Map();
+    const projected = slice2.edges.map((e) => e.map((v) => this.to2D(v)));
+    const geometry = geom2$5.create(projected);
+    this.roots = assignHoles(geometry);
   }
-  if (corners === "round") {
-    let cornersegments = Math.floor(segments / 4);
-    const v0 = vec2$3.create();
-    newCorners.forEach((corner) => {
-      let rotation2 = vec2$3.angle(vec2$3.subtract(v0, corner.s1[0], corner.c));
-      rotation2 -= vec2$3.angle(vec2$3.subtract(v0, corner.s0[1], corner.c));
-      if (orientation && rotation2 < 0) {
-        rotation2 = rotation2 + Math.PI;
-        if (rotation2 < 0)
-          rotation2 = rotation2 + Math.PI;
-      }
-      if (!orientation && rotation2 > 0) {
-        rotation2 = rotation2 - Math.PI;
-        if (rotation2 > 0)
-          rotation2 = rotation2 - Math.PI;
-      }
-      if (rotation2 !== 0) {
-        cornersegments = Math.floor(segments * (Math.abs(rotation2) / TAU$2));
-        const step = rotation2 / cornersegments;
-        const start = vec2$3.angle(vec2$3.subtract(v0, corner.s0[1], corner.c));
-        const cornerpoints = [];
-        for (let i = 1; i < cornersegments; i++) {
-          const radians = start + step * i;
-          const point = vec2$3.fromAngleRadians(vec2$3.create(), radians);
-          vec2$3.scale(point, point, delta);
-          vec2$3.add(point, point, corner.c);
-          cornerpoints.push(point);
-        }
-        if (cornerpoints.length > 0) {
-          const p0 = corner.s0[1];
-          let i = newPoints.findIndex((point) => vec2$3.equals(p0, point));
-          i = (i + 1) % newPoints.length;
-          newPoints.splice(i, 0, ...cornerpoints);
-        }
-      } else {
-        const p0 = corner.s1[0];
-        const i = newPoints.findIndex((point) => vec2$3.equals(p0, point));
-        newPoints.splice(i, 1);
+  /*
+   * project a 3D point onto the 2D plane
+   */
+  to2D(vector3) {
+    const vector2 = vec2.fromValues(vec3$9.dot(vector3, this.u), vec3$9.dot(vector3, this.v));
+    this.basisMap.set(vector2, vector3);
+    return vector2;
+  }
+  /*
+   * un-project a 2D point back into 3D
+   */
+  to3D(vector2) {
+    const original = this.basisMap.get(vector2);
+    if (original) {
+      return original;
+    } else {
+      console.log("Warning: point not in original slice");
+      const v12 = vec3$9.scale(vec3$9.create(), this.u, vector2[0]);
+      const v22 = vec3$9.scale(vec3$9.create(), this.v, vector2[1]);
+      const planeOrigin = vec3$9.scale(vec3$9.create(), plane, plane[3]);
+      const v3 = vec3$9.add(v12, v12, planeOrigin);
+      return vec3$9.add(v22, v22, v3);
+    }
+  }
+};
+var polygonHierarchy = PolygonHierarchy$1;
+const poly3$6 = poly3$m;
+const earcut$2 = earcut$3;
+const PolygonHierarchy2 = polygonHierarchy;
+const toPolygons = (slice2) => {
+  const hierarchy = new PolygonHierarchy2(slice2);
+  const polygons = [];
+  hierarchy.roots.forEach(({ solid, holes }) => {
+    let index = solid.length;
+    const holesIndex = [];
+    holes.forEach((hole, i) => {
+      holesIndex.push(index);
+      index += hole.length;
+    });
+    const vertices = [solid, ...holes].flat();
+    const data = vertices.flat();
+    const getVertex = (i) => hierarchy.to3D(vertices[i]);
+    const indices = earcut$2(data, holesIndex);
+    for (let i = 0; i < indices.length; i += 3) {
+      const tri = indices.slice(i, i + 3).map(getVertex);
+      polygons.push(poly3$6.fromPointsAndPlane(tri, hierarchy.plane));
+    }
+  });
+  return polygons;
+};
+var toPolygons_1 = toPolygons;
+const vec3$8 = vec3$C;
+const edgesToString = (edges) => edges.reduce((result, edge) => result += `[${vec3$8.toString(edge[0])}, ${vec3$8.toString(edge[1])}], `, "");
+const toString$2 = (slice2) => `[${edgesToString(slice2.edges)}]`;
+var toString_1 = toString$2;
+const vec3$7 = vec3$C;
+const create$1 = create_1;
+const transform = (matrix, slice2) => {
+  const edges = slice2.edges.map((edge) => [vec3$7.transform(vec3$7.create(), edge[0], matrix), vec3$7.transform(vec3$7.create(), edge[1], matrix)]);
+  return create$1(edges);
+};
+var transform_1 = transform;
+var slice$3 = {
+  calculatePlane: calculatePlane_1,
+  clone: clone_1,
+  create: create_1,
+  equals: equals_1,
+  fromPoints: fromPoints_1,
+  fromSides: fromSides_1,
+  isA: isA_1,
+  reverse: reverse_1,
+  toEdges: toEdges_1,
+  toPolygons: toPolygons_1,
+  toString: toString_1,
+  transform: transform_1
+};
+const vec3$6 = vec3$C;
+const create = create_1;
+const repair = (slice2) => {
+  if (!slice2.edges)
+    return slice2;
+  let edges = slice2.edges;
+  const vertexMap = /* @__PURE__ */ new Map();
+  const edgeCount = /* @__PURE__ */ new Map();
+  edges = edges.filter((e) => !vec3$6.equals(e[0], e[1]));
+  edges.forEach((edge) => {
+    const inKey = edge[0].toString();
+    const outKey = edge[1].toString();
+    vertexMap.set(inKey, edge[0]);
+    vertexMap.set(outKey, edge[1]);
+    edgeCount.set(inKey, (edgeCount.get(inKey) || 0) + 1);
+    edgeCount.set(outKey, (edgeCount.get(outKey) || 0) - 1);
+  });
+  const missingIn = [];
+  const missingOut = [];
+  edgeCount.forEach((count, vertex2) => {
+    if (count < 0)
+      missingIn.push(vertex2);
+    if (count > 0)
+      missingOut.push(vertex2);
+  });
+  missingIn.forEach((key1) => {
+    const v12 = vertexMap.get(key1);
+    let bestDistance = Infinity;
+    let bestReplacement;
+    missingOut.forEach((key2) => {
+      const v22 = vertexMap.get(key2);
+      const distance2 = vec3$6.distance(v12, v22);
+      if (distance2 < bestDistance) {
+        bestDistance = distance2;
+        bestReplacement = v22;
       }
     });
-  }
-  return newPoints;
-};
-var offsetFromPoints_1 = offsetFromPoints$4;
-const geom2$j = geom2$K;
-const offsetFromPoints$3 = offsetFromPoints_1;
-const expandGeom2$1 = (options, geometry) => {
-  const defaults = {
-    delta: 1,
-    corners: "edge",
-    segments: 16
-  };
-  const { delta, corners, segments } = Object.assign({}, defaults, options);
-  if (!(corners === "edge" || corners === "chamfer" || corners === "round")) {
-    throw new Error('corners must be "edge", "chamfer", or "round"');
-  }
-  const outlines = geom2$j.toOutlines(geometry);
-  const newoutlines = outlines.map((outline) => {
-    options = {
-      delta,
-      corners,
-      closed: true,
-      segments
-    };
-    return offsetFromPoints$3(options, outline);
-  });
-  const allsides = newoutlines.reduce((sides, newoutline) => sides.concat(geom2$j.toSides(geom2$j.fromPoints(newoutline))), []);
-  return geom2$j.create(allsides);
-};
-var expandGeom2_1 = expandGeom2$1;
-const mat4$5 = mat4$r;
-const vec3$6 = vec3$Y;
-const geom3$c = geom3$K;
-const poly3$7 = poly3$A;
-const extrudePolygon$1 = (offsetvector, polygon1) => {
-  const direction2 = vec3$6.dot(poly3$7.plane(polygon1), offsetvector);
-  if (direction2 > 0) {
-    polygon1 = poly3$7.invert(polygon1);
-  }
-  const newpolygons = [polygon1];
-  const polygon2 = poly3$7.transform(mat4$5.fromTranslation(mat4$5.create(), offsetvector), polygon1);
-  const numvertices = polygon1.vertices.length;
-  for (let i = 0; i < numvertices; i++) {
-    const nexti = i < numvertices - 1 ? i + 1 : 0;
-    const sideFacePolygon = poly3$7.create([
-      polygon1.vertices[i],
-      polygon2.vertices[i],
-      polygon2.vertices[nexti],
-      polygon1.vertices[nexti]
-    ]);
-    newpolygons.push(sideFacePolygon);
-  }
-  newpolygons.push(poly3$7.invert(polygon2));
-  return geom3$c.create(newpolygons);
-};
-var extrudePolygon_1 = extrudePolygon$1;
-const { EPS, TAU: TAU$1 } = constants$3;
-const mat4$4 = mat4$r;
-const vec3$5 = vec3$Y;
-const fnNumberSort = fnNumberSort_1;
-const geom3$b = geom3$K;
-const poly3$6 = poly3$A;
-const sphere = sphere_1;
-const retessellate = retessellate_1;
-const unionGeom3Sub = unionGeom3Sub$1;
-const extrudePolygon = extrudePolygon_1;
-const mapPlaneToVertex = (map, vertex2, plane2) => {
-  const key = vertex2.toString();
-  if (!map.has(key)) {
-    const entry = [vertex2, [plane2]];
-    map.set(key, entry);
-  } else {
-    const planes = map.get(key)[1];
-    planes.push(plane2);
-  }
-};
-const mapPlaneToEdge = (map, edge, plane2) => {
-  const key0 = edge[0].toString();
-  const key1 = edge[1].toString();
-  const key = key0 < key1 ? `${key0},${key1}` : `${key1},${key0}`;
-  if (!map.has(key)) {
-    const entry = [edge, [plane2]];
-    map.set(key, entry);
-  } else {
-    const planes = map.get(key)[1];
-    planes.push(plane2);
-  }
-};
-const addUniqueAngle = (map, angle2) => {
-  const i = map.findIndex((item) => item === angle2);
-  if (i < 0) {
-    map.push(angle2);
-  }
-};
-const expandShell$1 = (options, geometry) => {
-  const defaults = {
-    delta: 1,
-    segments: 12
-  };
-  const { delta, segments } = Object.assign({}, defaults, options);
-  let result = geom3$b.create();
-  const vertices2planes = /* @__PURE__ */ new Map();
-  const edges2planes = /* @__PURE__ */ new Map();
-  const v12 = vec3$5.create();
-  const v22 = vec3$5.create();
-  const polygons = geom3$b.toPolygons(geometry);
-  polygons.forEach((polygon2, index) => {
-    const extrudevector = vec3$5.scale(vec3$5.create(), poly3$6.plane(polygon2), 2 * delta);
-    const translatedpolygon = poly3$6.transform(mat4$4.fromTranslation(mat4$4.create(), vec3$5.scale(vec3$5.create(), extrudevector, -0.5)), polygon2);
-    const extrudedface = extrudePolygon(extrudevector, translatedpolygon);
-    result = unionGeom3Sub(result, extrudedface);
-    const vertices = polygon2.vertices;
-    for (let i = 0; i < vertices.length; i++) {
-      mapPlaneToVertex(vertices2planes, vertices[i], poly3$6.plane(polygon2));
-      const j = (i + 1) % vertices.length;
-      const edge = [vertices[i], vertices[j]];
-      mapPlaneToEdge(edges2planes, edge, poly3$6.plane(polygon2));
-    }
-  });
-  edges2planes.forEach((item) => {
-    const edge = item[0];
-    const planes = item[1];
-    const startpoint = edge[0];
-    const endpoint = edge[1];
-    const zbase = vec3$5.subtract(vec3$5.create(), endpoint, startpoint);
-    vec3$5.normalize(zbase, zbase);
-    const xbase = planes[0];
-    const ybase = vec3$5.cross(vec3$5.create(), xbase, zbase);
-    let angles = [];
-    for (let i = 0; i < segments; i++) {
-      addUniqueAngle(angles, i * TAU$1 / segments);
-    }
-    for (let i = 0, iMax = planes.length; i < iMax; i++) {
-      const planenormal = planes[i];
-      const si = vec3$5.dot(ybase, planenormal);
-      const co = vec3$5.dot(xbase, planenormal);
-      let angle2 = Math.atan2(si, co);
-      if (angle2 < 0)
-        angle2 += TAU$1;
-      addUniqueAngle(angles, angle2);
-      angle2 = Math.atan2(-si, -co);
-      if (angle2 < 0)
-        angle2 += TAU$1;
-      addUniqueAngle(angles, angle2);
-    }
-    angles = angles.sort(fnNumberSort);
-    const numangles = angles.length;
-    let prevp1;
-    let prevp2;
-    const startfacevertices = [];
-    const endfacevertices = [];
-    const polygons2 = [];
-    for (let i = -1; i < numangles; i++) {
-      const angle2 = angles[i < 0 ? i + numangles : i];
-      const si = Math.sin(angle2);
-      const co = Math.cos(angle2);
-      vec3$5.scale(v12, xbase, co * delta);
-      vec3$5.scale(v22, ybase, si * delta);
-      vec3$5.add(v12, v12, v22);
-      const p1 = vec3$5.add(vec3$5.create(), startpoint, v12);
-      const p2 = vec3$5.add(vec3$5.create(), endpoint, v12);
-      let skip = false;
-      if (i >= 0) {
-        if (vec3$5.distance(p1, prevp1) < EPS) {
-          skip = true;
-        }
-      }
-      if (!skip) {
-        if (i >= 0) {
-          startfacevertices.push(p1);
-          endfacevertices.push(p2);
-          const points = [prevp2, p2, p1, prevp1];
-          const polygon2 = poly3$6.create(points);
-          polygons2.push(polygon2);
-        }
-        prevp1 = p1;
-        prevp2 = p2;
-      }
-    }
-    endfacevertices.reverse();
-    polygons2.push(poly3$6.create(startfacevertices));
-    polygons2.push(poly3$6.create(endfacevertices));
-    const cylinder2 = geom3$b.create(polygons2);
-    result = unionGeom3Sub(result, cylinder2);
-  });
-  vertices2planes.forEach((item) => {
-    const vertex2 = item[0];
-    const planes = item[1];
-    const xaxis = planes[0];
-    let bestzaxis = null;
-    let bestzaxisorthogonality = 0;
-    for (let i = 1; i < planes.length; i++) {
-      const normal2 = planes[i];
-      const cross2 = vec3$5.cross(v12, xaxis, normal2);
-      const crosslength = vec3$5.length(cross2);
-      if (crosslength > 0.05) {
-        if (crosslength > bestzaxisorthogonality) {
-          bestzaxisorthogonality = crosslength;
-          bestzaxis = normal2;
-        }
-      }
-    }
-    if (!bestzaxis) {
-      bestzaxis = vec3$5.orthogonal(v12, xaxis);
-    }
-    const yaxis = vec3$5.cross(v12, xaxis, bestzaxis);
-    vec3$5.normalize(yaxis, yaxis);
-    const zaxis = vec3$5.cross(v22, yaxis, xaxis);
-    const corner = sphere({
-      center: [vertex2[0], vertex2[1], vertex2[2]],
-      radius: delta,
-      segments,
-      axes: [xaxis, yaxis, zaxis]
+    console.warn(`slice.repair: repairing vertex gap ${v12} to ${bestReplacement} distance ${bestDistance}`);
+    edges = edges.map((edge) => {
+      if (edge[0].toString() === key1)
+        return [bestReplacement, edge[1]];
+      if (edge[1].toString() === key1)
+        return [edge[0], bestReplacement];
+      return edge;
     });
-    result = unionGeom3Sub(result, corner);
   });
-  return retessellate(result);
+  return create(edges);
 };
-var expandShell_1 = expandShell$1;
-const geom3$a = geom3$K;
-const union$1 = union_1;
-const expandShell = expandShell_1;
-const expandGeom3$1 = (options, geometry) => {
+var repair_1 = repair;
+const { EPS } = constants$3;
+const vec3$5 = vec3$C;
+const poly3$5 = poly3$m;
+const slice$2 = slice$3;
+const gcd = (a, b) => {
+  if (a === b) {
+    return a;
+  }
+  if (a < b) {
+    return gcd(b, a);
+  }
+  if (b === 1) {
+    return 1;
+  }
+  if (b === 0) {
+    return a;
+  }
+  return gcd(b, a % b);
+};
+const lcm = (a, b) => a * b / gcd(a, b);
+const repartitionEdges = (newlength, edges) => {
+  const multiple = newlength / edges.length;
+  if (multiple === 1) {
+    return edges;
+  }
+  const divisor = vec3$5.fromValues(multiple, multiple, multiple);
+  const newEdges = [];
+  edges.forEach((edge) => {
+    const increment = vec3$5.subtract(vec3$5.create(), edge[1], edge[0]);
+    vec3$5.divide(increment, increment, divisor);
+    let prev = edge[0];
+    for (let i = 1; i <= multiple; ++i) {
+      const next = vec3$5.add(vec3$5.create(), prev, increment);
+      newEdges.push([prev, next]);
+      prev = next;
+    }
+  });
+  return newEdges;
+};
+const EPSAREA = EPS * EPS / 2 * Math.sin(Math.PI / 3);
+const extrudeWalls$1 = (slice0, slice1) => {
+  let edges0 = slice$2.toEdges(slice0);
+  let edges1 = slice$2.toEdges(slice1);
+  if (edges0.length !== edges1.length) {
+    const newlength = lcm(edges0.length, edges1.length);
+    if (newlength !== edges0.length)
+      edges0 = repartitionEdges(newlength, edges0);
+    if (newlength !== edges1.length)
+      edges1 = repartitionEdges(newlength, edges1);
+  }
+  const walls = [];
+  edges0.forEach((edge0, i) => {
+    const edge1 = edges1[i];
+    const poly0 = poly3$5.create([edge0[0], edge0[1], edge1[1]]);
+    const poly0area = poly3$5.measureArea(poly0);
+    if (Number.isFinite(poly0area) && poly0area > EPSAREA)
+      walls.push(poly0);
+    const poly1 = poly3$5.create([edge0[0], edge1[1], edge1[0]]);
+    const poly1area = poly3$5.measureArea(poly1);
+    if (Number.isFinite(poly1area) && poly1area > EPSAREA)
+      walls.push(poly1);
+  });
+  return walls;
+};
+var extrudeWalls_1 = extrudeWalls$1;
+const mat4$1 = mat4$h;
+const geom2$4 = geom2$i;
+const geom3$1 = geom3$d;
+const poly3$4 = poly3$m;
+const slice$1 = slice$3;
+const repairSlice = repair_1;
+const extrudeWalls = extrudeWalls_1;
+const defaultCallback = (progress, index, base) => {
+  let baseSlice = null;
+  if (geom2$4.isA(base))
+    baseSlice = slice$1.fromSides(geom2$4.toSides(base));
+  if (poly3$4.isA(base))
+    baseSlice = slice$1.fromPoints(poly3$4.toPoints(base));
+  return progress === 0 || progress === 1 ? slice$1.transform(mat4$1.fromTranslation(mat4$1.create(), [0, 0, progress]), baseSlice) : null;
+};
+const extrudeFromSlices$1 = (options, base) => {
   const defaults = {
-    delta: 1,
-    corners: "round",
-    segments: 12
+    numberOfSlices: 2,
+    capStart: true,
+    capEnd: true,
+    close: false,
+    repair: true,
+    callback: defaultCallback
   };
-  const { delta, corners, segments } = Object.assign({}, defaults, options);
-  if (!(corners === "round")) {
-    throw new Error('corners must be "round" for 3D geometries');
+  const { numberOfSlices, capStart, capEnd, close: close2, repair: repair2, callback: generate } = Object.assign({}, defaults, options);
+  if (numberOfSlices < 2)
+    throw new Error("numberOfSlices must be 2 or more");
+  if (repair2) {
+    base = repairSlice(base);
   }
-  const polygons = geom3$a.toPolygons(geometry);
-  if (polygons.length === 0)
-    throw new Error("the given geometry cannot be empty");
-  options = { delta, corners, segments };
-  const expanded = expandShell(options, geometry);
-  return union$1(geometry, expanded);
-};
-var expandGeom3_1 = expandGeom3$1;
-const area$2 = area_1;
-const vec2$2 = vec2$E;
-const geom2$i = geom2$K;
-const path2$g = path2$u;
-const offsetFromPoints$2 = offsetFromPoints_1;
-const createGeometryFromClosedOffsets = (paths) => {
-  let { external, internal } = paths;
-  if (area$2(external) < 0) {
-    external = external.reverse();
-  } else {
-    internal = internal.reverse();
-  }
-  const externalPath = path2$g.fromPoints({ closed: true }, external);
-  const internalPath = path2$g.fromPoints({ closed: true }, internal);
-  const externalSides = geom2$i.toSides(geom2$i.fromPoints(path2$g.toPoints(externalPath)));
-  const internalSides = geom2$i.toSides(geom2$i.fromPoints(path2$g.toPoints(internalPath)));
-  externalSides.push(...internalSides);
-  return geom2$i.create(externalSides);
-};
-const createGeometryFromExpandedOpenPath = (paths, segments, corners, delta) => {
-  const { points, external, internal } = paths;
-  const capSegments = Math.floor(segments / 2);
-  const e2iCap = [];
-  const i2eCap = [];
-  if (corners === "round" && capSegments > 0) {
-    const step = Math.PI / capSegments;
-    const eCorner = points[points.length - 1];
-    const e2iStart = vec2$2.angle(vec2$2.subtract(vec2$2.create(), external[external.length - 1], eCorner));
-    const iCorner = points[0];
-    const i2eStart = vec2$2.angle(vec2$2.subtract(vec2$2.create(), internal[0], iCorner));
-    for (let i = 1; i < capSegments; i++) {
-      let radians = e2iStart + step * i;
-      let point = vec2$2.fromAngleRadians(vec2$2.create(), radians);
-      vec2$2.scale(point, point, delta);
-      vec2$2.add(point, point, eCorner);
-      e2iCap.push(point);
-      radians = i2eStart + step * i;
-      point = vec2$2.fromAngleRadians(vec2$2.create(), radians);
-      vec2$2.scale(point, point, delta);
-      vec2$2.add(point, point, iCorner);
-      i2eCap.push(point);
+  const sMax = numberOfSlices - 1;
+  let startSlice = null;
+  let endSlice = null;
+  let prevSlice = null;
+  let polygons = [];
+  for (let s = 0; s < numberOfSlices; s++) {
+    const currentSlice = generate(s / sMax, s, base);
+    if (currentSlice) {
+      if (!slice$1.isA(currentSlice))
+        throw new Error("the callback function must return slice objects");
+      const edges = slice$1.toEdges(currentSlice);
+      if (edges.length === 0)
+        throw new Error("the callback function must return slices with one or more edges");
+      if (prevSlice) {
+        polygons = polygons.concat(extrudeWalls(prevSlice, currentSlice));
+      }
+      if (s === 0)
+        startSlice = currentSlice;
+      if (s === numberOfSlices - 1)
+        endSlice = currentSlice;
+      prevSlice = currentSlice;
     }
   }
-  const allPoints = [];
-  allPoints.push(...external, ...e2iCap, ...internal.reverse(), ...i2eCap);
-  return geom2$i.fromPoints(allPoints);
-};
-const expandPath2$1 = (options, geometry) => {
-  const defaults = {
-    delta: 1,
-    corners: "edge",
-    segments: 16
-  };
-  options = Object.assign({}, defaults, options);
-  const { delta, corners, segments } = options;
-  if (delta <= 0)
-    throw new Error("the given delta must be positive for paths");
-  if (!(corners === "edge" || corners === "chamfer" || corners === "round")) {
-    throw new Error('corners must be "edge", "chamfer", or "round"');
+  if (capEnd) {
+    const endPolygons = slice$1.toPolygons(endSlice);
+    polygons = polygons.concat(endPolygons);
   }
-  const closed = geometry.isClosed;
-  const points = path2$g.toPoints(geometry);
-  if (points.length === 0)
-    throw new Error("the given geometry cannot be empty");
-  const paths = {
-    points,
-    external: offsetFromPoints$2({ delta, corners, segments, closed }, points),
-    internal: offsetFromPoints$2({ delta: -delta, corners, segments, closed }, points)
-  };
-  if (geometry.isClosed) {
-    return createGeometryFromClosedOffsets(paths);
-  } else {
-    return createGeometryFromExpandedOpenPath(paths, segments, corners, delta);
+  if (capStart) {
+    const startPolygons = slice$1.toPolygons(startSlice).map(poly3$4.invert);
+    polygons = polygons.concat(startPolygons);
   }
-};
-var expandPath2_1 = expandPath2$1;
-const flatten$f = flatten_1;
-const geom2$h = geom2$K;
-const geom3$9 = geom3$K;
-const path2$f = path2$u;
-const expandGeom2 = expandGeom2_1;
-const expandGeom3 = expandGeom3_1;
-const expandPath2 = expandPath2_1;
-const expand$2 = (options, ...objects) => {
-  objects = flatten$f(objects);
-  if (objects.length === 0)
-    throw new Error("wrong number of arguments");
-  const results = objects.map((object) => {
-    if (path2$f.isA(object))
-      return expandPath2(options, object);
-    if (geom2$h.isA(object))
-      return expandGeom2(options, object);
-    if (geom3$9.isA(object))
-      return expandGeom3(options, object);
-    return object;
-  });
-  return results.length === 1 ? results[0] : results;
-};
-var expand_1 = expand$2;
-const geom2$g = geom2$K;
-const poly2 = poly2$1;
-const offsetFromPoints$1 = offsetFromPoints_1;
-const offsetGeom2$1 = (options, geometry) => {
-  const defaults = {
-    delta: 1,
-    corners: "edge",
-    segments: 0
-  };
-  const { delta, corners, segments } = Object.assign({}, defaults, options);
-  if (!(corners === "edge" || corners === "chamfer" || corners === "round")) {
-    throw new Error('corners must be "edge", "chamfer", or "round"');
+  if (!capStart && !capEnd) {
+    if (close2 && !slice$1.equals(endSlice, startSlice)) {
+      polygons = polygons.concat(extrudeWalls(endSlice, startSlice));
+    }
   }
-  const outlines = geom2$g.toOutlines(geometry);
-  const newoutlines = outlines.map((outline) => {
-    const level = outlines.reduce((acc, polygon2) => acc + poly2.arePointsInside(outline, poly2.create(polygon2)), 0);
-    const outside = level % 2 === 0;
-    options = {
-      delta: outside ? delta : -delta,
-      corners,
-      closed: true,
-      segments
-    };
-    return offsetFromPoints$1(options, outline);
-  });
-  const allsides = newoutlines.reduce((sides, newoutline) => sides.concat(geom2$g.toSides(geom2$g.fromPoints(newoutline))), []);
-  return geom2$g.create(allsides);
+  return geom3$1.create(polygons);
 };
-var offsetGeom2_1 = offsetGeom2$1;
-const path2$e = path2$u;
-const offsetFromPoints = offsetFromPoints_1;
-const offsetPath2$1 = (options, geometry) => {
-  const defaults = {
-    delta: 1,
-    corners: "edge",
-    closed: geometry.isClosed,
-    segments: 16
-  };
-  const { delta, corners, closed, segments } = Object.assign({}, defaults, options);
-  if (!(corners === "edge" || corners === "chamfer" || corners === "round")) {
-    throw new Error('corners must be "edge", "chamfer", or "round"');
-  }
-  options = { delta, corners, closed, segments };
-  const newpoints = offsetFromPoints(options, path2$e.toPoints(geometry));
-  return path2$e.fromPoints({ closed }, newpoints);
-};
-var offsetPath2_1 = offsetPath2$1;
-const flatten$e = flatten_1;
-const geom2$f = geom2$K;
-const path2$d = path2$u;
-const offsetGeom2 = offsetGeom2_1;
-const offsetPath2 = offsetPath2_1;
-const offset = (options, ...objects) => {
-  objects = flatten$e(objects);
-  if (objects.length === 0)
-    throw new Error("wrong number of arguments");
-  const results = objects.map((object) => {
-    if (path2$d.isA(object))
-      return offsetPath2(options, object);
-    if (geom2$f.isA(object))
-      return offsetGeom2(options, object);
-    return object;
-  });
-  return results.length === 1 ? results[0] : results;
-};
-var offset_1 = offset;
-var expansions = {
-  expand: expand_1,
-  offset: offset_1
-};
-const mat4$3 = mat4$r;
-const vec3$4 = vec3$Y;
-const geom2$e = geom2$K;
-const slice$1 = slice$5;
-const extrudeFromSlices$1 = extrudeFromSlices_1;
+var extrudeFromSlices_1 = extrudeFromSlices$1;
+const mat4 = mat4$h;
+const vec3$4 = vec3$C;
+const geom2$3 = geom2$i;
+const slice = slice$3;
+const extrudeFromSlices = extrudeFromSlices_1;
 const extrudeGeom2 = (options, geometry) => {
   const defaults = {
     offset: [0, 0, 1],
@@ -30352,18 +27284,18 @@ const extrudeGeom2 = (options, geometry) => {
     twistSteps = 1;
   }
   const offsetv = vec3$4.clone(offset2);
-  const baseSides = geom2$e.toSides(geometry);
+  const baseSides = geom2$3.toSides(geometry);
   if (baseSides.length === 0)
     throw new Error("the given geometry cannot be empty");
-  const baseSlice = slice$1.fromSides(baseSides);
+  const baseSlice = slice.fromSides(baseSides);
   if (offsetv[2] < 0)
-    slice$1.reverse(baseSlice, baseSlice);
-  const matrix = mat4$3.create();
+    slice.reverse(baseSlice, baseSlice);
+  const matrix = mat4.create();
   const createTwist = (progress, index, base) => {
     const Zrotation = index / twistSteps * twistAngle;
     const Zoffset = vec3$4.scale(vec3$4.create(), offsetv, index / twistSteps);
-    mat4$3.multiply(matrix, mat4$3.fromZRotation(matrix, Zrotation), mat4$3.fromTranslation(mat4$3.create(), Zoffset));
-    return slice$1.transform(matrix, base);
+    mat4.multiply(matrix, mat4.fromZRotation(matrix, Zrotation), mat4.fromTranslation(mat4.create(), Zoffset));
+    return slice.transform(matrix, base);
   };
   options = {
     numberOfSlices: twistSteps + 1,
@@ -30372,24 +27304,24 @@ const extrudeGeom2 = (options, geometry) => {
     repair: repair2,
     callback: createTwist
   };
-  return extrudeFromSlices$1(options, baseSlice);
+  return extrudeFromSlices(options, baseSlice);
 };
-var extrudeLinearGeom2$4 = extrudeGeom2;
-const geom2$d = geom2$K;
-const path2$c = path2$u;
-const extrudeLinearGeom2$3 = extrudeLinearGeom2$4;
+var extrudeLinearGeom2$2 = extrudeGeom2;
+const geom2$2 = geom2$i;
+const path2$2 = path2$8;
+const extrudeLinearGeom2$1 = extrudeLinearGeom2$2;
 const extrudePath2 = (options, geometry) => {
   if (!geometry.isClosed)
     throw new Error("extruded path must be closed");
-  const points = path2$c.toPoints(geometry);
-  const geometry2 = geom2$d.fromPoints(points);
-  return extrudeLinearGeom2$3(options, geometry2);
+  const points = path2$2.toPoints(geometry);
+  const geometry2 = geom2$2.fromPoints(points);
+  return extrudeLinearGeom2$1(options, geometry2);
 };
 var extrudeLinearPath2$1 = extrudePath2;
-const flatten$d = flatten_1;
-const geom2$c = geom2$K;
-const path2$b = path2$u;
-const extrudeLinearGeom2$2 = extrudeLinearGeom2$4;
+const flatten$1 = flatten_1;
+const geom2$1 = geom2$i;
+const path2$1 = path2$8;
+const extrudeLinearGeom2 = extrudeLinearGeom2$2;
 const extrudeLinearPath2 = extrudeLinearPath2$1;
 const extrudeLinear = (options, ...objects) => {
   const defaults = {
@@ -30399,1334 +27331,30 @@ const extrudeLinear = (options, ...objects) => {
     repair: true
   };
   const { height, twistAngle, twistSteps, repair: repair2 } = Object.assign({}, defaults, options);
-  objects = flatten$d(objects);
+  objects = flatten$1(objects);
   if (objects.length === 0)
     throw new Error("wrong number of arguments");
   options = { offset: [0, 0, height], twistAngle, twistSteps, repair: repair2 };
   const results = objects.map((object) => {
-    if (path2$b.isA(object))
+    if (path2$1.isA(object))
       return extrudeLinearPath2(options, object);
-    if (geom2$c.isA(object))
-      return extrudeLinearGeom2$2(options, object);
+    if (geom2$1.isA(object))
+      return extrudeLinearGeom2(options, object);
     return object;
   });
   return results.length === 1 ? results[0] : results;
 };
 var extrudeLinear_1 = extrudeLinear;
-const path2$a = path2$u;
-const expand$1 = expand_1;
-const extrudeLinearGeom2$1 = extrudeLinearGeom2$4;
-const extrudeRectangularPath2$1 = (options, geometry) => {
-  const defaults = {
-    size: 1,
-    height: 1
-  };
-  const { size, height } = Object.assign({}, defaults, options);
-  options.delta = size;
-  options.offset = [0, 0, height];
-  const points = path2$a.toPoints(geometry);
-  if (points.length === 0)
-    throw new Error("the given geometry cannot be empty");
-  const newgeometry = expand$1(options, geometry);
-  return extrudeLinearGeom2$1(options, newgeometry);
-};
-var extrudeRectangularPath2_1 = extrudeRectangularPath2$1;
-const { area: area$1 } = utils$8;
-const geom2$b = geom2$K;
-const path2$9 = path2$u;
-const expand = expand_1;
-const extrudeLinearGeom2 = extrudeLinearGeom2$4;
-const extrudeRectangularGeom2$1 = (options, geometry) => {
-  const defaults = {
-    size: 1,
-    height: 1
-  };
-  const { size, height } = Object.assign({}, defaults, options);
-  options.delta = size;
-  options.offset = [0, 0, height];
-  const outlines = geom2$b.toOutlines(geometry);
-  if (outlines.length === 0)
-    throw new Error("the given geometry cannot be empty");
-  const newparts = outlines.map((outline) => {
-    if (area$1(outline) < 0)
-      outline.reverse();
-    return expand(options, path2$9.fromPoints({ closed: true }, outline));
-  });
-  const allsides = newparts.reduce((sides, part) => sides.concat(geom2$b.toSides(part)), []);
-  const newgeometry = geom2$b.create(allsides);
-  return extrudeLinearGeom2(options, newgeometry);
-};
-var extrudeRectangularGeom2_1 = extrudeRectangularGeom2$1;
-const flatten$c = flatten_1;
-const geom2$a = geom2$K;
-const path2$8 = path2$u;
-const extrudeRectangularPath2 = extrudeRectangularPath2_1;
-const extrudeRectangularGeom2 = extrudeRectangularGeom2_1;
-const extrudeRectangular = (options, ...objects) => {
-  const defaults = {
-    size: 1,
-    height: 1
-  };
-  const { size, height } = Object.assign({}, defaults, options);
-  objects = flatten$c(objects);
-  if (objects.length === 0)
-    throw new Error("wrong number of arguments");
-  if (size <= 0)
-    throw new Error("size must be positive");
-  if (height <= 0)
-    throw new Error("height must be positive");
-  const results = objects.map((object) => {
-    if (path2$8.isA(object))
-      return extrudeRectangularPath2(options, object);
-    if (geom2$a.isA(object))
-      return extrudeRectangularGeom2(options, object);
-    return object;
-  });
-  return results.length === 1 ? results[0] : results;
-};
-var extrudeRectangular_1 = extrudeRectangular;
-const { TAU } = constants$3;
-const slice = slice$5;
-const mat4$2 = mat4$r;
-const extrudeFromSlices = extrudeFromSlices_1;
-const geom2$9 = geom2$K;
-const extrudeHelical = (options, geometry) => {
-  const defaults = {
-    angle: TAU,
-    startAngle: 0,
-    pitch: 10,
-    endOffset: 0,
-    segmentsPerRotation: 32
-  };
-  const { angle: angle2, endOffset, segmentsPerRotation, startAngle } = Object.assign({}, defaults, options);
-  let pitch;
-  if (!options.pitch && options.height) {
-    pitch = options.height / (angle2 / TAU);
-  } else {
-    pitch = options.pitch ? options.pitch : defaults.pitch;
-  }
-  const minNumberOfSegments = 3;
-  if (segmentsPerRotation < minNumberOfSegments)
-    throw new Error(`The number of segments per rotation needs to be at least 3.`);
-  let shapeSides = geom2$9.toSides(geometry);
-  if (shapeSides.length === 0)
-    throw new Error("the given geometry cannot be empty");
-  const pointsWithPositiveX = shapeSides.filter((s) => s[0][0] >= 0);
-  let baseSlice = slice.fromSides(shapeSides);
-  if (pointsWithPositiveX.length === 0) {
-    baseSlice = slice.reverse(baseSlice);
-  }
-  const calculatedSegments = Math.round(segmentsPerRotation / TAU * Math.abs(angle2));
-  const segments = calculatedSegments >= 2 ? calculatedSegments : 2;
-  const step1 = mat4$2.create();
-  let matrix;
-  const sliceCallback = (progress, index, base) => {
-    const zRotation = startAngle + angle2 / segments * index;
-    const xOffset = endOffset / segments * index;
-    const zOffset = (zRotation - startAngle) / TAU * pitch;
-    mat4$2.multiply(
-      step1,
-      // then apply offsets
-      mat4$2.fromTranslation(mat4$2.create(), [xOffset, 0, zOffset * Math.sign(angle2)]),
-      // first rotate "flat" 2D shape from XY to XZ plane
-      mat4$2.fromXRotation(mat4$2.create(), -TAU / 4 * Math.sign(angle2))
-      // rotate the slice correctly to not create inside-out polygon
-    );
-    matrix = mat4$2.create();
-    mat4$2.multiply(
-      matrix,
-      // finally rotate around Z axis
-      mat4$2.fromZRotation(mat4$2.create(), zRotation),
-      step1
-    );
-    return slice.transform(matrix, base);
-  };
-  return extrudeFromSlices(
-    {
-      // "base" slice is counted as segment, so add one for complete final rotation
-      numberOfSlices: segments + 1,
-      callback: sliceCallback
-    },
-    baseSlice
-  );
-};
-var extrudeHelical_1 = extrudeHelical;
-const flatten$b = flatten_1;
-const aboutEqualNormals$1 = aboutEqualNormals_1;
-const plane = plane$b;
-const mat4$1 = mat4$r;
-const geom2$8 = geom2$K;
-const geom3$8 = geom3$K;
-const poly3$5 = poly3$A;
-const measureEpsilon$2 = measureEpsilon_1;
-const unionGeom2 = unionGeom2$2;
-const projectGeom3 = (options, geometry) => {
-  const projplane = plane.fromNormalAndPoint(plane.create(), options.axis, options.origin);
-  if (Number.isNaN(projplane[0]) || Number.isNaN(projplane[1]) || Number.isNaN(projplane[2]) || Number.isNaN(projplane[3])) {
-    throw new Error("project: invalid axis or origin");
-  }
-  const epsilon = measureEpsilon$2(geometry);
-  const epsilonArea = epsilon * epsilon * Math.sqrt(3) / 4;
-  if (epsilon === 0)
-    return geom2$8.create();
-  const polygons = geom3$8.toPolygons(geometry);
-  let projpolys = [];
-  for (let i = 0; i < polygons.length; i++) {
-    const newpoints = polygons[i].vertices.map((v) => plane.projectionOfPoint(projplane, v));
-    const newpoly = poly3$5.create(newpoints);
-    const newplane = poly3$5.plane(newpoly);
-    if (!aboutEqualNormals$1(projplane, newplane))
-      continue;
-    if (poly3$5.measureArea(newpoly) < epsilonArea)
-      continue;
-    projpolys.push(newpoly);
-  }
-  if (!aboutEqualNormals$1(projplane, [0, 0, 1])) {
-    const rotation = mat4$1.fromVectorRotation(mat4$1.create(), projplane, [0, 0, 1]);
-    projpolys = projpolys.map((p) => poly3$5.transform(rotation, p));
-  }
-  projpolys = projpolys.sort((a, b) => poly3$5.measureArea(b) - poly3$5.measureArea(a));
-  const projgeoms = projpolys.map((p) => geom2$8.fromPoints(p.vertices));
-  return unionGeom2(projgeoms);
-};
-const project$1 = (options, ...objects) => {
-  const defaults = {
-    axis: [0, 0, 1],
-    // Z axis
-    origin: [0, 0, 0]
-  };
-  const { axis, origin: origin2 } = Object.assign({}, defaults, options);
-  objects = flatten$b(objects);
-  if (objects.length === 0)
-    throw new Error("wrong number of arguments");
-  options = { axis, origin: origin2 };
-  const results = objects.map((object) => {
-    if (geom3$8.isA(object))
-      return projectGeom3(options, object);
-    return object;
-  });
-  return results.length === 1 ? results[0] : results;
-};
-var project_1 = project$1;
-var extrusions = {
-  extrudeFromSlices: extrudeFromSlices_1,
-  extrudeLinear: extrudeLinear_1,
-  extrudeRectangular: extrudeRectangular_1,
-  extrudeRotate: extrudeRotate_1,
-  extrudeHelical: extrudeHelical_1,
-  project: project_1,
-  slice: slice$5
-};
-const vec2$1 = vec2$E;
-const hullPoints2$2 = (uniquePoints) => {
-  let min2 = vec2$1.fromValues(Infinity, Infinity);
-  uniquePoints.forEach((point) => {
-    if (point[1] < min2[1] || point[1] === min2[1] && point[0] < min2[0]) {
-      min2 = point;
-    }
-  });
-  const points = [];
-  uniquePoints.forEach((point) => {
-    const angle2 = fakeAtan2(point[1] - min2[1], point[0] - min2[0]);
-    const distSq = vec2$1.squaredDistance(point, min2);
-    points.push({ point, angle: angle2, distSq });
-  });
-  points.sort((pt1, pt2) => pt1.angle < pt2.angle ? -1 : pt1.angle > pt2.angle ? 1 : pt1.distSq < pt2.distSq ? -1 : pt1.distSq > pt2.distSq ? 1 : 0);
-  const stack = [];
-  points.forEach((point) => {
-    let cnt = stack.length;
-    while (cnt > 1 && ccw(stack[cnt - 2], stack[cnt - 1], point.point) <= Number.EPSILON) {
-      stack.pop();
-      cnt = stack.length;
-    }
-    stack.push(point.point);
-  });
-  return stack;
-};
-const ccw = (v12, v22, v3) => (v22[0] - v12[0]) * (v3[1] - v12[1]) - (v22[1] - v12[1]) * (v3[0] - v12[0]);
-const fakeAtan2 = (y, x) => {
-  if (y === 0 && x === 0) {
-    return -Infinity;
-  } else {
-    return -x / y;
-  }
-};
-var hullPoints2_1 = hullPoints2$2;
-const geom2$7 = geom2$K;
-const geom3$7 = geom3$K;
-const path2$7 = path2$u;
-const toUniquePoints$3 = (geometries2) => {
-  const found = /* @__PURE__ */ new Set();
-  const uniquePoints = [];
-  const addPoint = (point) => {
-    const key = point.toString();
-    if (!found.has(key)) {
-      uniquePoints.push(point);
-      found.add(key);
-    }
-  };
-  geometries2.forEach((geometry) => {
-    if (geom2$7.isA(geometry)) {
-      geom2$7.toPoints(geometry).forEach(addPoint);
-    } else if (geom3$7.isA(geometry)) {
-      geom3$7.toPoints(geometry).forEach((points) => points.forEach(addPoint));
-    } else if (path2$7.isA(geometry)) {
-      path2$7.toPoints(geometry).forEach(addPoint);
-    }
-  });
-  return uniquePoints;
-};
-var toUniquePoints_1 = toUniquePoints$3;
-const flatten$a = flatten_1;
-const path2$6 = path2$u;
-const hullPoints2$1 = hullPoints2_1;
-const toUniquePoints$2 = toUniquePoints_1;
-const hullPath2$1 = (...geometries2) => {
-  geometries2 = flatten$a(geometries2);
-  const unique = toUniquePoints$2(geometries2);
-  const hullPoints = hullPoints2$1(unique);
-  return path2$6.fromPoints({ closed: true }, hullPoints);
-};
-var hullPath2_1 = hullPath2$1;
-const flatten$9 = flatten_1;
-const geom2$6 = geom2$K;
-const hullPoints2 = hullPoints2_1;
-const toUniquePoints$1 = toUniquePoints_1;
-const hullGeom2$1 = (...geometries2) => {
-  geometries2 = flatten$9(geometries2);
-  const unique = toUniquePoints$1(geometries2);
-  const hullPoints = hullPoints2(unique);
-  if (hullPoints.length < 3)
-    return geom2$6.create();
-  return geom2$6.fromPoints(hullPoints);
-};
-var hullGeom2_1 = hullGeom2$1;
-const cross$2 = cross_1$1;
-const subtract$2 = subtract_1$3;
-const squaredLength = squaredLength_1$1;
-const distanceSquared = (p, a, b) => {
-  const ab = [];
-  const ap = [];
-  const cr = [];
-  subtract$2(ab, b, a);
-  subtract$2(ap, p, a);
-  const area2 = squaredLength(cross$2(cr, ap, ab));
-  const s = squaredLength(ab);
-  if (s === 0) {
-    throw Error("a and b are the same point");
-  }
-  return area2 / s;
-};
-const pointLineDistance$1 = (point, a, b) => Math.sqrt(distanceSquared(point, a, b));
-var pointLineDistance_1 = pointLineDistance$1;
-const cross$1 = cross_1$1;
-const normalize$1 = normalize_1$1;
-const subtract$1 = subtract_1$3;
-const planeNormal = (out, point1, point2, point3) => {
-  const tmp2 = [0, 0, 0];
-  subtract$1(out, point1, point2);
-  subtract$1(tmp2, point2, point3);
-  cross$1(out, out, tmp2);
-  return normalize$1(out, out);
-};
-var getPlaneNormal$1 = planeNormal;
-let VertexList$1 = class VertexList {
-  constructor() {
-    this.head = null;
-    this.tail = null;
-  }
-  clear() {
-    this.head = this.tail = null;
-  }
-  /**
-   * Inserts a `node` before `target`, it's assumed that
-   * `target` belongs to this doubly linked list
-   *
-   * @param {*} target
-   * @param {*} node
-   */
-  insertBefore(target, node) {
-    node.prev = target.prev;
-    node.next = target;
-    if (!node.prev) {
-      this.head = node;
-    } else {
-      node.prev.next = node;
-    }
-    target.prev = node;
-  }
-  /**
-   * Inserts a `node` after `target`, it's assumed that
-   * `target` belongs to this doubly linked list
-   *
-   * @param {Vertex} target
-   * @param {Vertex} node
-   */
-  insertAfter(target, node) {
-    node.prev = target;
-    node.next = target.next;
-    if (!node.next) {
-      this.tail = node;
-    } else {
-      node.next.prev = node;
-    }
-    target.next = node;
-  }
-  /**
-   * Appends a `node` to the end of this doubly linked list
-   * Note: `node.next` will be unlinked from `node`
-   * Note: if `node` is part of another linked list call `addAll` instead
-   *
-   * @param {*} node
-   */
-  add(node) {
-    if (!this.head) {
-      this.head = node;
-    } else {
-      this.tail.next = node;
-    }
-    node.prev = this.tail;
-    node.next = null;
-    this.tail = node;
-  }
-  /**
-   * Appends a chain of nodes where `node` is the head,
-   * the difference with `add` is that it correctly sets the position
-   * of the node list `tail` property
-   *
-   * @param {*} node
-   */
-  addAll(node) {
-    if (!this.head) {
-      this.head = node;
-    } else {
-      this.tail.next = node;
-    }
-    node.prev = this.tail;
-    while (node.next) {
-      node = node.next;
-    }
-    this.tail = node;
-  }
-  /**
-   * Deletes a `node` from this linked list, it's assumed that `node` is a
-   * member of this linked list
-   *
-   * @param {*} node
-   */
-  remove(node) {
-    if (!node.prev) {
-      this.head = node.next;
-    } else {
-      node.prev.next = node.next;
-    }
-    if (!node.next) {
-      this.tail = node.prev;
-    } else {
-      node.next.prev = node.prev;
-    }
-  }
-  /**
-   * Removes a chain of nodes whose head is `a` and whose tail is `b`,
-   * it's assumed that `a` and `b` belong to this list and also that `a`
-   * comes before `b` in the linked list
-   *
-   * @param {*} a
-   * @param {*} b
-   */
-  removeChain(a, b) {
-    if (!a.prev) {
-      this.head = b.next;
-    } else {
-      a.prev.next = b.next;
-    }
-    if (!b.next) {
-      this.tail = a.prev;
-    } else {
-      b.next.prev = a.prev;
-    }
-  }
-  first() {
-    return this.head;
-  }
-  isEmpty() {
-    return !this.head;
-  }
-};
-var VertexList_1 = VertexList$1;
-let Vertex$1 = class Vertex {
-  constructor(point, index) {
-    this.point = point;
-    this.index = index;
-    this.next = null;
-    this.prev = null;
-    this.face = null;
-  }
-};
-var Vertex_1 = Vertex$1;
-const distance = distance_1$1;
-const squaredDistance = squaredDistance_1$1;
-let HalfEdge$1 = class HalfEdge {
-  constructor(vertex2, face) {
-    this.vertex = vertex2;
-    this.face = face;
-    this.next = null;
-    this.prev = null;
-    this.opposite = null;
-  }
-  head() {
-    return this.vertex;
-  }
-  tail() {
-    return this.prev ? this.prev.vertex : null;
-  }
-  length() {
-    if (this.tail()) {
-      return distance(
-        this.tail().point,
-        this.head().point
-      );
-    }
-    return -1;
-  }
-  lengthSquared() {
-    if (this.tail()) {
-      return squaredDistance(
-        this.tail().point,
-        this.head().point
-      );
-    }
-    return -1;
-  }
-  setOpposite(edge) {
-    this.opposite = edge;
-    edge.opposite = this;
-  }
-};
-var HalfEdge_1 = HalfEdge$1;
-const add = add_1$1;
-const copy = copy_1$4;
-const cross = cross_1$1;
-const dot$1 = dot_1$2;
-const length = length_1$1;
-const normalize = normalize_1$1;
-const scale$2 = scale_1$3;
-const subtract = subtract_1$3;
-const HalfEdge2 = HalfEdge_1;
-const VISIBLE$1 = 0;
-const NON_CONVEX$1 = 1;
-const DELETED$1 = 2;
-let Face$1 = class Face {
-  constructor() {
-    this.normal = [];
-    this.centroid = [];
-    this.offset = 0;
-    this.outside = null;
-    this.mark = VISIBLE$1;
-    this.edge = null;
-    this.nVertices = 0;
-  }
-  getEdge(i) {
-    if (typeof i !== "number") {
-      throw Error("requires a number");
-    }
-    let it = this.edge;
-    while (i > 0) {
-      it = it.next;
-      i -= 1;
-    }
-    while (i < 0) {
-      it = it.prev;
-      i += 1;
-    }
-    return it;
-  }
-  computeNormal() {
-    const e0 = this.edge;
-    const e1 = e0.next;
-    let e2 = e1.next;
-    const v22 = subtract([], e1.head().point, e0.head().point);
-    const t = [];
-    const v12 = [];
-    this.nVertices = 2;
-    this.normal = [0, 0, 0];
-    while (e2 !== e0) {
-      copy(v12, v22);
-      subtract(v22, e2.head().point, e0.head().point);
-      add(this.normal, this.normal, cross(t, v12, v22));
-      e2 = e2.next;
-      this.nVertices += 1;
-    }
-    this.area = length(this.normal);
-    this.normal = scale$2(this.normal, this.normal, 1 / this.area);
-  }
-  computeNormalMinArea(minArea) {
-    this.computeNormal();
-    if (this.area < minArea) {
-      let maxEdge;
-      let maxSquaredLength = 0;
-      let edge = this.edge;
-      do {
-        const lengthSquared = edge.lengthSquared();
-        if (lengthSquared > maxSquaredLength) {
-          maxEdge = edge;
-          maxSquaredLength = lengthSquared;
-        }
-        edge = edge.next;
-      } while (edge !== this.edge);
-      const p1 = maxEdge.tail().point;
-      const p2 = maxEdge.head().point;
-      const maxVector = subtract([], p2, p1);
-      const maxLength = Math.sqrt(maxSquaredLength);
-      scale$2(maxVector, maxVector, 1 / maxLength);
-      const maxProjection = dot$1(this.normal, maxVector);
-      scale$2(maxVector, maxVector, -maxProjection);
-      add(this.normal, this.normal, maxVector);
-      normalize(this.normal, this.normal);
-    }
-  }
-  computeCentroid() {
-    this.centroid = [0, 0, 0];
-    let edge = this.edge;
-    do {
-      add(this.centroid, this.centroid, edge.head().point);
-      edge = edge.next;
-    } while (edge !== this.edge);
-    scale$2(this.centroid, this.centroid, 1 / this.nVertices);
-  }
-  computeNormalAndCentroid(minArea) {
-    if (typeof minArea !== "undefined") {
-      this.computeNormalMinArea(minArea);
-    } else {
-      this.computeNormal();
-    }
-    this.computeCentroid();
-    this.offset = dot$1(this.normal, this.centroid);
-  }
-  distanceToPlane(point) {
-    return dot$1(this.normal, point) - this.offset;
-  }
-  /**
-   * @private
-   *
-   * Connects two edges assuming that prev.head().point === next.tail().point
-   *
-   * @param {HalfEdge} prev
-   * @param {HalfEdge} next
-   */
-  connectHalfEdges(prev, next) {
-    let discardedFace;
-    if (prev.opposite.face === next.opposite.face) {
-      const oppositeFace = next.opposite.face;
-      let oppositeEdge;
-      if (prev === this.edge) {
-        this.edge = next;
-      }
-      if (oppositeFace.nVertices === 3) {
-        oppositeEdge = next.opposite.prev.opposite;
-        oppositeFace.mark = DELETED$1;
-        discardedFace = oppositeFace;
-      } else {
-        oppositeEdge = next.opposite.next;
-        if (oppositeFace.edge === oppositeEdge.prev) {
-          oppositeFace.edge = oppositeEdge;
-        }
-        oppositeEdge.prev = oppositeEdge.prev.prev;
-        oppositeEdge.prev.next = oppositeEdge;
-      }
-      next.prev = prev.prev;
-      next.prev.next = next;
-      next.setOpposite(oppositeEdge);
-      oppositeFace.computeNormalAndCentroid();
-    } else {
-      prev.next = next;
-      next.prev = prev;
-    }
-    return discardedFace;
-  }
-  mergeAdjacentFaces(adjacentEdge, discardedFaces) {
-    const oppositeEdge = adjacentEdge.opposite;
-    const oppositeFace = oppositeEdge.face;
-    discardedFaces.push(oppositeFace);
-    oppositeFace.mark = DELETED$1;
-    let adjacentEdgePrev = adjacentEdge.prev;
-    let adjacentEdgeNext = adjacentEdge.next;
-    let oppositeEdgePrev = oppositeEdge.prev;
-    let oppositeEdgeNext = oppositeEdge.next;
-    while (adjacentEdgePrev.opposite.face === oppositeFace) {
-      adjacentEdgePrev = adjacentEdgePrev.prev;
-      oppositeEdgeNext = oppositeEdgeNext.next;
-    }
-    while (adjacentEdgeNext.opposite.face === oppositeFace) {
-      adjacentEdgeNext = adjacentEdgeNext.next;
-      oppositeEdgePrev = oppositeEdgePrev.prev;
-    }
-    let edge;
-    for (edge = oppositeEdgeNext; edge !== oppositeEdgePrev.next; edge = edge.next) {
-      edge.face = this;
-    }
-    this.edge = adjacentEdgeNext;
-    let discardedFace;
-    discardedFace = this.connectHalfEdges(oppositeEdgePrev, adjacentEdgeNext);
-    if (discardedFace) {
-      discardedFaces.push(discardedFace);
-    }
-    discardedFace = this.connectHalfEdges(adjacentEdgePrev, oppositeEdgeNext);
-    if (discardedFace) {
-      discardedFaces.push(discardedFace);
-    }
-    this.computeNormalAndCentroid();
-    return discardedFaces;
-  }
-  collectIndices() {
-    const indices = [];
-    let edge = this.edge;
-    do {
-      indices.push(edge.head().index);
-      edge = edge.next;
-    } while (edge !== this.edge);
-    return indices;
-  }
-  static createTriangle(v0, v12, v22, minArea = 0) {
-    const face = new Face();
-    const e0 = new HalfEdge2(v0, face);
-    const e1 = new HalfEdge2(v12, face);
-    const e2 = new HalfEdge2(v22, face);
-    e0.next = e2.prev = e1;
-    e1.next = e0.prev = e2;
-    e2.next = e1.prev = e0;
-    face.edge = e0;
-    face.computeNormalAndCentroid(minArea);
-    return face;
-  }
-};
-var Face_1 = {
-  VISIBLE: VISIBLE$1,
-  NON_CONVEX: NON_CONVEX$1,
-  DELETED: DELETED$1,
-  Face: Face$1
-};
-const dot = dot_1$2;
-const pointLineDistance = pointLineDistance_1;
-const getPlaneNormal = getPlaneNormal$1;
-const VertexList2 = VertexList_1;
-const Vertex2 = Vertex_1;
-const { Face: Face2, VISIBLE, NON_CONVEX, DELETED } = Face_1;
-const MERGE_NON_CONVEX_WRT_LARGER_FACE = 1;
-const MERGE_NON_CONVEX = 2;
-let QuickHull$1 = class QuickHull {
-  constructor(points) {
-    if (!Array.isArray(points)) {
-      throw TypeError("input is not a valid array");
-    }
-    if (points.length < 4) {
-      throw Error("cannot build a simplex out of <4 points");
-    }
-    this.tolerance = -1;
-    this.nFaces = 0;
-    this.nPoints = points.length;
-    this.faces = [];
-    this.newFaces = [];
-    this.claimed = new VertexList2();
-    this.unclaimed = new VertexList2();
-    this.vertices = [];
-    for (let i = 0; i < points.length; i += 1) {
-      this.vertices.push(new Vertex2(points[i], i));
-    }
-    this.discardedFaces = [];
-    this.vertexPointIndices = [];
-  }
-  addVertexToFace(vertex2, face) {
-    vertex2.face = face;
-    if (!face.outside) {
-      this.claimed.add(vertex2);
-    } else {
-      this.claimed.insertBefore(face.outside, vertex2);
-    }
-    face.outside = vertex2;
-  }
-  /**
-   * Removes `vertex` for the `claimed` list of vertices, it also makes sure
-   * that the link from `face` to the first vertex it sees in `claimed` is
-   * linked correctly after the removal
-   *
-   * @param {Vertex} vertex
-   * @param {Face} face
-   */
-  removeVertexFromFace(vertex2, face) {
-    if (vertex2 === face.outside) {
-      if (vertex2.next && vertex2.next.face === face) {
-        face.outside = vertex2.next;
-      } else {
-        face.outside = null;
-      }
-    }
-    this.claimed.remove(vertex2);
-  }
-  /**
-   * Removes all the visible vertices that `face` is able to see which are
-   * stored in the `claimed` vertext list
-   *
-   * @param {Face} face
-   * @return {Vertex|undefined} If face had visible vertices returns
-   * `face.outside`, otherwise undefined
-   */
-  removeAllVerticesFromFace(face) {
-    if (face.outside) {
-      let end = face.outside;
-      while (end.next && end.next.face === face) {
-        end = end.next;
-      }
-      this.claimed.removeChain(face.outside, end);
-      end.next = null;
-      return face.outside;
-    }
-  }
-  /**
-   * Removes all the visible vertices that `face` is able to see, additionally
-   * checking the following:
-   *
-   * If `absorbingFace` doesn't exist then all the removed vertices will be
-   * added to the `unclaimed` vertex list
-   *
-   * If `absorbingFace` exists then this method will assign all the vertices of
-   * `face` that can see `absorbingFace`, if a vertex cannot see `absorbingFace`
-   * it's added to the `unclaimed` vertex list
-   *
-   * @param {Face} face
-   * @param {Face} [absorbingFace]
-   */
-  deleteFaceVertices(face, absorbingFace) {
-    const faceVertices = this.removeAllVerticesFromFace(face);
-    if (faceVertices) {
-      if (!absorbingFace) {
-        this.unclaimed.addAll(faceVertices);
-      } else {
-        let nextVertex;
-        for (let vertex2 = faceVertices; vertex2; vertex2 = nextVertex) {
-          nextVertex = vertex2.next;
-          const distance2 = absorbingFace.distanceToPlane(vertex2.point);
-          if (distance2 > this.tolerance) {
-            this.addVertexToFace(vertex2, absorbingFace);
-          } else {
-            this.unclaimed.add(vertex2);
-          }
-        }
-      }
-    }
-  }
-  /**
-   * Reassigns as many vertices as possible from the unclaimed list to the new
-   * faces
-   *
-   * @param {Faces[]} newFaces
-   */
-  resolveUnclaimedPoints(newFaces) {
-    let vertexNext = this.unclaimed.first();
-    for (let vertex2 = vertexNext; vertex2; vertex2 = vertexNext) {
-      vertexNext = vertex2.next;
-      let maxDistance = this.tolerance;
-      let maxFace;
-      for (let i = 0; i < newFaces.length; i += 1) {
-        const face = newFaces[i];
-        if (face.mark === VISIBLE) {
-          const dist = face.distanceToPlane(vertex2.point);
-          if (dist > maxDistance) {
-            maxDistance = dist;
-            maxFace = face;
-          }
-          if (maxDistance > 1e3 * this.tolerance) {
-            break;
-          }
-        }
-      }
-      if (maxFace) {
-        this.addVertexToFace(vertex2, maxFace);
-      }
-    }
-  }
-  /**
-   * Computes the extremes of a tetrahedron which will be the initial hull
-   *
-   * @return {number[]} The min/max vertices in the x,y,z directions
-   */
-  computeExtremes() {
-    const min2 = [];
-    const max2 = [];
-    const minVertices = [];
-    const maxVertices = [];
-    let i, j;
-    for (i = 0; i < 3; i += 1) {
-      minVertices[i] = maxVertices[i] = this.vertices[0];
-    }
-    for (i = 0; i < 3; i += 1) {
-      min2[i] = max2[i] = this.vertices[0].point[i];
-    }
-    for (i = 1; i < this.vertices.length; i += 1) {
-      const vertex2 = this.vertices[i];
-      const point = vertex2.point;
-      for (j = 0; j < 3; j += 1) {
-        if (point[j] < min2[j]) {
-          min2[j] = point[j];
-          minVertices[j] = vertex2;
-        }
-      }
-      for (j = 0; j < 3; j += 1) {
-        if (point[j] > max2[j]) {
-          max2[j] = point[j];
-          maxVertices[j] = vertex2;
-        }
-      }
-    }
-    this.tolerance = 3 * Number.EPSILON * (Math.max(Math.abs(min2[0]), Math.abs(max2[0])) + Math.max(Math.abs(min2[1]), Math.abs(max2[1])) + Math.max(Math.abs(min2[2]), Math.abs(max2[2])));
-    return [minVertices, maxVertices];
-  }
-  /**
-   * Compues the initial tetrahedron assigning to its faces all the points that
-   * are candidates to form part of the hull
-   */
-  createInitialSimplex() {
-    const vertices = this.vertices;
-    const [min2, max2] = this.computeExtremes();
-    let v22, v3;
-    let i, j;
-    let maxDistance = 0;
-    let indexMax = 0;
-    for (i = 0; i < 3; i += 1) {
-      const distance2 = max2[i].point[i] - min2[i].point[i];
-      if (distance2 > maxDistance) {
-        maxDistance = distance2;
-        indexMax = i;
-      }
-    }
-    const v0 = min2[indexMax];
-    const v12 = max2[indexMax];
-    maxDistance = 0;
-    for (i = 0; i < this.vertices.length; i += 1) {
-      const vertex2 = this.vertices[i];
-      if (vertex2 !== v0 && vertex2 !== v12) {
-        const distance2 = pointLineDistance(
-          vertex2.point,
-          v0.point,
-          v12.point
-        );
-        if (distance2 > maxDistance) {
-          maxDistance = distance2;
-          v22 = vertex2;
-        }
-      }
-    }
-    const normal2 = getPlaneNormal([], v0.point, v12.point, v22.point);
-    const distPO = dot(v0.point, normal2);
-    maxDistance = -1;
-    for (i = 0; i < this.vertices.length; i += 1) {
-      const vertex2 = this.vertices[i];
-      if (vertex2 !== v0 && vertex2 !== v12 && vertex2 !== v22) {
-        const distance2 = Math.abs(dot(normal2, vertex2.point) - distPO);
-        if (distance2 > maxDistance) {
-          maxDistance = distance2;
-          v3 = vertex2;
-        }
-      }
-    }
-    const faces = [];
-    if (dot(v3.point, normal2) - distPO < 0) {
-      faces.push(
-        Face2.createTriangle(v0, v12, v22),
-        Face2.createTriangle(v3, v12, v0),
-        Face2.createTriangle(v3, v22, v12),
-        Face2.createTriangle(v3, v0, v22)
-      );
-      for (i = 0; i < 3; i += 1) {
-        const j2 = (i + 1) % 3;
-        faces[i + 1].getEdge(2).setOpposite(faces[0].getEdge(j2));
-        faces[i + 1].getEdge(1).setOpposite(faces[j2 + 1].getEdge(0));
-      }
-    } else {
-      faces.push(
-        Face2.createTriangle(v0, v22, v12),
-        Face2.createTriangle(v3, v0, v12),
-        Face2.createTriangle(v3, v12, v22),
-        Face2.createTriangle(v3, v22, v0)
-      );
-      for (i = 0; i < 3; i += 1) {
-        const j2 = (i + 1) % 3;
-        faces[i + 1].getEdge(2).setOpposite(faces[0].getEdge((3 - i) % 3));
-        faces[i + 1].getEdge(0).setOpposite(faces[j2 + 1].getEdge(1));
-      }
-    }
-    for (i = 0; i < 4; i += 1) {
-      this.faces.push(faces[i]);
-    }
-    for (i = 0; i < vertices.length; i += 1) {
-      const vertex2 = vertices[i];
-      if (vertex2 !== v0 && vertex2 !== v12 && vertex2 !== v22 && vertex2 !== v3) {
-        maxDistance = this.tolerance;
-        let maxFace;
-        for (j = 0; j < 4; j += 1) {
-          const distance2 = faces[j].distanceToPlane(vertex2.point);
-          if (distance2 > maxDistance) {
-            maxDistance = distance2;
-            maxFace = faces[j];
-          }
-        }
-        if (maxFace) {
-          this.addVertexToFace(vertex2, maxFace);
-        }
-      }
-    }
-  }
-  reindexFaceAndVertices() {
-    const activeFaces = [];
-    for (let i = 0; i < this.faces.length; i += 1) {
-      const face = this.faces[i];
-      if (face.mark === VISIBLE) {
-        activeFaces.push(face);
-      }
-    }
-    this.faces = activeFaces;
-  }
-  collectFaces(skipTriangulation) {
-    const faceIndices = [];
-    for (let i = 0; i < this.faces.length; i += 1) {
-      if (this.faces[i].mark !== VISIBLE) {
-        throw Error("attempt to include a destroyed face in the hull");
-      }
-      const indices = this.faces[i].collectIndices();
-      if (skipTriangulation) {
-        faceIndices.push(indices);
-      } else {
-        for (let j = 0; j < indices.length - 2; j += 1) {
-          faceIndices.push(
-            [indices[0], indices[j + 1], indices[j + 2]]
-          );
-        }
-      }
-    }
-    return faceIndices;
-  }
-  /**
-   * Finds the next vertex to make faces with the current hull
-   *
-   * - let `face` be the first face existing in the `claimed` vertex list
-   *  - if `face` doesn't exist then return since there're no vertices left
-   *  - otherwise for each `vertex` that face sees find the one furthest away
-   *  from `face`
-   *
-   * @return {Vertex|undefined} Returns undefined when there're no more
-   * visible vertices
-   */
-  nextVertexToAdd() {
-    if (!this.claimed.isEmpty()) {
-      let eyeVertex, vertex2;
-      let maxDistance = 0;
-      const eyeFace = this.claimed.first().face;
-      for (vertex2 = eyeFace.outside; vertex2 && vertex2.face === eyeFace; vertex2 = vertex2.next) {
-        const distance2 = eyeFace.distanceToPlane(vertex2.point);
-        if (distance2 > maxDistance) {
-          maxDistance = distance2;
-          eyeVertex = vertex2;
-        }
-      }
-      return eyeVertex;
-    }
-  }
-  /**
-   * Computes a chain of half edges in ccw order called the `horizon`, for an
-   * edge to be part of the horizon it must join a face that can see
-   * `eyePoint` and a face that cannot see `eyePoint`
-   *
-   * @param {number[]} eyePoint - The coordinates of a point
-   * @param {HalfEdge} crossEdge - The edge used to jump to the current `face`
-   * @param {Face} face - The current face being tested
-   * @param {HalfEdge[]} horizon - The edges that form part of the horizon in
-   * ccw order
-   */
-  computeHorizon(eyePoint, crossEdge, face, horizon) {
-    this.deleteFaceVertices(face);
-    face.mark = DELETED;
-    let edge;
-    if (!crossEdge) {
-      edge = crossEdge = face.getEdge(0);
-    } else {
-      edge = crossEdge.next;
-    }
-    do {
-      const oppositeEdge = edge.opposite;
-      const oppositeFace = oppositeEdge.face;
-      if (oppositeFace.mark === VISIBLE) {
-        if (oppositeFace.distanceToPlane(eyePoint) > this.tolerance) {
-          this.computeHorizon(eyePoint, oppositeEdge, oppositeFace, horizon);
-        } else {
-          horizon.push(edge);
-        }
-      }
-      edge = edge.next;
-    } while (edge !== crossEdge);
-  }
-  /**
-   * Creates a face with the points `eyeVertex.point`, `horizonEdge.tail` and
-   * `horizonEdge.tail` in ccw order
-   *
-   * @param {Vertex} eyeVertex
-   * @param {HalfEdge} horizonEdge
-   * @return {HalfEdge} The half edge whose vertex is the eyeVertex
-   */
-  addAdjoiningFace(eyeVertex, horizonEdge) {
-    const face = Face2.createTriangle(
-      eyeVertex,
-      horizonEdge.tail(),
-      horizonEdge.head()
-    );
-    this.faces.push(face);
-    face.getEdge(-1).setOpposite(horizonEdge.opposite);
-    return face.getEdge(0);
-  }
-  /**
-   * Adds horizon.length faces to the hull, each face will be 'linked' with the
-   * horizon opposite face and the face on the left/right
-   *
-   * @param {Vertex} eyeVertex
-   * @param {HalfEdge[]} horizon - A chain of half edges in ccw order
-   */
-  addNewFaces(eyeVertex, horizon) {
-    this.newFaces = [];
-    let firstSideEdge, previousSideEdge;
-    for (let i = 0; i < horizon.length; i += 1) {
-      const horizonEdge = horizon[i];
-      const sideEdge = this.addAdjoiningFace(eyeVertex, horizonEdge);
-      if (!firstSideEdge) {
-        firstSideEdge = sideEdge;
-      } else {
-        sideEdge.next.setOpposite(previousSideEdge);
-      }
-      this.newFaces.push(sideEdge.face);
-      previousSideEdge = sideEdge;
-    }
-    firstSideEdge.next.setOpposite(previousSideEdge);
-  }
-  /**
-   * Computes the distance from `edge` opposite face's centroid to
-   * `edge.face`
-   *
-   * @param {HalfEdge} edge
-   * @return {number}
-   * - A positive number when the centroid of the opposite face is above the
-   *   face i.e. when the faces are concave
-   * - A negative number when the centroid of the opposite face is below the
-   *   face i.e. when the faces are convex
-   */
-  oppositeFaceDistance(edge) {
-    return edge.face.distanceToPlane(edge.opposite.face.centroid);
-  }
-  /**
-   * Merges a face with none/any/all its neighbors according to the strategy
-   * used
-   *
-   * if `mergeType` is MERGE_NON_CONVEX_WRT_LARGER_FACE then the merge will be
-   * decided based on the face with the larger area, the centroid of the face
-   * with the smaller area will be checked against the one with the larger area
-   * to see if it's in the merge range [tolerance, -tolerance] i.e.
-   *
-   *    dot(centroid smaller face, larger face normal) - larger face offset > -tolerance
-   *
-   * Note that the first check (with +tolerance) was done on `computeHorizon`
-   *
-   * If the above is not true then the check is done with respect to the smaller
-   * face i.e.
-   *
-   *    dot(centroid larger face, smaller face normal) - smaller face offset > -tolerance
-   *
-   * If true then it means that two faces are non convex (concave), even if the
-   * dot(...) - offset value is > 0 (that's the point of doing the merge in the
-   * first place)
-   *
-   * If two faces are concave then the check must also be done on the other face
-   * but this is done in another merge pass, for this to happen the face is
-   * marked in a temporal NON_CONVEX state
-   *
-   * if `mergeType` is MERGE_NON_CONVEX then two faces will be merged only if
-   * they pass the following conditions
-   *
-   *    dot(centroid smaller face, larger face normal) - larger face offset > -tolerance
-   *    dot(centroid larger face, smaller face normal) - smaller face offset > -tolerance
-   *
-   * @param {Face} face
-   * @param {number} mergeType - Either MERGE_NON_CONVEX_WRT_LARGER_FACE or
-   * MERGE_NON_CONVEX
-   */
-  doAdjacentMerge(face, mergeType) {
-    let edge = face.edge;
-    let convex = true;
-    let it = 0;
-    do {
-      if (it >= face.nVertices) {
-        throw Error("merge recursion limit exceeded");
-      }
-      const oppositeFace = edge.opposite.face;
-      let merge = false;
-      if (mergeType === MERGE_NON_CONVEX) {
-        if (this.oppositeFaceDistance(edge) > -this.tolerance || this.oppositeFaceDistance(edge.opposite) > -this.tolerance) {
-          merge = true;
-        }
-      } else {
-        if (face.area > oppositeFace.area) {
-          if (this.oppositeFaceDistance(edge) > -this.tolerance) {
-            merge = true;
-          } else if (this.oppositeFaceDistance(edge.opposite) > -this.tolerance) {
-            convex = false;
-          }
-        } else {
-          if (this.oppositeFaceDistance(edge.opposite) > -this.tolerance) {
-            merge = true;
-          } else if (this.oppositeFaceDistance(edge) > -this.tolerance) {
-            convex = false;
-          }
-        }
-      }
-      if (merge) {
-        const discardedFaces = face.mergeAdjacentFaces(edge, []);
-        for (let i = 0; i < discardedFaces.length; i += 1) {
-          this.deleteFaceVertices(discardedFaces[i], face);
-        }
-        return true;
-      }
-      edge = edge.next;
-      it += 1;
-    } while (edge !== face.edge);
-    if (!convex) {
-      face.mark = NON_CONVEX;
-    }
-    return false;
-  }
-  /**
-   * Adds a vertex to the hull with the following algorithm
-   *
-   * - Compute the `horizon` which is a chain of half edges, for an edge to
-   *   belong to this group it must be the edge connecting a face that can
-   *   see `eyeVertex` and a face which cannot see `eyeVertex`
-   * - All the faces that can see `eyeVertex` have its visible vertices removed
-   *   from the claimed VertexList
-   * - A new set of faces is created with each edge of the `horizon` and
-   *   `eyeVertex`, each face is connected with the opposite horizon face and
-   *   the face on the left/right
-   * - The new faces are merged if possible with the opposite horizon face first
-   *   and then the faces on the right/left
-   * - The vertices removed from all the visible faces are assigned to the new
-   *   faces if possible
-   *
-   * @param {Vertex} eyeVertex
-   */
-  addVertexToHull(eyeVertex) {
-    const horizon = [];
-    this.unclaimed.clear();
-    this.removeVertexFromFace(eyeVertex, eyeVertex.face);
-    this.computeHorizon(eyeVertex.point, null, eyeVertex.face, horizon);
-    this.addNewFaces(eyeVertex, horizon);
-    for (let i = 0; i < this.newFaces.length; i += 1) {
-      const face = this.newFaces[i];
-      if (face.mark === VISIBLE) {
-        while (this.doAdjacentMerge(face, MERGE_NON_CONVEX_WRT_LARGER_FACE)) {
-        }
-      }
-    }
-    for (let i = 0; i < this.newFaces.length; i += 1) {
-      const face = this.newFaces[i];
-      if (face.mark === NON_CONVEX) {
-        face.mark = VISIBLE;
-        while (this.doAdjacentMerge(face, MERGE_NON_CONVEX)) {
-        }
-      }
-    }
-    this.resolveUnclaimedPoints(this.newFaces);
-  }
-  build() {
-    let eyeVertex;
-    this.createInitialSimplex();
-    while (eyeVertex = this.nextVertexToAdd()) {
-      this.addVertexToHull(eyeVertex);
-    }
-    this.reindexFaceAndVertices();
-  }
-};
-var QuickHull_1 = QuickHull$1;
-const QuickHull2 = QuickHull_1;
-const runner = (points, options = {}) => {
-  const instance = new QuickHull2(points);
-  instance.build();
-  return instance.collectFaces(options.skipTriangulation);
-};
-var quickhull$1 = runner;
-const flatten$8 = flatten_1;
-const geom3$6 = geom3$K;
-const poly3$4 = poly3$A;
-const quickhull = quickhull$1;
-const toUniquePoints = toUniquePoints_1;
-const hullGeom3$1 = (...geometries2) => {
-  geometries2 = flatten$8(geometries2);
-  if (geometries2.length === 1)
-    return geometries2[0];
-  const unique = toUniquePoints(geometries2);
-  const faces = quickhull(unique, { skipTriangulation: true });
-  const polygons = faces.map((face) => {
-    const vertices = face.map((index) => unique[index]);
-    return poly3$4.create(vertices);
-  });
-  return geom3$6.create(polygons);
-};
-var hullGeom3_1 = hullGeom3$1;
-const flatten$7 = flatten_1;
-const areAllShapesTheSameType = areAllShapesTheSameType_1;
-const geom2$5 = geom2$K;
-const geom3$5 = geom3$K;
-const path2$5 = path2$u;
-const hullPath2 = hullPath2_1;
-const hullGeom2 = hullGeom2_1;
-const hullGeom3 = hullGeom3_1;
-const hull$1 = (...geometries2) => {
-  geometries2 = flatten$7(geometries2);
-  if (geometries2.length === 0)
-    throw new Error("wrong number of arguments");
-  if (!areAllShapesTheSameType(geometries2)) {
-    throw new Error("only hulls of the same type are supported");
-  }
-  const geometry = geometries2[0];
-  if (path2$5.isA(geometry))
-    return hullPath2(geometries2);
-  if (geom2$5.isA(geometry))
-    return hullGeom2(geometries2);
-  if (geom3$5.isA(geometry))
-    return hullGeom3(geometries2);
-  return geometry;
-};
-var hull_1 = hull$1;
-const flatten$6 = flatten_1;
-const union = union_1;
-const hull = hull_1;
-const hullChain = (...geometries2) => {
-  geometries2 = flatten$6(geometries2);
-  if (geometries2.length < 2)
-    throw new Error("wrong number of arguments");
-  const hulls2 = [];
-  for (let i = 1; i < geometries2.length; i++) {
-    hulls2.push(hull(geometries2[i - 1], geometries2[i]));
-  }
-  return union(hulls2);
-};
-var hullChain_1 = hullChain;
-var hulls = {
-  hull: hull_1,
-  hullChain: hullChain_1
-};
-const vec3$3 = vec3$Y;
-const poly3$3 = poly3$A;
-const isValidPoly3 = (epsilon, polygon2) => {
-  const area2 = Math.abs(poly3$3.measureArea(polygon2));
+const extrudeLinear$1 = /* @__PURE__ */ getDefaultExportFromCjs(extrudeLinear_1);
+const vec3$3 = vec3$C;
+const poly3$3 = poly3$m;
+const isValidPoly3 = (epsilon, polygon) => {
+  const area2 = Math.abs(poly3$3.measureArea(polygon));
   return Number.isFinite(area2) && area2 > epsilon;
 };
-const snapPolygons$2 = (epsilon, polygons) => {
-  let newpolygons = polygons.map((polygon2) => {
-    const snapvertices = polygon2.vertices.map((vertice) => vec3$3.snap(vec3$3.create(), vertice, epsilon));
+const snapPolygons$1 = (epsilon, polygons) => {
+  let newpolygons = polygons.map((polygon) => {
+    const snapvertices = polygon.vertices.map((vertice) => vec3$3.snap(vec3$3.create(), vertice, epsilon));
     const newvertices = [];
     for (let i = 0; i < snapvertices.length; i++) {
       const j = (i + 1) % snapvertices.length;
@@ -31734,20 +27362,20 @@ const snapPolygons$2 = (epsilon, polygons) => {
         newvertices.push(snapvertices[i]);
     }
     const newpolygon = poly3$3.create(newvertices);
-    if (polygon2.color)
-      newpolygon.color = polygon2.color;
+    if (polygon.color)
+      newpolygon.color = polygon.color;
     return newpolygon;
   });
   const epsilonArea = epsilon * epsilon * Math.sqrt(3) / 4;
-  newpolygons = newpolygons.filter((polygon2) => isValidPoly3(epsilonArea, polygon2));
+  newpolygons = newpolygons.filter((polygon) => isValidPoly3(epsilonArea, polygon));
   return newpolygons;
 };
-var snapPolygons_1 = snapPolygons$2;
+var snapPolygons_1 = snapPolygons$1;
 const aboutEqualNormals = aboutEqualNormals_1;
-const vec3$2 = vec3$Y;
-const poly3$2 = poly3$A;
-const createEdges = (polygon2) => {
-  const points = poly3$2.toPoints(polygon2);
+const vec3$2 = vec3$C;
+const poly3$2 = poly3$m;
+const createEdges = (polygon) => {
+  const points = poly3$2.toPoints(polygon);
   const edges = [];
   for (let i = 0; i < points.length; i++) {
     const j = (i + 1) % points.length;
@@ -31796,7 +27424,7 @@ const calculateAngle = (prevpoint, point, nextpoint, normal2) => {
   return vec3$2.dot(d0, normal2);
 };
 const createPolygonAnd = (edge) => {
-  let polygon2;
+  let polygon;
   const points = [];
   while (edge.next) {
     const next = edge.next;
@@ -31808,8 +27436,8 @@ const createPolygonAnd = (edge) => {
     edge = next;
   }
   if (points.length > 0)
-    polygon2 = poly3$2.create(points);
-  return polygon2;
+    polygon = poly3$2.create(points);
+  return polygon;
 };
 const mergeCoplanarPolygons = (sourcepolygons) => {
   if (sourcepolygons.length < 2)
@@ -31818,8 +27446,8 @@ const mergeCoplanarPolygons = (sourcepolygons) => {
   const polygons = sourcepolygons.slice();
   const edgeList = /* @__PURE__ */ new Map();
   while (polygons.length > 0) {
-    const polygon2 = polygons.shift();
-    const edges = createEdges(polygon2);
+    const polygon = polygons.shift();
+    const edges = createEdges(polygon);
     for (let i = 0; i < edges.length; i++) {
       const current = edges[i];
       const opposite = findOppositeEdge(edgeList, current);
@@ -31876,9 +27504,9 @@ const mergeCoplanarPolygons = (sourcepolygons) => {
   }
   const destpolygons = [];
   edgeList.forEach((edge) => {
-    const polygon2 = createPolygonAnd(edge);
-    if (polygon2)
-      destpolygons.push(polygon2);
+    const polygon = createPolygonAnd(edge);
+    if (polygon)
+      destpolygons.push(polygon);
   });
   edgeList.clear();
   return destpolygons;
@@ -31891,13 +27519,13 @@ const coplanar = (plane1, plane2) => {
 };
 const mergePolygons$1 = (epsilon, polygons) => {
   const polygonsPerPlane = [];
-  polygons.forEach((polygon2) => {
-    const mapping = polygonsPerPlane.find((element) => coplanar(element[0], poly3$2.plane(polygon2)));
+  polygons.forEach((polygon) => {
+    const mapping = polygonsPerPlane.find((element) => coplanar(element[0], poly3$2.plane(polygon)));
     if (mapping) {
       const polygons2 = mapping[1];
-      polygons2.push(polygon2);
+      polygons2.push(polygon);
     } else {
-      polygonsPerPlane.push([poly3$2.plane(polygon2), [polygon2]]);
+      polygonsPerPlane.push([poly3$2.plane(polygon), [polygon]]);
     }
   });
   let destpolygons = [];
@@ -31910,8 +27538,8 @@ const mergePolygons$1 = (epsilon, polygons) => {
 };
 var mergePolygons_1 = mergePolygons$1;
 const constants$2 = constants$3;
-const vec3$1 = vec3$Y;
-const poly3$1 = poly3$A;
+const vec3$1 = vec3$C;
+const poly3$1 = poly3$m;
 const getTag = (vertex2) => `${vertex2}`;
 const addSide = (sidemap, vertextag2sidestart, vertextag2sideend, vertex0, vertex1, polygonindex) => {
   const starttag = getTag(vertex0);
@@ -31983,16 +27611,16 @@ const deleteSide = (sidemap, vertextag2sidestart, vertextag2sideend, vertex0, ve
 const insertTjunctions$1 = (polygons) => {
   const sidemap = /* @__PURE__ */ new Map();
   for (let polygonindex = 0; polygonindex < polygons.length; polygonindex++) {
-    const polygon2 = polygons[polygonindex];
-    const numvertices = polygon2.vertices.length;
+    const polygon = polygons[polygonindex];
+    const numvertices = polygon.vertices.length;
     if (numvertices >= 3) {
-      let vertex2 = polygon2.vertices[0];
+      let vertex2 = polygon.vertices[0];
       let vertextag = getTag(vertex2);
       for (let vertexindex = 0; vertexindex < numvertices; vertexindex++) {
         let nextvertexindex = vertexindex + 1;
         if (nextvertexindex === numvertices)
           nextvertexindex = 0;
-        const nextvertex = polygon2.vertices[nextvertexindex];
+        const nextvertex = polygon.vertices[nextvertexindex];
         const nextvertextag = getTag(nextvertex);
         const sidetag = `${vertextag}/${nextvertextag}`;
         const reversesidetag = `${nextvertextag}/${vertextag}`;
@@ -32099,16 +27727,16 @@ const insertTjunctions$1 = (polygons) => {
                   const distancesquared = vec3$1.squaredDistance(closestpoint, endpos);
                   if (distancesquared < constants$2.EPS * constants$2.EPS) {
                     const polygonindex = matchingside.polygonindex;
-                    const polygon2 = newpolygons[polygonindex];
+                    const polygon = newpolygons[polygonindex];
                     const insertionvertextag = getTag(matchingside.vertex1);
                     let insertionvertextagindex = -1;
-                    for (let i = 0; i < polygon2.vertices.length; i++) {
-                      if (getTag(polygon2.vertices[i]) === insertionvertextag) {
+                    for (let i = 0; i < polygon.vertices.length; i++) {
+                      if (getTag(polygon.vertices[i]) === insertionvertextag) {
                         insertionvertextagindex = i;
                         break;
                       }
                     }
-                    const newvertices = polygon2.vertices.slice(0);
+                    const newvertices = polygon.vertices.slice(0);
                     newvertices.splice(insertionvertextagindex, 0, endvertex);
                     const newpolygon = poly3$1.create(newvertices);
                     newpolygons[polygonindex] = newpolygon;
@@ -32142,48 +27770,48 @@ const insertTjunctions$1 = (polygons) => {
   return polygons;
 };
 var insertTjunctions_1 = insertTjunctions$1;
-const vec3 = vec3$Y;
-const poly3 = poly3$A;
-const triangulatePolygon = (epsilon, polygon2, triangles) => {
-  const nv = polygon2.vertices.length;
+const vec3 = vec3$C;
+const poly3 = poly3$m;
+const triangulatePolygon = (epsilon, polygon, triangles) => {
+  const nv = polygon.vertices.length;
   if (nv > 3) {
     if (nv > 4) {
       const midpoint = [0, 0, 0];
-      polygon2.vertices.forEach((vertice) => vec3.add(midpoint, midpoint, vertice));
+      polygon.vertices.forEach((vertice) => vec3.add(midpoint, midpoint, vertice));
       vec3.snap(midpoint, vec3.divide(midpoint, midpoint, [nv, nv, nv]), epsilon);
       for (let i = 0; i < nv; i++) {
-        const poly = poly3.create([midpoint, polygon2.vertices[i], polygon2.vertices[(i + 1) % nv]]);
-        if (polygon2.color)
-          poly.color = polygon2.color;
+        const poly = poly3.create([midpoint, polygon.vertices[i], polygon.vertices[(i + 1) % nv]]);
+        if (polygon.color)
+          poly.color = polygon.color;
         triangles.push(poly);
       }
       return;
     }
-    const poly0 = poly3.create([polygon2.vertices[0], polygon2.vertices[1], polygon2.vertices[2]]);
-    const poly1 = poly3.create([polygon2.vertices[0], polygon2.vertices[2], polygon2.vertices[3]]);
-    if (polygon2.color) {
-      poly0.color = polygon2.color;
-      poly1.color = polygon2.color;
+    const poly0 = poly3.create([polygon.vertices[0], polygon.vertices[1], polygon.vertices[2]]);
+    const poly1 = poly3.create([polygon.vertices[0], polygon.vertices[2], polygon.vertices[3]]);
+    if (polygon.color) {
+      poly0.color = polygon.color;
+      poly1.color = polygon.color;
     }
     triangles.push(poly0, poly1);
     return;
   }
-  triangles.push(polygon2);
+  triangles.push(polygon);
 };
 const triangulatePolygons$1 = (epsilon, polygons) => {
   const triangles = [];
-  polygons.forEach((polygon2) => {
-    triangulatePolygon(epsilon, polygon2, triangles);
+  polygons.forEach((polygon) => {
+    triangulatePolygon(epsilon, polygon, triangles);
   });
   return triangles;
 };
 var triangulatePolygons_1 = triangulatePolygons$1;
-const flatten$5 = flatten_1;
-const measureEpsilon$1 = measureEpsilon_1;
-const geom2$4 = geom2$K;
-const geom3$4 = geom3$K;
-const path2$4 = path2$u;
-const snapPolygons$1 = snapPolygons_1;
+const flatten = flatten_1;
+const measureEpsilon = measureEpsilon_1;
+const geom2 = geom2$i;
+const geom3 = geom3$d;
+const path2 = path2$8;
+const snapPolygons = snapPolygons_1;
 const mergePolygons = mergePolygons_1;
 const insertTjunctions = insertTjunctions_1;
 const triangulatePolygons = triangulatePolygons_1;
@@ -32196,10 +27824,10 @@ const generalizeGeom3 = (options, geometry) => {
     triangulate: false
   };
   const { snap: snap2, simplify, triangulate: triangulate2 } = Object.assign({}, defaults, options);
-  const epsilon = measureEpsilon$1(geometry);
-  let polygons = geom3$4.toPolygons(geometry);
+  const epsilon = measureEpsilon(geometry);
+  let polygons = geom3.toPolygons(geometry);
   if (snap2) {
-    polygons = snapPolygons$1(epsilon, polygons);
+    polygons = snapPolygons(epsilon, polygons);
   }
   if (simplify) {
     polygons = mergePolygons(epsilon, polygons);
@@ -32213,298 +27841,22 @@ const generalizeGeom3 = (options, geometry) => {
   return clone2;
 };
 const generalize = (options, ...geometries2) => {
-  geometries2 = flatten$5(geometries2);
+  geometries2 = flatten(geometries2);
   if (geometries2.length === 0)
     throw new Error("wrong number of arguments");
   const results = geometries2.map((geometry) => {
-    if (path2$4.isA(geometry))
+    if (path2.isA(geometry))
       return generalizePath2(options, geometry);
-    if (geom2$4.isA(geometry))
+    if (geom2.isA(geometry))
       return generalizeGeom2(options, geometry);
-    if (geom3$4.isA(geometry))
+    if (geom3.isA(geometry))
       return generalizeGeom3(options, geometry);
     throw new Error("invalid geometry");
   });
   return results.length === 1 ? results[0] : results;
 };
 var generalize_1 = generalize;
-const flatten$4 = flatten_1;
-const vec2 = vec2$E;
-const geom2$3 = geom2$K;
-const geom3$3 = geom3$K;
-const path2$3 = path2$u;
-const measureEpsilon = measureEpsilon_1;
-const snapPolygons = snapPolygons_1;
-const snapPath2 = (geometry) => {
-  const epsilon = measureEpsilon(geometry);
-  const points = path2$3.toPoints(geometry);
-  const newpoints = points.map((point) => vec2.snap(vec2.create(), point, epsilon));
-  return path2$3.create(newpoints);
-};
-const snapGeom2 = (geometry) => {
-  const epsilon = measureEpsilon(geometry);
-  const sides = geom2$3.toSides(geometry);
-  let newsides = sides.map((side) => [vec2.snap(vec2.create(), side[0], epsilon), vec2.snap(vec2.create(), side[1], epsilon)]);
-  newsides = newsides.filter((side) => !vec2.equals(side[0], side[1]));
-  return geom2$3.create(newsides);
-};
-const snapGeom3 = (geometry) => {
-  const epsilon = measureEpsilon(geometry);
-  const polygons = geom3$3.toPolygons(geometry);
-  const newpolygons = snapPolygons(epsilon, polygons);
-  return geom3$3.create(newpolygons);
-};
-const snap = (...geometries2) => {
-  geometries2 = flatten$4(geometries2);
-  if (geometries2.length === 0)
-    throw new Error("wrong number of arguments");
-  const results = geometries2.map((geometry) => {
-    if (path2$3.isA(geometry))
-      return snapPath2(geometry);
-    if (geom2$3.isA(geometry))
-      return snapGeom2(geometry);
-    if (geom3$3.isA(geometry))
-      return snapGeom3(geometry);
-    return geometry;
-  });
-  return results.length === 1 ? results[0] : results;
-};
-var snap_1 = snap;
-var modifiers = {
-  generalize: generalize_1,
-  snap: snap_1
-};
-const padArrayToLength$1 = (anArray, padding, targetLength) => {
-  anArray = anArray.slice();
-  while (anArray.length < targetLength) {
-    anArray.push(padding);
-  }
-  return anArray;
-};
-var padArrayToLength_1 = padArrayToLength$1;
-const flatten$3 = flatten_1;
-const padArrayToLength = padArrayToLength_1;
-const measureAggregateBoundingBox = measureAggregateBoundingBox_1;
-const { translate: translate$2 } = translate_1;
-const validateOptions = (options) => {
-  if (!Array.isArray(options.modes) || options.modes.length > 3)
-    throw new Error("align(): modes must be an array of length <= 3");
-  options.modes = padArrayToLength(options.modes, "none", 3);
-  if (options.modes.filter((mode) => ["center", "max", "min", "none"].includes(mode)).length !== 3)
-    throw new Error('align(): all modes must be one of "center", "max" or "min"');
-  if (!Array.isArray(options.relativeTo) || options.relativeTo.length > 3)
-    throw new Error("align(): relativeTo must be an array of length <= 3");
-  options.relativeTo = padArrayToLength(options.relativeTo, 0, 3);
-  if (options.relativeTo.filter((alignVal) => Number.isFinite(alignVal) || alignVal == null).length !== 3)
-    throw new Error("align(): all relativeTo values must be a number, or null.");
-  if (typeof options.grouped !== "boolean")
-    throw new Error("align(): grouped must be a boolean value.");
-  return options;
-};
-const populateRelativeToFromBounds = (relativeTo, modes, bounds) => {
-  for (let i = 0; i < 3; i++) {
-    if (relativeTo[i] == null) {
-      if (modes[i] === "center") {
-        relativeTo[i] = (bounds[0][i] + bounds[1][i]) / 2;
-      } else if (modes[i] === "max") {
-        relativeTo[i] = bounds[1][i];
-      } else if (modes[i] === "min") {
-        relativeTo[i] = bounds[0][i];
-      }
-    }
-  }
-  return relativeTo;
-};
-const alignGeometries = (geometry, modes, relativeTo) => {
-  const bounds = measureAggregateBoundingBox(geometry);
-  const translation = [0, 0, 0];
-  for (let i = 0; i < 3; i++) {
-    if (modes[i] === "center") {
-      translation[i] = relativeTo[i] - (bounds[0][i] + bounds[1][i]) / 2;
-    } else if (modes[i] === "max") {
-      translation[i] = relativeTo[i] - bounds[1][i];
-    } else if (modes[i] === "min") {
-      translation[i] = relativeTo[i] - bounds[0][i];
-    }
-  }
-  return translate$2(translation, geometry);
-};
-const align = (options, ...geometries2) => {
-  const defaults = {
-    modes: ["center", "center", "min"],
-    relativeTo: [0, 0, 0],
-    grouped: false
-  };
-  options = Object.assign({}, defaults, options);
-  options = validateOptions(options);
-  let { modes, relativeTo, grouped } = options;
-  geometries2 = flatten$3(geometries2);
-  if (geometries2.length === 0)
-    throw new Error("align(): No geometries were provided to act upon");
-  if (relativeTo.filter((val) => val == null).length) {
-    const bounds = measureAggregateBoundingBox(geometries2);
-    relativeTo = populateRelativeToFromBounds(relativeTo, modes, bounds);
-  }
-  if (grouped) {
-    geometries2 = alignGeometries(geometries2, modes, relativeTo);
-  } else {
-    geometries2 = geometries2.map((geometry) => alignGeometries(geometry, modes, relativeTo));
-  }
-  return geometries2.length === 1 ? geometries2[0] : geometries2;
-};
-var align_1 = align;
-const flatten$2 = flatten_1;
-const geom2$2 = geom2$K;
-const geom3$2 = geom3$K;
-const path2$2 = path2$u;
-const measureBoundingBox = measureBoundingBox_1;
-const { translate: translate$1 } = translate_1;
-const centerGeometry = (options, object) => {
-  const defaults = {
-    axes: [true, true, true],
-    relativeTo: [0, 0, 0]
-  };
-  const { axes, relativeTo } = Object.assign({}, defaults, options);
-  const bounds = measureBoundingBox(object);
-  const offset2 = [0, 0, 0];
-  if (axes[0])
-    offset2[0] = relativeTo[0] - (bounds[0][0] + (bounds[1][0] - bounds[0][0]) / 2);
-  if (axes[1])
-    offset2[1] = relativeTo[1] - (bounds[0][1] + (bounds[1][1] - bounds[0][1]) / 2);
-  if (axes[2])
-    offset2[2] = relativeTo[2] - (bounds[0][2] + (bounds[1][2] - bounds[0][2]) / 2);
-  return translate$1(offset2, object);
-};
-const center$1 = (options, ...objects) => {
-  const defaults = {
-    axes: [true, true, true],
-    relativeTo: [0, 0, 0]
-    // TODO: Add additional 'methods' of centering: midpoint, centroid
-  };
-  const { axes, relativeTo } = Object.assign({}, defaults, options);
-  objects = flatten$2(objects);
-  if (objects.length === 0)
-    throw new Error("wrong number of arguments");
-  if (relativeTo.length !== 3)
-    throw new Error("relativeTo must be an array of length 3");
-  options = { axes, relativeTo };
-  const results = objects.map((object) => {
-    if (path2$2.isA(object))
-      return centerGeometry(options, object);
-    if (geom2$2.isA(object))
-      return centerGeometry(options, object);
-    if (geom3$2.isA(object))
-      return centerGeometry(options, object);
-    return object;
-  });
-  return results.length === 1 ? results[0] : results;
-};
-const centerX = (...objects) => center$1({ axes: [true, false, false] }, objects);
-const centerY = (...objects) => center$1({ axes: [false, true, false] }, objects);
-const centerZ = (...objects) => center$1({ axes: [false, false, true] }, objects);
-var center_1 = {
-  center: center$1,
-  centerX,
-  centerY,
-  centerZ
-};
-const flatten$1 = flatten_1;
-const mat4 = mat4$r;
-const geom2$1 = geom2$K;
-const geom3$1 = geom3$K;
-const path2$1 = path2$u;
-const scale$1 = (factors, ...objects) => {
-  if (!Array.isArray(factors))
-    throw new Error("factors must be an array");
-  objects = flatten$1(objects);
-  if (objects.length === 0)
-    throw new Error("wrong number of arguments");
-  factors = factors.slice();
-  while (factors.length < 3)
-    factors.push(1);
-  if (factors[0] <= 0 || factors[1] <= 0 || factors[2] <= 0)
-    throw new Error("factors must be positive");
-  const matrix = mat4.fromScaling(mat4.create(), factors);
-  const results = objects.map((object) => {
-    if (path2$1.isA(object))
-      return path2$1.transform(matrix, object);
-    if (geom2$1.isA(object))
-      return geom2$1.transform(matrix, object);
-    if (geom3$1.isA(object))
-      return geom3$1.transform(matrix, object);
-    return object;
-  });
-  return results.length === 1 ? results[0] : results;
-};
-const scaleX = (factor, ...objects) => scale$1([factor, 1, 1], objects);
-const scaleY = (factor, ...objects) => scale$1([1, factor, 1], objects);
-const scaleZ = (factor, ...objects) => scale$1([1, 1, factor], objects);
-var scale_1 = {
-  scale: scale$1,
-  scaleX,
-  scaleY,
-  scaleZ
-};
-const flatten = flatten_1;
-const geom2 = geom2$K;
-const geom3 = geom3$K;
-const path2 = path2$u;
-const transform = (matrix, ...objects) => {
-  objects = flatten(objects);
-  if (objects.length === 0)
-    throw new Error("wrong number of arguments");
-  const results = objects.map((object) => {
-    if (path2.isA(object))
-      return path2.transform(matrix, object);
-    if (geom2.isA(object))
-      return geom2.transform(matrix, object);
-    if (geom3.isA(object))
-      return geom3.transform(matrix, object);
-    return object;
-  });
-  return results.length === 1 ? results[0] : results;
-};
-var transform_1 = transform;
-var transforms = {
-  align: align_1,
-  center: center_1.center,
-  centerX: center_1.centerX,
-  centerY: center_1.centerY,
-  centerZ: center_1.centerZ,
-  mirror: mirror_1.mirror,
-  mirrorX: mirror_1.mirrorX,
-  mirrorY: mirror_1.mirrorY,
-  mirrorZ: mirror_1.mirrorZ,
-  rotate: rotate_1.rotate,
-  rotateX: rotate_1.rotateX,
-  rotateY: rotate_1.rotateY,
-  rotateZ: rotate_1.rotateZ,
-  scale: scale_1.scale,
-  scaleX: scale_1.scaleX,
-  scaleY: scale_1.scaleY,
-  scaleZ: scale_1.scaleZ,
-  transform: transform_1,
-  translate: translate_1.translate,
-  translateX: translate_1.translateX,
-  translateY: translate_1.translateY,
-  translateZ: translate_1.translateZ
-};
-var src = {
-  colors,
-  curves,
-  geometries,
-  maths,
-  measurements,
-  primitives,
-  text,
-  utils: utils$7,
-  booleans,
-  expansions,
-  extrusions,
-  hulls,
-  modifiers,
-  transforms
-};
+const generalize$1 = /* @__PURE__ */ getDefaultExportFromCjs(generalize_1);
 var earcut$1 = { exports: {} };
 earcut$1.exports = earcut;
 earcut$1.exports.default = earcut;
@@ -33090,6 +28442,17 @@ function showToast(message, opts = {}) {
   document.body.appendChild(msg2);
   setTimeout(() => msg2.remove(), duration);
 }
+const jscad = {
+  primitives: { circle: circle$1, rectangle: rectangle$1, roundedRectangle: roundedRectangle$1 },
+  geometries: { geom2: geom2$j },
+  measurements: { measureBoundingBox: measureBoundingBox$3 },
+  expansions: { offset: offset$1 },
+  booleans: { intersect: intersect$1, union: union$1 },
+  extrusions: { extrudeLinear: extrudeLinear$1 },
+  modifiers: { generalize: generalize$1 },
+  maths: { vec2: { rotate: vec2Rotate } },
+  utils: { degToRad: degToRad$1 }
+};
 const CORNER_SEGMENTS = 16;
 function getDefaultCornerRadius() {
   return !isNaN(state.cornerRadius) ? state.cornerRadius : 5;
@@ -33101,7 +28464,7 @@ function clampCornerRadius(sizeX, sizeY, radius) {
 function roundGeom2(geom, radius) {
   if (!radius || radius <= 0)
     return geom;
-  const bounds = src.measurements.measureBoundingBox(geom);
+  const bounds = jscad.measurements.measureBoundingBox(geom);
   if (!bounds)
     return geom;
   const sizeX = bounds[1][0] - bounds[0][0];
@@ -33109,11 +28472,11 @@ function roundGeom2(geom, radius) {
   const useR = clampCornerRadius(sizeX, sizeY, radius);
   if (useR <= 0)
     return geom;
-  let g = src.expansions.offset(
+  let g = jscad.expansions.offset(
     { delta: -useR, corners: "round", segments: CORNER_SEGMENTS },
     geom
   );
-  g = src.expansions.offset(
+  g = jscad.expansions.offset(
     { delta: useR, corners: "round", segments: CORNER_SEGMENTS },
     g
   );
@@ -33127,12 +28490,12 @@ function shapeToGeom2(shape) {
     return typeof v === "number" && !isNaN(v) ? v : fallback;
   }
   if (!shape || typeof shape.kind !== "string") {
-    return src.primitives.rectangle({ center: [0, 0], size: [1, 1] });
+    return jscad.primitives.rectangle({ center: [0, 0], size: [1, 1] });
   }
   switch (shape.kind) {
     case "circle": {
       const cx2 = num(shape.x), cy2 = num(shape.y), r = num(shape.radius, 1);
-      return src.primitives.circle({
+      return jscad.primitives.circle({
         center: [cx2, cy2],
         radius: r,
         segments: 20
@@ -33148,12 +28511,12 @@ function shapeToGeom2(shape) {
         sy2,
         shape.cornerRadius ?? getDefaultCornerRadius()
       );
-      let rect = radius > 0 ? src.primitives.roundedRectangle({
+      let rect = radius > 0 ? jscad.primitives.roundedRectangle({
         center: [cx2, cy2],
         size: [sx2, sy2],
         roundRadius: radius,
         segments: CORNER_SEGMENTS
-      }) : src.primitives.rectangle({
+      }) : jscad.primitives.rectangle({
         center: [cx2, cy2],
         size: [sx2, sy2]
       });
@@ -33161,11 +28524,11 @@ function shapeToGeom2(shape) {
       if (rot !== 0) {
         for (let side of rect.sides) {
           for (let vert of side) {
-            src.maths.vec2.rotate(
+            jscad.maths.vec2.rotate(
               vert,
               vert,
               [cx2, cy2],
-              src.utils.degToRad(rot)
+              jscad.utils.degToRad(rot)
             );
           }
         }
@@ -33179,29 +28542,29 @@ function shapeToGeom2(shape) {
       }
       const cx2 = num(shape.x), cy2 = num(shape.y), rot = num(shape.rotation, 0);
       if (!Array.isArray(shape.points) || shape.points.length < 3) {
-        return src.primitives.rectangle({ center: [cx2, cy2], size: [1, 1] });
+        return jscad.primitives.rectangle({ center: [cx2, cy2], size: [1, 1] });
       }
       let pts = shape.points.map(([x, y]) => {
         const px2 = num(x), py2 = num(y);
         let v = [px2, py2];
-        src.maths.vec2.rotate(v, v, [0, 0], src.utils.degToRad(rot));
+        jscad.maths.vec2.rotate(v, v, [0, 0], jscad.utils.degToRad(rot));
         return [v[0] + cx2, v[1] + cy2];
       });
       if (!isValidPolygonPoints(pts)) {
-        return src.primitives.rectangle({ center: [cx2, cy2], size: [1, 1] });
+        return jscad.primitives.rectangle({ center: [cx2, cy2], size: [1, 1] });
       }
       try {
-        const geom = src.geometries.geom2.fromPoints(pts);
+        const geom = jscad.geometries.geom2.fromPoints(pts);
         return roundGeom2(geom, useR);
       } catch (err2) {
         console.error("Invalid polygon points", err2, pts);
-        return src.primitives.rectangle({ center: [cx2, cy2], size: [1, 1] });
+        return jscad.primitives.rectangle({ center: [cx2, cy2], size: [1, 1] });
       }
     }
     case "photoshape": {
       const cx2 = num(shape.x), cy2 = num(shape.y), rot = num(shape.rotation, 0);
       if (!Array.isArray(shape.polygon) || shape.polygon.length === 0) {
-        return src.primitives.rectangle({ center: [cx2, cy2], size: [1, 1] });
+        return jscad.primitives.rectangle({ center: [cx2, cy2], size: [1, 1] });
       }
       let geoms = [];
       for (let contour of shape.polygon) {
@@ -33211,17 +28574,17 @@ function shapeToGeom2(shape) {
           const x = Array.isArray(pt) && pt.length === 2 ? num(pt[0]) : 0;
           const y = Array.isArray(pt) && pt.length === 2 ? num(pt[1]) : 0;
           let v = [x, y];
-          src.maths.vec2.rotate(v, v, [0, 0], src.utils.degToRad(rot));
+          jscad.maths.vec2.rotate(v, v, [0, 0], jscad.utils.degToRad(rot));
           return [v[0] + cx2, v[1] + cy2];
         });
         if (pts.length > 2) {
-          geoms.push(src.geometries.geom2.fromPoints(pts));
+          geoms.push(jscad.geometries.geom2.fromPoints(pts));
         }
       }
       return geoms.length === 1 ? geoms[0] : geoms;
     }
     default:
-      return src.primitives.rectangle({
+      return jscad.primitives.rectangle({
         center: [num(shape.x), num(shape.y)],
         size: [1, 1]
       });
@@ -33245,7 +28608,7 @@ function measurementFont(basePx) {
 function getBoundingBox(shape) {
   let pts = [];
   try {
-    pts = src.geometries.geom2.toPoints(shapeToGeom2(shape));
+    pts = jscad.geometries.geom2.toPoints(shapeToGeom2(shape));
   } catch (_) {
   }
   if (!pts.length && Array.isArray(shape.points)) {
@@ -33279,14 +28642,14 @@ function shapesIntersectGeneric(a, b) {
   if (A.maxX < B.minX || A.minX > B.maxX || A.maxY < B.minY || A.minY > B.maxY) {
     return false;
   }
-  let inter = src.booleans.intersect(shapeToGeom2(a), shapeToGeom2(b));
+  let inter = jscad.booleans.intersect(shapeToGeom2(a), shapeToGeom2(b));
   if (Array.isArray(inter)) {
-    return inter.some((g) => src.geometries.geom2.toPoints(g).length > 0);
+    return inter.some((g) => jscad.geometries.geom2.toPoints(g).length > 0);
   }
-  return !!inter && src.geometries.geom2.toPoints(inter).length > 0;
+  return !!inter && jscad.geometries.geom2.toPoints(inter).length > 0;
 }
 function mergeIntoPolygon(a, b) {
-  let u = src.booleans.union(shapeToGeom2(a), shapeToGeom2(b));
+  let u = jscad.booleans.union(shapeToGeom2(a), shapeToGeom2(b));
   if (Array.isArray(u))
     u = u[0];
   const adj = {}, coord = {};
@@ -33371,7 +28734,7 @@ function mergeIntoPolygon(a, b) {
   };
 }
 function geom3ToMesh(geom32) {
-  geom32 = src.modifiers.generalize(
+  geom32 = jscad.modifiers.generalize(
     {
       triangulate: true
     },
@@ -33420,40 +28783,40 @@ function mouseOverShape(shape, mouseRayPlaneIntersection, pointInsidePolygon2) {
     v = v.clone();
     v = v.rotateAround(
       new Vector2(shape.x, shape.y),
-      src.utils.degToRad(-shape.rotation)
+      jscad.utils.degToRad(-shape.rotation)
     );
     if (shapeBox.containsPoint(v)) {
       return true;
     }
   } else if (shape.kind == "photoshape") {
     let v = mouseRayPlaneIntersection;
-    let polygons = shape.polygon.map((polygon2) => {
-      let rotatedPolygon = polygon2.map(
-        ([x, y]) => src.maths.vec2.rotate(
+    let polygons = shape.polygon.map((polygon) => {
+      let rotatedPolygon = polygon.map(
+        ([x, y]) => jscad.maths.vec2.rotate(
           [x, y],
           [x, y],
           [0, 0],
-          src.utils.degToRad(shape.rotation)
+          jscad.utils.degToRad(shape.rotation)
         )
       );
       return rotatedPolygon.map(([x, y]) => [x + shape.x, y + shape.y]);
     });
     let isInside = polygons.some(
-      (polygon2) => pointInsidePolygon2([v.x, v.y], polygon2)
+      (polygon) => pointInsidePolygon2([v.x, v.y], polygon)
     );
     return isInside;
   } else if (shape.kind == "polygon") {
     let v = mouseRayPlaneIntersection;
-    let polygon2 = shape.points.map(([x, y]) => [x, y]).map(
-      (v3) => src.maths.vec2.rotate(
+    let polygon = shape.points.map(([x, y]) => [x, y]).map(
+      (v3) => jscad.maths.vec2.rotate(
         v3,
         v3,
         [0, 0],
-        src.utils.degToRad(shape.rotation)
+        jscad.utils.degToRad(shape.rotation)
       )
     );
-    polygon2 = polygon2.map(([x, y]) => [x + shape.x, y + shape.y]);
-    return pointInsidePolygon2([v.x, v.y], polygon2);
+    polygon = polygon.map(([x, y]) => [x + shape.x, y + shape.y]);
+    return pointInsidePolygon2([v.x, v.y], polygon);
   }
   return false;
 }
@@ -33474,8 +28837,8 @@ function drawOutline(shape, style2, width, z, ctx, camera, display2D, renderer, 
       const firstPoint = geometry.sides[0][0];
       const p0 = projectPoint(firstPoint[0], firstPoint[1], z, camera, renderer);
       ctx.moveTo(p0.x, p0.y);
-      geometry.sides.forEach((line4) => {
-        const point = line4[1];
+      geometry.sides.forEach((line) => {
+        const point = line[1];
         const p1 = projectPoint(point[0], point[1], z, camera, renderer);
         ctx.lineTo(p1.x, p1.y);
       });
@@ -33489,17 +28852,17 @@ function drawOutline(shape, style2, width, z, ctx, camera, display2D, renderer, 
       shape.controlPoints = [];
       const CP_Z = z;
       shape.points.forEach(([x, y], index) => {
-        const sphere2 = new Mesh(
+        const sphere = new Mesh(
           new SphereGeometry(3, 16, 16),
           new MeshBasicMaterial({ color: 65535 })
         );
-        sphere2.position.set(x + shape.x, y + shape.y, CP_Z);
-        sphere2.name = `controlPoint-${index}`;
-        sphere2.userData.pointIndex = index;
-        sphere2.userData.isControlSphere = true;
-        scene.add(sphere2);
-        shape.controlPoints.push(sphere2);
-        const helper = new BoxHelper(sphere2, 16776960);
+        sphere.position.set(x + shape.x, y + shape.y, CP_Z);
+        sphere.name = `controlPoint-${index}`;
+        sphere.userData.pointIndex = index;
+        sphere.userData.isControlSphere = true;
+        scene.add(sphere);
+        shape.controlPoints.push(sphere);
+        const helper = new BoxHelper(sphere, 16776960);
         helper.material.opacity = 0;
         helper.material.transparent = true;
         helper.material.colorWrite = false;
@@ -33513,11 +28876,11 @@ function drawOutline(shape, style2, width, z, ctx, camera, display2D, renderer, 
       const CP_Z = z;
       if (!shape._draggingPoint) {
         for (let i = 0; i < shape.controlPoints.length; i += 2) {
-          const sphere2 = shape.controlPoints[i];
-          const pt = shape.points[sphere2.userData.pointIndex];
+          const sphere = shape.controlPoints[i];
+          const pt = shape.points[sphere.userData.pointIndex];
           if (!pt)
             continue;
-          sphere2.position.set(pt[0] + shape.x, pt[1] + shape.y, CP_Z);
+          sphere.position.set(pt[0] + shape.x, pt[1] + shape.y, CP_Z);
         }
       }
     }
@@ -33955,7 +29318,7 @@ function drawMeasurementsPhotoshape(shape, ctx, camera, currPanel2, centimeters)
     return project(
       v.sub(new Vector3(shape.x, shape.y, 0)).applyAxisAngle(
         new Vector3(0, 0, 1),
-        src.utils.degToRad((shape == null ? void 0 : shape.rotation) || 0)
+        jscad.utils.degToRad((shape == null ? void 0 : shape.rotation) || 0)
       ).add(new Vector3(shape.x, shape.y, 0)),
       camera2,
       ctx
@@ -33999,7 +29362,7 @@ function drawMeasurementsRectangle(shape, ctx, camera, currPanel2, centimeters) 
     return project(
       v.sub(new Vector3(shape.x, shape.y, 0)).applyAxisAngle(
         new Vector3(0, 0, 1),
-        src.utils.degToRad(shape.rotation)
+        jscad.utils.degToRad(shape.rotation)
       ).add(new Vector3(shape.x, shape.y, 0)),
       camera2,
       ctx
@@ -34154,7 +29517,7 @@ function drawMeasurementsPolygon(shape, ctx, camera, currPanel2, centimeters) {
     return project(
       v.sub(new Vector3(shape == null ? void 0 : shape.x, shape == null ? void 0 : shape.y, 0)).applyAxisAngle(
         new Vector3(0, 0, 1),
-        src.utils.degToRad(shape == null ? void 0 : shape.rotation)
+        jscad.utils.degToRad(shape == null ? void 0 : shape.rotation)
       ).add(new Vector3(shape == null ? void 0 : shape.x, shape == null ? void 0 : shape.y, 0)),
       camera2,
       ctx
@@ -34566,12 +29929,12 @@ function getBase64(file) {
 function generateId() {
   return `shape-${Date.now()}-${Math.floor(Math.random() * 1e4)}`;
 }
-function drawResponsiveText(page, font, text2, x, y, maxWidth, maxFontSize = 10) {
+function drawResponsiveText(page, font, text, x, y, maxWidth, maxFontSize = 10) {
   let fontSize = maxFontSize;
-  while (font.widthOfTextAtSize(text2, fontSize) > maxWidth && fontSize > 4) {
+  while (font.widthOfTextAtSize(text, fontSize) > maxWidth && fontSize > 4) {
     fontSize -= 0.5;
   }
-  page.drawText(text2, {
+  page.drawText(text, {
     x,
     y,
     size: fontSize,
@@ -34848,7 +30211,6 @@ function createImage(renderer, scene, camera, { buttonId = "export-image", scale
   });
 }
 const case1Url = "./models/case1.obj";
-const MAX_DPR = 1.5;
 const SSAA_SCALE = 1.5;
 function shapeUnderMouse() {
   if (state.mouseRayPlaneIntersection) {
@@ -34936,12 +30298,27 @@ function resetCameraToFrontView() {
   state.controls.update();
 }
 function init3D() {
+  var _a;
+  if (state.renderer) {
+    state.renderer.dispose();
+    state.renderer.forceContextLoss();
+    (_a = state.renderer.domElement) == null ? void 0 : _a.remove();
+    state.renderer = null;
+  }
+  if (state.overlayCanvas) {
+    state.overlayCanvas.remove();
+    state.overlayCanvas = null;
+  }
+  if (state.ssaaRenderTarget) {
+    state.ssaaRenderTarget.dispose();
+    state.ssaaRenderTarget = null;
+  }
   state.renderer = new WebGL1Renderer({
     antialias: true,
     precision: "highp",
     preserveDrawingBuffer: true
   });
-  const getDpr = () => Math.min(window.devicePixelRatio || 1, MAX_DPR);
+  const getDpr = () => Math.min(window.devicePixelRatio || 1, 1.5);
   state.renderer.setPixelRatio(getDpr());
   state.renderer.domElement.id = "foam-canvas";
   state.renderer.autoClear = false;
@@ -35579,39 +30956,39 @@ var copyStringIntoBuffer = function(str, buffer, offset2) {
 var escapeRegExp = function(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 };
-var cleanText = function(text2) {
-  return text2.replace(/\t|\u0085|\u2028|\u2029/g, "    ").replace(/[\b\v]/g, "");
+var cleanText = function(text) {
+  return text.replace(/\t|\u0085|\u2028|\u2029/g, "    ").replace(/[\b\v]/g, "");
 };
 var escapedNewlineChars = ["\\n", "\\f", "\\r", "\\u000B"];
-var isNewlineChar = function(text2) {
-  return /^[\n\f\r\u000B]$/.test(text2);
+var isNewlineChar = function(text) {
+  return /^[\n\f\r\u000B]$/.test(text);
 };
-var lineSplit = function(text2) {
-  return text2.split(/[\n\f\r\u000B]/);
+var lineSplit = function(text) {
+  return text.split(/[\n\f\r\u000B]/);
 };
-var mergeLines = function(text2) {
-  return text2.replace(/[\n\f\r\u000B]/g, " ");
+var mergeLines = function(text) {
+  return text.replace(/[\n\f\r\u000B]/g, " ");
 };
-var charAtIndex = function(text2, index) {
-  var cuFirst = text2.charCodeAt(index);
+var charAtIndex = function(text, index) {
+  var cuFirst = text.charCodeAt(index);
   var cuSecond;
   var nextIndex = index + 1;
   var length2 = 1;
   if (
     // Check if it's the start of a surrogate pair.
     cuFirst >= 55296 && cuFirst <= 56319 && // high surrogate
-    text2.length > nextIndex
+    text.length > nextIndex
   ) {
-    cuSecond = text2.charCodeAt(nextIndex);
+    cuSecond = text.charCodeAt(nextIndex);
     if (cuSecond >= 56320 && cuSecond <= 57343)
       length2 = 2;
   }
-  return [text2.slice(index, index + length2), length2];
+  return [text.slice(index, index + length2), length2];
 };
-var charSplit = function(text2) {
+var charSplit = function(text) {
   var chars2 = [];
-  for (var idx = 0, len = text2.length; idx < len; ) {
-    var _a = charAtIndex(text2, idx), c2 = _a[0], cLen = _a[1];
+  for (var idx = 0, len = text.length; idx < len; ) {
+    var _a = charAtIndex(text, idx), c2 = _a[0], cLen = _a[1];
     chars2.push(c2);
     idx += cLen;
   }
@@ -35630,9 +31007,9 @@ var buildWordBreakRegex = function(wordBreaks) {
   var breakRules = escapedRules.join("|");
   return new RegExp("(" + newlineCharUnion + ")|((.*?)(" + breakRules + "))", "gm");
 };
-var breakTextIntoLines = function(text2, wordBreaks, maxWidth, computeWidthOfText) {
+var breakTextIntoLines = function(text, wordBreaks, maxWidth, computeWidthOfText) {
   var regex = buildWordBreakRegex(wordBreaks);
-  var words = cleanText(text2).match(regex);
+  var words = cleanText(text).match(regex);
   var currLine = "";
   var currWidth = 0;
   var lines = [];
@@ -35973,13 +31350,13 @@ var common = {};
     return buf;
   };
   var fnTyped = {
-    arraySet: function(dest, src2, src_offs, len, dest_offs) {
-      if (src2.subarray && dest.subarray) {
-        dest.set(src2.subarray(src_offs, src_offs + len), dest_offs);
+    arraySet: function(dest, src, src_offs, len, dest_offs) {
+      if (src.subarray && dest.subarray) {
+        dest.set(src.subarray(src_offs, src_offs + len), dest_offs);
         return;
       }
       for (var i = 0; i < len; i++) {
-        dest[dest_offs + i] = src2[src_offs + i];
+        dest[dest_offs + i] = src[src_offs + i];
       }
     },
     // Join array of chunks to single array.
@@ -36000,9 +31377,9 @@ var common = {};
     }
   };
   var fnUntyped = {
-    arraySet: function(dest, src2, src_offs, len, dest_offs) {
+    arraySet: function(dest, src, src_offs, len, dest_offs) {
       for (var i = 0; i < len; i++) {
-        dest[dest_offs + i] = src2[src_offs + i];
+        dest[dest_offs + i] = src[src_offs + i];
       }
     },
     // Join array of chunks to single array.
@@ -38806,7 +34183,7 @@ function fixedtables(state2) {
   state2.distcode = distfix;
   state2.distbits = 5;
 }
-function updatewindow(strm, src2, end, copy2) {
+function updatewindow(strm, src, end, copy2) {
   var dist;
   var state2 = strm.state;
   if (state2.window === null) {
@@ -38816,7 +34193,7 @@ function updatewindow(strm, src2, end, copy2) {
     state2.window = new utils$1.Buf8(state2.wsize);
   }
   if (copy2 >= state2.wsize) {
-    utils$1.arraySet(state2.window, src2, end - state2.wsize, state2.wsize, 0);
+    utils$1.arraySet(state2.window, src, end - state2.wsize, state2.wsize, 0);
     state2.wnext = 0;
     state2.whave = state2.wsize;
   } else {
@@ -38824,10 +34201,10 @@ function updatewindow(strm, src2, end, copy2) {
     if (dist > copy2) {
       dist = copy2;
     }
-    utils$1.arraySet(state2.window, src2, end - copy2, dist, state2.wnext);
+    utils$1.arraySet(state2.window, src, end - copy2, dist, state2.wnext);
     copy2 -= dist;
     if (copy2) {
-      utils$1.arraySet(state2.window, src2, end - copy2, copy2, 0);
+      utils$1.arraySet(state2.window, src, end - copy2, copy2, 0);
       state2.wnext = copy2;
       state2.whave = state2.wsize;
     } else {
@@ -42201,7 +37578,7 @@ var PDFPageLeaf = (
 var PDFObjectCopier = (
   /** @class */
   function() {
-    function PDFObjectCopier2(src2, dest) {
+    function PDFObjectCopier2(src, dest) {
       var _this = this;
       this.traversedObjects = /* @__PURE__ */ new Map();
       this.copy = function(object) {
@@ -42270,11 +37647,11 @@ var PDFObjectCopier = (
         }
         return _this.traversedObjects.get(ref);
       };
-      this.src = src2;
+      this.src = src;
       this.dest = dest;
     }
-    PDFObjectCopier2.for = function(src2, dest) {
-      return new PDFObjectCopier2(src2, dest);
+    PDFObjectCopier2.for = function(src, dest) {
+      return new PDFObjectCopier2(src, dest);
     };
     return PDFObjectCopier2;
   }()
@@ -43021,10 +38398,10 @@ var PDFHexString = (
       return pdfDocEncodingDecode(bytes);
     };
     PDFHexString2.prototype.decodeDate = function() {
-      var text2 = this.decodeText();
-      var date = parseDate(text2);
+      var text = this.decodeText();
+      var date = parseDate(text);
       if (!date)
-        throw new InvalidPDFDateStringError(text2);
+        throw new InvalidPDFDateStringError(text);
       return date;
     };
     PDFHexString2.prototype.asString = function() {
@@ -43068,16 +38445,16 @@ var StandardFontEmbedder = (
       this.fontName = this.font.FontName;
       this.customName = customName;
     }
-    StandardFontEmbedder2.prototype.encodeText = function(text2) {
-      var glyphs = this.encodeTextAsGlyphs(text2);
+    StandardFontEmbedder2.prototype.encodeText = function(text) {
+      var glyphs = this.encodeTextAsGlyphs(text);
       var hexCodes = new Array(glyphs.length);
       for (var idx = 0, len = glyphs.length; idx < len; idx++) {
         hexCodes[idx] = toHexString(glyphs[idx].code);
       }
       return PDFHexString.of(hexCodes.join(""));
     };
-    StandardFontEmbedder2.prototype.widthOfTextAtSize = function(text2, size) {
-      var glyphs = this.encodeTextAsGlyphs(text2);
+    StandardFontEmbedder2.prototype.widthOfTextAtSize = function(text, size) {
+      var glyphs = this.encodeTextAsGlyphs(text);
       var totalWidth = 0;
       for (var idx = 0, len = glyphs.length; idx < len; idx++) {
         var left = glyphs[idx].name;
@@ -43124,8 +38501,8 @@ var StandardFontEmbedder = (
     StandardFontEmbedder2.prototype.widthOfGlyph = function(glyphName) {
       return this.font.getWidthOfGlyph(glyphName) || 250;
     };
-    StandardFontEmbedder2.prototype.encodeTextAsGlyphs = function(text2) {
-      var codePoints = Array.from(text2);
+    StandardFontEmbedder2.prototype.encodeTextAsGlyphs = function(text) {
+      var codePoints = Array.from(text);
       var glyphs = new Array(codePoints.length);
       for (var idx = 0, len = codePoints.length; idx < len; idx++) {
         var codePoint = toCodePoint(codePoints[idx]);
@@ -43281,10 +38658,10 @@ var PDFString = (
       return pdfDocEncodingDecode(bytes);
     };
     PDFString2.prototype.decodeDate = function() {
-      var text2 = this.decodeText();
-      var date = parseDate(text2);
+      var text = this.decodeText();
+      var date = parseDate(text);
       if (!date)
-        throw new InvalidPDFDateStringError(text2);
+        throw new InvalidPDFDateStringError(text);
       return date;
     };
     PDFString2.prototype.asString = function() {
@@ -43358,16 +38735,16 @@ var CustomFontEmbedder = (
         });
       });
     };
-    CustomFontEmbedder2.prototype.encodeText = function(text2) {
-      var glyphs = this.font.layout(text2, this.fontFeatures).glyphs;
+    CustomFontEmbedder2.prototype.encodeText = function(text) {
+      var glyphs = this.font.layout(text, this.fontFeatures).glyphs;
       var hexCodes = new Array(glyphs.length);
       for (var idx = 0, len = glyphs.length; idx < len; idx++) {
         hexCodes[idx] = toHexStringOfMinLength(glyphs[idx].id, 4);
       }
       return PDFHexString.of(hexCodes.join(""));
     };
-    CustomFontEmbedder2.prototype.widthOfTextAtSize = function(text2, size) {
-      var glyphs = this.font.layout(text2, this.fontFeatures).glyphs;
+    CustomFontEmbedder2.prototype.widthOfTextAtSize = function(text, size) {
+      var glyphs = this.font.layout(text, this.fontFeatures).glyphs;
       var totalWidth = 0;
       for (var idx = 0, len = glyphs.length; idx < len; idx++) {
         totalWidth += glyphs[idx].advanceWidth * this.scale;
@@ -43572,8 +38949,8 @@ var CustomFontSubsetEmbedder = (
         });
       });
     };
-    CustomFontSubsetEmbedder2.prototype.encodeText = function(text2) {
-      var glyphs = this.font.layout(text2, this.fontFeatures).glyphs;
+    CustomFontSubsetEmbedder2.prototype.encodeText = function(text) {
+      var glyphs = this.font.layout(text, this.fontFeatures).glyphs;
       var hexCodes = new Array(glyphs.length);
       for (var idx = 0, len = glyphs.length; idx < len; idx++) {
         var glyph = glyphs[idx];
@@ -43997,8 +39374,8 @@ UPNG.decode = function(buff) {
         out.tabs[type] = {};
       var nz = bin.nextZero(data, offset2);
       var keyw = bin.readASCII(data, offset2, nz - offset2);
-      var text2 = bin.readASCII(data, nz + 1, offset2 + len - nz - 1);
-      out.tabs[type][keyw] = text2;
+      var text = bin.readASCII(data, nz + 1, offset2 + len - nz - 1);
+      out.tabs[type][keyw] = text;
     } else if (type == "iTXt") {
       if (out.tabs[type] == null)
         out.tabs[type] = {};
@@ -44015,8 +39392,8 @@ UPNG.decode = function(buff) {
       nz = bin.nextZero(data, off);
       bin.readUTF8(data, off, nz - off);
       off = nz + 1;
-      var text2 = bin.readUTF8(data, off, len - (off - offset2));
-      out.tabs[type][keyw] = text2;
+      var text = bin.readUTF8(data, off, len - (off - offset2));
+      out.tabs[type][keyw] = text;
     } else if (type == "PLTE") {
       out.tabs[type] = bin.readBytes(data, offset2, len);
     } else if (type == "hIST") {
@@ -49661,8 +45038,8 @@ var endPath = function() {
 var nextLine = function() {
   return PDFOperator.of(Ops.NextLine);
 };
-var showText = function(text2) {
-  return PDFOperator.of(Ops.ShowText, [text2]);
+var showText = function(text) {
+  return PDFOperator.of(Ops.ShowText, [text]);
 };
 var beginText = function() {
   return PDFOperator.of(Ops.BeginText);
@@ -50240,8 +45617,8 @@ var drawEllipsePath = function(config) {
   ];
 };
 var drawEllipseCurves = function(config) {
-  var centerX2 = asNumber(config.x);
-  var centerY2 = asNumber(config.y);
+  var centerX = asNumber(config.x);
+  var centerY = asNumber(config.y);
   var xScale = asNumber(config.xScale);
   var yScale = asNumber(config.yScale);
   var x = -xScale;
@@ -50253,7 +45630,7 @@ var drawEllipseCurves = function(config) {
   var xm = x + xScale;
   var ym = y + yScale;
   return [
-    translate(centerX2, centerY2),
+    translate(centerX, centerY),
     rotateRadians(toRadians(config.rotate)),
     moveTo(x, ym),
     appendBezierCurve(x, ym - oy, xm - ox, y, xm, y),
@@ -50525,12 +45902,12 @@ var drawOptionList = function(options) {
   });
   var highlights = [];
   for (var idx = 0, len = options.selectedLines.length; idx < len; idx++) {
-    var line4 = options.textLines[options.selectedLines[idx]];
+    var line = options.textLines[options.selectedLines[idx]];
     highlights.push.apply(highlights, drawRectangle({
-      x: line4.x - padding,
-      y: line4.y - (lineHeight - line4.height) / 2,
+      x: line.x - padding,
+      y: line.y - (lineHeight - line.height) / 2,
       width: width - borderWidth,
-      height: line4.height + (lineHeight - line4.height) / 2,
+      height: line.height + (lineHeight - line.height) / 2,
       borderWidth: 0,
       color: options.selectedColor,
       borderColor: void 0,
@@ -50756,8 +46133,8 @@ var computeFontSize = function(lines, font, bounds, multiline) {
     var linesUsed = 0;
     for (var lineIdx = 0, lineLen = lines.length; lineIdx < lineLen; lineIdx++) {
       linesUsed += 1;
-      var line4 = lines[lineIdx];
-      var words = line4.split(" ");
+      var line = lines[lineIdx];
+      var words = line.split(" ");
       var spaceInLineRemaining = bounds.width;
       for (var idx = 0, len = words.length; idx < len; idx++) {
         var isLastWord = idx === len - 1;
@@ -50781,11 +46158,11 @@ var computeFontSize = function(lines, font, bounds, multiline) {
   }
   return fontSize;
 };
-var computeCombedFontSize = function(line4, font, bounds, cellCount) {
+var computeCombedFontSize = function(line, font, bounds, cellCount) {
   var cellWidth = bounds.width / cellCount;
   var cellHeight = bounds.height;
   var fontSize = MIN_FONT_SIZE;
-  var chars2 = charSplit(line4);
+  var chars2 = charSplit(line);
   while (fontSize < MAX_FONT_SIZE) {
     for (var idx = 0, len = chars2.length; idx < len; idx++) {
       var c2 = chars2[idx];
@@ -50800,9 +46177,9 @@ var computeCombedFontSize = function(line4, font, bounds, cellCount) {
   }
   return fontSize;
 };
-var lastIndexOfWhitespace = function(line4) {
-  for (var idx = line4.length; idx > 0; idx--) {
-    if (/\s/.test(line4[idx]))
+var lastIndexOfWhitespace = function(line) {
+  for (var idx = line.length; idx > 0; idx--) {
+    if (/\s/.test(line[idx]))
       return idx;
   }
   return void 0;
@@ -50811,14 +46188,14 @@ var splitOutLines = function(input, maxWidth, font, fontSize) {
   var _a;
   var lastWhitespaceIdx = input.length;
   while (lastWhitespaceIdx > 0) {
-    var line4 = input.substring(0, lastWhitespaceIdx);
-    var encoded = font.encodeText(line4);
-    var width = font.widthOfTextAtSize(line4, fontSize);
+    var line = input.substring(0, lastWhitespaceIdx);
+    var encoded = font.encodeText(line);
+    var width = font.widthOfTextAtSize(line, fontSize);
     if (width < maxWidth) {
       var remainder = input.substring(lastWhitespaceIdx) || void 0;
-      return { line: line4, encoded, width, remainder };
+      return { line, encoded, width, remainder };
     }
-    lastWhitespaceIdx = (_a = lastIndexOfWhitespace(line4)) !== null && _a !== void 0 ? _a : 0;
+    lastWhitespaceIdx = (_a = lastIndexOfWhitespace(line)) !== null && _a !== void 0 ? _a : 0;
   }
   return {
     line: input,
@@ -50827,9 +46204,9 @@ var splitOutLines = function(input, maxWidth, font, fontSize) {
     remainder: void 0
   };
 };
-var layoutMultilineText = function(text2, _a) {
+var layoutMultilineText = function(text, _a) {
   var alignment = _a.alignment, fontSize = _a.fontSize, font = _a.font, bounds = _a.bounds;
-  var lines = lineSplit(cleanText(text2));
+  var lines = lineSplit(cleanText(text));
   if (fontSize === void 0 || fontSize === 0) {
     fontSize = computeFontSize(lines, font, bounds, true);
   }
@@ -50844,7 +46221,7 @@ var layoutMultilineText = function(text2, _a) {
   for (var idx = 0, len = lines.length; idx < len; idx++) {
     var prevRemainder = lines[idx];
     while (prevRemainder !== void 0) {
-      var _b = splitOutLines(prevRemainder, bounds.width, font, fontSize), line4 = _b.line, encoded = _b.encoded, width = _b.width, remainder = _b.remainder;
+      var _b = splitOutLines(prevRemainder, bounds.width, font, fontSize), line = _b.line, encoded = _b.encoded, width = _b.width, remainder = _b.remainder;
       var x = alignment === TextAlignment.Left ? bounds.x : alignment === TextAlignment.Center ? bounds.x + bounds.width / 2 - width / 2 : alignment === TextAlignment.Right ? bounds.x + bounds.width - width : bounds.x;
       y -= lineHeight;
       if (x < minX)
@@ -50855,7 +46232,7 @@ var layoutMultilineText = function(text2, _a) {
         maxX = x + width;
       if (y + height > maxY)
         maxY = y + height;
-      textLines.push({ text: line4, encoded, width, height, x, y });
+      textLines.push({ text: line, encoded, width, height, x, y });
       prevRemainder = remainder === null || remainder === void 0 ? void 0 : remainder.trim();
     }
   }
@@ -50871,14 +46248,14 @@ var layoutMultilineText = function(text2, _a) {
     }
   };
 };
-var layoutCombedText = function(text2, _a) {
+var layoutCombedText = function(text, _a) {
   var fontSize = _a.fontSize, font = _a.font, bounds = _a.bounds, cellCount = _a.cellCount;
-  var line4 = mergeLines(cleanText(text2));
-  if (line4.length > cellCount) {
-    throw new CombedTextLayoutError(line4.length, cellCount);
+  var line = mergeLines(cleanText(text));
+  if (line.length > cellCount) {
+    throw new CombedTextLayoutError(line.length, cellCount);
   }
   if (fontSize === void 0 || fontSize === 0) {
-    fontSize = computeCombedFontSize(line4, font, bounds, cellCount);
+    fontSize = computeCombedFontSize(line, font, bounds, cellCount);
   }
   var cellWidth = bounds.width / cellCount;
   var height = font.heightAtSize(fontSize, { descender: false });
@@ -50891,7 +46268,7 @@ var layoutCombedText = function(text2, _a) {
   var cellOffset = 0;
   var charOffset = 0;
   while (cellOffset < cellCount) {
-    var _b = charAtIndex(line4, charOffset), char = _b[0], charLength = _b[1];
+    var _b = charAtIndex(line, charOffset), char = _b[0], charLength = _b[1];
     var encoded = font.encodeText(char);
     var width = font.widthOfTextAtSize(char, fontSize);
     var cellCenter = bounds.x + (cellWidth * cellOffset + cellWidth / 2);
@@ -50904,7 +46281,7 @@ var layoutCombedText = function(text2, _a) {
       maxX = x + width;
     if (y + height > maxY)
       maxY = y + height;
-    cells.push({ text: line4, encoded, width, height, x, y });
+    cells.push({ text: line, encoded, width, height, x, y });
     cellOffset += 1;
     charOffset += charLength;
   }
@@ -50919,20 +46296,20 @@ var layoutCombedText = function(text2, _a) {
     }
   };
 };
-var layoutSinglelineText = function(text2, _a) {
+var layoutSinglelineText = function(text, _a) {
   var alignment = _a.alignment, fontSize = _a.fontSize, font = _a.font, bounds = _a.bounds;
-  var line4 = mergeLines(cleanText(text2));
+  var line = mergeLines(cleanText(text));
   if (fontSize === void 0 || fontSize === 0) {
-    fontSize = computeFontSize([line4], font, bounds);
+    fontSize = computeFontSize([line], font, bounds);
   }
-  var encoded = font.encodeText(line4);
-  var width = font.widthOfTextAtSize(line4, fontSize);
+  var encoded = font.encodeText(line);
+  var width = font.widthOfTextAtSize(line, fontSize);
   var height = font.heightAtSize(fontSize, { descender: false });
   var x = alignment === TextAlignment.Left ? bounds.x : alignment === TextAlignment.Center ? bounds.x + bounds.width / 2 - width / 2 : alignment === TextAlignment.Right ? bounds.x + bounds.width - width : bounds.x;
   var y = bounds.y + (bounds.height / 2 - height / 2);
   return {
     fontSize,
-    line: { text: line4, encoded, width, height, x, y },
+    line: { text: line, encoded, width, height, x, y },
     bounds: { x, y, width, height }
   };
 };
@@ -51130,7 +46507,7 @@ var defaultTextFieldAppearanceProvider = function(textField, widget, font) {
   var rectangle2 = widget.getRectangle();
   var ap = widget.getAppearanceCharacteristics();
   var bs = widget.getBorderStyle();
-  var text2 = (_a = textField.getText()) !== null && _a !== void 0 ? _a : "";
+  var text = (_a = textField.getText()) !== null && _a !== void 0 ? _a : "";
   var borderWidth = (_b = bs === null || bs === void 0 ? void 0 : bs.getWidth()) !== null && _b !== void 0 ? _b : 0;
   var rotation = reduceRotation(ap === null || ap === void 0 ? void 0 : ap.getRotation());
   var _e = adjustDimsForRotation(rectangle2, rotation), width = _e.width, height = _e.height;
@@ -51148,7 +46525,7 @@ var defaultTextFieldAppearanceProvider = function(textField, widget, font) {
     height: height - (borderWidth + padding) * 2
   };
   if (textField.isMultiline()) {
-    var layout = layoutMultilineText(text2, {
+    var layout = layoutMultilineText(text, {
       alignment: textField.getAlignment(),
       fontSize: widgetFontSize !== null && widgetFontSize !== void 0 ? widgetFontSize : fieldFontSize,
       font,
@@ -51157,7 +46534,7 @@ var defaultTextFieldAppearanceProvider = function(textField, widget, font) {
     textLines = layout.lines;
     fontSize = layout.fontSize;
   } else if (textField.isCombed()) {
-    var layout = layoutCombedText(text2, {
+    var layout = layoutCombedText(text, {
       fontSize: widgetFontSize !== null && widgetFontSize !== void 0 ? widgetFontSize : fieldFontSize,
       font,
       bounds,
@@ -51166,7 +46543,7 @@ var defaultTextFieldAppearanceProvider = function(textField, widget, font) {
     textLines = layout.cells;
     fontSize = layout.fontSize;
   } else {
-    var layout = layoutSinglelineText(text2, {
+    var layout = layoutSinglelineText(text, {
       alignment: textField.getAlignment(),
       fontSize: widgetFontSize !== null && widgetFontSize !== void 0 ? widgetFontSize : fieldFontSize,
       font,
@@ -51206,7 +46583,7 @@ var defaultDropdownAppearanceProvider = function(dropdown, widget, font) {
   var rectangle2 = widget.getRectangle();
   var ap = widget.getAppearanceCharacteristics();
   var bs = widget.getBorderStyle();
-  var text2 = (_a = dropdown.getSelected()[0]) !== null && _a !== void 0 ? _a : "";
+  var text = (_a = dropdown.getSelected()[0]) !== null && _a !== void 0 ? _a : "";
   var borderWidth = (_b = bs === null || bs === void 0 ? void 0 : bs.getWidth()) !== null && _b !== void 0 ? _b : 0;
   var rotation = reduceRotation(ap === null || ap === void 0 ? void 0 : ap.getRotation());
   var _d = adjustDimsForRotation(rectangle2, rotation), width = _d.width, height = _d.height;
@@ -51221,12 +46598,12 @@ var defaultDropdownAppearanceProvider = function(dropdown, widget, font) {
     width: width - (borderWidth + padding) * 2,
     height: height - (borderWidth + padding) * 2
   };
-  var _e = layoutSinglelineText(text2, {
+  var _e = layoutSinglelineText(text, {
     alignment: TextAlignment.Left,
     fontSize: widgetFontSize !== null && widgetFontSize !== void 0 ? widgetFontSize : fieldFontSize,
     font,
     bounds
-  }), line4 = _e.line, fontSize = _e.fontSize;
+  }), line = _e.line, fontSize = _e.fontSize;
   var textColor = (_c = widgetColor !== null && widgetColor !== void 0 ? widgetColor : fieldColor) !== null && _c !== void 0 ? _c : black;
   if (widgetColor || widgetFontSize !== void 0) {
     updateDefaultAppearance(widget, textColor, font, fontSize);
@@ -51244,7 +46621,7 @@ var defaultDropdownAppearanceProvider = function(dropdown, widget, font) {
     font: font.name,
     fontSize,
     color: normalBackgroundColor,
-    textLines: [line4],
+    textLines: [line],
     padding
   };
   return __spreadArrays(rotate2, drawTextField(options));
@@ -51269,11 +46646,11 @@ var defaultOptionListAppearanceProvider = function(optionList, widget, font) {
   var selected = optionList.getSelected();
   if (optionList.isSorted())
     options.sort();
-  var text2 = "";
+  var text = "";
   for (var idx = 0, len = options.length; idx < len; idx++) {
-    text2 += options[idx];
+    text += options[idx];
     if (idx < len - 1)
-      text2 += "\n";
+      text += "\n";
   }
   var padding = 1;
   var bounds = {
@@ -51282,7 +46659,7 @@ var defaultOptionListAppearanceProvider = function(optionList, widget, font) {
     width: width - (borderWidth + padding) * 2,
     height: height - (borderWidth + padding) * 2
   };
-  var _d = layoutMultilineText(text2, {
+  var _d = layoutMultilineText(text, {
     alignment: TextAlignment.Left,
     fontSize: widgetFontSize !== null && widgetFontSize !== void 0 ? widgetFontSize : fieldFontSize,
     font,
@@ -51290,8 +46667,8 @@ var defaultOptionListAppearanceProvider = function(optionList, widget, font) {
   }), lines = _d.lines, fontSize = _d.fontSize, lineHeight = _d.lineHeight;
   var selectedLines = [];
   for (var idx = 0, len = lines.length; idx < len; idx++) {
-    var line4 = lines[idx];
-    if (selected.includes(line4.text))
+    var line = lines[idx];
+    if (selected.includes(line.text))
       selectedLines.push(idx);
   }
   var blue = rgb(153 / 255, 193 / 255, 218 / 255);
@@ -51383,15 +46760,15 @@ var PDFFont = (
       this.name = embedder.fontName;
       this.embedder = embedder;
     }
-    PDFFont2.prototype.encodeText = function(text2) {
-      assertIs(text2, "text", ["string"]);
+    PDFFont2.prototype.encodeText = function(text) {
+      assertIs(text, "text", ["string"]);
       this.modified = true;
-      return this.embedder.encodeText(text2);
+      return this.embedder.encodeText(text);
     };
-    PDFFont2.prototype.widthOfTextAtSize = function(text2, size) {
-      assertIs(text2, "text", ["string"]);
+    PDFFont2.prototype.widthOfTextAtSize = function(text, size) {
+      assertIs(text, "text", ["string"]);
       assertIs(size, "size", ["number"]);
-      return this.embedder.widthOfTextAtSize(text2, size);
+      return this.embedder.widthOfTextAtSize(text, size);
     };
     PDFFont2.prototype.heightAtSize = function(size, options) {
       var _a;
@@ -52383,16 +47760,16 @@ var PDFTextField = (
       }
       return value === null || value === void 0 ? void 0 : value.decodeText();
     };
-    PDFTextField2.prototype.setText = function(text2) {
-      assertOrUndefined(text2, "text", ["string"]);
+    PDFTextField2.prototype.setText = function(text) {
+      assertOrUndefined(text, "text", ["string"]);
       var maxLength = this.getMaxLength();
-      if (maxLength !== void 0 && text2 && text2.length > maxLength) {
-        throw new ExceededMaxLengthError(text2.length, maxLength, this.getName());
+      if (maxLength !== void 0 && text && text.length > maxLength) {
+        throw new ExceededMaxLengthError(text.length, maxLength, this.getName());
       }
       this.markAsDirty();
       this.disableRichFormatting();
-      if (text2) {
-        this.acroField.setValue(PDFHexString.fromText(text2));
+      if (text) {
+        this.acroField.setValue(PDFHexString.fromText(text));
       } else {
         this.acroField.removeValue();
       }
@@ -52415,9 +47792,9 @@ var PDFTextField = (
       if (maxLength === void 0) {
         this.acroField.removeMaxLength();
       } else {
-        var text2 = this.getText();
-        if (text2 && text2.length > maxLength) {
-          throw new InvalidMaxLengthError(text2.length, maxLength, this.getName());
+        var text = this.getText();
+        if (text && text.length > maxLength) {
+          throw new InvalidMaxLengthError(text.length, maxLength, this.getName());
         }
         this.acroField.setMaxLength(maxLength);
       }
@@ -52751,10 +48128,10 @@ var PDFForm = (
       assertIs(name, "name", ["string"]);
       var nameParts = splitFieldName(name);
       var parent = this.findOrCreateNonTerminals(nameParts.nonTerminal);
-      var text2 = PDFAcroText.create(this.doc.context);
-      text2.setPartialName(nameParts.terminal);
-      addFieldToParent(parent, [text2, text2.ref], nameParts.terminal);
-      return PDFTextField.of(text2, text2.ref, this.doc);
+      var text = PDFAcroText.create(this.doc.context);
+      text.setPartialName(nameParts.terminal);
+      addFieldToParent(parent, [text, text.ref], nameParts.terminal);
+      return PDFTextField.of(text, text.ref, this.doc);
     };
     PDFForm2.prototype.flatten = function(options) {
       if (options === void 0) {
@@ -54096,12 +49473,12 @@ var PDFPage = (
       var contentStream = this.getContentStream();
       contentStream.push.apply(contentStream, operator);
     };
-    PDFPage2.prototype.drawText = function(text2, options) {
+    PDFPage2.prototype.drawText = function(text, options) {
       var _a, _b, _c, _d, _e, _f, _g;
       if (options === void 0) {
         options = {};
       }
-      assertIs(text2, "text", ["string"]);
+      assertIs(text, "text", ["string"]);
       assertOrUndefined(options.color, "options.color", [[Object, "Color"]]);
       assertRangeOrUndefined(options.opacity, "opacity.opacity", 0, 1);
       assertOrUndefined(options.font, "options.font", [[PDFFont, "PDFFont"]]);
@@ -54121,7 +49498,7 @@ var PDFPage = (
       var textWidth = function(t) {
         return newFont.widthOfTextAtSize(t, fontSize);
       };
-      var lines = options.maxWidth === void 0 ? lineSplit(cleanText(text2)) : breakTextIntoLines(text2, wordBreaks, options.maxWidth, textWidth);
+      var lines = options.maxWidth === void 0 ? lineSplit(cleanText(text)) : breakTextIntoLines(text, wordBreaks, options.maxWidth, textWidth);
       var encodedLines = new Array(lines.length);
       for (var idx = 0, len = lines.length; idx < len; idx++) {
         encodedLines[idx] = newFont.encodeText(lines[idx]);
@@ -54538,9 +49915,9 @@ var PDFButton = (
       this.acroField.setFontSize(fontSize);
       this.markAsDirty();
     };
-    PDFButton2.prototype.addToPage = function(text2, page, options) {
+    PDFButton2.prototype.addToPage = function(text, page, options) {
       var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
-      assertOrUndefined(text2, "text", ["string"]);
+      assertOrUndefined(text, "text", ["string"]);
       assertOrUndefined(page, "page", [[PDFPage, "PDFPage"]]);
       assertFieldAppearanceOptions(options);
       var widget = this.createWidget({
@@ -54553,7 +49930,7 @@ var PDFButton = (
         borderColor: options === null || options === void 0 ? void 0 : options.borderColor,
         borderWidth: (_j = options === null || options === void 0 ? void 0 : options.borderWidth) !== null && _j !== void 0 ? _j : 0,
         rotate: (_k = options === null || options === void 0 ? void 0 : options.rotate) !== null && _k !== void 0 ? _k : degrees(0),
-        caption: text2,
+        caption: text,
         hidden: options === null || options === void 0 ? void 0 : options.hidden,
         page: page.ref
       });
@@ -54636,16 +50013,16 @@ const createPdf = (foam, shapesArray, shapeToGeom22, rightestPoint2, leftestPoin
       centroidx /= geom22.sides.length;
       centroidy /= geom22.sides.length;
       let fontSize = 16;
-      let text2 = "T=" + shape.sizeZ.toFixed(2);
-      let textw = font.widthOfTextAtSize(text2, fontSize);
+      let text = "T=" + shape.sizeZ.toFixed(2);
+      let textw = font.widthOfTextAtSize(text, fontSize);
       let texth = font.heightAtSize(fontSize);
-      page.drawText(text2, {
+      page.drawText(text, {
         x: centroidx + w / 2 - textw / 2,
         y: centroidy + h / 2 - texth / 2,
         size: fontSize
       });
     }
-    let measurements2 = {
+    let measurements = {
       left: [],
       right: [],
       top: [],
@@ -54660,15 +50037,15 @@ const createPdf = (foam, shapesArray, shapeToGeom22, rightestPoint2, leftestPoin
       const wm = { points: [l, r], values: [l[0], r[0]] };
       wm.magnitude = r[0] - l[0];
       wm.overlaps = [];
-      (c2[1] < 0 ? measurements2.bottom : measurements2.top).push(wm);
+      (c2[1] < 0 ? measurements.bottom : measurements.top).push(wm);
       const hm = { points: [b, t], values: [b[1], t[1]] };
       hm.magnitude = t[1] - b[1];
       hm.overlaps = [];
-      (c2[0] < 0 ? measurements2.left : measurements2.right).push(hm);
+      (c2[0] < 0 ? measurements.left : measurements.right).push(hm);
     });
     ["left", "right", "top", "bottom"].forEach((dir) => {
-      for (const m of measurements2[dir]) {
-        for (const o of measurements2[dir]) {
+      for (const m of measurements[dir]) {
+        for (const o of measurements[dir]) {
           if (m !== o && m.values[0] < o.values[1] && m.values[1] > o.values[0]) {
             m.overlaps.push(o);
           }
@@ -54681,13 +50058,13 @@ const createPdf = (foam, shapesArray, shapeToGeom22, rightestPoint2, leftestPoin
         visited.add(m);
         return [m, ...m.overlaps.flatMap(dfs)];
       }
-      for (const m of measurements2[dir]) {
+      for (const m of measurements[dir]) {
         if (!visited.has(m)) {
           const group = dfs(m).sort((a, b) => a.magnitude - b.magnitude);
           sets.push(group);
         }
       }
-      measurements2[dir] = sets;
+      measurements[dir] = sets;
     });
     shapesArray.forEach((shape) => drawShape(shape));
     shapesArray.forEach((shape) => drawDepthMeasurement(shape));
@@ -54708,8 +50085,8 @@ const createPdf = (foam, shapesArray, shapeToGeom22, rightestPoint2, leftestPoin
           });
           const mid = rotate2 ? (m.points[0][1] + m.points[1][1]) / 2 : (m.points[0][0] + m.points[1][0]) / 2;
           const fontSize = 16;
-          const text2 = m.magnitude.toFixed(2);
-          const textW = font.widthOfTextAtSize(text2, fontSize);
+          const text = m.magnitude.toFixed(2);
+          const textW = font.widthOfTextAtSize(text, fontSize);
           const textH = font.heightAtSize(fontSize);
           if (rotate2) {
             page.drawLine({
@@ -54717,7 +50094,7 @@ const createPdf = (foam, shapesArray, shapeToGeom22, rightestPoint2, leftestPoin
               end: { x: margin + 5 + w / 2, y: m.points[1][1] + h / 2 },
               opacity: 0.5
             });
-            page.drawText(text2, {
+            page.drawText(text, {
               x: margin + w / 2 - textH / 2,
               y: mid + h / 2 - textW / 2,
               size: fontSize,
@@ -54730,7 +50107,7 @@ const createPdf = (foam, shapesArray, shapeToGeom22, rightestPoint2, leftestPoin
               end: { x: m.points[1][0] + w / 2, y: margin + 5 + h / 2 },
               opacity: 0.5
             });
-            page.drawText(text2, {
+            page.drawText(text, {
               x: mid + w / 2 - textW / 2,
               y: margin + h / 2 + textH / 2 - 2,
               size: fontSize,
@@ -54744,7 +50121,7 @@ const createPdf = (foam, shapesArray, shapeToGeom22, rightestPoint2, leftestPoin
     const SAFE_MARGIN = 20;
     let lMargin = -w / 2 + SAFE_MARGIN;
     drawMeasurements2(
-      measurements2.left,
+      measurements.left,
       () => lMargin,
       (d) => lMargin -= d,
       5,
@@ -54752,7 +50129,7 @@ const createPdf = (foam, shapesArray, shapeToGeom22, rightestPoint2, leftestPoin
     );
     let rMargin = w / 2 - SAFE_MARGIN;
     drawMeasurements2(
-      measurements2.right,
+      measurements.right,
       () => rMargin,
       (d) => rMargin += d,
       -5,
@@ -54760,7 +50137,7 @@ const createPdf = (foam, shapesArray, shapeToGeom22, rightestPoint2, leftestPoin
     );
     let tMargin = h / 2 - SAFE_MARGIN;
     drawMeasurements2(
-      measurements2.top,
+      measurements.top,
       () => tMargin,
       (d) => tMargin += d,
       -5,
@@ -54768,7 +50145,7 @@ const createPdf = (foam, shapesArray, shapeToGeom22, rightestPoint2, leftestPoin
     );
     let bMargin = -h / 2 + SAFE_MARGIN;
     drawMeasurements2(
-      measurements2.bottom,
+      measurements.bottom,
       () => bMargin,
       (d) => bMargin -= d,
       5,
@@ -54949,7 +50326,7 @@ const createPdfIso = (foam, shapesArray, shapeToGeom22, opts = {}) => {
       });
     }
   };
-  const line4 = (page, a, b, th) => page.drawLine({
+  const line = (page, a, b, th) => page.drawLine({
     start: { x: a[0], y: a[1] },
     end: { x: b[0], y: b[1] },
     thickness: safeThickness(th)
@@ -55520,14 +50897,14 @@ const createPdfIso = (foam, shapesArray, shapeToGeom22, opts = {}) => {
         [3, 7]
       ];
       for (const [a, b] of edges)
-        line4(page, F[a], F[b], 0.7);
+        line(page, F[a], F[b], 0.7);
       for (const s of shapesArray) {
         for (const pr of extrudeShape(s)) {
           const top = pr.top.map(projIso).map(T);
           const bot = pr.bottom.map(projIso).map(T);
           drawLoop(page, bot, 0.9);
           for (let i = 0; i < bot.length; i++)
-            line4(page, bot[i], top[i], 1);
+            line(page, bot[i], top[i], 1);
           drawLoop(page, top, 1.4);
         }
       }
@@ -55815,9 +51192,9 @@ const createShapeFreehand = (millimeters, selected, shapesArray, commit2, showPa
       drawing = false;
       registering = false;
       points.length = 0;
-      line4.geometry.attributes.position.setXYZ(0, 0, 0, 0);
-      line4.geometry.attributes.position.setXYZ(1, 0, 0, 0);
-      line4.geometry.attributes.position.needsUpdate = true;
+      line.geometry.attributes.position.setXYZ(0, 0, 0, 0);
+      line.geometry.attributes.position.setXYZ(1, 0, 0, 0);
+      line.geometry.attributes.position.needsUpdate = true;
       lines.forEach((l) => sceneCopy.remove(l));
       circles.forEach((c2) => sceneCopy.remove(c2));
       lines = [];
@@ -55861,8 +51238,8 @@ const createShapeFreehand = (millimeters, selected, shapesArray, commit2, showPa
     const lineMaterial = new LineBasicMaterial({ color: 16777215, linewidth: 2 });
     const lineGeometry = new BufferGeometry();
     lineGeometry.setAttribute("position", new BufferAttribute(new Float32Array(6), 3));
-    const line4 = new Line(lineGeometry, lineMaterial);
-    line4.renderOrder = 1;
+    const line = new Line(lineGeometry, lineMaterial);
+    line.renderOrder = 1;
     let point, registering = false;
     const mouse = new Vector2();
     const raycaster = new Raycaster();
@@ -55885,8 +51262,8 @@ const createShapeFreehand = (millimeters, selected, shapesArray, commit2, showPa
         showPanelFromLeft2("main-panel");
       }
       points.length = 0;
-      if (line4)
-        sceneCopy.remove(line4);
+      if (line)
+        sceneCopy.remove(line);
       if (mesh)
         sceneCopy.remove(mesh);
       previewMeshes.forEach((m) => sceneCopy.remove(m));
@@ -55918,9 +51295,9 @@ const createShapeFreehand = (millimeters, selected, shapesArray, commit2, showPa
       if (registering && isInsideFoam(intersect2)) {
         const endPoint = intersect2.clone();
         const midpoint = new Vector3().lerpVectors(point, endPoint, 0.5);
-        sceneCopy.add(line4);
-        line4.geometry.attributes.position.setXYZ(1, endPoint.x, endPoint.y, endPoint.z);
-        line4.geometry.attributes.position.needsUpdate = true;
+        sceneCopy.add(line);
+        line.geometry.attributes.position.setXYZ(1, endPoint.x, endPoint.y, endPoint.z);
+        line.geometry.attributes.position.needsUpdate = true;
         distanceText.style.top = `${midpoint.y + window.innerHeight / 2 - 20}px`;
         distanceText.style.left = `${midpoint.x + window.innerWidth / 2}px`;
         const distance2 = point.distanceTo(endPoint) * millimeters;
@@ -55945,10 +51322,10 @@ const createShapeFreehand = (millimeters, selected, shapesArray, commit2, showPa
         return;
       registering = true;
       point = intersect2.clone();
-      line4.geometry.attributes.position.setXYZ(0, point.x, point.y, point.z);
-      line4.geometry.attributes.position.setXYZ(1, point.x, point.y, point.z);
-      line4.geometry.attributes.position.needsUpdate = true;
-      line4.visible = true;
+      line.geometry.attributes.position.setXYZ(0, point.x, point.y, point.z);
+      line.geometry.attributes.position.setXYZ(1, point.x, point.y, point.z);
+      line.geometry.attributes.position.needsUpdate = true;
+      line.visible = true;
       if (drawing) {
         if (points.length > 1) {
           const firstPoint = points[0];
@@ -55985,9 +51362,9 @@ const createShapeFreehand = (millimeters, selected, shapesArray, commit2, showPa
         if (points.length > 1) {
           const lineGeometry2 = new BufferGeometry().setFromPoints(points);
           const lineMaterial2 = new LineBasicMaterial({ color: 16753920, linewidth: 15 });
-          const line5 = new Line(lineGeometry2, lineMaterial2);
-          sceneCopy.add(line5);
-          lines.push(line5);
+          const line3 = new Line(lineGeometry2, lineMaterial2);
+          sceneCopy.add(line3);
+          lines.push(line3);
         }
       } else {
         drawing = true;
@@ -56085,6 +51462,14 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
     back: document.querySelector("#photoshape-step-back"),
     next: document.querySelector("#photoshape-step-next")
   };
+  const moveFlowControls = (panelId) => {
+    const controls = document.getElementById("photoshape-flow-controls");
+    const panel = document.getElementById(panelId);
+    const anchor = panel == null ? void 0 : panel.querySelector(".photoshape-flow-anchor");
+    if (controls && anchor) {
+      anchor.appendChild(controls);
+    }
+  };
   let photoshapeFlowActive = false;
   let photoshapeStep = 1;
   const setPhotoshapeFlowActive = (active) => {
@@ -56120,9 +51505,16 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
       });
     }
   };
-  const setEditing = (on) => {
+  const setEditing = (on, restore = false) => {
+    if (on && !state.display2D) {
+      saveCameraView();
+      resetCameraToTopView();
+    }
     window.__editingPoints = on;
     callback1(on);
+    if (!on && restore) {
+      restoreCameraView();
+    }
   };
   const syncDepthInputs = () => {
     if (!selected)
@@ -56175,11 +51567,31 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
     }
   };
   window.__photoshapeCleanup = cleanupPhotoshapeUI;
+  window.__photoshapeExit = () => {
+    setEditing(false, true);
+    setPhotoshapeFlowActive(false);
+    setPhotoshapeStep(1, {
+      note: "Upload an image to start.",
+      canBack: false,
+      canNext: false,
+      nextLabel: "Edit"
+    });
+    const note = document.getElementById("photoshape-step-note");
+    if (note)
+      note.style.display = "none";
+    const btn = document.getElementById("photoshape-button");
+    if (btn)
+      btn.style.display = "none";
+  };
   photoshapeSession.visited = /* @__PURE__ */ new Set();
   photoshapeSession.remaining = 0;
   const startPhotoshapeEditFlow = () => {
     if (!photoshapeSession.ids.length)
       return;
+    if (!state.display2D) {
+      saveCameraView();
+      resetCameraToTopView();
+    }
     document.getElementById("photoshape-step-note").style.display = "flex";
     document.getElementById("photoshape-button").style.display = "flex";
     setPhotoshapeFlowActive(true);
@@ -56192,6 +51604,7 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
       nextLabel: "Depth"
     });
     showPanelFromLeft2("upload-photo-panel");
+    moveFlowControls("upload-photo-panel");
   };
   setPhotoshapeFlowActive(false);
   setPhotoshapeStep(1, {
@@ -56212,11 +51625,11 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
           canNext: true,
           nextLabel: "Depth"
         });
-        if (!display2D)
+        if (!state.display2D)
           restoreCameraView();
         showPanelFromLeft2("upload-photo-panel");
       } else if (photoshapeStep === 3) {
-        setEditing(false);
+        setEditing(false, true);
         setPhotoshapeStep(2, {
           note: "Outline ready. Click Edit to adjust points.",
           canBack: true,
@@ -56247,6 +51660,7 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
           nextLabel: "Depth"
         });
         showPanelFromLeft2("upload-photo-panel");
+        moveFlowControls("upload-photo-panel");
         return;
       }
       if (photoshapeStep === 3) {
@@ -56259,7 +51673,8 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
           nextLabel: getPhotoshapeDepthLabel(photoshapeSession)
         });
         showPanelFromRight2(getDepthPanelId());
-        if (!display2D) {
+        moveFlowControls(getDepthPanelId());
+        if (!state.display2D) {
           saveCameraView();
           resetCameraToFrontView();
         }
@@ -56276,9 +51691,10 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
             nextLabel: "Depth"
           });
           showPanelFromLeft2("upload-photo-panel");
+          moveFlowControls("upload-photo-panel");
           return;
         }
-        setEditing(false);
+        setEditing(false, true);
         setPhotoshapeStep(2, {
           note: "Outline ready. Click Edit to adjust again.",
           canBack: true,
@@ -56312,14 +51728,15 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
     });
     document.getElementById("photoshape-step-note").style.display = "flex";
     document.getElementById("photoshape-button").style.display = "flex";
-    setEditing(false);
+    setEditing(false, true);
+    moveFlowControls("upload-photo-panel");
     document.querySelector("#back-button").removeAttribute("disabled");
     document.querySelector("#back-button").onclick = () => {
       document.querySelector("#back-button").setAttribute("disabled", "");
       document.getElementById("photoshape-step-note").style.display = "none";
       document.getElementById("photoshape-button").style.display = "none";
       showPanelFromLeft2("main-panel");
-      setEditing(false);
+      setEditing(false, true);
       selected = null;
       setPhotoshapeFlowActive(false);
       setPhotoshapeStep(1, {
@@ -56593,6 +52010,12 @@ const createDFX = (foam, shapesArray, shapeToGeom22, filename = "foam_shapes.dxf
 function initUI() {
   initPanels();
   state.currPanel = getCurrentPanel();
+  const exit2DMode = () => {
+    if (!state.display2D)
+      return;
+    state.display2D = false;
+    restoreCameraView();
+  };
   document.querySelectorAll("button").forEach((button) => {
     const { icon } = button.dataset;
     if (icon) {
@@ -56950,6 +52373,24 @@ function initUI() {
       }
     };
   }
+  const backButton = document.querySelector("#back-button");
+  if (backButton) {
+    backButton.addEventListener(
+      "click",
+      () => {
+        if (window.__photoshapeExit)
+          window.__photoshapeExit();
+        if (window.__editingPoints) {
+          window.__editingPoints = false;
+        }
+        if (state.display2D) {
+          state.display2D = false;
+          restoreCameraView();
+        }
+      },
+      true
+    );
+  }
   if (addPointButton) {
     addPointButton.onclick = () => {
       if (addPointButton.hasAttribute("disabled"))
@@ -57028,6 +52469,7 @@ function initUI() {
           backBtn.removeAttribute("disabled");
           backBtn.onclick = () => {
             backBtn.setAttribute("disabled", "");
+            exit2DMode();
             showPanelFromLeft("main-panel");
             state.selected = null;
           };
@@ -57042,6 +52484,7 @@ function initUI() {
     document.querySelector("#back-button").removeAttribute("disabled");
     document.querySelector("#back-button").onclick = () => {
       document.querySelector("#back-button").onclick = () => {
+        exit2DMode();
         document.querySelector("#back-button").setAttribute("disabled", "");
         showPanelFromLeft("main-panel");
         state.selected = null;
@@ -57251,4 +52694,4 @@ if (typeof window === "object") {
   initUI();
   commit();
 }
-//# sourceMappingURL=index-bbf56186.js.map
+//# sourceMappingURL=index-fe59f931.js.map

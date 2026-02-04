@@ -134,13 +134,27 @@ export function resetCameraToFrontView() {
 }
 
 export function init3D() {
+  if (state.renderer) {
+    state.renderer.dispose();
+    state.renderer.forceContextLoss();
+    state.renderer.domElement?.remove();
+    state.renderer = null;
+  }
+  if (state.overlayCanvas) {
+    state.overlayCanvas.remove();
+    state.overlayCanvas = null;
+  }
+  if (state.ssaaRenderTarget) {
+    state.ssaaRenderTarget.dispose();
+    state.ssaaRenderTarget = null;
+  }
   state.renderer = new THREE.WebGL1Renderer({
     antialias: true,
     precision: "highp",
     preserveDrawingBuffer: true,
   });
 
-  const getDpr = () => Math.min(window.devicePixelRatio || 1, MAX_DPR);
+  const getDpr = () => Math.min(window.devicePixelRatio || 1, 1.5);
   state.renderer.setPixelRatio(getDpr());
   state.renderer.domElement.id = "foam-canvas";
   state.renderer.autoClear = false;

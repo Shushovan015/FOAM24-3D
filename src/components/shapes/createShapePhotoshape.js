@@ -4,7 +4,13 @@ import {
   beginPhotoshapeEditSession,
   advanceToNextUnvisited,
 } from "../../utils/photoshapeFlow";
-import { saveCameraView, restoreCameraView, resetCameraToFrontView } from "../../setup/scene";
+import {
+  saveCameraView,
+  restoreCameraView,
+  resetCameraToFrontView,
+  resetCameraToTopView
+} from "../../setup/scene";
+import { state } from "../../setup/state";
 
 export const createShapePhotoShape = (
   millimeters,
@@ -29,6 +35,15 @@ export const createShapePhotoShape = (
     note: document.querySelector("#photoshape-step-note"),
     back: document.querySelector("#photoshape-step-back"),
     next: document.querySelector("#photoshape-step-next"),
+  };
+
+  const moveFlowControls = (panelId) => {
+    const controls = document.getElementById("photoshape-flow-controls");
+    const panel = document.getElementById(panelId);
+    const anchor = panel?.querySelector(".photoshape-flow-anchor");
+    if (controls && anchor) {
+      anchor.appendChild(controls);
+    }
   };
 
   let photoshapeFlowActive = false;
@@ -72,9 +87,16 @@ export const createShapePhotoShape = (
     }
   };
 
-  const setEditing = (on) => {
+  const setEditing = (on, restore = false) => {
+    if (on && !state.display2D) {
+      saveCameraView();
+      resetCameraToTopView();
+    }
     window.__editingPoints = on;
     callback1(on);
+    if (!on && restore) {
+      restoreCameraView();
+    }
   };
 
   const syncDepthInputs = () => {
@@ -140,12 +162,35 @@ export const createShapePhotoShape = (
   };
 
   window.__photoshapeCleanup = cleanupPhotoshapeUI;
+  window.__photoshapeExit = () => {
+    setEditing(false, true);
+
+    setPhotoshapeFlowActive(false);
+    photoshapeFlowReady = false;
+
+    setPhotoshapeStep(1, {
+      note: "Upload an image to start.",
+      canBack: false,
+      canNext: false,
+      nextLabel: "Edit",
+    });
+
+    const note = document.getElementById("photoshape-step-note");
+    if (note) note.style.display = "none";
+
+    const btn = document.getElementById("photoshape-button");
+    if (btn) btn.style.display = "none";
+  };
 
   photoshapeSession.visited = new Set();
   photoshapeSession.remaining = 0;
 
   const startPhotoshapeEditFlow = () => {
     if (!photoshapeSession.ids.length) return;
+    if (!state.display2D) {
+      saveCameraView();
+      resetCameraToTopView();
+    }
     document.getElementById("photoshape-step-note").style.display = "flex";
     document.getElementById("photoshape-button").style.display = "flex";
 
@@ -161,6 +206,7 @@ export const createShapePhotoShape = (
     });
 
     showPanelFromLeft("upload-photo-panel");
+    moveFlowControls("upload-photo-panel");
   };
 
   setPhotoshapeFlowActive(false);
@@ -183,10 +229,10 @@ export const createShapePhotoShape = (
           canNext: true,
           nextLabel: "Depth",
         });
-        if (!display2D) restoreCameraView();
+        if (!state.display2D) restoreCameraView();
         showPanelFromLeft("upload-photo-panel");
       } else if (photoshapeStep === 3) {
-        setEditing(false);
+        setEditing(false, true);
         setPhotoshapeStep(2, {
           note: "Outline ready. Click Edit to adjust points.",
           canBack: true,
@@ -219,6 +265,7 @@ export const createShapePhotoShape = (
           nextLabel: "Depth",
         });
         showPanelFromLeft("upload-photo-panel");
+        moveFlowControls("upload-photo-panel");
         return;
       }
 
@@ -233,7 +280,8 @@ export const createShapePhotoShape = (
           nextLabel: getPhotoshapeDepthLabel(photoshapeSession),
         });
         showPanelFromRight(getDepthPanelId());
-        if (!display2D) {
+        moveFlowControls(getDepthPanelId());
+        if (!state.display2D) {
           saveCameraView();
           resetCameraToFrontView();
         }
@@ -252,10 +300,10 @@ export const createShapePhotoShape = (
             nextLabel: "Depth",
           });
           showPanelFromLeft("upload-photo-panel");
+          moveFlowControls("upload-photo-panel");
           return;
         }
-
-        setEditing(false);
+        setEditing(false, true);
         setPhotoshapeStep(2, {
           note: "Outline ready. Click Edit to adjust again.",
           canBack: true,
@@ -293,7 +341,8 @@ export const createShapePhotoShape = (
     photoshapeFlowReady = false;
     document.getElementById("photoshape-step-note").style.display = "flex";
     document.getElementById("photoshape-button").style.display = "flex";
-    setEditing(false);
+    setEditing(false, true);
+    moveFlowControls("upload-photo-panel");
 
     document.querySelector("#back-button").removeAttribute("disabled");
     document.querySelector("#back-button").onclick = () => {
@@ -301,7 +350,7 @@ export const createShapePhotoShape = (
       document.getElementById("photoshape-step-note").style.display = "none";
       document.getElementById("photoshape-button").style.display = "none";
       showPanelFromLeft("main-panel");
-      setEditing(false);
+      setEditing(false, true);
       selected = null;
       setPhotoshapeFlowActive(false);
       photoshapeFlowReady = false;

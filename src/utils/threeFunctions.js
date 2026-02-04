@@ -1,10 +1,52 @@
-import * as jscad from "@jscad/modeling";
-import * as THREE from "three";
+import circle from "@jscad/modeling/src/primitives/circle";
+import rectangle from "@jscad/modeling/src/primitives/rectangle";
+import roundedRectangle from "@jscad/modeling/src/primitives/roundedRectangle";
+import geom2 from "@jscad/modeling/src/geometries/geom2";
+import measureBoundingBox from "@jscad/modeling/src/measurements/measureBoundingBox";
+import offset from "@jscad/modeling/src/operations/expansions/offset";
+import intersect from "@jscad/modeling/src/operations/booleans/intersect";
+import union from "@jscad/modeling/src/operations/booleans/union";
+import extrudeLinear from "@jscad/modeling/src/operations/extrusions/extrudeLinear";
+import generalize from "@jscad/modeling/src/operations/modifiers/generalize";
+import vec2Rotate from "@jscad/modeling/src/maths/vec2/rotate";
+import degToRad from "@jscad/modeling/src/utils/degToRad";
+
 import earcut from "earcut";
 import { isOverlapping } from "./shapeOverlapping";
 import { state } from "../setup/state";
 import { isValidPolygonPoints } from "./freehandUtils";
 import { showToast } from "./freehandUtils";
+
+import {
+  Vector2,
+  Vector3,
+  Box2,
+  BufferGeometry,
+  BufferAttribute,
+  LineSegments,
+  LineBasicMaterial,
+  Mesh,
+  MeshBasicMaterial,
+  SphereGeometry,
+  BoxHelper,
+  MathUtils,
+  Raycaster,
+  Plane
+} from "three";
+
+
+const jscad = {
+  primitives: { circle, rectangle, roundedRectangle },
+  geometries: { geom2 },
+  measurements: { measureBoundingBox },
+  expansions: { offset },
+  booleans: { intersect, union },
+  extrusions: { extrudeLinear },
+  modifiers: { generalize },
+  maths: { vec2: { rotate: vec2Rotate } },
+  utils: { degToRad },
+};
+
 
 const CORNER_SEGMENTS = 16;
 
@@ -44,10 +86,10 @@ function roundGeom2(geom, radius) {
 export function project(p0, camera, ctx) {
   return p0
     .project(camera)
-    .multiply(new THREE.Vector3(1, -1, 1))
+    .multiply(new Vector3(1, -1, 1))
     .addScalar(1.0)
     .multiplyScalar(0.5)
-    .multiply(new THREE.Vector3(ctx.canvas.width, ctx.canvas.height, 1));
+    .multiply(new Vector3(ctx.canvas.width, ctx.canvas.height, 1));
 }
 
 export function shapeToGeom2(shape) {
@@ -381,12 +423,12 @@ export function geom2ToLineSegments(geom2) {
       positions?.push(0);
     }
   }
-  let geo = new THREE.BufferGeometry();
+  let geo = new BufferGeometry();
   geo.setAttribute(
     "position",
-    new THREE.BufferAttribute(new Float32Array(positions), 3, false)
+    new BufferAttribute(new Float32Array(positions), 3, false)
   );
-  return new THREE.LineSegments(geo, new THREE.LineBasicMaterial());
+  return new LineSegments(geo, new LineBasicMaterial());
 }
 
 export function geom2ToMesh(geom2) {
@@ -410,15 +452,15 @@ export function geom2ToMesh(geom2) {
     indices = geoData.indices;
   }
 
-  let geo = new THREE.BufferGeometry();
+  let geo = new BufferGeometry();
   geo.setAttribute(
     "position",
-    new THREE.BufferAttribute(new Float32Array(positions), 3, false)
+    new BufferAttribute(new Float32Array(positions), 3, false)
   );
-  geo.setIndex(new THREE.BufferAttribute(new Uint16Array(indices), 1));
+  geo.setIndex(new BufferAttribute(new Uint16Array(indices), 1));
   geo.computeVertexNormals();
 
-  return new THREE.Mesh(geo, new THREE.MeshBasicMaterial());
+  return new Mesh(geo, new MeshBasicMaterial());
 }
 
 function processGeometry(geometry) {
@@ -457,12 +499,12 @@ export function geom3ToMesh(geom3) {
   let points = [];
   let normals = [];
   for (let triangle of geom3.polygons) {
-    let p0 = new THREE.Vector3(...triangle.vertices[0]);
-    let p1 = new THREE.Vector3(...triangle.vertices[1]);
-    let p2 = new THREE.Vector3(...triangle.vertices[2]);
-    let normal = new THREE.Vector3().crossVectors(
-      new THREE.Vector3().subVectors(p1, p0),
-      new THREE.Vector3().subVectors(p2, p0)
+    let p0 = new Vector3(...triangle.vertices[0]);
+    let p1 = new Vector3(...triangle.vertices[1]);
+    let p2 = new Vector3(...triangle.vertices[2]);
+    let normal = new Vector3().crossVectors(
+      new Vector3().subVectors(p1, p0),
+      new Vector3().subVectors(p2, p0)
     );
     if (normal.lengthSq() > 0.001) {
       normal = normal.normalize();
@@ -476,13 +518,13 @@ export function geom3ToMesh(geom3) {
     flatNormals.push(...normal.toArray());
   }
 
-  let geo = new THREE.BufferGeometry();
+  let geo = new BufferGeometry();
   geo.setFromPoints(points);
   geo.setAttribute(
     "normal",
-    new THREE.BufferAttribute(new Float32Array(flatNormals), 3, false)
+    new BufferAttribute(new Float32Array(flatNormals), 3, false)
   );
-  return new THREE.Mesh(geo, new THREE.MeshBasicMaterial());
+  return new Mesh(geo, new MeshBasicMaterial());
 }
 
 export function mouseOverShape(
@@ -491,19 +533,19 @@ export function mouseOverShape(
   pointInsidePolygon
 ) {
   if (shape.kind == "circle") {
-    let shapeCenter = new THREE.Vector2(shape.x, shape.y);
+    let shapeCenter = new Vector2(shape.x, shape.y);
     if (shapeCenter.distanceTo(mouseRayPlaneIntersection) < shape.radius) {
       return true;
     }
   } else if (shape.kind == "rectangle") {
-    let shapeBox = new THREE.Box2(
-      new THREE.Vector2(shape.x - shape.sizeX / 2, shape.y - shape.sizeY / 2),
-      new THREE.Vector2(shape.x + shape.sizeX / 2, shape.y + shape.sizeY / 2)
+    let shapeBox = new Box2(
+      new Vector2(shape.x - shape.sizeX / 2, shape.y - shape.sizeY / 2),
+      new Vector2(shape.x + shape.sizeX / 2, shape.y + shape.sizeY / 2)
     );
     let v = mouseRayPlaneIntersection;
     v = v.clone();
     v = v.rotateAround(
-      new THREE.Vector2(shape.x, shape.y),
+      new Vector2(shape.x, shape.y),
       jscad.utils.degToRad(-shape.rotation)
     );
     if (shapeBox.containsPoint(v)) {
@@ -543,7 +585,6 @@ export function mouseOverShape(
   }
   return false;
 }
-
 
 export function drawOutline(
   shape,
@@ -598,9 +639,9 @@ export function drawOutline(
 
       const CP_Z = z;
       shape.points.forEach(([x, y], index) => {
-        const sphere = new THREE.Mesh(
-          new THREE.SphereGeometry(3, 16, 16),
-          new THREE.MeshBasicMaterial({ color: 0x00ffff })
+        const sphere = new Mesh(
+          new SphereGeometry(3, 16, 16),
+          new MeshBasicMaterial({ color: 0x00ffff })
         );
         sphere.position.set(x + shape.x, y + shape.y, CP_Z);
         sphere.name = `controlPoint-${index}`;
@@ -609,7 +650,7 @@ export function drawOutline(
         scene.add(sphere);
         shape.controlPoints.push(sphere);
 
-        const helper = new THREE.BoxHelper(sphere, 0xffff00);
+        const helper = new BoxHelper(sphere, 0xffff00);
         helper.material.opacity = 0;
         helper.material.transparent = true;
         helper.material.colorWrite = false;
@@ -644,13 +685,13 @@ export function drawOutline(
       const curr = shape.points[i];
       const next = shape.points[(i + 1) % n];
 
-      const v1 = new THREE.Vector2(prev[0] - curr[0], prev[1] - curr[1]);
-      const v2 = new THREE.Vector2(next[0] - curr[0], next[1] - curr[1]);
+      const v1 = new Vector2(prev[0] - curr[0], prev[1] - curr[1]);
+      const v2 = new Vector2(next[0] - curr[0], next[1] - curr[1]);
 
       const denom = v1.length() * v2.length();
       if (denom > 0) {
-        const cos = THREE.MathUtils.clamp(v1.dot(v2) / denom, -1, 1);
-        const angleDeg = THREE.MathUtils.radToDeg(Math.acos(cos));
+        const cos = MathUtils.clamp(v1.dot(v2) / denom, -1, 1);
+        const angleDeg = MathUtils.radToDeg(Math.acos(cos));
 
         const p = projectPoint(curr[0] + shape.x, curr[1] + shape.y, z, camera, renderer);
         ctx.save();
@@ -689,7 +730,7 @@ export function drawOutline(
 
       if (len1 > 0 && len2 > 0) {
         const dot = (v1x * v2x + v1y * v2y) / (len1 * len2);
-        const angleDeg = THREE.MathUtils.radToDeg(Math.acos(THREE.MathUtils.clamp(dot, -1, 1)));
+        const angleDeg = MathUtils.radToDeg(Math.acos(MathUtils.clamp(dot, -1, 1)));
         const a1 = Math.atan2(v1y, v1x);
         const a2 = Math.atan2(v2y, v2x);
         let start = a1;
@@ -752,8 +793,8 @@ function setupControlPointInteractions(
   const cpState = {
     isDragging: false,
     selectedPoint: null,
-    raycaster: new THREE.Raycaster(),
-    mouse: new THREE.Vector2(),
+    raycaster: new Raycaster(),
+    mouse: new Vector2(),
     CP_Z: CP_Z,
   };
   cpState.dragRaf = null;
@@ -783,8 +824,8 @@ function setupControlPointInteractions(
 
   function getPlaneHit(evt) {
     syncRaycast(evt);
-    const dragPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -cpState.CP_Z);
-    const pos = new THREE.Vector3();
+    const dragPlane = new Plane(new Vector3(0, 0, 1), -cpState.CP_Z);
+    const pos = new Vector3();
     const hit = cpState.raycaster.ray.intersectPlane(dragPlane, pos);
     return hit ? pos : null;
   }
@@ -830,7 +871,7 @@ function setupControlPointInteractions(
   }
 
   function projectToClient(x, y, z) {
-    const v = new THREE.Vector3(x, y, z);
+    const v = new Vector3(x, y, z);
     v.project(camera);
     const r = getRect();
     return {
@@ -1079,8 +1120,8 @@ function setupControlPointInteractions(
 
       syncRaycast(fakeEvt);
 
-      const dragPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -cpState.CP_Z);
-      const pos = new THREE.Vector3();
+      const dragPlane = new Plane(new Vector3(0, 0, 1), -cpState.CP_Z);
+      const pos = new Vector3();
       cpState.raycaster.ray.intersectPlane(dragPlane, pos);
 
       cpState.selectedPoint.position.set(pos.x, pos.y, cpState.CP_Z);
@@ -1125,7 +1166,7 @@ function drawPolygonFromPoints(points, shape, z, ctx, camera, renderer) {
   ctx.beginPath();
   for (let i = 0; i < points.length; i++) {
     const [x, y] = points[i];
-    const v = new THREE.Vector3(
+    const v = new Vector3(
       x + shape.x,
       y + shape.y,
       z
@@ -1140,7 +1181,7 @@ function drawPolygonFromPoints(points, shape, z, ctx, camera, renderer) {
 }
 
 function projectPoint(x, y, z, camera, renderer) {
-  const vector = new THREE.Vector3(x, y, z);
+  const vector = new Vector3(x, y, z);
   vector.project(camera);
 
   return {
@@ -1163,12 +1204,12 @@ export function drawMeasurementsPhotoshape(
   function transform(v, camera) {
     return project(
       v
-        .sub(new THREE.Vector3(shape.x, shape.y, 0))
+        .sub(new Vector3(shape.x, shape.y, 0))
         .applyAxisAngle(
-          new THREE.Vector3(0, 0, 1),
+          new Vector3(0, 0, 1),
           jscad.utils.degToRad(shape?.rotation || 0)
         )
-        .add(new THREE.Vector3(shape.x, shape.y, 0)),
+        .add(new Vector3(shape.x, shape.y, 0)),
       camera,
       ctx
     );
@@ -1177,11 +1218,11 @@ export function drawMeasurementsPhotoshape(
   if (currPanel.id.endsWith("-depth-panel")) {
     ctx.beginPath();
     let p0 = transform(
-      new THREE.Vector3(minX, minY, 37 * centimeters),
+      new Vector3(minX, minY, 37 * centimeters),
       camera
     );
     let p1 = transform(
-      new THREE.Vector3(minX, minY, 37 * centimeters - shape.sizeZ),
+      new Vector3(minX, minY, 37 * centimeters - shape.sizeZ),
       camera
     );
     ctx.moveTo(p0.x, p0.y);
@@ -1191,14 +1232,14 @@ export function drawMeasurementsPhotoshape(
 
   if (currPanel.id.endsWith("-depth-panel")) {
     let p0 = transform(
-      new THREE.Vector3(minX, minY, 37 * centimeters),
+      new Vector3(minX, minY, 37 * centimeters),
       camera
     );
     let p1 = transform(
-      new THREE.Vector3(minX, minY, 37 * centimeters - shape.sizeZ),
+      new Vector3(minX, minY, 37 * centimeters - shape.sizeZ),
       camera
     );
-    let pMid = new THREE.Vector3().addVectors(p0, p1).divideScalar(2);
+    let pMid = new Vector3().addVectors(p0, p1).divideScalar(2);
     ctx.font = measurementFont(20);
 
     ctx.textAlign = "left";
@@ -1221,12 +1262,12 @@ export function drawMeasurementsRectangle(
   function transform(v, camera) {
     return project(
       v
-        .sub(new THREE.Vector3(shape.x, shape.y, 0))
+        .sub(new Vector3(shape.x, shape.y, 0))
         .applyAxisAngle(
-          new THREE.Vector3(0, 0, 1),
+          new Vector3(0, 0, 1),
           jscad.utils.degToRad(shape.rotation)
         )
-        .add(new THREE.Vector3(shape.x, shape.y, 0)),
+        .add(new Vector3(shape.x, shape.y, 0)),
       camera,
       ctx
     );
@@ -1235,7 +1276,7 @@ export function drawMeasurementsRectangle(
   if (currPanel.id.endsWith("-depth-panel")) {
     ctx.beginPath();
     let p0 = transform(
-      new THREE.Vector3(
+      new Vector3(
         shape.x - shape.sizeX / 2,
         shape.y - shape.sizeY / 2,
         37 * centimeters
@@ -1243,7 +1284,7 @@ export function drawMeasurementsRectangle(
       camera
     );
     let p1 = transform(
-      new THREE.Vector3(
+      new Vector3(
         shape.x - shape.sizeX / 2,
         shape.y - shape.sizeY / 2,
         37 * centimeters - shape.sizeZ
@@ -1257,7 +1298,7 @@ export function drawMeasurementsRectangle(
   if (currPanel.id.endsWith("-resize-panel")) {
     ctx.beginPath();
     let p0 = transform(
-      new THREE.Vector3(
+      new Vector3(
         shape.x - shape.sizeX / 2,
         shape.y - shape.sizeY / 2,
         37 * centimeters
@@ -1265,7 +1306,7 @@ export function drawMeasurementsRectangle(
       camera
     );
     let p1 = transform(
-      new THREE.Vector3(
+      new Vector3(
         shape.x + shape.sizeX / 2,
         shape.y - shape.sizeY / 2,
         37 * centimeters
@@ -1279,7 +1320,7 @@ export function drawMeasurementsRectangle(
   if (currPanel.id.endsWith("-resize-panel")) {
     ctx.beginPath();
     let p0 = transform(
-      new THREE.Vector3(
+      new Vector3(
         shape.x - shape.sizeX / 2,
         shape.y - shape.sizeY / 2,
         37 * centimeters
@@ -1287,7 +1328,7 @@ export function drawMeasurementsRectangle(
       camera
     );
     let p1 = transform(
-      new THREE.Vector3(
+      new Vector3(
         shape.x - shape.sizeX / 2,
         shape.y + shape.sizeY / 2,
         37 * centimeters
@@ -1301,7 +1342,7 @@ export function drawMeasurementsRectangle(
 
   if (currPanel.id.endsWith("-depth-panel")) {
     let p0 = transform(
-      new THREE.Vector3(
+      new Vector3(
         shape.x - shape.sizeX / 2,
         shape.y - shape.sizeY / 2,
         37 * centimeters
@@ -1309,14 +1350,14 @@ export function drawMeasurementsRectangle(
       camera
     );
     let p1 = transform(
-      new THREE.Vector3(
+      new Vector3(
         shape.x - shape.sizeX / 2,
         shape.y - shape.sizeY / 2,
         37 * centimeters - shape.sizeZ
       ),
       camera
     );
-    let pMid = new THREE.Vector3().addVectors(p0, p1).divideScalar(2);
+    let pMid = new Vector3().addVectors(p0, p1).divideScalar(2);
     ctx.font = measurementFont(20);
 
     ctx.textAlign = "left";
@@ -1327,7 +1368,7 @@ export function drawMeasurementsRectangle(
   }
   if (currPanel.id.endsWith("-resize-panel")) {
     let p0 = transform(
-      new THREE.Vector3(
+      new Vector3(
         shape.x - shape.sizeX / 2,
         shape.y - shape.sizeY / 2,
         37 * centimeters
@@ -1335,14 +1376,14 @@ export function drawMeasurementsRectangle(
       camera
     );
     let p1 = transform(
-      new THREE.Vector3(
+      new Vector3(
         shape.x + shape.sizeX / 2,
         shape.y - shape.sizeY / 2,
         37 * centimeters
       ),
       camera
     );
-    let pMid = new THREE.Vector3().addVectors(p0, p1).divideScalar(2);
+    let pMid = new Vector3().addVectors(p0, p1).divideScalar(2);
     ctx.font = measurementFont(20);
 
     ctx.textAlign = "left";
@@ -1353,7 +1394,7 @@ export function drawMeasurementsRectangle(
   }
   if (currPanel.id.endsWith("-resize-panel")) {
     let p0 = transform(
-      new THREE.Vector3(
+      new Vector3(
         shape.x - shape.sizeX / 2,
         shape.y - shape.sizeY / 2,
         37 * centimeters
@@ -1361,14 +1402,14 @@ export function drawMeasurementsRectangle(
       camera
     );
     let p1 = transform(
-      new THREE.Vector3(
+      new Vector3(
         shape.x - shape.sizeX / 2,
         shape.y + shape.sizeY / 2,
         37 * centimeters
       ),
       camera
     );
-    let pMid = new THREE.Vector3().addVectors(p0, p1).divideScalar(2);
+    let pMid = new Vector3().addVectors(p0, p1).divideScalar(2);
     ctx.font = measurementFont(20);
 
     ctx.textAlign = "left";
@@ -1392,12 +1433,12 @@ export function drawMeasurementsPolygon(
   function transform(v, camera) {
     return project(
       v
-        .sub(new THREE.Vector3(shape?.x, shape?.y, 0))
+        .sub(new Vector3(shape?.x, shape?.y, 0))
         .applyAxisAngle(
-          new THREE.Vector3(0, 0, 1),
+          new Vector3(0, 0, 1),
           jscad.utils.degToRad(shape?.rotation)
         )
-        .add(new THREE.Vector3(shape?.x, shape?.y, 0)),
+        .add(new Vector3(shape?.x, shape?.y, 0)),
       camera,
       ctx
     );
@@ -1406,11 +1447,11 @@ export function drawMeasurementsPolygon(
   if (currPanel.id.endsWith("-depth-panel")) {
     ctx.beginPath();
     let p0 = transform(
-      new THREE.Vector3(minX, minY, 37 * centimeters),
+      new Vector3(minX, minY, 37 * centimeters),
       camera
     );
     let p1 = transform(
-      new THREE.Vector3(minX, minY, 37 * centimeters - shape.sizeZ),
+      new Vector3(minX, minY, 37 * centimeters - shape.sizeZ),
       camera
     );
     ctx.moveTo(p0.x, p0.y);
@@ -1420,14 +1461,14 @@ export function drawMeasurementsPolygon(
 
   if (currPanel.id.endsWith("-depth-panel")) {
     let p0 = transform(
-      new THREE.Vector3(minX, minY, 37 * centimeters),
+      new Vector3(minX, minY, 37 * centimeters),
       camera
     );
     let p1 = transform(
-      new THREE.Vector3(minX, minY, 37 * centimeters - shape.sizeZ),
+      new Vector3(minX, minY, 37 * centimeters - shape.sizeZ),
       camera
     );
-    let pMid = new THREE.Vector3().addVectors(p0, p1).divideScalar(2);
+    let pMid = new Vector3().addVectors(p0, p1).divideScalar(2);
     ctx.font = measurementFont(20);
 
     ctx.textAlign = "left";
@@ -1448,17 +1489,17 @@ export function drawMeasurementsCircle(
   ctx.fillStyle = "orange";
   {
     let p0 = project(
-      new THREE.Vector3(shape.x, shape.y, 37 * centimeters),
+      new Vector3(shape.x, shape.y, 37 * centimeters),
       camera,
       ctx
     );
     let p1 = project(
-      new THREE.Vector3(shape.x, shape.y, 37 * centimeters - shape.sizeZ),
+      new Vector3(shape.x, shape.y, 37 * centimeters - shape.sizeZ),
       camera,
       ctx
     );
     let p2 = project(
-      new THREE.Vector3(shape.x + shape.radius, shape.y, 37 * centimeters),
+      new Vector3(shape.x + shape.radius, shape.y, 37 * centimeters),
       camera,
       ctx
     );
@@ -1486,13 +1527,13 @@ export function drawMeasurementsCircle(
   if (currPanel.id.endsWith("depth-panel")) {
     ctx.beginPath();
     let p0 = project(
-      new THREE.Vector3(shape.x, shape.y, 37 * centimeters),
+      new Vector3(shape.x, shape.y, 37 * centimeters),
       camera,
       ctx
     );
     ctx.moveTo(p0.x, p0.y);
     let p1 = project(
-      new THREE.Vector3(shape.x, shape.y, 37 * centimeters - shape.sizeZ),
+      new Vector3(shape.x, shape.y, 37 * centimeters - shape.sizeZ),
       camera,
       ctx
     );
@@ -1502,13 +1543,13 @@ export function drawMeasurementsCircle(
   if (currPanel.id.endsWith("radius-panel")) {
     ctx.beginPath();
     let p0 = project(
-      new THREE.Vector3(shape.x, shape.y, 37 * centimeters),
+      new Vector3(shape.x, shape.y, 37 * centimeters),
       camera,
       ctx
     );
     ctx.moveTo(p0.x, p0.y);
     let p1 = project(
-      new THREE.Vector3(shape.x + shape.radius, shape.y, 37 * centimeters),
+      new Vector3(shape.x + shape.radius, shape.y, 37 * centimeters),
       camera,
       ctx
     );
@@ -1518,16 +1559,16 @@ export function drawMeasurementsCircle(
 
   if (currPanel.id.endsWith("depth-panel")) {
     let p0 = project(
-      new THREE.Vector3(shape.x, shape.y, 37 * centimeters),
+      new Vector3(shape.x, shape.y, 37 * centimeters),
       camera,
       ctx
     );
     let p1 = project(
-      new THREE.Vector3(shape.x, shape.y, 37 * centimeters - shape.sizeZ),
+      new Vector3(shape.x, shape.y, 37 * centimeters - shape.sizeZ),
       camera,
       ctx
     );
-    let pMid = new THREE.Vector3().addVectors(p0, p1).divideScalar(2);
+    let pMid = new Vector3().addVectors(p0, p1).divideScalar(2);
     ctx.font = measurementFont(20);
 
     ctx.textAlign = "left";
@@ -1539,16 +1580,16 @@ export function drawMeasurementsCircle(
 
   if (currPanel.id.endsWith("radius-panel")) {
     let p0 = project(
-      new THREE.Vector3(shape.x, shape.y, 37 * centimeters),
+      new Vector3(shape.x, shape.y, 37 * centimeters),
       camera,
       ctx
     );
     let p1 = project(
-      new THREE.Vector3(shape.x + shape.radius, shape.y, 37 * centimeters),
+      new Vector3(shape.x + shape.radius, shape.y, 37 * centimeters),
       camera,
       ctx
     );
-    let pMid = new THREE.Vector3().addVectors(p0, p1).divideScalar(2);
+    let pMid = new Vector3().addVectors(p0, p1).divideScalar(2);
     ctx.font = measurementFont(20);
 
     ctx.textAlign = "center";
@@ -1564,12 +1605,12 @@ export function drawMeasurementsLine(shape, ctx, camera, centimeters) {
   ctx.lineWidth = shape.thickness;
 
   let p0 = project(
-    new THREE.Vector3(shape.startX, shape.startY, 37 * centimeters),
+    new Vector3(shape.startX, shape.startY, 37 * centimeters),
     camera,
     ctx
   );
   let p1 = project(
-    new THREE.Vector3(shape.endX, shape.endY, 37 * centimeters),
+    new Vector3(shape.endX, shape.endY, 37 * centimeters),
     camera,
     ctx
   );
@@ -1597,11 +1638,11 @@ export function drawEdgeToFoamMeasurements(shape, foam, ctx, camera) {
   const midY = (minY + maxY) / 2;
   const midX = (minX + maxX) / 2;
 
-  const pLeftEdge = project(new THREE.Vector3(foamLeft, midY, baseZ), camera, ctx);
-  const pLeftVertex = project(new THREE.Vector3(minX, midY, baseZ), camera, ctx);
+  const pLeftEdge = project(new Vector3(foamLeft, midY, baseZ), camera, ctx);
+  const pLeftVertex = project(new Vector3(minX, midY, baseZ), camera, ctx);
 
-  const pTopEdge = project(new THREE.Vector3(midX, foamTop, baseZ), camera, ctx);
-  const pTopVertex = project(new THREE.Vector3(midX, maxY, baseZ), camera, ctx);
+  const pTopEdge = project(new Vector3(midX, foamTop, baseZ), camera, ctx);
+  const pTopVertex = project(new Vector3(midX, maxY, baseZ), camera, ctx);
 
   ctx.save();
   ctx.strokeStyle = "orange";
@@ -1640,25 +1681,25 @@ export function drawCircle(shape, ctx, camera, centimeters) {
   ctx.fillStyle = "red";
 
   // function project(p0, camera, ctx, centimeters) {
-  //   return new THREE.Vector3(p0.x, p0.y, 37 * centimeters)
+  //   return new Vector3(p0.x, p0.y, 37 * centimeters)
   //     .project(camera)
   //     .addScalar(1.0)
   //     .multiplyScalar(0.5)
-  //     .multiply(new THREE.Vector3(ctx.canvas.width, ctx.canvas.height, 1));
+  //     .multiply(new Vector3(ctx.canvas.width, ctx.canvas.height, 1));
   // }
 
   // function project(p0, camera, ctx, centimeters) {
   //   return p0
   //     .project(camera)
-  //     .multiply(new THREE.Vector3(p0.x, p0.y, 37 * centimeters))
+  //     .multiply(new Vector3(p0.x, p0.y, 37 * centimeters))
   //     .addScalar(1.0)
   //     .multiplyScalar(0.5)
-  //     .multiply(new THREE.Vector3(ctx.canvas.width, ctx.canvas.height, 1));
+  //     .multiply(new Vector3(ctx.canvas.width, ctx.canvas.height, 1));
   // }
 
   // Project the normalized mouse coordinates into 3D space
   // let center = project(
-  //   new THREE.Vector3(shape.x, shape.y, 37 * centimeters),
+  //   new Vector3(shape.x, shape.y, 37 * centimeters),
   //   camera,
   //   ctx,
   //   centimeters
@@ -1673,11 +1714,11 @@ export function worldToWindow(world, ctx, camera) {
   return world
     .clone()
     .project(camera)
-    .multiply(new THREE.Vector3(1, -1, 0))
+    .multiply(new Vector3(1, -1, 0))
     .addScalar(1)
     .divideScalar(2)
     .multiply(
-      new THREE.Vector3(
+      new Vector3(
         ctx.domElement.clientWidth,
         ctx.domElement.clientHeight,
         0
@@ -1693,9 +1734,9 @@ function smoothNormals(points) {
     let p0 = points[i * 3 + 0];
     let p1 = points[i * 3 + 1];
     let p2 = points[i * 3 + 2];
-    let normal = new THREE.Vector3().crossVectors(
-      new THREE.Vector3().subVectors(p1, p0),
-      new THREE.Vector3().subVectors(p2, p0)
+    let normal = new Vector3().crossVectors(
+      new Vector3().subVectors(p1, p0),
+      new Vector3().subVectors(p2, p0)
     );
     faceNormals.push(normal, normal, normal);
   }
@@ -1705,15 +1746,15 @@ function smoothNormals(points) {
     let p0 = points[i * 3 + 0];
     let p1 = points[i * 3 + 1];
     let p2 = points[i * 3 + 2];
-    let a0 = new THREE.Vector3()
+    let a0 = new Vector3()
       .subVectors(p1, p0)
-      .angleTo(new THREE.Vector3().subVectors(p2, p0));
-    let a1 = new THREE.Vector3()
+      .angleTo(new Vector3().subVectors(p2, p0));
+    let a1 = new Vector3()
       .subVectors(p2, p1)
-      .angleTo(new THREE.Vector3().subVectors(p0, p1));
-    let a2 = new THREE.Vector3()
+      .angleTo(new Vector3().subVectors(p0, p1));
+    let a2 = new Vector3()
       .subVectors(p0, p2)
-      .angleTo(new THREE.Vector3().subVectors(p1, p2));
+      .angleTo(new Vector3().subVectors(p1, p2));
     faceNormalWeights.push(a0, a1, a2);
   }
 
@@ -1732,7 +1773,7 @@ function smoothNormals(points) {
           .clone()
           .normalize()
           .dot(faceNormals[j].clone().normalize()) <
-        Math.cos(THREE.MathUtils.degToRad(angleLimit))
+        Math.cos(MathUtils.degToRad(angleLimit))
       ) {
         continue;
       }
@@ -1749,7 +1790,7 @@ function smoothNormals(points) {
   }
 
   return smoothNormals.map((ns) => {
-    let nn = new THREE.Vector3(0, 0, 0);
+    let nn = new Vector3(0, 0, 0);
     ns.forEach((n) => nn.add(n));
     nn = nn.normalize();
     return nn;
@@ -1772,7 +1813,7 @@ export function createEditor(shape, camera, renderer, onUpdate) {
   const ctx = overlay.getContext("2d");
 
   const projectPoint = (x, y, z) => {
-    const vector = new THREE.Vector3(x, y, z);
+    const vector = new Vector3(x, y, z);
     vector.project(camera);
     return {
       x: (vector.x * 0.5 + 0.5) * overlay.width,
@@ -1781,7 +1822,7 @@ export function createEditor(shape, camera, renderer, onUpdate) {
   };
 
   const unprojectPoint = (screenX, screenY) => {
-    const vector = new THREE.Vector3(
+    const vector = new Vector3(
       (screenX / overlay.width) * 2 - 1,
       -(screenY / overlay.height) * 2 + 1,
       0.5

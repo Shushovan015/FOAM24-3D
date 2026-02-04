@@ -34,6 +34,12 @@ export function initUI() {
   initPanels();
   state.currPanel = getCurrentPanel();
 
+  const exit2DMode = () => {
+    if (!state.display2D) return;
+    state.display2D = false;
+    restoreCameraView();
+  };
+
   document.querySelectorAll("button").forEach((button) => {
     const { icon } = button.dataset;
     if (icon) {
@@ -370,6 +376,28 @@ export function initUI() {
     }
   };
 
+  const exitPolygonEditMode = () => {
+    if (!isEditingPolygon) return;
+
+    isEditingPolygon = false;
+    window.__editingPoints = false;
+    setAddPointMode(false);
+    setDeletePointMode(false);
+    setAddPointButtonEnabled(false);
+    setDeletePointButtonEnabled(false);
+
+    if (editShapeButton) {
+      editShapeButton.textContent = "Edit points";
+    }
+
+    commit();
+
+    if (state.display2D) {
+      state.display2D = false;
+      restoreCameraView();
+    }
+  };
+
   setAddPointButtonEnabled(false);
   setAddPointMode(false);
   setDeletePointButtonEnabled(false);
@@ -409,6 +437,25 @@ export function initUI() {
         restoreCameraView();
       }
     };
+  }
+
+  const backButton = document.querySelector("#back-button");
+  if (backButton) {
+    backButton.addEventListener(
+      "click",
+      () => {
+        if (window.__photoshapeExit) window.__photoshapeExit();  
+
+        if (window.__editingPoints) {
+          window.__editingPoints = false;
+        }
+        if (state.display2D) {
+          state.display2D = false;
+          restoreCameraView();
+        }
+      },
+      true
+    );
   }
 
   if (addPointButton) {
@@ -497,6 +544,7 @@ export function initUI() {
           backBtn.removeAttribute("disabled");
           backBtn.onclick = () => {
             backBtn.setAttribute("disabled", "");
+            exit2DMode();
             showPanelFromLeft("main-panel");
             state.selected = null;
           };
@@ -512,6 +560,7 @@ export function initUI() {
     document.querySelector("#back-button").removeAttribute("disabled");
     document.querySelector("#back-button").onclick = () => {
       document.querySelector("#back-button").onclick = () => {
+        exit2DMode();
         document.querySelector("#back-button").setAttribute("disabled", "");
         showPanelFromLeft("main-panel");
         state.selected = null;

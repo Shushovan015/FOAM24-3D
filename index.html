@@ -176,6 +176,7 @@
           <input id="photoshape-depth-input" class="column" style="width:auto;" type="number" min="5" max="370"
             value="250">
         </div>
+        <div class="photoshape-flow-anchor"></div>
       </div>
       <div class="panel" id="photoshape-rotate-panel">
         <div class="group">
@@ -190,6 +191,7 @@
           <input id="polygon-depth-input" class="column" style="width:auto;" type="number" min="5" max="370"
             value="250">
         </div>
+        <div class="photoshape-flow-anchor"></div>
       </div>
       <div class="panel" id="polygon-rotate-panel">
         <div class="group">
@@ -209,13 +211,8 @@
             <div data-photoshape-step="3" style="padding: 4px 8px; border: 1px solid #666; border-radius: 4px;">3 Edit
             </div>
           </div>
-          <!-- <div id="photoshape-step-note" style="margin-top: 8px; color: white;"></div>
-          <div class="group" style="display: flex; gap: 10px; margin-top: 10px;">
-            <button id="photoshape-step-back" disabled>Back</button>
-            <button id="photoshape-step-next" disabled>Edit</button>
-          </div> -->
         </div>
-
+        <div class="photoshape-flow-anchor"></div>
       </div>
       <!--
         <div class="panel" id="shape-panel">
@@ -231,15 +228,15 @@
           </div>
         </div>-->
     </div>
-  </div>
-  <div class="edit-information">
-    <div id="photoshape-step-note" class="edit-note"></div>
-    <div id="photoshape-button" class="edit-buttons">
-      <button id="photoshape-step-back" disabled>Back</button>
-      <button id="photoshape-step-next" disabled>Edit</button>
+    <div id="photoshape-flow-controls" class="group column">
+      <div id="photoshape-step-note" class="edit-note"></div>
+      <div id="photoshape-button" class="edit-buttons">
+        <button id="photoshape-step-back" class="column grow white" disabled>Back</button>
+        <button id="photoshape-step-next" class="column grow white" disabled>Edit</button>
+      </div>
     </div>
-  </div>
 
+  </div>
   <script type="module" src="./main.js"></script>
 </body>
 
