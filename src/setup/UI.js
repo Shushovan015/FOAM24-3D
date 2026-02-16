@@ -20,9 +20,18 @@ import {
   depthButtonClick,
   sliderButtonClick,
 } from "../utils/buttonClick";
-import { updateSelectedShape, updateDeleteButtons, resetCameraToTopView, resetCameraToFrontView, saveCameraView, restoreCameraView } from "./scene";
+import {
+  updateSelectedShape,
+  updateDeleteButtons,
+  resetCameraToTopView,
+  resetCameraToFrontView,
+  saveCameraView,
+  restoreCameraView,
+  beginCopyPlacement,
+  cancelCopyPlacement
+} from "./scene";
 import { rightestPoint, leftestPoint, highestPoint, lowestPoint, structuredClone } from "../utils/common";
-import { shapeToGeom2 } from "../utils/threeFunctions";
+import { shapeToGeom2, simplifyPointsForDrag } from "../utils/threeFunctions";
 import {
   saveShapeToLibrary,
   loadShapeLibrary,
@@ -60,6 +69,22 @@ export function initUI() {
   state.currPanel.style.pointerEvents = "auto";
   state.sidebar = document.querySelector("#sidebar");
 
+  const copyButtonIds = [
+    "copy-button",
+    "rectangle-copy-button",
+    "polygon-copy-button",
+    "photoshape-copy-button",
+  ];
+
+  copyButtonIds.forEach((id) => {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    btn.onclick = () => {
+      if (btn.hasAttribute("disabled")) return;
+      beginCopyPlacement();
+    };
+  });
+
   buttonClick(
     "shapes-button",
     "main-panel",
@@ -96,32 +121,38 @@ export function initUI() {
     }
   );
 
-  setTimeout(() => {
-    createShapePhotoShape(
-      units.millimeters,
-      state.selected,
-      state.shapesArray,
-      commit,
-      showPanelFromLeft,
-      showPanelFromRight,
-      doCsg,
-      state.display2D,
-      (modifiedSelected) => {
-        state.selected = modifiedSelected;
-        if (!state.display2D) {
-          saveCameraView();
-          resetCameraToTopView();
-        }
-      },
-      (modifiedDisplay) => {
-        state.display2D = modifiedDisplay;
-      },
-      state.cameraCopy,
-      state.rendererCopy,
-      state.sceneCopy,
-      state.cornerRadius
-    );
-  }, 100);
+  const initPhotoShapeWhenReady = () => {
+    if (state.cameraCopy && state.rendererCopy && state.sceneCopy) {
+      createShapePhotoShape(
+        units.millimeters,
+        state.selected,
+        state.shapesArray,
+        commit,
+        showPanelFromLeft,
+        showPanelFromRight,
+        doCsg,
+        state.display2D,
+        (modifiedSelected) => {
+          state.selected = modifiedSelected;
+          if (!state.display2D) {
+            saveCameraView();
+            resetCameraToTopView();
+          }
+        },
+        (modifiedDisplay) => {
+          state.display2D = modifiedDisplay;
+        },
+        state.cameraCopy,
+        state.rendererCopy,
+        state.sceneCopy,
+        state.cornerRadius
+      );
+      return;
+    }
+    setTimeout(initPhotoShapeWhenReady, 100);
+  };
+
+  initPhotoShapeWhenReady();
 
   createShapeRectangle(
     units.millimeters,
@@ -140,7 +171,6 @@ export function initUI() {
     },
     state.cornerRadius
   );
-
 
   depthButtonClick(
     "rectangle-resize-button",
@@ -376,19 +406,26 @@ export function initUI() {
     }
   };
 
+  const setPointEditUi = (editing) => {
+    window.__editingPoints = editing;
+    setAddPointMode(false);
+    setDeletePointMode(false);
+    setAddPointButtonEnabled(editing);
+    setDeletePointButtonEnabled(editing);
+
+    if (editShapeButton) {
+      editShapeButton.textContent = editing ? "Finish Edit" : "Edit points";
+    }
+  };
+
+  window.__setPointEditUi = setPointEditUi;
+
+
   const exitPolygonEditMode = () => {
     if (!isEditingPolygon) return;
 
     isEditingPolygon = false;
-    window.__editingPoints = false;
-    setAddPointMode(false);
-    setDeletePointMode(false);
-    setAddPointButtonEnabled(false);
-    setDeletePointButtonEnabled(false);
-
-    if (editShapeButton) {
-      editShapeButton.textContent = "Edit points";
-    }
+    setPointEditUi(false);
 
     commit();
 
@@ -406,31 +443,20 @@ export function initUI() {
   if (editShapeButton) {
     editShapeButton.onclick = () => {
       if (!state.selected || state.selected.kind !== "polygon") return;
-      if (state.selected.source === "photoshape") return;
-
+      if (state.selected?.source === "photoshape" && Array.isArray(state.selected.points)) {
+        state.selected.points = simplifyPointsForDrag(state.selected.points, 300);
+      }
       if (!isEditingPolygon) {
         isEditingPolygon = true;
-        window.__editingPoints = true;
-        setAddPointMode(false);
-        setDeletePointMode(false);
-        setAddPointButtonEnabled(true);
-        setDeletePointButtonEnabled(true);
-
+        setPointEditUi(true);
         if (!state.display2D) {
           saveCameraView();
           resetCameraToTopView();
         }
         state.display2D = true;
-        editShapeButton.textContent = "Finish Edit";
       } else {
         isEditingPolygon = false;
-        window.__editingPoints = false;
-        setAddPointMode(false);
-        setDeletePointMode(false);
-        setAddPointButtonEnabled(false);
-        setDeletePointButtonEnabled(false);
-
-        editShapeButton.textContent = "Edit points";
+        setPointEditUi(false);
         commit();
         if (!state.display2D) return;
         state.display2D = false;
@@ -444,15 +470,15 @@ export function initUI() {
     backButton.addEventListener(
       "click",
       () => {
-        if (window.__photoshapeExit) window.__photoshapeExit();  
-
+        if (window.__photoshapeExit) window.__photoshapeExit();
         if (window.__editingPoints) {
-          window.__editingPoints = false;
+          setPointEditUi(false);
         }
         if (state.display2D) {
           state.display2D = false;
           restoreCameraView();
         }
+        cancelCopyPlacement();
       },
       true
     );

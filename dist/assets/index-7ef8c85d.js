@@ -21484,6 +21484,7 @@ const state = {
   undoRedoPosition: 0,
   addPointMode: false,
   deletePointMode: false,
+  _lastFrameTime: 0,
   renderer: null,
   overlayCanvas: null,
   ctx: null,
@@ -21521,7 +21522,10 @@ const state = {
   shapesArray: [],
   worker: null,
   undoRedoHistory: [],
-  undoRedoPosition: 0
+  undoRedoPosition: 0,
+  copyPlacementActive: false,
+  copyPlacementSourceId: null,
+  copyPreviewShapes: []
 };
 function getDefaultExportFromCjs(x) {
   return x && x.__esModule && Object.prototype.hasOwnProperty.call(x, "default") ? x["default"] : x;
@@ -28820,12 +28824,23 @@ function mouseOverShape(shape, mouseRayPlaneIntersection, pointInsidePolygon2) {
   }
   return false;
 }
+function getDrawPointsForPolygon(shape, targetCount = 300) {
+  if (!Array.isArray(shape.points))
+    return [];
+  if (!shape._drawPointsCache || shape._pointsDirty || shape._drawPointsCacheTarget !== targetCount) {
+    shape._drawPointsCache = simplifyPointsForDrag(shape.points, targetCount);
+    shape._drawPointsCacheTarget = targetCount;
+    shape._pointsDirty = false;
+  }
+  return shape._drawPointsCache || shape.points;
+}
 function drawOutline(shape, style2, width, z, ctx, camera, display2D, renderer, selected, scene, displayDot) {
   ctx.lineWidth = width;
   ctx.strokeStyle = style2;
   const showControlPoints = display2D && displayDot;
-  if (showControlPoints && shape.kind === "polygon" && Array.isArray(shape.points)) {
-    drawPolygonFromPoints(shape.points, shape, z, ctx, camera, renderer);
+  if (shape.kind === "polygon" && Array.isArray(shape.points)) {
+    const pts = showControlPoints ? shape.points : getDrawPointsForPolygon(shape);
+    drawPolygonFromPoints(pts, shape, z, ctx, camera, renderer);
   } else {
     const geom22 = shapeToGeom2(shape);
     const geometries2 = Array.isArray(geom22) ? geom22 : [geom22];
@@ -28963,13 +28978,53 @@ function drawOutline(shape, style2, width, z, ctx, camera, display2D, renderer, 
     clearControlPoints(shape, scene);
   }
 }
+function disposeObject3D(obj) {
+  if (!obj)
+    return;
+  if (obj.geometry && typeof obj.geometry.dispose === "function") {
+    obj.geometry.dispose();
+  }
+  if (obj.material) {
+    if (Array.isArray(obj.material)) {
+      obj.material.forEach((m) => m && m.dispose && m.dispose());
+    } else if (typeof obj.material.dispose === "function") {
+      obj.material.dispose();
+    }
+  }
+}
+function cleanupShapeEditArtifacts(shapes, scene) {
+  if (!scene || !Array.isArray(shapes))
+    return;
+  shapes.forEach((shape) => {
+    if (!shape)
+      return;
+    if (shape.cleanup) {
+      shape.cleanup();
+      delete shape.cleanup;
+    }
+    if (Array.isArray(shape.controlPoints)) {
+      shape.controlPoints.forEach((obj) => {
+        scene.remove(obj);
+        disposeObject3D(obj);
+      });
+    }
+    shape.controlPoints = [];
+    shape._controlPointsSetup = false;
+    shape._controlPointHandlersInitialized = false;
+    delete shape._selectedPointIndex;
+    delete shape._draggingPoint;
+  });
+}
 function clearControlPoints(shape, scene) {
   if (shape.cleanup) {
     shape.cleanup();
     delete shape.cleanup;
   }
   if (shape.controlPoints) {
-    shape.controlPoints.forEach((obj) => scene.remove(obj));
+    shape.controlPoints.forEach((obj) => {
+      scene.remove(obj);
+      disposeObject3D(obj);
+    });
   }
   shape.controlPoints = [];
   shape._controlPointsSetup = false;
@@ -29147,17 +29202,27 @@ function setupControlPointInteractions(shape, scene, camera, renderer, CP_Z = 0)
     if (!isValidPolygonPoints(newPoints))
       return;
     shape.points = newPoints;
+    shape._pointsDirty = true;
     clearControlPoints(shape, scene);
   }
   function removePointAtIndex(idx) {
     if (!Array.isArray(shape.points) || shape.points.length <= 3)
       return;
     shape.points.splice(idx, 1);
+    shape._pointsDirty = true;
     clearControlPoints(shape, scene);
   }
   function onMouseDown(evt) {
     evt.stopPropagation();
+    if (shape !== state.selected)
+      return;
     if (state.deletePointMode) {
+      if (state._deletePointLock)
+        return;
+      state._deletePointLock = true;
+      requestAnimationFrame(() => {
+        state._deletePointLock = false;
+      });
       if (!Array.isArray(shape.points) || shape.points.length <= 3) {
         showToast("No more point delete possible", { background: "#b00020" });
         return;
@@ -29257,6 +29322,7 @@ function setupControlPointInteractions(shape, scene, camera, renderer, CP_Z = 0)
       cpState.selectedPoint.position.set(pos.x, pos.y, cpState.CP_Z);
       const i = cpState.selectedPoint.userData.pointIndex;
       shape.points[i] = [pos.x - shape.x, pos.y - shape.y];
+      shape._pointsDirty = true;
     });
   }
   function onMouseUp() {
@@ -29286,14 +29352,19 @@ function setupControlPointInteractions(shape, scene, camera, renderer, CP_Z = 0)
 function drawPolygonFromPoints(points, shape, z, ctx, camera, renderer) {
   if (!points || points.length < 2)
     return;
+  const rot = (shape.rotation || 0) * Math.PI / 180;
+  const cos2 = Math.cos(rot);
+  const sin2 = Math.sin(rot);
   ctx.beginPath();
   for (let i = 0; i < points.length; i++) {
     const [x, y] = points[i];
-    const v = new Vector3(
-      x + shape.x,
-      y + shape.y,
-      z
-    );
+    let rx = x;
+    let ry = y;
+    if (rot !== 0) {
+      rx = x * cos2 - y * sin2;
+      ry = x * sin2 + y * cos2;
+    }
+    const v = new Vector3(rx + shape.x, ry + shape.y, z);
     const p = projectPoint(v.x, v.y, v.z, camera, renderer);
     if (i === 0)
       ctx.moveTo(p.x, p.y);
@@ -30107,11 +30178,17 @@ function showPanelFromLeft(id) {
 function getCurrentPanel() {
   return currPanel;
 }
+const MAX_HISTORY = 50;
 function commit() {
   if (state.undoRedoPosition !== state.undoRedoHistory.length - 1) {
     state.undoRedoHistory.splice(state.undoRedoPosition + 1);
   }
   state.undoRedoHistory.push(structuredClone(state.shapesArray));
+  if (state.undoRedoHistory.length > MAX_HISTORY) {
+    const overflow = state.undoRedoHistory.length - MAX_HISTORY;
+    state.undoRedoHistory.splice(0, overflow);
+    state.undoRedoPosition = Math.max(0, state.undoRedoPosition - overflow);
+  }
   state.undoRedoPosition = state.undoRedoHistory.length - 1;
   updateUndoRedoButtons(state.undoRedoPosition, state.undoRedoHistory);
 }
@@ -30121,6 +30198,7 @@ function replaceShapesArray(nextShapes) {
 }
 function undo() {
   if (state.undoRedoPosition > 0) {
+    cleanupShapeEditArtifacts(state.shapesArray, state.sceneCopy);
     state.undoRedoPosition -= 1;
     replaceShapesArray(structuredClone(state.undoRedoHistory[state.undoRedoPosition]));
     doCsg();
@@ -30132,6 +30210,7 @@ function undo() {
 }
 function redo() {
   if (state.undoRedoPosition < state.undoRedoHistory.length - 1) {
+    cleanupShapeEditArtifacts(state.shapesArray, state.sceneCopy);
     state.undoRedoPosition += 1;
     replaceShapesArray(structuredClone(state.undoRedoHistory[state.undoRedoPosition]));
     doCsg();
@@ -30211,7 +30290,7 @@ function createImage(renderer, scene, camera, { buttonId = "export-image", scale
   });
 }
 const case1Url = "./models/case1.obj";
-const SSAA_SCALE = 1.5;
+const SSAA_SCALE = 1;
 function shapeUnderMouse() {
   if (state.mouseRayPlaneIntersection) {
     for (const shape of state.shapesArray.slice().reverse()) {
@@ -30227,6 +30306,12 @@ const deleteButtonsByKind = {
   rectangle: "rectangle-delete-button",
   polygon: "polygon-delete-button",
   photoshape: "photoshape-delete-button"
+};
+const copyButtonsByKind = {
+  circle: "copy-button",
+  rectangle: "rectangle-copy-button",
+  polygon: "polygon-copy-button",
+  photoshape: "photoshape-copy-button"
 };
 function saveCameraView() {
   if (!state.camera || !state.controls)
@@ -30248,24 +30333,145 @@ function restoreCameraView() {
   state.controls.update();
 }
 const updateDeleteButtons = (selected) => {
-  Object.values(deleteButtonsByKind).forEach((id2) => {
-    const btn2 = document.querySelector(`#${id2}`);
-    if (btn2)
-      btn2.setAttribute("disabled", "");
+  Object.values(deleteButtonsByKind).forEach((id) => {
+    const btn = document.querySelector(`#${id}`);
+    if (btn)
+      btn.setAttribute("disabled", "");
+  });
+  Object.values(copyButtonsByKind).forEach((id) => {
+    const btn = document.querySelector(`#${id}`);
+    if (btn)
+      btn.setAttribute("disabled", "");
   });
   const unmergeBtn = document.querySelector("#polygon-unmerge-button");
   if (unmergeBtn)
     unmergeBtn.setAttribute("disabled", "");
   if (!selected)
     return;
-  const id = deleteButtonsByKind[selected.kind];
-  const btn = id ? document.querySelector(`#${id}`) : null;
-  if (btn)
-    btn.removeAttribute("disabled");
+  const deleteId = deleteButtonsByKind[selected.kind];
+  const deleteBtn = deleteId ? document.querySelector(`#${deleteId}`) : null;
+  if (deleteBtn)
+    deleteBtn.removeAttribute("disabled");
+  const copyId = copyButtonsByKind[selected.kind];
+  const copyBtn = copyId ? document.querySelector(`#${copyId}`) : null;
+  if (copyBtn)
+    copyBtn.removeAttribute("disabled");
   if (unmergeBtn && selected.kind === "polygon" && Array.isArray(selected.mergedFrom) && selected.mergedFrom.length) {
     unmergeBtn.removeAttribute("disabled");
   }
 };
+function resetCopyPlacementState() {
+  state.copyPlacementActive = false;
+  state.copyPlacementSourceId = null;
+  state.copyPreviewShapes = [];
+}
+function cancelCopyPlacement() {
+  resetCopyPlacementState();
+}
+function cleanShapeRuntimeFields(shape) {
+  if (!shape)
+    return;
+  delete shape.controlPoints;
+  delete shape.cleanup;
+  delete shape._controlPointsSetup;
+  delete shape._controlPointHandlersInitialized;
+  delete shape._selectedPointIndex;
+  delete shape._draggingPoint;
+  delete shape._dragOriginalPoints;
+  delete shape._drawPointsCache;
+  delete shape._drawPointsCacheTarget;
+  delete shape._pointsDirty;
+}
+function clampPreviewToFoam(copyShape) {
+  const foamLeft = state.foam.x - state.foam.sizeX / 2;
+  const foamRight = state.foam.x + state.foam.sizeX / 2;
+  const foamBottom = state.foam.y - state.foam.sizeY / 2;
+  const foamTop = state.foam.y + state.foam.sizeY / 2;
+  const box = getBoundingBox(copyShape);
+  let shiftX = 0;
+  let shiftY = 0;
+  if (box.minX < foamLeft)
+    shiftX = foamLeft - box.minX;
+  else if (box.maxX > foamRight)
+    shiftX = foamRight - box.maxX;
+  if (box.minY < foamBottom)
+    shiftY = foamBottom - box.minY;
+  else if (box.maxY > foamTop)
+    shiftY = foamTop - box.maxY;
+  copyShape.x += shiftX;
+  copyShape.y += shiftY;
+}
+function buildCopyPreviewShapes(sourceShape) {
+  const box = getBoundingBox(sourceShape);
+  const width = Math.max(10, box.maxX - box.minX);
+  const height = Math.max(10, box.maxY - box.minY);
+  const gap = 10 * units.millimeters;
+  const offsets = [
+    [width + gap, 0],
+    [-(width + gap), 0],
+    [0, height + gap],
+    [0, -(height + gap)]
+  ];
+  const previews = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const [dx, dy] of offsets) {
+    const preview = structuredClone(sourceShape);
+    cleanShapeRuntimeFields(preview);
+    preview.x = sourceShape.x + dx;
+    preview.y = sourceShape.y + dy;
+    clampPreviewToFoam(preview);
+    const key = `${preview.x.toFixed(3)},${preview.y.toFixed(3)}`;
+    if (seen.has(key))
+      continue;
+    seen.add(key);
+    if (Math.abs(preview.x - sourceShape.x) < 1e-3 && Math.abs(preview.y - sourceShape.y) < 1e-3) {
+      continue;
+    }
+    preview.id = `${sourceShape.id || "shape"}-copy-preview-${previews.length}`;
+    previews.push(preview);
+  }
+  return previews;
+}
+function beginCopyPlacement() {
+  if (!state.selected)
+    return;
+  if (!state.selected.id)
+    return;
+  const previews = buildCopyPreviewShapes(state.selected);
+  if (!previews.length)
+    return;
+  state.copyPlacementActive = true;
+  state.copyPlacementSourceId = state.selected.id;
+  state.copyPreviewShapes = previews;
+}
+function copyPreviewUnderMouse() {
+  if (!state.copyPlacementActive || !state.mouseRayPlaneIntersection)
+    return null;
+  for (const preview of state.copyPreviewShapes.slice().reverse()) {
+    if (mouseOverShape(preview, state.mouseRayPlaneIntersection, pointInsidePolygon)) {
+      return preview;
+    }
+  }
+  return null;
+}
+function commitCopyFromPreview(previewShape) {
+  const sourceShape = state.selected && state.selected.id === state.copyPlacementSourceId ? state.selected : state.shapesArray.find((s) => s.id === state.copyPlacementSourceId);
+  if (!sourceShape) {
+    cancelCopyPlacement();
+    return;
+  }
+  const newShape = structuredClone(sourceShape);
+  cleanShapeRuntimeFields(newShape);
+  newShape.id = generateId();
+  newShape.x = previewShape.x;
+  newShape.y = previewShape.y;
+  state.shapesArray.push(newShape);
+  state.selected = newShape;
+  cancelCopyPlacement();
+  updateDeleteButtons(state.selected);
+  doCsg();
+  commit();
+}
 function resetCameraToTopView() {
   var _a, _b;
   if (!state.camera || !state.controls)
@@ -30316,8 +30522,26 @@ function init3D() {
   state.renderer = new WebGL1Renderer({
     antialias: true,
     precision: "highp",
-    preserveDrawingBuffer: true
+    preserveDrawingBuffer: false,
+    powerPreference: "high-performance"
   });
+  state._contextLost = false;
+  state.renderer.domElement.addEventListener(
+    "webglcontextlost",
+    (e) => {
+      e.preventDefault();
+      state._contextLost = true;
+    },
+    false
+  );
+  state.renderer.domElement.addEventListener(
+    "webglcontextrestored",
+    () => {
+      state._contextLost = false;
+      doCsg();
+    },
+    false
+  );
   const getDpr = () => Math.min(window.devicePixelRatio || 1, 1.5);
   state.renderer.setPixelRatio(getDpr());
   state.renderer.domElement.id = "foam-canvas";
@@ -30380,6 +30604,15 @@ function init3D() {
   document.body.appendChild(state.renderer.domElement);
   document.body.appendChild(state.overlayCanvas);
   doCsg();
+  let dragCsgTimer = null;
+  const scheduleDragCsg = () => {
+    if (dragCsgTimer)
+      return;
+    dragCsgTimer = setTimeout(() => {
+      dragCsgTimer = null;
+      doCsg();
+    }, 80);
+  };
   function recalculateMouse(e) {
     const dpr = getDpr();
     state.mouseX = e.clientX * dpr;
@@ -30403,7 +30636,7 @@ function init3D() {
         state.dragged = true;
         state.selected.x = state.mouseRayPlaneIntersection.x - state.dragOffset.x;
         state.selected.y = state.mouseRayPlaneIntersection.y - state.dragOffset.y;
-        doCsg();
+        scheduleDragCsg();
       }
     } else {
       state.mouseRayPlaneIntersection = null;
@@ -30425,6 +30658,7 @@ function init3D() {
       document.querySelector("#back-button").setAttribute("disabled", "");
       restoreCameraView();
       state.selected = null;
+      cancelCopyPlacement();
       updateDeleteButtons(null);
       showPanelFromLeft("main-panel");
     };
@@ -30450,6 +30684,13 @@ function init3D() {
       return;
     recalculateMouse(e);
     e.preventDefault();
+    if (state.copyPlacementActive) {
+      const previewHit = copyPreviewUnderMouse();
+      if (previewHit) {
+        commitCopyFromPreview(previewHit);
+      }
+      return;
+    }
     state.oldSelected = state.selected;
     if (state.selected && mouseOverShape(state.selected, state.mouseRayPlaneIntersection, pointInsidePolygon)) {
       openSelectedPanel();
@@ -30594,6 +30835,18 @@ function drawMeasurements(shape) {
   }
 }
 function onFrame() {
+  const now = performance.now();
+  const targetFps = window.__editingPoints ? 30 : 60;
+  const minFrameMs = 1e3 / targetFps;
+  if (state._lastFrameTime && now - state._lastFrameTime < minFrameMs) {
+    window.requestAnimationFrame(onFrame);
+    return;
+  }
+  state._lastFrameTime = now;
+  if (state._contextLost) {
+    window.requestAnimationFrame(onFrame);
+    return;
+  }
   state.ctx.clearRect(0, 0, state.ctx.canvas.width, state.ctx.canvas.height);
   state.ctx.strokeStyle = "orange";
   state.currPanel = getCurrentPanel();
@@ -30690,6 +30943,28 @@ function onFrame() {
       );
       state.ctx.setLineDash([]);
     }
+  }
+  if (state.copyPlacementActive && (!state.selected || state.selected.id !== state.copyPlacementSourceId || !state.copyPreviewShapes.length)) {
+    cancelCopyPlacement();
+  }
+  if (state.copyPlacementActive && state.copyPreviewShapes.length) {
+    state.ctx.setLineDash([7, 5]);
+    for (const previewShape of state.copyPreviewShapes) {
+      drawOutline(
+        previewShape,
+        "#1f6fff",
+        2,
+        baseZ,
+        state.ctx,
+        currentCamera,
+        state.display2D,
+        state.renderer,
+        state.selected,
+        state.sceneCopy,
+        false
+      );
+    }
+    state.ctx.setLineDash([]);
   }
   getCameraValue(state.camera1, (camera1) => {
     state.orthoCamera = camera1;
@@ -51029,6 +51304,9 @@ const deleteButtonClick = (buttonName, getShapesArray, commit2, doCsg2, getSelec
   btn.onclick = () => {
     const shapesArray = typeof getShapesArray === "function" ? getShapesArray() : [];
     const selected = typeof getSelected === "function" ? getSelected() : null;
+    if (selected) {
+      cleanupShapeEditArtifacts([selected], state.sceneCopy);
+    }
     if (!selected)
       return;
     let idx = -1;
@@ -51250,6 +51528,26 @@ const createShapeFreehand = (millimeters, selected, shapesArray, commit2, showPa
     document.addEventListener("mousemove", onMouseMove);
     let drawingActive = true;
     displayLineXY();
+    const disposeObject3D2 = (obj) => {
+      if (!obj)
+        return;
+      if (obj.geometry && typeof obj.geometry.dispose === "function") {
+        obj.geometry.dispose();
+      }
+      if (obj.material) {
+        if (Array.isArray(obj.material)) {
+          obj.material.forEach((m) => m && m.dispose && m.dispose());
+        } else if (typeof obj.material.dispose === "function") {
+          obj.material.dispose();
+        }
+      }
+    };
+    const disposeList = (list) => {
+      list.forEach((obj) => {
+        sceneCopy.remove(obj);
+        disposeObject3D2(obj);
+      });
+    };
     function cleanupDrawing({ restoreView = true } = {}) {
       drawingActive = false;
       document.body.style.cursor = originalCursor || "default";
@@ -51262,21 +51560,26 @@ const createShapeFreehand = (millimeters, selected, shapesArray, commit2, showPa
         showPanelFromLeft2("main-panel");
       }
       points.length = 0;
-      if (line)
+      if (line) {
         sceneCopy.remove(line);
-      if (mesh)
+        disposeObject3D2(line);
+      }
+      if (mesh) {
         sceneCopy.remove(mesh);
-      previewMeshes.forEach((m) => sceneCopy.remove(m));
+        disposeObject3D2(mesh);
+      }
+      disposeList(previewMeshes);
+      disposeList(circles);
+      disposeList(lines);
+      disposeList(closedCircles);
+      disposeList(closedLines);
       previewMeshes = [];
-      circles.forEach((circle2) => sceneCopy.remove(circle2));
-      lines.forEach((l) => sceneCopy.remove(l));
-      closedCircles.forEach((c2) => sceneCopy.remove(c2));
-      closedLines.forEach((l) => sceneCopy.remove(l));
       closedCircles = [];
       closedLines = [];
       callback1(false);
       angleCtx.clearRect(0, 0, angleOverlay.width, angleOverlay.height);
       angleOverlay.remove();
+      distanceText.remove();
       window.removeEventListener("resize", resizeAngleOverlay);
       document.removeEventListener("pointerdown", pointerDown);
       document.removeEventListener("mousemove", onMouseMove);
@@ -51472,6 +51775,12 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
   };
   let photoshapeFlowActive = false;
   let photoshapeStep = 1;
+  const MAX_PHOTOSHAPE_POINTS = 150;
+  const simplifyPhotoshapePoints = (pts) => {
+    if (!Array.isArray(pts))
+      return pts;
+    return simplifyPointsForDrag(pts, MAX_PHOTOSHAPE_POINTS);
+  };
   const setPhotoshapeFlowActive = (active) => {
     photoshapeFlowActive = active;
     if (stepUI.container) {
@@ -51510,7 +51819,11 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
       saveCameraView();
       resetCameraToTopView();
     }
-    window.__editingPoints = on;
+    if (window.__setPointEditUi) {
+      window.__setPointEditUi(on);
+    } else {
+      window.__editingPoints = on;
+    }
     callback1(on);
     if (!on && restore) {
       restoreCameraView();
@@ -51713,6 +52026,10 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
   const editShapeButton = document.querySelector("#edit-shape");
   if (editShapeButton) {
     editShapeButton.addEventListener("click", () => {
+      if (!selected || selected.source !== "photoshape")
+        return;
+      if (!photoshapeFlowActive)
+        return;
       startPhotoshapeEditFlow();
     });
   }
@@ -51745,9 +52062,6 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
         canNext: false,
         nextLabel: "Edit"
       });
-    };
-    document.querySelector("#edit-shape").onclick = () => {
-      startPhotoshapeEditFlow();
     };
     const file = e.target.files[0];
     if (file) {
@@ -51813,6 +52127,7 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
         photoshapeSession.ids = [];
         photoshapeSession.index = 0;
         contoursData.forEach((contour, index) => {
+          const simplified = simplifyPhotoshapePoints(contour);
           let shape = {
             id: generateId(),
             kind: "polygon",
@@ -51821,7 +52136,7 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
             sizeZ: 300 * millimeters,
             sizeX: 200 * millimeters,
             sizeY: 250 * millimeters,
-            points: contour,
+            points: simplified,
             rotation: 0,
             free: true,
             source: "photoshape",
@@ -52034,6 +52349,22 @@ function initUI() {
   state.currPanel.style.opacity = 1;
   state.currPanel.style.pointerEvents = "auto";
   state.sidebar = document.querySelector("#sidebar");
+  const copyButtonIds = [
+    "copy-button",
+    "rectangle-copy-button",
+    "polygon-copy-button",
+    "photoshape-copy-button"
+  ];
+  copyButtonIds.forEach((id) => {
+    const btn = document.getElementById(id);
+    if (!btn)
+      return;
+    btn.onclick = () => {
+      if (btn.hasAttribute("disabled"))
+        return;
+      beginCopyPlacement();
+    };
+  });
   buttonClick(
     "shapes-button",
     "main-panel",
@@ -52069,32 +52400,37 @@ function initUI() {
       document.querySelector("#upload-photo-input").value = null;
     }
   );
-  setTimeout(() => {
-    createShapePhotoShape(
-      units.millimeters,
-      state.selected,
-      state.shapesArray,
-      commit,
-      showPanelFromLeft,
-      showPanelFromRight,
-      doCsg,
-      state.display2D,
-      (modifiedSelected) => {
-        state.selected = modifiedSelected;
-        if (!state.display2D) {
-          saveCameraView();
-          resetCameraToTopView();
-        }
-      },
-      (modifiedDisplay) => {
-        state.display2D = modifiedDisplay;
-      },
-      state.cameraCopy,
-      state.rendererCopy,
-      state.sceneCopy,
-      state.cornerRadius
-    );
-  }, 100);
+  const initPhotoShapeWhenReady = () => {
+    if (state.cameraCopy && state.rendererCopy && state.sceneCopy) {
+      createShapePhotoShape(
+        units.millimeters,
+        state.selected,
+        state.shapesArray,
+        commit,
+        showPanelFromLeft,
+        showPanelFromRight,
+        doCsg,
+        state.display2D,
+        (modifiedSelected) => {
+          state.selected = modifiedSelected;
+          if (!state.display2D) {
+            saveCameraView();
+            resetCameraToTopView();
+          }
+        },
+        (modifiedDisplay) => {
+          state.display2D = modifiedDisplay;
+        },
+        state.cameraCopy,
+        state.rendererCopy,
+        state.sceneCopy,
+        state.cornerRadius
+      );
+      return;
+    }
+    setTimeout(initPhotoShapeWhenReady, 100);
+  };
+  initPhotoShapeWhenReady();
   createShapeRectangle(
     units.millimeters,
     state.selected,
@@ -52334,37 +52670,40 @@ function initUI() {
       addPointButton.textContent = on ? "Exit Add Point" : "Add point";
     }
   };
+  const setPointEditUi = (editing) => {
+    window.__editingPoints = editing;
+    setAddPointMode(false);
+    setDeletePointMode(false);
+    setAddPointButtonEnabled(editing);
+    setDeletePointButtonEnabled(editing);
+    if (editShapeButton) {
+      editShapeButton.textContent = editing ? "Finish Edit" : "Edit points";
+    }
+  };
+  window.__setPointEditUi = setPointEditUi;
   setAddPointButtonEnabled(false);
   setAddPointMode(false);
   setDeletePointButtonEnabled(false);
   setDeletePointMode(false);
   if (editShapeButton) {
     editShapeButton.onclick = () => {
+      var _a;
       if (!state.selected || state.selected.kind !== "polygon")
         return;
-      if (state.selected.source === "photoshape")
-        return;
+      if (((_a = state.selected) == null ? void 0 : _a.source) === "photoshape" && Array.isArray(state.selected.points)) {
+        state.selected.points = simplifyPointsForDrag(state.selected.points, 300);
+      }
       if (!isEditingPolygon) {
         isEditingPolygon = true;
-        window.__editingPoints = true;
-        setAddPointMode(false);
-        setDeletePointMode(false);
-        setAddPointButtonEnabled(true);
-        setDeletePointButtonEnabled(true);
+        setPointEditUi(true);
         if (!state.display2D) {
           saveCameraView();
           resetCameraToTopView();
         }
         state.display2D = true;
-        editShapeButton.textContent = "Finish Edit";
       } else {
         isEditingPolygon = false;
-        window.__editingPoints = false;
-        setAddPointMode(false);
-        setDeletePointMode(false);
-        setAddPointButtonEnabled(false);
-        setDeletePointButtonEnabled(false);
-        editShapeButton.textContent = "Edit points";
+        setPointEditUi(false);
         commit();
         if (!state.display2D)
           return;
@@ -52381,12 +52720,13 @@ function initUI() {
         if (window.__photoshapeExit)
           window.__photoshapeExit();
         if (window.__editingPoints) {
-          window.__editingPoints = false;
+          setPointEditUi(false);
         }
         if (state.display2D) {
           state.display2D = false;
           restoreCameraView();
         }
+        cancelCopyPlacement();
       },
       true
     );
@@ -52694,4 +53034,4 @@ if (typeof window === "object") {
   initUI();
   commit();
 }
-//# sourceMappingURL=index-fe59f931.js.map
+//# sourceMappingURL=index-7ef8c85d.js.map

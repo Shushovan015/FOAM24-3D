@@ -34,7 +34,6 @@ import {
   Plane
 } from "three";
 
-
 const jscad = {
   primitives: { circle, rectangle, roundedRectangle },
   geometries: { geom2 },
@@ -46,7 +45,6 @@ const jscad = {
   maths: { vec2: { rotate: vec2Rotate } },
   utils: { degToRad },
 };
-
 
 const CORNER_SEGMENTS = 16;
 
@@ -586,6 +584,20 @@ export function mouseOverShape(
   return false;
 }
 
+function getDrawPointsForPolygon(shape, targetCount = 300) {
+  if (!Array.isArray(shape.points)) return [];
+  if (
+    !shape._drawPointsCache ||
+    shape._pointsDirty ||
+    shape._drawPointsCacheTarget !== targetCount
+  ) {
+    shape._drawPointsCache = simplifyPointsForDrag(shape.points, targetCount);
+    shape._drawPointsCacheTarget = targetCount;
+    shape._pointsDirty = false;
+  }
+  return shape._drawPointsCache || shape.points;
+}
+
 export function drawOutline(
   shape,
   style,
@@ -604,8 +616,9 @@ export function drawOutline(
 
   const showControlPoints = display2D && displayDot;
 
-  if (showControlPoints && shape.kind === "polygon" && Array.isArray(shape.points)) {
-    drawPolygonFromPoints(shape.points, shape, z, ctx, camera, renderer);
+  if (shape.kind === "polygon" && Array.isArray(shape.points)) {
+    const pts = showControlPoints ? shape.points : getDrawPointsForPolygon(shape);
+    drawPolygonFromPoints(pts, shape, z, ctx, camera, renderer);
   } else {
     const geom2 = shapeToGeom2(shape);
     const geometries = Array.isArray(geom2) ? geom2 : [geom2];
@@ -768,13 +781,56 @@ export function drawOutline(
   }
 }
 
+function disposeObject3D(obj) {
+  if (!obj) return;
+  if (obj.geometry && typeof obj.geometry.dispose === "function") {
+    obj.geometry.dispose();
+  }
+  if (obj.material) {
+    if (Array.isArray(obj.material)) {
+      obj.material.forEach((m) => m && m.dispose && m.dispose());
+    } else if (typeof obj.material.dispose === "function") {
+      obj.material.dispose();
+    }
+  }
+}
+
+export function cleanupShapeEditArtifacts(shapes, scene) {
+  if (!scene || !Array.isArray(shapes)) return;
+
+  shapes.forEach((shape) => {
+    if (!shape) return;
+
+    if (shape.cleanup) {
+      shape.cleanup();
+      delete shape.cleanup;
+    }
+
+    if (Array.isArray(shape.controlPoints)) {
+      shape.controlPoints.forEach((obj) => {
+        scene.remove(obj);
+        disposeObject3D(obj);
+      });
+    }
+
+    shape.controlPoints = [];
+    shape._controlPointsSetup = false;
+    shape._controlPointHandlersInitialized = false;
+    delete shape._selectedPointIndex;
+    delete shape._draggingPoint;
+  });
+}
+
 function clearControlPoints(shape, scene) {
   if (shape.cleanup) {
     shape.cleanup();
     delete shape.cleanup;
   }
   if (shape.controlPoints) {
-    shape.controlPoints.forEach((obj) => scene.remove(obj));
+    shape.controlPoints.forEach((obj) => {
+      scene.remove(obj);
+      disposeObject3D(obj);
+    });
   }
   shape.controlPoints = [];
   shape._controlPointsSetup = false;
@@ -1000,18 +1056,28 @@ function setupControlPointInteractions(
     if (!isValidPolygonPoints(newPoints)) return;
 
     shape.points = newPoints;
+    shape._pointsDirty = true;
     clearControlPoints(shape, scene);
   }
 
   function removePointAtIndex(idx) {
     if (!Array.isArray(shape.points) || shape.points.length <= 3) return;
     shape.points.splice(idx, 1);
+    shape._pointsDirty = true;
     clearControlPoints(shape, scene);
   }
 
   function onMouseDown(evt) {
     evt.stopPropagation();
+    if (shape !== state.selected) return;
+
     if (state.deletePointMode) {
+      if (state._deletePointLock) return;
+      state._deletePointLock = true;
+      requestAnimationFrame(() => {
+        state._deletePointLock = false;
+      });
+
       if (!Array.isArray(shape.points) || shape.points.length <= 3) {
         showToast("No more point delete possible", { background: "#b00020" });
         return;
@@ -1128,6 +1194,7 @@ function setupControlPointInteractions(
 
       const i = cpState.selectedPoint.userData.pointIndex;
       shape.points[i] = [pos.x - shape.x, pos.y - shape.y];
+      shape._pointsDirty = true;
     });
   }
 
@@ -1163,15 +1230,21 @@ function setupControlPointInteractions(
 function drawPolygonFromPoints(points, shape, z, ctx, camera, renderer) {
   if (!points || points.length < 2) return;
 
+  const rot = ((shape.rotation || 0) * Math.PI) / 180;
+  const cos = Math.cos(rot);
+  const sin = Math.sin(rot);
+
   ctx.beginPath();
   for (let i = 0; i < points.length; i++) {
     const [x, y] = points[i];
-    const v = new Vector3(
-      x + shape.x,
-      y + shape.y,
-      z
-    );
+    let rx = x;
+    let ry = y;
+    if (rot !== 0) {
+      rx = x * cos - y * sin;
+      ry = x * sin + y * cos;
+    }
 
+    const v = new Vector3(rx + shape.x, ry + shape.y, z);
     const p = projectPoint(v.x, v.y, v.z, camera, renderer);
     if (i === 0) ctx.moveTo(p.x, p.y);
     else ctx.lineTo(p.x, p.y);

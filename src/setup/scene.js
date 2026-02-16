@@ -19,17 +19,25 @@ import {
   shapesIntersectGeneric,
   isNearGeneric,
   simplifyPointsForDrag,
-  drawEdgeToFoamMeasurements
+  drawEdgeToFoamMeasurements,
+  getBoundingBox
 } from "../utils/threeFunctions";
-import { pointInsidePolygon, confirmMerge, getValues, getCameraValue, structuredClone } from "../utils/common";
+import {
+  pointInsidePolygon,
+  confirmMerge,
+  getValues,
+  getCameraValue,
+  structuredClone,
+  generateId
+} from "../utils/common";
 import { LambertMaterial } from "../components/Material";
 import { createImage } from "../components/createImage";
 import { getCurrentPanel, showPanelFromRight, showPanelFromLeft } from "./panels";
 
 
 const case1Url = "./models/case1.obj";
-const MAX_DPR = 1.5;
-const SSAA_SCALE = 1.5;
+const MAX_DPR = 1.0;
+const SSAA_SCALE = 1.0;
 
 function shapeUnderMouse() {
   if (state.mouseRayPlaneIntersection) {
@@ -47,6 +55,13 @@ const deleteButtonsByKind = {
   rectangle: "rectangle-delete-button",
   polygon: "polygon-delete-button",
   photoshape: "photoshape-delete-button",
+};
+
+const copyButtonsByKind = {
+  circle: "copy-button",
+  rectangle: "rectangle-copy-button",
+  polygon: "polygon-copy-button",
+  photoshape: "photoshape-copy-button",
 };
 
 export function saveCameraView() {
@@ -76,14 +91,23 @@ export const updateDeleteButtons = (selected) => {
     if (btn) btn.setAttribute("disabled", "");
   });
 
+  Object.values(copyButtonsByKind).forEach((id) => {
+    const btn = document.querySelector(`#${id}`);
+    if (btn) btn.setAttribute("disabled", "");
+  });
+
   const unmergeBtn = document.querySelector("#polygon-unmerge-button");
   if (unmergeBtn) unmergeBtn.setAttribute("disabled", "");
 
   if (!selected) return;
 
-  const id = deleteButtonsByKind[selected.kind];
-  const btn = id ? document.querySelector(`#${id}`) : null;
-  if (btn) btn.removeAttribute("disabled");
+  const deleteId = deleteButtonsByKind[selected.kind];
+  const deleteBtn = deleteId ? document.querySelector(`#${deleteId}`) : null;
+  if (deleteBtn) deleteBtn.removeAttribute("disabled");
+
+  const copyId = copyButtonsByKind[selected.kind];
+  const copyBtn = copyId ? document.querySelector(`#${copyId}`) : null;
+  if (copyBtn) copyBtn.removeAttribute("disabled");
 
   if (
     unmergeBtn &&
@@ -94,6 +118,141 @@ export const updateDeleteButtons = (selected) => {
     unmergeBtn.removeAttribute("disabled");
   }
 };
+
+function resetCopyPlacementState() {
+  state.copyPlacementActive = false;
+  state.copyPlacementSourceId = null;
+  state.copyPreviewShapes = [];
+}
+
+export function cancelCopyPlacement() {
+  resetCopyPlacementState();
+}
+
+function cleanShapeRuntimeFields(shape) {
+  if (!shape) return;
+  delete shape.controlPoints;
+  delete shape.cleanup;
+  delete shape._controlPointsSetup;
+  delete shape._controlPointHandlersInitialized;
+  delete shape._selectedPointIndex;
+  delete shape._draggingPoint;
+  delete shape._dragOriginalPoints;
+  delete shape._drawPointsCache;
+  delete shape._drawPointsCacheTarget;
+  delete shape._pointsDirty;
+}
+
+function clampPreviewToFoam(copyShape) {
+  const foamLeft = state.foam.x - state.foam.sizeX / 2;
+  const foamRight = state.foam.x + state.foam.sizeX / 2;
+  const foamBottom = state.foam.y - state.foam.sizeY / 2;
+  const foamTop = state.foam.y + state.foam.sizeY / 2;
+
+  const box = getBoundingBox(copyShape);
+  let shiftX = 0;
+  let shiftY = 0;
+
+  if (box.minX < foamLeft) shiftX = foamLeft - box.minX;
+  else if (box.maxX > foamRight) shiftX = foamRight - box.maxX;
+
+  if (box.minY < foamBottom) shiftY = foamBottom - box.minY;
+  else if (box.maxY > foamTop) shiftY = foamTop - box.maxY;
+
+  copyShape.x += shiftX;
+  copyShape.y += shiftY;
+}
+
+function buildCopyPreviewShapes(sourceShape) {
+  const box = getBoundingBox(sourceShape);
+  const width = Math.max(10, box.maxX - box.minX);
+  const height = Math.max(10, box.maxY - box.minY);
+  const gap = 10 * units.millimeters;
+
+  const offsets = [
+    [width + gap, 0],
+    [-(width + gap), 0],
+    [0, height + gap],
+    [0, -(height + gap)],
+  ];
+
+  const previews = [];
+  const seen = new Set();
+
+  for (const [dx, dy] of offsets) {
+    const preview = structuredClone(sourceShape);
+    cleanShapeRuntimeFields(preview);
+
+    preview.x = sourceShape.x + dx;
+    preview.y = sourceShape.y + dy;
+
+    clampPreviewToFoam(preview);
+
+    const key = `${preview.x.toFixed(3)},${preview.y.toFixed(3)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    if (
+      Math.abs(preview.x - sourceShape.x) < 0.001 &&
+      Math.abs(preview.y - sourceShape.y) < 0.001
+    ) {
+      continue;
+    }
+
+    preview.id = `${sourceShape.id || "shape"}-copy-preview-${previews.length}`;
+    previews.push(preview);
+  }
+
+  return previews;
+}
+
+export function beginCopyPlacement() {
+  if (!state.selected) return;
+  if (!state.selected.id) return;
+
+  const previews = buildCopyPreviewShapes(state.selected);
+  if (!previews.length) return;
+
+  state.copyPlacementActive = true;
+  state.copyPlacementSourceId = state.selected.id;
+  state.copyPreviewShapes = previews;
+}
+
+function copyPreviewUnderMouse() {
+  if (!state.copyPlacementActive || !state.mouseRayPlaneIntersection) return null;
+  for (const preview of state.copyPreviewShapes.slice().reverse()) {
+    if (mouseOverShape(preview, state.mouseRayPlaneIntersection, pointInsidePolygon)) {
+      return preview;
+    }
+  }
+  return null;
+}
+
+function commitCopyFromPreview(previewShape) {
+  const sourceShape =
+    state.selected && state.selected.id === state.copyPlacementSourceId
+      ? state.selected
+      : state.shapesArray.find((s) => s.id === state.copyPlacementSourceId);
+
+  if (!sourceShape) {
+    cancelCopyPlacement();
+    return;
+  }
+
+  const newShape = structuredClone(sourceShape);
+  cleanShapeRuntimeFields(newShape);
+  newShape.id = generateId();
+  newShape.x = previewShape.x;
+  newShape.y = previewShape.y;
+
+  state.shapesArray.push(newShape);
+  state.selected = newShape;
+  cancelCopyPlacement();
+  updateDeleteButtons(state.selected);
+
+  doCsg();
+  commit();
+}
 
 export function resetCameraToTopView() {
   if (!state.camera || !state.controls) return;
@@ -151,8 +310,26 @@ export function init3D() {
   state.renderer = new THREE.WebGL1Renderer({
     antialias: true,
     precision: "highp",
-    preserveDrawingBuffer: true,
+    preserveDrawingBuffer: false,
+    powerPreference: "high-performance",
   });
+  state._contextLost = false;
+  state.renderer.domElement.addEventListener(
+    "webglcontextlost",
+    (e) => {
+      e.preventDefault();
+      state._contextLost = true;
+    },
+    false
+  );
+  state.renderer.domElement.addEventListener(
+    "webglcontextrestored",
+    () => {
+      state._contextLost = false;
+      doCsg();
+    },
+    false
+  );
 
   const getDpr = () => Math.min(window.devicePixelRatio || 1, 1.5);
   state.renderer.setPixelRatio(getDpr());
@@ -232,6 +409,15 @@ export function init3D() {
 
   doCsg();
 
+  let dragCsgTimer = null;
+  const scheduleDragCsg = () => {
+    if (dragCsgTimer) return;
+    dragCsgTimer = setTimeout(() => {
+      dragCsgTimer = null;
+      doCsg();
+    }, 80);
+  };
+
   function recalculateMouse(e) {
     const dpr = getDpr();
     state.mouseX = e.clientX * dpr;
@@ -257,7 +443,7 @@ export function init3D() {
         state.dragged = true;
         state.selected.x = state.mouseRayPlaneIntersection.x - state.dragOffset.x;
         state.selected.y = state.mouseRayPlaneIntersection.y - state.dragOffset.y;
-        doCsg();
+        scheduleDragCsg();
       }
     } else {
       state.mouseRayPlaneIntersection = null;
@@ -280,6 +466,7 @@ export function init3D() {
       document.querySelector("#back-button").setAttribute("disabled", "");
       restoreCameraView();
       state.selected = null;
+      cancelCopyPlacement();
       updateDeleteButtons(null);
       showPanelFromLeft("main-panel");
     };
@@ -305,6 +492,14 @@ export function init3D() {
     if (window.__editingPoints) return;
     recalculateMouse(e);
     e.preventDefault();
+    if (state.copyPlacementActive) {
+      const previewHit = copyPreviewUnderMouse();
+      if (previewHit) {
+        commitCopyFromPreview(previewHit);
+      }
+      return;
+    }
+
     state.oldSelected = state.selected;
     if (
       state.selected &&
@@ -461,6 +656,19 @@ function drawMeasurements(shape) {
 }
 
 export function onFrame() {
+  const now = performance.now();
+  const targetFps = window.__editingPoints ? 30 : 60;
+  const minFrameMs = 1000 / targetFps;
+  if (state._lastFrameTime && now - state._lastFrameTime < minFrameMs) {
+    window.requestAnimationFrame(onFrame);
+    return;
+  }
+  state._lastFrameTime = now;
+
+  if (state._contextLost) {
+    window.requestAnimationFrame(onFrame);
+    return;
+  }
   state.ctx.clearRect(0, 0, state.ctx.canvas.width, state.ctx.canvas.height);
   state.ctx.strokeStyle = "orange";
   state.currPanel = getCurrentPanel();
@@ -573,6 +781,36 @@ export function onFrame() {
       state.ctx.setLineDash([]);
     }
   }
+
+  if (
+    state.copyPlacementActive &&
+    (!state.selected ||
+      state.selected.id !== state.copyPlacementSourceId ||
+      !state.copyPreviewShapes.length)
+  ) {
+    cancelCopyPlacement();
+  }
+
+  if (state.copyPlacementActive && state.copyPreviewShapes.length) {
+    state.ctx.setLineDash([7, 5]);
+    for (const previewShape of state.copyPreviewShapes) {
+      drawOutline(
+        previewShape,
+        "#1f6fff",
+        2,
+        baseZ,
+        state.ctx,
+        currentCamera,
+        state.display2D,
+        state.renderer,
+        state.selected,
+        state.sceneCopy,
+        false
+      );
+    }
+    state.ctx.setLineDash([]);
+  }
+
 
   getCameraValue(state.camera1, (camera1) => {
     state.orthoCamera = camera1;

@@ -11,6 +11,7 @@ import {
   resetCameraToTopView
 } from "../../setup/scene";
 import { state } from "../../setup/state";
+import { simplifyPointsForDrag } from "../../utils/threeFunctions";
 
 export const createShapePhotoShape = (
   millimeters,
@@ -49,6 +50,13 @@ export const createShapePhotoShape = (
   let photoshapeFlowActive = false;
   let photoshapeFlowReady = false;
   let photoshapeStep = 1;
+  const MAX_PHOTOSHAPE_POINTS = 150;
+
+  const simplifyPhotoshapePoints = (pts) => {
+    if (!Array.isArray(pts)) return pts;
+    return simplifyPointsForDrag(pts, MAX_PHOTOSHAPE_POINTS);
+  };
+
 
   const setPhotoshapeFlowActive = (active) => {
     photoshapeFlowActive = active;
@@ -92,7 +100,11 @@ export const createShapePhotoShape = (
       saveCameraView();
       resetCameraToTopView();
     }
-    window.__editingPoints = on;
+    if (window.__setPointEditUi) {
+      window.__setPointEditUi(on);
+    } else {
+      window.__editingPoints = on;
+    }
     callback1(on);
     if (!on && restore) {
       restoreCameraView();
@@ -323,6 +335,8 @@ export const createShapePhotoShape = (
   const editShapeButton = document.querySelector("#edit-shape");
   if (editShapeButton) {
     editShapeButton.addEventListener("click", () => {
+      if (!selected || selected.source !== "photoshape") return;
+      if (!photoshapeFlowActive) return;
       startPhotoshapeEditFlow();
     });
   }
@@ -360,10 +374,6 @@ export const createShapePhotoShape = (
         canNext: false,
         nextLabel: "Edit",
       });
-    };
-
-    document.querySelector("#edit-shape").onclick = () => {
-      startPhotoshapeEditFlow();
     };
 
     const file = e.target.files[0];
@@ -446,6 +456,7 @@ export const createShapePhotoShape = (
         photoshapeSession.index = 0;
 
         contoursData.forEach((contour, index) => {
+          const simplified = simplifyPhotoshapePoints(contour);
           let shape = {
             id: generateId(),
             kind: "polygon",
@@ -454,7 +465,7 @@ export const createShapePhotoShape = (
             sizeZ: 300 * millimeters,
             sizeX: 200 * millimeters,
             sizeY: 250 * millimeters,
-            points: contour,
+            points: simplified,
             rotation: 0,
             free: true,
             source: "photoshape",
