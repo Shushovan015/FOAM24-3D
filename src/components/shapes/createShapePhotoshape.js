@@ -57,7 +57,6 @@ export const createShapePhotoShape = (
     return simplifyPointsForDrag(pts, MAX_PHOTOSHAPE_POINTS);
   };
 
-
   const setPhotoshapeFlowActive = (active) => {
     photoshapeFlowActive = active;
     if (stepUI.container) {
