@@ -1,4 +1,6 @@
 import { restoreCameraView } from "../setup/scene";
+import { cleanupShapeEditArtifacts } from "../utils/threeFunctions";
+import { state } from "../setup/state";
 
 export const buttonClick = (
   buttonName,
@@ -36,6 +38,10 @@ export const deleteButtonClick = (
   btn.onclick = () => {
     const shapesArray = typeof getShapesArray === "function" ? getShapesArray() : [];
     const selected = typeof getSelected === "function" ? getSelected() : null;
+    if (selected) {
+      cleanupShapeEditArtifacts([selected], state.sceneCopy);
+    }
+
     if (!selected) return;
 
     let idx = -1;

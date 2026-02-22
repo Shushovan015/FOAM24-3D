@@ -158,6 +158,27 @@ export const createShapeFreehand = (
     let drawingActive = true;
     displayLineXY();
 
+    const disposeObject3D = (obj) => {
+      if (!obj) return;
+      if (obj.geometry && typeof obj.geometry.dispose === "function") {
+        obj.geometry.dispose();
+      }
+      if (obj.material) {
+        if (Array.isArray(obj.material)) {
+          obj.material.forEach((m) => m && m.dispose && m.dispose());
+        } else if (typeof obj.material.dispose === "function") {
+          obj.material.dispose();
+        }
+      }
+    };
+
+    const disposeList = (list) => {
+      list.forEach((obj) => {
+        sceneCopy.remove(obj);
+        disposeObject3D(obj);
+      });
+    };
+
     function cleanupDrawing({ restoreView = true } = {}) {
       drawingActive = false;
       document.body.style.cursor = originalCursor || "default";
@@ -172,19 +193,27 @@ export const createShapeFreehand = (
         showPanelFromLeft("main-panel");
       }
       points.length = 0;
-      if (line) sceneCopy.remove(line);
-      if (mesh) sceneCopy.remove(mesh);
-      previewMeshes.forEach((m) => sceneCopy.remove(m));
+      if (line) {
+        sceneCopy.remove(line);
+        disposeObject3D(line);
+      }
+      if (mesh) {
+        sceneCopy.remove(mesh);
+        disposeObject3D(mesh);
+      }
+      disposeList(previewMeshes);
+      disposeList(circles);
+      disposeList(lines);
+      disposeList(closedCircles);
+      disposeList(closedLines);
+
       previewMeshes = [];
-      circles.forEach((circle) => sceneCopy.remove(circle));
-      lines.forEach((l) => sceneCopy.remove(l));
-      closedCircles.forEach((c) => sceneCopy.remove(c));
-      closedLines.forEach((l) => sceneCopy.remove(l));
       closedCircles = [];
       closedLines = [];
       callback1(false);
       angleCtx.clearRect(0, 0, angleOverlay.width, angleOverlay.height);
       angleOverlay.remove();
+      distanceText.remove();
       window.removeEventListener("resize", resizeAngleOverlay);
       document.removeEventListener("pointerdown", pointerDown);
       document.removeEventListener("mousemove", onMouseMove);

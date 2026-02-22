@@ -20,9 +20,18 @@ import {
   depthButtonClick,
   sliderButtonClick,
 } from "../utils/buttonClick";
-import { updateSelectedShape, updateDeleteButtons, resetCameraToTopView, resetCameraToFrontView, saveCameraView, restoreCameraView } from "./scene";
+import {
+  updateSelectedShape,
+  updateDeleteButtons,
+  resetCameraToTopView,
+  resetCameraToFrontView,
+  saveCameraView,
+  restoreCameraView,
+  beginCopyPlacement,
+  cancelCopyPlacement
+} from "./scene";
 import { rightestPoint, leftestPoint, highestPoint, lowestPoint, structuredClone } from "../utils/common";
-import { shapeToGeom2 } from "../utils/threeFunctions";
+import { shapeToGeom2, simplifyPointsForDrag } from "../utils/threeFunctions";
 import {
   saveShapeToLibrary,
   loadShapeLibrary,
@@ -33,6 +42,12 @@ import {
 export function initUI() {
   initPanels();
   state.currPanel = getCurrentPanel();
+
+  const exit2DMode = () => {
+    if (!state.display2D) return;
+    state.display2D = false;
+    restoreCameraView();
+  };
 
   document.querySelectorAll("button").forEach((button) => {
     const { icon } = button.dataset;
@@ -53,6 +68,22 @@ export function initUI() {
   state.currPanel.style.opacity = 1;
   state.currPanel.style.pointerEvents = "auto";
   state.sidebar = document.querySelector("#sidebar");
+
+  const copyButtonIds = [
+    "copy-button",
+    "rectangle-copy-button",
+    "polygon-copy-button",
+    "photoshape-copy-button",
+  ];
+
+  copyButtonIds.forEach((id) => {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    btn.onclick = () => {
+      if (btn.hasAttribute("disabled")) return;
+      beginCopyPlacement();
+    };
+  });
 
   buttonClick(
     "shapes-button",
@@ -90,32 +121,38 @@ export function initUI() {
     }
   );
 
-  setTimeout(() => {
-    createShapePhotoShape(
-      units.millimeters,
-      state.selected,
-      state.shapesArray,
-      commit,
-      showPanelFromLeft,
-      showPanelFromRight,
-      doCsg,
-      state.display2D,
-      (modifiedSelected) => {
-        state.selected = modifiedSelected;
-        if (!state.display2D) {
-          saveCameraView();
-          resetCameraToTopView();
-        }
-      },
-      (modifiedDisplay) => {
-        state.display2D = modifiedDisplay;
-      },
-      state.cameraCopy,
-      state.rendererCopy,
-      state.sceneCopy,
-      state.cornerRadius
-    );
-  }, 100);
+  const initPhotoShapeWhenReady = () => {
+    if (state.cameraCopy && state.rendererCopy && state.sceneCopy) {
+      createShapePhotoShape(
+        units.millimeters,
+        state.selected,
+        state.shapesArray,
+        commit,
+        showPanelFromLeft,
+        showPanelFromRight,
+        doCsg,
+        state.display2D,
+        (modifiedSelected) => {
+          state.selected = modifiedSelected;
+          if (!state.display2D) {
+            saveCameraView();
+            resetCameraToTopView();
+          }
+        },
+        (modifiedDisplay) => {
+          state.display2D = modifiedDisplay;
+        },
+        state.cameraCopy,
+        state.rendererCopy,
+        state.sceneCopy,
+        state.cornerRadius
+      );
+      return;
+    }
+    setTimeout(initPhotoShapeWhenReady, 100);
+  };
+
+  initPhotoShapeWhenReady();
 
   createShapeRectangle(
     units.millimeters,
@@ -134,7 +171,6 @@ export function initUI() {
     },
     state.cornerRadius
   );
-
 
   depthButtonClick(
     "rectangle-resize-button",
@@ -341,29 +377,182 @@ export function initUI() {
   const editShapeButton = document.getElementById("edit-shape");
   let isEditingPolygon = false;
 
+  const addPointButton = document.getElementById("add-point");
+  const deletePointButton = document.getElementById("delete-point");
+
+  const isMacPlatform = /Mac|iPhone|iPad|iPod/.test(navigator.platform);
+  const multiSelectKey = isMacPlatform ? "Cmd" : "Ctrl";
+
+  const pointEditHint = document.createElement("div");
+  pointEditHint.id = "point-edit-multi-select-hint";
+  pointEditHint.className = "point-edit-hint";
+  pointEditHint.innerHTML = `
+    <div class="point-edit-hint__header">
+      <span class="point-edit-hint__title">Point Editing Guide</span>
+      <span class="point-edit-hint__badge">ACTIVE</span>
+    </div>
+
+    <div class="point-edit-hint__row">
+      <span class="point-edit-hint__action">Multi-select points</span>
+      <span class="point-edit-hint__keys"><kbd>${multiSelectKey}</kbd> + <kbd>Click</kbd></span>
+    </div>
+
+    <div class="point-edit-hint__row">
+      <span class="point-edit-hint__action">Move selected points</span>
+      <span class="point-edit-hint__keys"><kbd>Drag</kbd> any selected point</span>
+    </div>
+
+    <div class="point-edit-hint__row">
+      <span class="point-edit-hint__action">Delete point</span>
+      <span class="point-edit-hint__keys"><kbd>Alt</kbd> + <kbd>Click</kbd></span>
+    </div>
+
+    <div class="point-edit-hint__row">
+      <span class="point-edit-hint__action">Add point on edge</span>
+      <span class="point-edit-hint__keys"><kbd>Shift</kbd> + <kbd>Click</kbd></span>
+    </div>
+
+    <div class="point-edit-hint__note">
+      Selected points are highlighted. Click <b>Finish Edit</b> to save changes.
+    </div>
+  `;
+
+  const pointEditHintHost =
+    document.getElementById("polygon-panel") ||
+    editShapeButton?.parentElement ||
+    addPointButton?.parentElement ||
+    deletePointButton?.parentElement;
+
+  if (pointEditHintHost && !document.getElementById(pointEditHint.id)) {
+    pointEditHintHost.appendChild(pointEditHint);
+  }
+
+
+  const setDeletePointButtonEnabled = (enabled) => {
+    if (!deletePointButton) return;
+    if (enabled) deletePointButton.removeAttribute("disabled");
+    else deletePointButton.setAttribute("disabled", "");
+  };
+
+  const setDeletePointMode = (on) => {
+    state.deletePointMode = on;
+    if (deletePointButton) {
+      deletePointButton.textContent = on ? "Exit Delete Point" : "Delete point";
+    }
+  };
+
+  const setAddPointButtonEnabled = (enabled) => {
+    if (!addPointButton) return;
+    if (enabled) addPointButton.removeAttribute("disabled");
+    else addPointButton.setAttribute("disabled", "");
+  };
+
+  const setAddPointMode = (on) => {
+    state.addPointMode = on;
+    if (addPointButton) {
+      addPointButton.textContent = on ? "Exit Add Point" : "Add point";
+    }
+  };
+
+  const setPointEditUi = (editing) => {
+    window.__editingPoints = editing;
+    setAddPointMode(false);
+    setDeletePointMode(false);
+    setAddPointButtonEnabled(editing);
+    setDeletePointButtonEnabled(editing);
+    pointEditHint.classList.toggle("is-visible", editing);
+
+    if (editShapeButton) {
+      editShapeButton.textContent = editing ? "Finish Edit" : "Edit points";
+    }
+    if (!editing && state.selected && state.selected.kind === "polygon") {
+      delete state.selected._selectedPointIndex;
+      delete state.selected._selectedPointIndices;
+    }
+  };
+
+  window.__setPointEditUi = setPointEditUi;
+
+  const exitPolygonEditMode = () => {
+    if (!isEditingPolygon) return;
+
+    isEditingPolygon = false;
+    setPointEditUi(false);
+
+    commit();
+
+    if (state.display2D) {
+      state.display2D = false;
+      restoreCameraView();
+    }
+  };
+
+  setAddPointButtonEnabled(false);
+  setAddPointMode(false);
+  setDeletePointButtonEnabled(false);
+  setDeletePointMode(false);
+
   if (editShapeButton) {
     editShapeButton.onclick = () => {
       if (!state.selected || state.selected.kind !== "polygon") return;
-      if (state.selected.source === "photoshape") return;
-
+      if (state.selected?.source === "photoshape" && Array.isArray(state.selected.points)) {
+        state.selected.points = simplifyPointsForDrag(state.selected.points, 300);
+      }
       if (!isEditingPolygon) {
         isEditingPolygon = true;
-        window.__editingPoints = true;
+        setPointEditUi(true);
         if (!state.display2D) {
           saveCameraView();
           resetCameraToTopView();
         }
         state.display2D = true;
-        editShapeButton.textContent = "Finish Edit";
       } else {
         isEditingPolygon = false;
-        window.__editingPoints = false;
-        editShapeButton.textContent = "Edit points";
+        setPointEditUi(false);
         commit();
         if (!state.display2D) return;
         state.display2D = false;
         restoreCameraView();
       }
+    };
+  }
+
+  const backButton = document.querySelector("#back-button");
+  if (backButton) {
+    backButton.addEventListener(
+      "click",
+      () => {
+        if (window.__photoshapeExit) window.__photoshapeExit();
+        if (window.__editingPoints) {
+          setPointEditUi(false);
+        }
+        if (state.display2D) {
+          state.display2D = false;
+          restoreCameraView();
+        }
+        cancelCopyPlacement();
+      },
+      true
+    );
+  }
+
+  if (addPointButton) {
+    addPointButton.onclick = () => {
+      if (addPointButton.hasAttribute("disabled")) return;
+      if (!state.selected || state.selected.kind !== "polygon") return;
+      if (!window.__editingPoints) return;
+      setDeletePointMode(false);
+      setAddPointMode(!state.addPointMode);
+    };
+  }
+
+  if (deletePointButton) {
+    deletePointButton.onclick = () => {
+      if (deletePointButton.hasAttribute("disabled")) return;
+      if (!state.selected || state.selected.kind !== "polygon") return;
+      if (!window.__editingPoints) return;
+      setAddPointMode(false);
+      setDeletePointMode(!state.deletePointMode);
     };
   }
 
@@ -433,6 +622,7 @@ export function initUI() {
           backBtn.removeAttribute("disabled");
           backBtn.onclick = () => {
             backBtn.setAttribute("disabled", "");
+            exit2DMode();
             showPanelFromLeft("main-panel");
             state.selected = null;
           };
@@ -448,6 +638,7 @@ export function initUI() {
     document.querySelector("#back-button").removeAttribute("disabled");
     document.querySelector("#back-button").onclick = () => {
       document.querySelector("#back-button").onclick = () => {
+        exit2DMode();
         document.querySelector("#back-button").setAttribute("disabled", "");
         showPanelFromLeft("main-panel");
         state.selected = null;

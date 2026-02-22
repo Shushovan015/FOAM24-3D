@@ -37,5 +37,6 @@ export function cloneShapeForInsert(shape) {
   delete clean._controlPointHandlersInitialized;
   delete clean.cleanup;
   delete clean._dragOriginalPoints;
+  delete clean._selectedPointIndices;
   return clean;
 }

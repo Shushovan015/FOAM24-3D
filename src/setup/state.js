@@ -13,6 +13,11 @@ export const state = {
   rendererCopy: null,
   display2D: false,
   sidebar: null,
+  undoRedoHistory: [],
+  undoRedoPosition: 0,
+  addPointMode: false,
+  deletePointMode: false,
+  _lastFrameTime: 0,
 
   renderer: null,
   overlayCanvas: null,
@@ -56,4 +61,8 @@ export const state = {
   worker: null,
   undoRedoHistory: [],
   undoRedoPosition: 0,
+
+  copyPlacementActive: false,
+  copyPlacementSourceId: null,
+  copyPreviewShapes: [],
 };
