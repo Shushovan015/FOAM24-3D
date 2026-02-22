@@ -28834,10 +28834,69 @@ function getDrawPointsForPolygon(shape, targetCount = 300) {
   }
   return shape._drawPointsCache || shape.points;
 }
+function getSelectedPointIndices(shape) {
+  if (!Array.isArray(shape == null ? void 0 : shape._selectedPointIndices) || !Array.isArray(shape == null ? void 0 : shape.points)) {
+    return [];
+  }
+  const max2 = shape.points.length - 1;
+  const seen = /* @__PURE__ */ new Set();
+  const clean = [];
+  for (const idx of shape._selectedPointIndices) {
+    if (!Number.isInteger(idx) || idx < 0 || idx > max2 || seen.has(idx))
+      continue;
+    seen.add(idx);
+    clean.push(idx);
+  }
+  return clean;
+}
+function setSelectedPointIndices(shape, indices) {
+  if (!Array.isArray(shape == null ? void 0 : shape.points)) {
+    delete shape._selectedPointIndex;
+    shape._selectedPointIndices = [];
+    return [];
+  }
+  const max2 = shape.points.length - 1;
+  const seen = /* @__PURE__ */ new Set();
+  const clean = [];
+  for (const idx of Array.isArray(indices) ? indices : []) {
+    if (!Number.isInteger(idx) || idx < 0 || idx > max2 || seen.has(idx))
+      continue;
+    seen.add(idx);
+    clean.push(idx);
+  }
+  shape._selectedPointIndices = clean;
+  if (clean.length > 0)
+    shape._selectedPointIndex = clean[0];
+  else
+    delete shape._selectedPointIndex;
+  return clean;
+}
+function clearSelectedPointIndices(shape) {
+  delete shape._selectedPointIndex;
+  delete shape._selectedPointIndices;
+}
+function updateControlPointSelectionVisuals(shape) {
+  var _a, _b;
+  if (!shape || !Array.isArray(shape.controlPoints))
+    return;
+  const selected = new Set(getSelectedPointIndices(shape));
+  for (let i = 0; i < shape.controlPoints.length; i += 2) {
+    const sphere = shape.controlPoints[i];
+    if (!((_a = sphere == null ? void 0 : sphere.userData) == null ? void 0 : _a.isControlSphere))
+      continue;
+    const isSelected = selected.has(sphere.userData.pointIndex);
+    if ((_b = sphere.material) == null ? void 0 : _b.color) {
+      sphere.material.color.setHex(isSelected ? 16752640 : 65535);
+    }
+    const scale2 = isSelected ? 1.25 : 1;
+    sphere.scale.set(scale2, scale2, scale2);
+  }
+}
 function drawOutline(shape, style2, width, z, ctx, camera, display2D, renderer, selected, scene, displayDot) {
   ctx.lineWidth = width;
   ctx.strokeStyle = style2;
   const showControlPoints = display2D && displayDot;
+  const showPointAngles = showControlPoints && !window.__editingPoints;
   if (shape.kind === "polygon" && Array.isArray(shape.points)) {
     const pts = showControlPoints ? shape.points : getDrawPointsForPolygon(shape);
     drawPolygonFromPoints(pts, shape, z, ctx, camera, renderer);
@@ -28899,7 +28958,7 @@ function drawOutline(shape, style2, width, z, ctx, camera, display2D, renderer, 
         }
       }
     }
-    if (showControlPoints && Array.isArray(shape.points) && shape.points.length >= 3 && typeof shape._selectedPointIndex === "number") {
+    if (showPointAngles && Array.isArray(shape.points) && shape.points.length >= 3 && typeof shape._selectedPointIndex === "number") {
       const i = shape._selectedPointIndex;
       const n = shape.points.length;
       const prev = shape.points[(i - 1 + n) % n];
@@ -28907,6 +28966,9 @@ function drawOutline(shape, style2, width, z, ctx, camera, display2D, renderer, 
       const next = shape.points[(i + 1) % n];
       const v12 = new Vector2(prev[0] - curr[0], prev[1] - curr[1]);
       const v22 = new Vector2(next[0] - curr[0], next[1] - curr[1]);
+      const seedSelection = Array.isArray(shape._selectedPointIndices) ? shape._selectedPointIndices : typeof shape._selectedPointIndex === "number" ? [shape._selectedPointIndex] : [];
+      setSelectedPointIndices(shape, seedSelection);
+      updateControlPointSelectionVisuals(shape);
       const denom = v12.length() * v22.length();
       if (denom > 0) {
         const cos2 = MathUtils.clamp(v12.dot(v22) / denom, -1, 1);
@@ -28923,7 +28985,7 @@ function drawOutline(shape, style2, width, z, ctx, camera, display2D, renderer, 
         ctx.restore();
       }
     }
-    if (shape.points.length >= 3 && typeof shape._selectedPointIndex === "number") {
+    if (showPointAngles && shape.points.length >= 3 && typeof shape._selectedPointIndex === "number") {
       const i = shape._selectedPointIndex;
       const n = shape.points.length;
       const prev = shape.points[(i - 1 + n) % n];
@@ -28975,7 +29037,10 @@ function drawOutline(shape, style2, width, z, ctx, camera, display2D, renderer, 
       setupControlPointInteractions(shape, scene, camera, renderer, z);
     }
   } else {
-    clearControlPoints(shape, scene);
+    const isSelectedPolygonIn2DEdit = display2D && selected === shape && shape.kind === "polygon" && Array.isArray(shape.points);
+    if (!isSelectedPolygonIn2DEdit) {
+      clearControlPoints(shape, scene);
+    }
   }
 }
 function disposeObject3D(obj) {
@@ -29013,6 +29078,7 @@ function cleanupShapeEditArtifacts(shapes, scene) {
     shape._controlPointHandlersInitialized = false;
     delete shape._selectedPointIndex;
     delete shape._draggingPoint;
+    delete shape._selectedPointIndices;
   });
 }
 function clearControlPoints(shape, scene) {
@@ -29035,7 +29101,9 @@ function setupControlPointInteractions(shape, scene, camera, renderer, CP_Z = 0)
   shape._controlPointHandlersInitialized = true;
   const cpState = {
     isDragging: false,
-    selectedPoint: null,
+    selectedPoints: [],
+    dragStartWorld: null,
+    dragStartLocalByIndex: null,
     raycaster: new Raycaster(),
     mouse: new Vector2(),
     CP_Z
@@ -29144,22 +29212,6 @@ function setupControlPointInteractions(shape, scene, camera, renderer, CP_Z = 0)
     }
     return false;
   }
-  function dist2PointToSegment2D(p, a, b) {
-    const ax = a.x, ay = a.y;
-    const bx = b.x, by = b.y;
-    const px2 = p.x, py2 = p.y;
-    const abx = bx - ax;
-    const aby = by - ay;
-    const apx = px2 - ax;
-    const apy = py2 - ay;
-    const abLen2 = abx * abx + aby * aby;
-    const t = abLen2 === 0 ? 0 : Math.max(0, Math.min(1, (apx * abx + apy * aby) / abLen2));
-    const cx2 = ax + abx * t;
-    const cy2 = ay + aby * t;
-    const dx = px2 - cx2;
-    const dy = py2 - cy2;
-    return dx * dx + dy * dy;
-  }
   function getEdgeHit(evt, pixelThreshold = 12) {
     const pos = getPlaneHit(evt);
     if (!pos || !Array.isArray(shape.points) || shape.points.length < 2) {
@@ -29177,6 +29229,31 @@ function setupControlPointInteractions(shape, scene, camera, renderer, CP_Z = 0)
         best = { i, dist2 };
     }
     return best.dist2 <= pixelThreshold * pixelThreshold ? { pos, edgeIndex: best.i } : null;
+  }
+  function getControlSphereByIndex(idx) {
+    return shape.controlPoints.find(
+      (p) => {
+        var _a;
+        return ((_a = p == null ? void 0 : p.userData) == null ? void 0 : _a.isControlSphere) && p.userData.pointIndex === idx;
+      }
+    ) || null;
+  }
+  function getHitPointIndex(evt) {
+    var _a, _b;
+    syncRaycast(evt);
+    const spheres = (shape.controlPoints || []).filter(
+      (p) => {
+        var _a2;
+        return (_a2 = p == null ? void 0 : p.userData) == null ? void 0 : _a2.isControlSphere;
+      }
+    );
+    const hit = cpState.raycaster.intersectObjects(spheres, false);
+    if (hit.length) {
+      const idx = (_b = (_a = hit[0].object) == null ? void 0 : _a.userData) == null ? void 0 : _b.pointIndex;
+      if (Number.isInteger(idx))
+        return idx;
+    }
+    return getNearestPointIndex(evt, 12);
   }
   function insertPointAtWorldPos(worldPos, evt) {
     if (!Array.isArray(shape.points) || shape.points.length < 2)
@@ -29203,14 +29280,47 @@ function setupControlPointInteractions(shape, scene, camera, renderer, CP_Z = 0)
       return;
     shape.points = newPoints;
     shape._pointsDirty = true;
+    clearSelectedPointIndices(shape);
     clearControlPoints(shape, scene);
   }
   function removePointAtIndex(idx) {
     if (!Array.isArray(shape.points) || shape.points.length <= 3)
       return;
+    if (!Number.isInteger(idx) || idx < 0 || idx >= shape.points.length)
+      return;
     shape.points.splice(idx, 1);
     shape._pointsDirty = true;
+    clearSelectedPointIndices(shape);
     clearControlPoints(shape, scene);
+  }
+  function beginDrag(evt, indices) {
+    if (!Array.isArray(shape.points) || !shape.points.length)
+      return;
+    const dragStart = getPlaneHit(evt);
+    if (!dragStart)
+      return;
+    const selected = setSelectedPointIndices(shape, indices);
+    if (!selected.length)
+      return;
+    cpState.selectedPoints = [];
+    cpState.dragStartLocalByIndex = /* @__PURE__ */ new Map();
+    for (const i of selected) {
+      const pt = shape.points[i];
+      if (!pt)
+        continue;
+      cpState.dragStartLocalByIndex.set(i, [pt[0], pt[1]]);
+      const sphere = getControlSphereByIndex(i);
+      if (sphere)
+        cpState.selectedPoints.push(sphere);
+    }
+    if (!cpState.dragStartLocalByIndex.size)
+      return;
+    cpState.dragStartWorld = dragStart.clone();
+    cpState.isDragging = true;
+    shape._draggingPoint = true;
+    updateControlPointSelectionVisuals(shape);
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
   }
   function onMouseDown(evt) {
     evt.stopPropagation();
@@ -29227,30 +29337,33 @@ function setupControlPointInteractions(shape, scene, camera, renderer, CP_Z = 0)
         showToast("No more point delete possible", { background: "#b00020" });
         return;
       }
-      const idx = getNearestPointIndex(evt, 10);
-      if (idx === -1)
+      const idx2 = getNearestPointIndex(evt, 10);
+      if (idx2 === -1)
         return;
-      removePointAtIndex(idx);
+      removePointAtIndex(idx2);
       return;
     }
-    syncRaycast(evt);
-    const hit = cpState.raycaster.intersectObjects(shape.controlPoints, true);
-    if (hit.length) {
+    const idx = getHitPointIndex(evt);
+    if (idx !== -1) {
       evt.preventDefault();
-      const obj = hit[0].object;
-      const idx = obj.userData.pointIndex;
-      shape._selectedPointIndex = idx;
       if (evt.altKey) {
         removePointAtIndex(idx);
         return;
       }
-      cpState.isDragging = true;
-      shape._draggingPoint = true;
-      cpState.selectedPoint = shape.controlPoints.find(
-        (p) => p.userData.pointIndex === idx && p.userData.isControlSphere
-      ) || obj;
-      window.addEventListener("mousemove", onMouseMove);
-      window.addEventListener("mouseup", onMouseUp);
+      const selected = getSelectedPointIndices(shape);
+      const isMultiToggle = evt.ctrlKey || evt.metaKey;
+      if (isMultiToggle) {
+        if (selected.includes(idx)) {
+          setSelectedPointIndices(shape, selected.filter((i) => i !== idx));
+        } else {
+          setSelectedPointIndices(shape, [...selected, idx]);
+        }
+        updateControlPointSelectionVisuals(shape);
+        target.style.cursor = "pointer";
+        return;
+      }
+      const dragIndices = selected.includes(idx) && selected.length > 0 ? selected : [idx];
+      beginDrag(evt, dragIndices);
       return;
     }
     if (state.addPointMode) {
@@ -29264,7 +29377,10 @@ function setupControlPointInteractions(shape, scene, camera, renderer, CP_Z = 0)
       const pos = getPlaneHit(evt);
       if (pos)
         insertPointAtWorldPos(pos, evt);
+      return;
     }
+    clearSelectedPointIndices(shape);
+    updateControlPointSelectionVisuals(shape);
   }
   function onHover(evt) {
     if (state.deletePointMode) {
@@ -29273,9 +29389,9 @@ function setupControlPointInteractions(shape, scene, camera, renderer, CP_Z = 0)
         target.style.cursor = "not-allowed";
         return;
       }
-      const idx = getNearestPointIndex(evt, 10);
-      if (idx !== -1) {
-        shape._selectedPointIndex = idx;
+      const idx2 = getNearestPointIndex(evt, 10);
+      if (idx2 !== -1) {
+        shape._selectedPointIndex = idx2;
         target.style.cursor = "pointer";
       } else {
         delete shape._selectedPointIndex;
@@ -29283,16 +29399,21 @@ function setupControlPointInteractions(shape, scene, camera, renderer, CP_Z = 0)
       }
       return;
     }
-    syncRaycast(evt);
-    const hit = cpState.raycaster.intersectObjects(shape.controlPoints, true);
-    if (hit.length) {
-      const obj = hit[0].object;
-      const idx = obj.userData.pointIndex;
+    const idx = getHitPointIndex(evt);
+    if (idx !== -1) {
       shape._selectedPointIndex = idx;
-      target.style.cursor = evt.altKey ? "not-allowed" : "move";
+      if (evt.ctrlKey || evt.metaKey) {
+        target.style.cursor = "pointer";
+      } else {
+        target.style.cursor = evt.altKey ? "not-allowed" : "move";
+      }
       return;
     }
-    delete shape._selectedPointIndex;
+    const selected = getSelectedPointIndices(shape);
+    if (selected.length)
+      shape._selectedPointIndex = selected[0];
+    else
+      delete shape._selectedPointIndex;
     if (state.addPointMode) {
       const edgeHit = getEdgeHit(evt);
       target.style.cursor = edgeHit ? "copy" : "not-allowed";
@@ -29301,7 +29422,7 @@ function setupControlPointInteractions(shape, scene, camera, renderer, CP_Z = 0)
     target.style.cursor = evt.shiftKey ? "copy" : "";
   }
   function onMouseMove(evt) {
-    if (!cpState.isDragging || !cpState.selectedPoint)
+    if (!cpState.isDragging || !cpState.dragStartWorld || !cpState.dragStartLocalByIndex)
       return;
     cpState.lastClientX = evt.clientX;
     cpState.lastClientY = evt.clientY;
@@ -29309,7 +29430,7 @@ function setupControlPointInteractions(shape, scene, camera, renderer, CP_Z = 0)
       return;
     cpState.dragRaf = requestAnimationFrame(() => {
       cpState.dragRaf = null;
-      if (!cpState.isDragging || !cpState.selectedPoint)
+      if (!cpState.isDragging || !cpState.dragStartWorld || !cpState.dragStartLocalByIndex)
         return;
       const fakeEvt = {
         clientX: cpState.lastClientX,
@@ -29318,10 +29439,19 @@ function setupControlPointInteractions(shape, scene, camera, renderer, CP_Z = 0)
       syncRaycast(fakeEvt);
       const dragPlane = new Plane$1(new Vector3(0, 0, 1), -cpState.CP_Z);
       const pos = new Vector3();
-      cpState.raycaster.ray.intersectPlane(dragPlane, pos);
-      cpState.selectedPoint.position.set(pos.x, pos.y, cpState.CP_Z);
-      const i = cpState.selectedPoint.userData.pointIndex;
-      shape.points[i] = [pos.x - shape.x, pos.y - shape.y];
+      const hasHit = cpState.raycaster.ray.intersectPlane(dragPlane, pos);
+      if (!hasHit)
+        return;
+      const dx = pos.x - cpState.dragStartWorld.x;
+      const dy = pos.y - cpState.dragStartWorld.y;
+      cpState.dragStartLocalByIndex.forEach((startLocal, i) => {
+        const nx = startLocal[0] + dx;
+        const ny = startLocal[1] + dy;
+        shape.points[i] = [nx, ny];
+        const sphere = getControlSphereByIndex(i);
+        if (sphere)
+          sphere.position.set(nx + shape.x, ny + shape.y, cpState.CP_Z);
+      });
       shape._pointsDirty = true;
     });
   }
@@ -29331,22 +29461,28 @@ function setupControlPointInteractions(shape, scene, camera, renderer, CP_Z = 0)
     window.removeEventListener("mousemove", onMouseMove);
     window.removeEventListener("mouseup", onMouseUp);
     cpState.isDragging = false;
-    cpState.selectedPoint = null;
+    cpState.selectedPoints = [];
+    cpState.dragStartWorld = null;
+    cpState.dragStartLocalByIndex = null;
     shape._draggingPoint = false;
     if (cpState.dragRaf) {
       cancelAnimationFrame(cpState.dragRaf);
       cpState.dragRaf = null;
     }
   }
-  target.addEventListener("mousedown", onMouseDown, { capture: true });
+  target.addEventListener("mousedown", onMouseDown, true);
   window.addEventListener("mousemove", onHover);
   shape.cleanup = () => {
-    target.removeEventListener("mousedown", onMouseDown);
+    target.removeEventListener("mousedown", onMouseDown, true);
     window.removeEventListener("mousemove", onHover);
     window.removeEventListener("mousemove", onMouseMove);
     window.removeEventListener("mouseup", onMouseUp);
     shape._controlPointHandlersInitialized = false;
-    delete shape._selectedPointIndex;
+    clearSelectedPointIndices(shape);
+    cpState.isDragging = false;
+    cpState.selectedPoints = [];
+    cpState.dragStartWorld = null;
+    cpState.dragStartLocalByIndex = null;
   };
 }
 function drawPolygonFromPoints(points, shape, z, ctx, camera, renderer) {
@@ -30381,6 +30517,7 @@ function cleanShapeRuntimeFields(shape) {
   delete shape._drawPointsCache;
   delete shape._drawPointsCacheTarget;
   delete shape._pointsDirty;
+  delete shape._selectedPointIndices;
 }
 function clampPreviewToFoam(copyShape) {
   const foamLeft = state.foam.x - state.foam.sizeX / 2;
@@ -51410,6 +51547,7 @@ function cloneShapeForInsert(shape) {
   delete clean._controlPointHandlersInitialized;
   delete clean.cleanup;
   delete clean._dragOriginalPoints;
+  delete clean._selectedPointIndices;
   return clean;
 }
 const createShapeFreehand = (millimeters, selected, shapesArray, commit2, showPanelFromLeft2, showPanelFromRight2, doCsg2, orthoCamera, sceneCopy, rendererCopy, display2D, callback1, callback, foamMesh, defaultCornerRadius) => {
@@ -52642,6 +52780,45 @@ function initUI() {
   let isEditingPolygon = false;
   const addPointButton = document.getElementById("add-point");
   const deletePointButton = document.getElementById("delete-point");
+  const isMacPlatform = /Mac|iPhone|iPad|iPod/.test(navigator.platform);
+  const multiSelectKey = isMacPlatform ? "Cmd" : "Ctrl";
+  const pointEditHint = document.createElement("div");
+  pointEditHint.id = "point-edit-multi-select-hint";
+  pointEditHint.className = "point-edit-hint";
+  pointEditHint.innerHTML = `
+    <div class="point-edit-hint__header">
+      <span class="point-edit-hint__title">Point Editing Guide</span>
+      <span class="point-edit-hint__badge">ACTIVE</span>
+    </div>
+
+    <div class="point-edit-hint__row">
+      <span class="point-edit-hint__action">Multi-select points</span>
+      <span class="point-edit-hint__keys"><kbd>${multiSelectKey}</kbd> + <kbd>Click</kbd></span>
+    </div>
+
+    <div class="point-edit-hint__row">
+      <span class="point-edit-hint__action">Move selected points</span>
+      <span class="point-edit-hint__keys"><kbd>Drag</kbd> any selected point</span>
+    </div>
+
+    <div class="point-edit-hint__row">
+      <span class="point-edit-hint__action">Delete point</span>
+      <span class="point-edit-hint__keys"><kbd>Alt</kbd> + <kbd>Click</kbd></span>
+    </div>
+
+    <div class="point-edit-hint__row">
+      <span class="point-edit-hint__action">Add point on edge</span>
+      <span class="point-edit-hint__keys"><kbd>Shift</kbd> + <kbd>Click</kbd></span>
+    </div>
+
+    <div class="point-edit-hint__note">
+      Selected points are highlighted. Click <b>Finish Edit</b> to save changes.
+    </div>
+  `;
+  const pointEditHintHost = document.getElementById("polygon-panel") || (editShapeButton == null ? void 0 : editShapeButton.parentElement) || (addPointButton == null ? void 0 : addPointButton.parentElement) || (deletePointButton == null ? void 0 : deletePointButton.parentElement);
+  if (pointEditHintHost && !document.getElementById(pointEditHint.id)) {
+    pointEditHintHost.appendChild(pointEditHint);
+  }
   const setDeletePointButtonEnabled = (enabled) => {
     if (!deletePointButton)
       return;
@@ -52676,8 +52853,13 @@ function initUI() {
     setDeletePointMode(false);
     setAddPointButtonEnabled(editing);
     setDeletePointButtonEnabled(editing);
+    pointEditHint.classList.toggle("is-visible", editing);
     if (editShapeButton) {
       editShapeButton.textContent = editing ? "Finish Edit" : "Edit points";
+    }
+    if (!editing && state.selected && state.selected.kind === "polygon") {
+      delete state.selected._selectedPointIndex;
+      delete state.selected._selectedPointIndices;
     }
   };
   window.__setPointEditUi = setPointEditUi;
@@ -53034,4 +53216,4 @@ if (typeof window === "object") {
   initUI();
   commit();
 }
-//# sourceMappingURL=index-7ef8c85d.js.map
+//# sourceMappingURL=index-9d484f99.js.map

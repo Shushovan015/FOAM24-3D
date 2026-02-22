@@ -598,6 +598,73 @@ function getDrawPointsForPolygon(shape, targetCount = 300) {
   return shape._drawPointsCache || shape.points;
 }
 
+function getSelectedPointIndices(shape) {
+  if (!Array.isArray(shape?._selectedPointIndices) || !Array.isArray(shape?.points)) {
+    return [];
+  }
+
+  const max = shape.points.length - 1;
+  const seen = new Set();
+  const clean = [];
+
+  for (const idx of shape._selectedPointIndices) {
+    if (!Number.isInteger(idx) || idx < 0 || idx > max || seen.has(idx)) continue;
+    seen.add(idx);
+    clean.push(idx);
+  }
+
+  return clean;
+}
+
+function setSelectedPointIndices(shape, indices) {
+  if (!Array.isArray(shape?.points)) {
+    delete shape._selectedPointIndex;
+    shape._selectedPointIndices = [];
+    return [];
+  }
+
+  const max = shape.points.length - 1;
+  const seen = new Set();
+  const clean = [];
+
+  for (const idx of Array.isArray(indices) ? indices : []) {
+    if (!Number.isInteger(idx) || idx < 0 || idx > max || seen.has(idx)) continue;
+    seen.add(idx);
+    clean.push(idx);
+  }
+
+  shape._selectedPointIndices = clean;
+  if (clean.length > 0) shape._selectedPointIndex = clean[0];
+  else delete shape._selectedPointIndex;
+
+  return clean;
+}
+
+function clearSelectedPointIndices(shape) {
+  delete shape._selectedPointIndex;
+  delete shape._selectedPointIndices;
+}
+
+function updateControlPointSelectionVisuals(shape) {
+  if (!shape || !Array.isArray(shape.controlPoints)) return;
+
+  const selected = new Set(getSelectedPointIndices(shape));
+
+  for (let i = 0; i < shape.controlPoints.length; i += 2) {
+    const sphere = shape.controlPoints[i];
+    if (!sphere?.userData?.isControlSphere) continue;
+
+    const isSelected = selected.has(sphere.userData.pointIndex);
+
+    if (sphere.material?.color) {
+      sphere.material.color.setHex(isSelected ? 0xffa000 : 0x00ffff);
+    }
+
+    const scale = isSelected ? 1.25 : 1;
+    sphere.scale.set(scale, scale, scale);
+  }
+}
+
 export function drawOutline(
   shape,
   style,
@@ -615,6 +682,7 @@ export function drawOutline(
   ctx.strokeStyle = style;
 
   const showControlPoints = display2D && displayDot;
+  const showPointAngles = showControlPoints && !window.__editingPoints;
 
   if (shape.kind === "polygon" && Array.isArray(shape.points)) {
     const pts = showControlPoints ? shape.points : getDrawPointsForPolygon(shape);
@@ -686,7 +754,7 @@ export function drawOutline(
     }
 
     if (
-      showControlPoints &&
+      showPointAngles &&
       Array.isArray(shape.points) &&
       shape.points.length >= 3 &&
       typeof shape._selectedPointIndex === "number"
@@ -700,6 +768,13 @@ export function drawOutline(
 
       const v1 = new Vector2(prev[0] - curr[0], prev[1] - curr[1]);
       const v2 = new Vector2(next[0] - curr[0], next[1] - curr[1]);
+      const seedSelection = Array.isArray(shape._selectedPointIndices)
+        ? shape._selectedPointIndices
+        : typeof shape._selectedPointIndex === "number"
+          ? [shape._selectedPointIndex]
+          : [];
+      setSelectedPointIndices(shape, seedSelection);
+      updateControlPointSelectionVisuals(shape);
 
       const denom = v1.length() * v2.length();
       if (denom > 0) {
@@ -719,6 +794,7 @@ export function drawOutline(
       }
     }
     if (
+      showPointAngles &&
       shape.points.length >= 3 &&
       typeof shape._selectedPointIndex === "number"
     ) {
@@ -777,9 +853,19 @@ export function drawOutline(
       setupControlPointInteractions(shape, scene, camera, renderer, z);
     }
   } else {
-    clearControlPoints(shape, scene);
+    const isSelectedPolygonIn2DEdit =
+      display2D &&
+      selected === shape &&
+      shape.kind === "polygon" &&
+      Array.isArray(shape.points);
+
+    if (!isSelectedPolygonIn2DEdit) {
+      clearControlPoints(shape, scene);
+    }
   }
 }
+
+
 
 function disposeObject3D(obj) {
   if (!obj) return;
@@ -818,6 +904,7 @@ export function cleanupShapeEditArtifacts(shapes, scene) {
     shape._controlPointHandlersInitialized = false;
     delete shape._selectedPointIndex;
     delete shape._draggingPoint;
+    delete shape._selectedPointIndices;
   });
 }
 
@@ -848,7 +935,9 @@ function setupControlPointInteractions(
 
   const cpState = {
     isDragging: false,
-    selectedPoint: null,
+    selectedPoints: [],
+    dragStartWorld: null,
+    dragStartLocalByIndex: null,
     raycaster: new Raycaster(),
     mouse: new Vector2(),
     CP_Z: CP_Z,
@@ -856,7 +945,6 @@ function setupControlPointInteractions(
   cpState.dragRaf = null;
   cpState.lastClientX = 0;
   cpState.lastClientY = 0;
-
 
   const target = renderer.domElement;
   target.style.pointerEvents = "auto";
@@ -979,26 +1067,6 @@ function setupControlPointInteractions(
     return false;
   }
 
-  function dist2PointToSegment2D(p, a, b) {
-    const ax = a.x, ay = a.y;
-    const bx = b.x, by = b.y;
-    const px = p.x, py = p.y;
-
-    const abx = bx - ax;
-    const aby = by - ay;
-    const apx = px - ax;
-    const apy = py - ay;
-
-    const abLen2 = abx * abx + aby * aby;
-    const t = abLen2 === 0 ? 0 : Math.max(0, Math.min(1, (apx * abx + apy * aby) / abLen2));
-    const cx = ax + abx * t;
-    const cy = ay + aby * t;
-
-    const dx = px - cx;
-    const dy = py - cy;
-    return dx * dx + dy * dy;
-  }
-
   function getEdgeHit(evt, pixelThreshold = 12) {
     const pos = getPlaneHit(evt);
     if (!pos || !Array.isArray(shape.points) || shape.points.length < 2) {
@@ -1006,7 +1074,6 @@ function setupControlPointInteractions(
     }
 
     const mouse = { x: evt.clientX, y: evt.clientY };
-
     let best = { i: 0, dist2: Infinity };
 
     for (let i = 0; i < shape.points.length; i++) {
@@ -1025,9 +1092,33 @@ function setupControlPointInteractions(
       : null;
   }
 
+  function getControlSphereByIndex(idx) {
+    return (
+      shape.controlPoints.find(
+        (p) => p?.userData?.isControlSphere && p.userData.pointIndex === idx
+      ) || null
+    );
+  }
+
+  function getHitPointIndex(evt) {
+    syncRaycast(evt);
+
+    const spheres = (shape.controlPoints || []).filter(
+      (p) => p?.userData?.isControlSphere
+    );
+
+    const hit = cpState.raycaster.intersectObjects(spheres, false);
+    if (hit.length) {
+      const idx = hit[0].object?.userData?.pointIndex;
+      if (Number.isInteger(idx)) return idx;
+    }
+
+    return getNearestPointIndex(evt, 12);
+  }
+
+
   function insertPointAtWorldPos(worldPos, evt) {
     if (!Array.isArray(shape.points) || shape.points.length < 2) return;
-
     if (isNearExistingPoint(evt, 10)) return;
 
     const local = [worldPos.x - shape.x, worldPos.y - shape.y];
@@ -1057,14 +1148,50 @@ function setupControlPointInteractions(
 
     shape.points = newPoints;
     shape._pointsDirty = true;
+    clearSelectedPointIndices(shape);
     clearControlPoints(shape, scene);
   }
 
   function removePointAtIndex(idx) {
     if (!Array.isArray(shape.points) || shape.points.length <= 3) return;
+    if (!Number.isInteger(idx) || idx < 0 || idx >= shape.points.length) return;
+
     shape.points.splice(idx, 1);
     shape._pointsDirty = true;
+    clearSelectedPointIndices(shape);
     clearControlPoints(shape, scene);
+  }
+
+  function beginDrag(evt, indices) {
+    if (!Array.isArray(shape.points) || !shape.points.length) return;
+
+    const dragStart = getPlaneHit(evt);
+    if (!dragStart) return;
+
+    const selected = setSelectedPointIndices(shape, indices);
+    if (!selected.length) return;
+
+    cpState.selectedPoints = [];
+    cpState.dragStartLocalByIndex = new Map();
+
+    for (const i of selected) {
+      const pt = shape.points[i];
+      if (!pt) continue;
+      cpState.dragStartLocalByIndex.set(i, [pt[0], pt[1]]);
+      const sphere = getControlSphereByIndex(i);
+      if (sphere) cpState.selectedPoints.push(sphere);
+    }
+
+    if (!cpState.dragStartLocalByIndex.size) return;
+
+    cpState.dragStartWorld = dragStart.clone();
+    cpState.isDragging = true;
+    shape._draggingPoint = true;
+
+    updateControlPointSelectionVisuals(shape);
+
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
   }
 
   function onMouseDown(evt) {
@@ -1088,29 +1215,34 @@ function setupControlPointInteractions(
       return;
     }
 
-    syncRaycast(evt);
-    const hit = cpState.raycaster.intersectObjects(shape.controlPoints, true);
+    const idx = getHitPointIndex(evt);
 
-    if (hit.length) {
+    if (idx !== -1) {
       evt.preventDefault();
-      const obj = hit[0].object;
-      const idx = obj.userData.pointIndex;
-      shape._selectedPointIndex = idx;
 
       if (evt.altKey) {
         removePointAtIndex(idx);
         return;
       }
 
-      cpState.isDragging = true;
-      shape._draggingPoint = true;
-      cpState.selectedPoint =
-        shape.controlPoints.find(
-          (p) => p.userData.pointIndex === idx && p.userData.isControlSphere
-        ) || obj;
+      const selected = getSelectedPointIndices(shape);
+      const isMultiToggle = evt.ctrlKey || evt.metaKey;
 
-      window.addEventListener("mousemove", onMouseMove);
-      window.addEventListener("mouseup", onMouseUp);
+      if (isMultiToggle) {
+        if (selected.includes(idx)) {
+          setSelectedPointIndices(shape, selected.filter((i) => i !== idx));
+        } else {
+          setSelectedPointIndices(shape, [...selected, idx]);
+        }
+        updateControlPointSelectionVisuals(shape);
+        target.style.cursor = "pointer";
+        return;
+      }
+
+      const dragIndices =
+        selected.includes(idx) && selected.length > 0 ? selected : [idx];
+
+      beginDrag(evt, dragIndices);
       return;
     }
 
@@ -1124,7 +1256,11 @@ function setupControlPointInteractions(
     if (evt.shiftKey) {
       const pos = getPlaneHit(evt);
       if (pos) insertPointAtWorldPos(pos, evt);
+      return;
     }
+
+    clearSelectedPointIndices(shape);
+    updateControlPointSelectionVisuals(shape);
   }
 
   function onHover(evt) {
@@ -1145,18 +1281,21 @@ function setupControlPointInteractions(
       return;
     }
 
-    syncRaycast(evt);
-    const hit = cpState.raycaster.intersectObjects(shape.controlPoints, true);
+    const idx = getHitPointIndex(evt);
 
-    if (hit.length) {
-      const obj = hit[0].object;
-      const idx = obj.userData.pointIndex;
+    if (idx !== -1) {
       shape._selectedPointIndex = idx;
-      target.style.cursor = evt.altKey ? "not-allowed" : "move";
+      if (evt.ctrlKey || evt.metaKey) {
+        target.style.cursor = "pointer";
+      } else {
+        target.style.cursor = evt.altKey ? "not-allowed" : "move";
+      }
       return;
     }
 
-    delete shape._selectedPointIndex;
+    const selected = getSelectedPointIndices(shape);
+    if (selected.length) shape._selectedPointIndex = selected[0];
+    else delete shape._selectedPointIndex;
 
     if (state.addPointMode) {
       const edgeHit = getEdgeHit(evt);
@@ -1168,7 +1307,7 @@ function setupControlPointInteractions(
   }
 
   function onMouseMove(evt) {
-    if (!cpState.isDragging || !cpState.selectedPoint) return;
+    if (!cpState.isDragging || !cpState.dragStartWorld || !cpState.dragStartLocalByIndex) return;
 
     cpState.lastClientX = evt.clientX;
     cpState.lastClientY = evt.clientY;
@@ -1177,7 +1316,7 @@ function setupControlPointInteractions(
 
     cpState.dragRaf = requestAnimationFrame(() => {
       cpState.dragRaf = null;
-      if (!cpState.isDragging || !cpState.selectedPoint) return;
+      if (!cpState.isDragging || !cpState.dragStartWorld || !cpState.dragStartLocalByIndex) return;
 
       const fakeEvt = {
         clientX: cpState.lastClientX,
@@ -1188,12 +1327,21 @@ function setupControlPointInteractions(
 
       const dragPlane = new Plane(new Vector3(0, 0, 1), -cpState.CP_Z);
       const pos = new Vector3();
-      cpState.raycaster.ray.intersectPlane(dragPlane, pos);
+      const hasHit = cpState.raycaster.ray.intersectPlane(dragPlane, pos);
+      if (!hasHit) return;
 
-      cpState.selectedPoint.position.set(pos.x, pos.y, cpState.CP_Z);
+      const dx = pos.x - cpState.dragStartWorld.x;
+      const dy = pos.y - cpState.dragStartWorld.y;
 
-      const i = cpState.selectedPoint.userData.pointIndex;
-      shape.points[i] = [pos.x - shape.x, pos.y - shape.y];
+      cpState.dragStartLocalByIndex.forEach((startLocal, i) => {
+        const nx = startLocal[0] + dx;
+        const ny = startLocal[1] + dy;
+        shape.points[i] = [nx, ny];
+
+        const sphere = getControlSphereByIndex(i);
+        if (sphere) sphere.position.set(nx + shape.x, ny + shape.y, cpState.CP_Z);
+      });
+
       shape._pointsDirty = true;
     });
   }
@@ -1205,7 +1353,9 @@ function setupControlPointInteractions(
     window.removeEventListener("mouseup", onMouseUp);
 
     cpState.isDragging = false;
-    cpState.selectedPoint = null;
+    cpState.selectedPoints = [];
+    cpState.dragStartWorld = null;
+    cpState.dragStartLocalByIndex = null;
     shape._draggingPoint = false;
 
     if (cpState.dragRaf) {
@@ -1214,16 +1364,22 @@ function setupControlPointInteractions(
     }
   }
 
-  target.addEventListener("mousedown", onMouseDown, { capture: true });
+  target.addEventListener("mousedown", onMouseDown, true);
   window.addEventListener("mousemove", onHover);
 
   shape.cleanup = () => {
-    target.removeEventListener("mousedown", onMouseDown);
+    target.removeEventListener("mousedown", onMouseDown, true);
     window.removeEventListener("mousemove", onHover);
     window.removeEventListener("mousemove", onMouseMove);
     window.removeEventListener("mouseup", onMouseUp);
+
     shape._controlPointHandlersInitialized = false;
-    delete shape._selectedPointIndex;
+    clearSelectedPointIndices(shape);
+
+    cpState.isDragging = false;
+    cpState.selectedPoints = [];
+    cpState.dragStartWorld = null;
+    cpState.dragStartLocalByIndex = null;
   };
 }
 

@@ -380,6 +380,54 @@ export function initUI() {
   const addPointButton = document.getElementById("add-point");
   const deletePointButton = document.getElementById("delete-point");
 
+  const isMacPlatform = /Mac|iPhone|iPad|iPod/.test(navigator.platform);
+  const multiSelectKey = isMacPlatform ? "Cmd" : "Ctrl";
+
+  const pointEditHint = document.createElement("div");
+  pointEditHint.id = "point-edit-multi-select-hint";
+  pointEditHint.className = "point-edit-hint";
+  pointEditHint.innerHTML = `
+    <div class="point-edit-hint__header">
+      <span class="point-edit-hint__title">Point Editing Guide</span>
+      <span class="point-edit-hint__badge">ACTIVE</span>
+    </div>
+
+    <div class="point-edit-hint__row">
+      <span class="point-edit-hint__action">Multi-select points</span>
+      <span class="point-edit-hint__keys"><kbd>${multiSelectKey}</kbd> + <kbd>Click</kbd></span>
+    </div>
+
+    <div class="point-edit-hint__row">
+      <span class="point-edit-hint__action">Move selected points</span>
+      <span class="point-edit-hint__keys"><kbd>Drag</kbd> any selected point</span>
+    </div>
+
+    <div class="point-edit-hint__row">
+      <span class="point-edit-hint__action">Delete point</span>
+      <span class="point-edit-hint__keys"><kbd>Alt</kbd> + <kbd>Click</kbd></span>
+    </div>
+
+    <div class="point-edit-hint__row">
+      <span class="point-edit-hint__action">Add point on edge</span>
+      <span class="point-edit-hint__keys"><kbd>Shift</kbd> + <kbd>Click</kbd></span>
+    </div>
+
+    <div class="point-edit-hint__note">
+      Selected points are highlighted. Click <b>Finish Edit</b> to save changes.
+    </div>
+  `;
+
+  const pointEditHintHost =
+    document.getElementById("polygon-panel") ||
+    editShapeButton?.parentElement ||
+    addPointButton?.parentElement ||
+    deletePointButton?.parentElement;
+
+  if (pointEditHintHost && !document.getElementById(pointEditHint.id)) {
+    pointEditHintHost.appendChild(pointEditHint);
+  }
+
+
   const setDeletePointButtonEnabled = (enabled) => {
     if (!deletePointButton) return;
     if (enabled) deletePointButton.removeAttribute("disabled");
@@ -412,14 +460,18 @@ export function initUI() {
     setDeletePointMode(false);
     setAddPointButtonEnabled(editing);
     setDeletePointButtonEnabled(editing);
+    pointEditHint.classList.toggle("is-visible", editing);
 
     if (editShapeButton) {
       editShapeButton.textContent = editing ? "Finish Edit" : "Edit points";
     }
+    if (!editing && state.selected && state.selected.kind === "polygon") {
+      delete state.selected._selectedPointIndex;
+      delete state.selected._selectedPointIndices;
+    }
   };
 
   window.__setPointEditUi = setPointEditUi;
-
 
   const exitPolygonEditMode = () => {
     if (!isEditingPolygon) return;

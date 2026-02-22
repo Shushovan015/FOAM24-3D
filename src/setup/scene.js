@@ -141,6 +141,7 @@ function cleanShapeRuntimeFields(shape) {
   delete shape._drawPointsCache;
   delete shape._drawPointsCacheTarget;
   delete shape._pointsDirty;
+  delete shape._selectedPointIndices;
 }
 
 function clampPreviewToFoam(copyShape) {
