@@ -29101,7 +29101,6 @@ function setupControlPointInteractions(shape, scene, camera, renderer, CP_Z = 0)
   shape._controlPointHandlersInitialized = true;
   const cpState = {
     isDragging: false,
-    selectedPoints: [],
     dragStartWorld: null,
     dragStartLocalByIndex: null,
     raycaster: new Raycaster(),
@@ -29135,164 +29134,152 @@ function setupControlPointInteractions(shape, scene, camera, renderer, CP_Z = 0)
     const hit = cpState.raycaster.ray.intersectPlane(dragPlane, pos);
     return hit ? pos : null;
   }
-  function dist2PointToSegment(p, a, b) {
-    const ax = a[0], ay = a[1];
-    const bx = b[0], by = b[1];
-    const px2 = p[0], py2 = p[1];
-    const abx = bx - ax;
-    const aby = by - ay;
-    const apx = px2 - ax;
-    const apy = py2 - ay;
-    const abLen2 = abx * abx + aby * aby;
-    const t = abLen2 === 0 ? 0 : Math.max(0, Math.min(1, (apx * abx + apy * aby) / abLen2));
-    const cx2 = ax + abx * t;
-    const cy2 = ay + aby * t;
-    const dx = px2 - cx2;
-    const dy = py2 - cy2;
-    return { dist2: dx * dx + dy * dy, t };
-  }
-  function dist2PointToSegment2D(p, a, b) {
-    const ax = a.x, ay = a.y;
-    const bx = b.x, by = b.y;
-    const px2 = p.x, py2 = p.y;
-    const abx = bx - ax;
-    const aby = by - ay;
-    const apx = px2 - ax;
-    const apy = py2 - ay;
-    const abLen2 = abx * abx + aby * aby;
-    const t = abLen2 === 0 ? 0 : Math.max(0, Math.min(1, (apx * abx + apy * aby) / abLen2));
-    const cx2 = ax + abx * t;
-    const cy2 = ay + aby * t;
-    const dx = px2 - cx2;
-    const dy = py2 - cy2;
-    return dx * dx + dy * dy;
-  }
-  function projectToClient(x, y, z) {
-    const v = new Vector3(x, y, z);
-    v.project(camera);
-    const r = getRect();
-    return {
-      x: r.left + (v.x + 1) * 0.5 * r.width,
-      y: r.top + (1 - v.y) * 0.5 * r.height
-    };
-  }
-  function getNearestPointIndex(evt, pixelThreshold = 10) {
-    if (!evt || !Array.isArray(shape.points))
-      return -1;
-    const mx = evt.clientX;
-    const my = evt.clientY;
-    let bestIdx = -1;
-    let bestDist2 = Infinity;
-    for (let i = 0; i < shape.points.length; i++) {
-      const pt = shape.points[i];
-      const screen = projectToClient(pt[0] + shape.x, pt[1] + shape.y, cpState.CP_Z);
-      const dx = screen.x - mx;
-      const dy = screen.y - my;
-      const d2 = dx * dx + dy * dy;
-      if (d2 < bestDist2) {
-        bestDist2 = d2;
-        bestIdx = i;
+  const pointOps = {
+    dist2PointToSegmentLocal(p, a, b) {
+      const ax = a[0], ay = a[1];
+      const bx = b[0], by = b[1];
+      const px2 = p[0], py2 = p[1];
+      const abx = bx - ax;
+      const aby = by - ay;
+      const apx = px2 - ax;
+      const apy = py2 - ay;
+      const abLen2 = abx * abx + aby * aby;
+      const t = abLen2 === 0 ? 0 : Math.max(0, Math.min(1, (apx * abx + apy * aby) / abLen2));
+      const cx2 = ax + abx * t;
+      const cy2 = ay + aby * t;
+      const dx = px2 - cx2;
+      const dy = py2 - cy2;
+      return { dist2: dx * dx + dy * dy, t };
+    },
+    dist2PointToSegmentScreen(p, a, b) {
+      const ax = a.x, ay = a.y;
+      const bx = b.x, by = b.y;
+      const px2 = p.x, py2 = p.y;
+      const abx = bx - ax;
+      const aby = by - ay;
+      const apx = px2 - ax;
+      const apy = py2 - ay;
+      const abLen2 = abx * abx + aby * aby;
+      const t = abLen2 === 0 ? 0 : Math.max(0, Math.min(1, (apx * abx + apy * aby) / abLen2));
+      const cx2 = ax + abx * t;
+      const cy2 = ay + aby * t;
+      const dx = px2 - cx2;
+      const dy = py2 - cy2;
+      return dx * dx + dy * dy;
+    },
+    projectToClient(x, y, z = cpState.CP_Z) {
+      const v = new Vector3(x, y, z);
+      v.project(camera);
+      const r = getRect();
+      return {
+        x: r.left + (v.x + 1) * 0.5 * r.width,
+        y: r.top + (1 - v.y) * 0.5 * r.height
+      };
+    },
+    nearestFromEvent(evt, pixelThreshold = Infinity) {
+      if (!evt || !Array.isArray(shape.points) || shape.points.length === 0) {
+        return { idx: -1, dist2: Infinity };
       }
-    }
-    return bestDist2 <= pixelThreshold * pixelThreshold ? bestIdx : -1;
-  }
-  function isNearExistingPoint(evt, pixelThreshold = 45) {
-    if (!evt || !Array.isArray(shape.points))
-      return false;
-    const mx = evt.clientX;
-    const my = evt.clientY;
-    for (let i = 0; i < shape.points.length; i++) {
-      const pt = shape.points[i];
-      const screen = projectToClient(pt[0] + shape.x, pt[1] + shape.y, cpState.CP_Z);
-      const dx = screen.x - mx;
-      const dy = screen.y - my;
-      if (dx * dx + dy * dy <= pixelThreshold * pixelThreshold) {
-        return true;
+      const mx = evt.clientX;
+      const my = evt.clientY;
+      let bestIdx = -1;
+      let bestDist2 = Infinity;
+      for (let i = 0; i < shape.points.length; i++) {
+        const pt = shape.points[i];
+        const screen = this.projectToClient(pt[0] + shape.x, pt[1] + shape.y);
+        const dx = screen.x - mx;
+        const dy = screen.y - my;
+        const d2 = dx * dx + dy * dy;
+        if (d2 < bestDist2) {
+          bestDist2 = d2;
+          bestIdx = i;
+        }
       }
-    }
-    return false;
-  }
-  function getEdgeHit(evt, pixelThreshold = 12) {
-    const pos = getPlaneHit(evt);
-    if (!pos || !Array.isArray(shape.points) || shape.points.length < 2) {
-      return null;
-    }
-    const mouse = { x: evt.clientX, y: evt.clientY };
-    let best = { i: 0, dist2: Infinity };
-    for (let i = 0; i < shape.points.length; i++) {
-      const a = shape.points[i];
-      const b = shape.points[(i + 1) % shape.points.length];
-      const aScreen = projectToClient(a[0] + shape.x, a[1] + shape.y, cpState.CP_Z);
-      const bScreen = projectToClient(b[0] + shape.x, b[1] + shape.y, cpState.CP_Z);
-      const dist2 = dist2PointToSegment2D(mouse, aScreen, bScreen);
-      if (dist2 < best.dist2)
-        best = { i, dist2 };
-    }
-    return best.dist2 <= pixelThreshold * pixelThreshold ? { pos, edgeIndex: best.i } : null;
-  }
-  function getControlSphereByIndex(idx) {
-    return shape.controlPoints.find(
-      (p) => {
-        var _a;
-        return ((_a = p == null ? void 0 : p.userData) == null ? void 0 : _a.isControlSphere) && p.userData.pointIndex === idx;
+      const threshold2 = pixelThreshold * pixelThreshold;
+      return bestDist2 <= threshold2 ? { idx: bestIdx, dist2: bestDist2 } : { idx: -1, dist2: bestDist2 };
+    },
+    edgeHitFromEvent(evt, pixelThreshold = 12) {
+      const pos = getPlaneHit(evt);
+      if (!pos || !Array.isArray(shape.points) || shape.points.length < 2) {
+        return null;
       }
-    ) || null;
-  }
-  function getHitPointIndex(evt) {
-    var _a, _b;
-    syncRaycast(evt);
-    const spheres = (shape.controlPoints || []).filter(
-      (p) => {
-        var _a2;
-        return (_a2 = p == null ? void 0 : p.userData) == null ? void 0 : _a2.isControlSphere;
+      const mouse = { x: evt.clientX, y: evt.clientY };
+      let best = { i: 0, dist2: Infinity };
+      for (let i = 0; i < shape.points.length; i++) {
+        const a = shape.points[i];
+        const b = shape.points[(i + 1) % shape.points.length];
+        const aScreen = this.projectToClient(a[0] + shape.x, a[1] + shape.y);
+        const bScreen = this.projectToClient(b[0] + shape.x, b[1] + shape.y);
+        const dist2 = this.dist2PointToSegmentScreen(mouse, aScreen, bScreen);
+        if (dist2 < best.dist2)
+          best = { i, dist2 };
       }
-    );
-    const hit = cpState.raycaster.intersectObjects(spheres, false);
-    if (hit.length) {
-      const idx = (_b = (_a = hit[0].object) == null ? void 0 : _a.userData) == null ? void 0 : _b.pointIndex;
-      if (Number.isInteger(idx))
-        return idx;
+      return best.dist2 <= pixelThreshold * pixelThreshold ? { pos, edgeIndex: best.i } : null;
+    },
+    controlSphereByIndex(idx) {
+      return shape.controlPoints.find(
+        (p) => {
+          var _a;
+          return ((_a = p == null ? void 0 : p.userData) == null ? void 0 : _a.isControlSphere) && p.userData.pointIndex === idx;
+        }
+      ) || null;
+    },
+    hitPointIndex(evt) {
+      var _a, _b;
+      syncRaycast(evt);
+      const spheres = (shape.controlPoints || []).filter(
+        (p) => {
+          var _a2;
+          return (_a2 = p == null ? void 0 : p.userData) == null ? void 0 : _a2.isControlSphere;
+        }
+      );
+      const hit = cpState.raycaster.intersectObjects(spheres, false);
+      if (hit.length) {
+        const idx = (_b = (_a = hit[0].object) == null ? void 0 : _a.userData) == null ? void 0 : _b.pointIndex;
+        if (Number.isInteger(idx))
+          return idx;
+      }
+      return this.nearestFromEvent(evt, 12).idx;
+    },
+    insertAtWorldPos(worldPos, evt) {
+      if (!Array.isArray(shape.points) || shape.points.length < 2)
+        return;
+      if (this.nearestFromEvent(evt, 10).idx !== -1)
+        return;
+      const local = [worldPos.x - shape.x, worldPos.y - shape.y];
+      let best = { i: 0, dist2: Infinity };
+      for (let i = 0; i < shape.points.length; i++) {
+        const a = shape.points[i];
+        const b = shape.points[(i + 1) % shape.points.length];
+        const { dist2 } = this.dist2PointToSegmentLocal(local, a, b);
+        if (dist2 < best.dist2)
+          best = { i, dist2 };
+      }
+      const prev = shape.points[best.i];
+      const next = shape.points[(best.i + 1) % shape.points.length];
+      if (prev && prev[0] === local[0] && prev[1] === local[1] || next && next[0] === local[0] && next[1] === local[1]) {
+        return;
+      }
+      const newPoints = shape.points.slice();
+      newPoints.splice(best.i + 1, 0, local);
+      if (!isValidPolygonPoints(newPoints))
+        return;
+      shape.points = newPoints;
+      shape._pointsDirty = true;
+      clearSelectedPointIndices(shape);
+      clearControlPoints(shape, scene);
+    },
+    removeAtIndex(idx) {
+      if (!Array.isArray(shape.points) || shape.points.length <= 3)
+        return;
+      if (!Number.isInteger(idx) || idx < 0 || idx >= shape.points.length)
+        return;
+      shape.points.splice(idx, 1);
+      shape._pointsDirty = true;
+      clearSelectedPointIndices(shape);
+      clearControlPoints(shape, scene);
     }
-    return getNearestPointIndex(evt, 12);
-  }
-  function insertPointAtWorldPos(worldPos, evt) {
-    if (!Array.isArray(shape.points) || shape.points.length < 2)
-      return;
-    if (isNearExistingPoint(evt, 10))
-      return;
-    const local = [worldPos.x - shape.x, worldPos.y - shape.y];
-    let best = { i: 0, dist2: Infinity };
-    for (let i = 0; i < shape.points.length; i++) {
-      const a = shape.points[i];
-      const b = shape.points[(i + 1) % shape.points.length];
-      const { dist2 } = dist2PointToSegment(local, a, b);
-      if (dist2 < best.dist2)
-        best = { i, dist2 };
-    }
-    const prev = shape.points[best.i];
-    const next = shape.points[(best.i + 1) % shape.points.length];
-    if (prev && prev[0] === local[0] && prev[1] === local[1] || next && next[0] === local[0] && next[1] === local[1]) {
-      return;
-    }
-    const newPoints = shape.points.slice();
-    newPoints.splice(best.i + 1, 0, local);
-    if (!isValidPolygonPoints(newPoints))
-      return;
-    shape.points = newPoints;
-    shape._pointsDirty = true;
-    clearSelectedPointIndices(shape);
-    clearControlPoints(shape, scene);
-  }
-  function removePointAtIndex(idx) {
-    if (!Array.isArray(shape.points) || shape.points.length <= 3)
-      return;
-    if (!Number.isInteger(idx) || idx < 0 || idx >= shape.points.length)
-      return;
-    shape.points.splice(idx, 1);
-    shape._pointsDirty = true;
-    clearSelectedPointIndices(shape);
-    clearControlPoints(shape, scene);
-  }
+  };
   function beginDrag(evt, indices) {
     if (!Array.isArray(shape.points) || !shape.points.length)
       return;
@@ -29302,16 +29289,12 @@ function setupControlPointInteractions(shape, scene, camera, renderer, CP_Z = 0)
     const selected = setSelectedPointIndices(shape, indices);
     if (!selected.length)
       return;
-    cpState.selectedPoints = [];
     cpState.dragStartLocalByIndex = /* @__PURE__ */ new Map();
     for (const i of selected) {
       const pt = shape.points[i];
       if (!pt)
         continue;
       cpState.dragStartLocalByIndex.set(i, [pt[0], pt[1]]);
-      const sphere = getControlSphereByIndex(i);
-      if (sphere)
-        cpState.selectedPoints.push(sphere);
     }
     if (!cpState.dragStartLocalByIndex.size)
       return;
@@ -29337,17 +29320,17 @@ function setupControlPointInteractions(shape, scene, camera, renderer, CP_Z = 0)
         showToast("No more point delete possible", { background: "#b00020" });
         return;
       }
-      const idx2 = getNearestPointIndex(evt, 10);
+      const idx2 = pointOps.nearestFromEvent(evt, 10).idx;
       if (idx2 === -1)
         return;
-      removePointAtIndex(idx2);
+      pointOps.removeAtIndex(idx2);
       return;
     }
-    const idx = getHitPointIndex(evt);
+    const idx = pointOps.hitPointIndex(evt);
     if (idx !== -1) {
       evt.preventDefault();
       if (evt.altKey) {
-        removePointAtIndex(idx);
+        pointOps.removeAtIndex(idx);
         return;
       }
       const selected = getSelectedPointIndices(shape);
@@ -29367,16 +29350,16 @@ function setupControlPointInteractions(shape, scene, camera, renderer, CP_Z = 0)
       return;
     }
     if (state.addPointMode) {
-      const edgeHit = getEdgeHit(evt);
+      const edgeHit = pointOps.edgeHitFromEvent(evt);
       if (!edgeHit)
         return;
-      insertPointAtWorldPos(edgeHit.pos, evt);
+      pointOps.insertAtWorldPos(edgeHit.pos, evt);
       return;
     }
     if (evt.shiftKey) {
       const pos = getPlaneHit(evt);
       if (pos)
-        insertPointAtWorldPos(pos, evt);
+        pointOps.insertAtWorldPos(pos, evt);
       return;
     }
     clearSelectedPointIndices(shape);
@@ -29389,7 +29372,7 @@ function setupControlPointInteractions(shape, scene, camera, renderer, CP_Z = 0)
         target.style.cursor = "not-allowed";
         return;
       }
-      const idx2 = getNearestPointIndex(evt, 10);
+      const idx2 = pointOps.nearestFromEvent(evt, 10).idx;
       if (idx2 !== -1) {
         shape._selectedPointIndex = idx2;
         target.style.cursor = "pointer";
@@ -29399,7 +29382,7 @@ function setupControlPointInteractions(shape, scene, camera, renderer, CP_Z = 0)
       }
       return;
     }
-    const idx = getHitPointIndex(evt);
+    const idx = pointOps.hitPointIndex(evt);
     if (idx !== -1) {
       shape._selectedPointIndex = idx;
       if (evt.ctrlKey || evt.metaKey) {
@@ -29415,7 +29398,7 @@ function setupControlPointInteractions(shape, scene, camera, renderer, CP_Z = 0)
     else
       delete shape._selectedPointIndex;
     if (state.addPointMode) {
-      const edgeHit = getEdgeHit(evt);
+      const edgeHit = pointOps.edgeHitFromEvent(evt);
       target.style.cursor = edgeHit ? "copy" : "not-allowed";
       return;
     }
@@ -29448,7 +29431,7 @@ function setupControlPointInteractions(shape, scene, camera, renderer, CP_Z = 0)
         const nx = startLocal[0] + dx;
         const ny = startLocal[1] + dy;
         shape.points[i] = [nx, ny];
-        const sphere = getControlSphereByIndex(i);
+        const sphere = pointOps.controlSphereByIndex(i);
         if (sphere)
           sphere.position.set(nx + shape.x, ny + shape.y, cpState.CP_Z);
       });
@@ -29461,7 +29444,6 @@ function setupControlPointInteractions(shape, scene, camera, renderer, CP_Z = 0)
     window.removeEventListener("mousemove", onMouseMove);
     window.removeEventListener("mouseup", onMouseUp);
     cpState.isDragging = false;
-    cpState.selectedPoints = [];
     cpState.dragStartWorld = null;
     cpState.dragStartLocalByIndex = null;
     shape._draggingPoint = false;
@@ -29480,7 +29462,6 @@ function setupControlPointInteractions(shape, scene, camera, renderer, CP_Z = 0)
     shape._controlPointHandlersInitialized = false;
     clearSelectedPointIndices(shape);
     cpState.isDragging = false;
-    cpState.selectedPoints = [];
     cpState.dragStartWorld = null;
     cpState.dragStartLocalByIndex = null;
   };
@@ -30425,6 +30406,114 @@ function createImage(renderer, scene, camera, { buttonId = "export-image", scale
     }, "image/png");
   });
 }
+const buttonClick = (buttonName, panelLeft, panelRight, selected, showPanelFromLeft2, showPanelFromRight2, additionalCallback = () => {
+}) => {
+  const btn = document.querySelector(`#${buttonName}`);
+  if (!btn)
+    return;
+  btn.onclick = () => {
+    document.querySelector("#back-button").removeAttribute("disabled");
+    document.querySelector("#back-button").onclick = () => {
+      document.querySelector("#back-button").setAttribute("disabled", "");
+      showPanelFromLeft2(`${panelLeft}`);
+    };
+    showPanelFromRight2(`${panelRight}`);
+    additionalCallback();
+  };
+};
+const deleteButtonClick = (buttonName, getShapesArray, commit2, doCsg2, getSelected, showPanelFromLeft2) => {
+  const btn = document.querySelector(`#${buttonName}`);
+  if (!btn)
+    return;
+  btn.onclick = () => {
+    const shapesArray = typeof getShapesArray === "function" ? getShapesArray() : [];
+    const selected = typeof getSelected === "function" ? getSelected() : null;
+    if (selected) {
+      cleanupShapeEditArtifacts([selected], state.sceneCopy);
+    }
+    if (!selected)
+      return;
+    let idx = -1;
+    if (selected.id) {
+      idx = shapesArray.findIndex((s) => s.id === selected.id);
+    }
+    if (idx === -1) {
+      idx = shapesArray.indexOf(selected);
+    }
+    if (idx === -1)
+      return;
+    shapesArray.splice(idx, 1);
+    commit2();
+    doCsg2();
+    document.querySelector("#back-button").setAttribute("disabled", "");
+    showPanelFromLeft2("main-panel");
+    if (window.__photoshapeCleanup) {
+      window.__photoshapeCleanup();
+    }
+  };
+};
+const depthButtonClick = (buttonName, panelLeft, panelRight, selected, showPanelFromLeft2, showPanelFromRight2, additionalCallback = () => {
+}) => {
+  const btn = document.querySelector(`#${buttonName}`);
+  if (!btn)
+    return;
+  btn.onclick = () => {
+    const backBtn = document.querySelector("#back-button");
+    backBtn.removeAttribute("disabled");
+    backBtn.onclick = () => {
+      showPanelFromLeft2(`${panelLeft}`);
+      restoreCameraView();
+      backBtn.removeAttribute("disabled");
+      backBtn.onclick = () => {
+        backBtn.setAttribute("disabled", "");
+        showPanelFromLeft2("main-panel");
+      };
+    };
+    showPanelFromRight2(`${panelRight}`);
+    additionalCallback();
+  };
+};
+const sliderButtonClick = (sliderName, sliderInput, doCsg2, callback) => {
+  const slider = document.querySelector(`#${sliderName}`);
+  const input = document.querySelector(`#${sliderInput}`);
+  if (!slider || !input)
+    return;
+  slider.oninput = (e) => {
+    input.value = e.target.value;
+    callback(Number(e.target.value));
+    doCsg2();
+  };
+};
+const polygonActionButtonIds = {
+  depth: "polygon-depth-button",
+  rotate: "polygon-rotate-button",
+  remove: "polygon-delete-button",
+  edit: "edit-shape"
+};
+function setButtonEnabledById(id, enabled) {
+  const btn = document.getElementById(id);
+  if (!btn)
+    return;
+  if (enabled)
+    btn.removeAttribute("disabled");
+  else
+    btn.setAttribute("disabled", "");
+}
+const setPolygonActionButtons = (config = {}) => {
+  const { depth, rotate: rotate2, remove, edit } = config;
+  if (typeof depth === "boolean") {
+    setButtonEnabledById(polygonActionButtonIds.depth, depth);
+  }
+  if (typeof rotate2 === "boolean") {
+    setButtonEnabledById(polygonActionButtonIds.rotate, rotate2);
+  }
+  if (typeof remove === "boolean") {
+    setButtonEnabledById(polygonActionButtonIds.remove, remove);
+  }
+  if (typeof edit === "boolean") {
+    setButtonEnabledById(polygonActionButtonIds.edit, edit);
+  }
+};
 const case1Url = "./models/case1.obj";
 const SSAA_SCALE = 1;
 function shapeUnderMouse() {
@@ -30479,9 +30568,21 @@ const updateDeleteButtons = (selected) => {
     if (btn)
       btn.setAttribute("disabled", "");
   });
+  const polygonDepthBtn = document.querySelector("#polygon-depth-button");
+  const polygonRotateBtn = document.querySelector("#polygon-rotate-button");
+  if (polygonDepthBtn)
+    polygonDepthBtn.setAttribute("disabled", "");
+  if (polygonRotateBtn)
+    polygonRotateBtn.setAttribute("disabled", "");
   const unmergeBtn = document.querySelector("#polygon-unmerge-button");
   if (unmergeBtn)
     unmergeBtn.setAttribute("disabled", "");
+  setPolygonActionButtons({
+    depth: false,
+    rotate: false,
+    remove: false,
+    edit: false
+  });
   if (!selected)
     return;
   const deleteId = deleteButtonsByKind[selected.kind];
@@ -30492,8 +30593,22 @@ const updateDeleteButtons = (selected) => {
   const copyBtn = copyId ? document.querySelector(`#${copyId}`) : null;
   if (copyBtn)
     copyBtn.removeAttribute("disabled");
+  if (selected.kind === "polygon") {
+    if (polygonDepthBtn)
+      polygonDepthBtn.removeAttribute("disabled");
+    if (polygonRotateBtn)
+      polygonRotateBtn.removeAttribute("disabled");
+  }
   if (unmergeBtn && selected.kind === "polygon" && Array.isArray(selected.mergedFrom) && selected.mergedFrom.length) {
     unmergeBtn.removeAttribute("disabled");
+  }
+  if (selected.kind === "polygon" && !window.__freehandActive) {
+    setPolygonActionButtons({
+      depth: true,
+      rotate: true,
+      remove: true,
+      edit: true
+    });
   }
 };
 function resetCopyPlacementState() {
@@ -51419,100 +51534,6 @@ function lineFunction(name1, name2, boolValue) {
   document.querySelector(".x-coordinates").style.display = `${name1}`;
   document.querySelector(".y-coordinates").style.display = `${name1}`;
 }
-const buttonClick = (buttonName, panelLeft, panelRight, selected, showPanelFromLeft2, showPanelFromRight2, additionalCallback = () => {
-}) => {
-  const btn = document.querySelector(`#${buttonName}`);
-  if (!btn)
-    return;
-  btn.onclick = () => {
-    document.querySelector("#back-button").removeAttribute("disabled");
-    document.querySelector("#back-button").onclick = () => {
-      document.querySelector("#back-button").setAttribute("disabled", "");
-      showPanelFromLeft2(`${panelLeft}`);
-    };
-    showPanelFromRight2(`${panelRight}`);
-    additionalCallback();
-  };
-};
-const deleteButtonClick = (buttonName, getShapesArray, commit2, doCsg2, getSelected, showPanelFromLeft2) => {
-  const btn = document.querySelector(`#${buttonName}`);
-  if (!btn)
-    return;
-  btn.onclick = () => {
-    const shapesArray = typeof getShapesArray === "function" ? getShapesArray() : [];
-    const selected = typeof getSelected === "function" ? getSelected() : null;
-    if (selected) {
-      cleanupShapeEditArtifacts([selected], state.sceneCopy);
-    }
-    if (!selected)
-      return;
-    let idx = -1;
-    if (selected.id) {
-      idx = shapesArray.findIndex((s) => s.id === selected.id);
-    }
-    if (idx === -1) {
-      idx = shapesArray.indexOf(selected);
-    }
-    if (idx === -1)
-      return;
-    shapesArray.splice(idx, 1);
-    commit2();
-    doCsg2();
-    document.querySelector("#back-button").setAttribute("disabled", "");
-    showPanelFromLeft2("main-panel");
-    if (window.__photoshapeCleanup) {
-      window.__photoshapeCleanup();
-    }
-  };
-};
-const depthButtonClick = (buttonName, panelLeft, panelRight, selected, showPanelFromLeft2, showPanelFromRight2, additionalCallback = () => {
-}) => {
-  const btn = document.querySelector(`#${buttonName}`);
-  if (!btn)
-    return;
-  btn.onclick = () => {
-    const backBtn = document.querySelector("#back-button");
-    backBtn.removeAttribute("disabled");
-    backBtn.onclick = () => {
-      showPanelFromLeft2(`${panelLeft}`);
-      restoreCameraView();
-      backBtn.removeAttribute("disabled");
-      backBtn.onclick = () => {
-        backBtn.setAttribute("disabled", "");
-        showPanelFromLeft2("main-panel");
-      };
-    };
-    showPanelFromRight2(`${panelRight}`);
-    additionalCallback();
-  };
-};
-const sliderButtonClick = (sliderName, sliderInput, doCsg2, callback) => {
-  const slider = document.querySelector(`#${sliderName}`);
-  const input = document.querySelector(`#${sliderInput}`);
-  if (!slider || !input)
-    return;
-  slider.oninput = (e) => {
-    input.value = e.target.value;
-    callback(Number(e.target.value));
-    doCsg2();
-  };
-};
-const disableButton = (boolValue) => {
-  const depthBtn = document.querySelector("#polygon-depth-button");
-  const rotateBtn = document.querySelector("#polygon-rotate-button");
-  const deleteBtn = document.querySelector("#polygon-delete-button");
-  if (!depthBtn || !rotateBtn || !deleteBtn)
-    return;
-  if (boolValue) {
-    depthBtn.removeAttribute("disabled");
-    rotateBtn.removeAttribute("disabled");
-    deleteBtn.removeAttribute("disabled");
-  } else {
-    depthBtn.setAttribute("disabled", "");
-    rotateBtn.setAttribute("disabled", "");
-    deleteBtn.setAttribute("disabled", "");
-  }
-};
 const STORAGE_KEY = "myShapes";
 function loadShapeLibrary() {
   try {
@@ -51552,8 +51573,14 @@ function cloneShapeForInsert(shape) {
 }
 const createShapeFreehand = (millimeters, selected, shapesArray, commit2, showPanelFromLeft2, showPanelFromRight2, doCsg2, orthoCamera, sceneCopy, rendererCopy, display2D, callback1, callback, foamMesh, defaultCornerRadius) => {
   document.querySelector("#create-polygon").onclick = () => {
+    window.__freehandActive = true;
+    setPolygonActionButtons({
+      depth: false,
+      rotate: false,
+      remove: false,
+      edit: false
+    });
     lineFunction("block", "flex", true);
-    disableButton(false);
     display2D = true;
     const foamBox = (() => {
       foamMesh.geometry.computeBoundingBox();
@@ -51565,10 +51592,21 @@ const createShapeFreehand = (millimeters, selected, shapesArray, commit2, showPa
     function isInsideFoam(point2) {
       return foamBox.containsPoint(point2);
     }
-    document.querySelector("#back-button").onclick = () => {
-      cleanupDrawing({ restoreView: true });
-      selected = null;
+    const backButton = document.querySelector("#back-button");
+    const previousBackOnClick = backButton ? backButton.onclick : null;
+    const restoreBackButton = () => {
+      if (!backButton)
+        return;
+      backButton.onclick = previousBackOnClick;
+      backButton.setAttribute("disabled", "");
     };
+    if (backButton) {
+      backButton.removeAttribute("disabled");
+      backButton.onclick = () => {
+        cleanupDrawing({ restoreView: true });
+        selected = null;
+      };
+    }
     document.querySelector("#buttonContainer").onclick = () => {
       cleanupDrawing({ restoreView: true });
       if (!finalizedPolygons.length)
@@ -51586,6 +51624,13 @@ const createShapeFreehand = (millimeters, selected, shapesArray, commit2, showPa
         return;
       commit2();
       selected = lastShape;
+      window.__freehandActive = false;
+      setPolygonActionButtons({
+        depth: true,
+        rotate: true,
+        remove: true,
+        edit: true
+      });
       showPanelFromRight2(selected.kind + "-panel");
       doCsg2();
       callback(selected);
@@ -51692,7 +51737,14 @@ const createShapeFreehand = (millimeters, selected, shapesArray, commit2, showPa
       distanceText.textContent = "";
       registering = false;
       lineFunction("none", "none", true);
-      document.querySelector("#back-button").setAttribute("disabled", "");
+      window.__freehandActive = false;
+      setPolygonActionButtons({
+        depth: false,
+        rotate: false,
+        remove: false,
+        edit: true
+      });
+      restoreBackButton();
       if (restoreView) {
         restoreCameraView();
         showPanelFromLeft2("main-panel");
@@ -51772,7 +51824,12 @@ const createShapeFreehand = (millimeters, selected, shapesArray, commit2, showPa
           const firstPoint = points[0];
           const distanceToFirstPointMm = firstPoint.distanceTo(intersect2) * millimeters;
           if (distanceToFirstPointMm < proximityThresholdMm) {
-            disableButton(true);
+            setPolygonActionButtons({
+              depth: false,
+              rotate: false,
+              remove: false,
+              edit: false
+            });
             registering = false;
             document.getElementById("saveButtonContainer").disabled = false;
             const closedPoints = points.map((p) => [p.x, p.y]);
@@ -52738,6 +52795,7 @@ function initUI() {
         (modifiedSelected, modifiedDisplay) => {
           state.selected = modifiedSelected;
           state.display2D = modifiedDisplay;
+          updateDeleteButtons(state.selected);
           if (!state.display2D) {
             saveCameraView();
             resetCameraToTopView();
@@ -52777,9 +52835,9 @@ function initUI() {
     }
   );
   const editShapeButton = document.getElementById("edit-shape");
-  let isEditingPolygon = false;
   const addPointButton = document.getElementById("add-point");
   const deletePointButton = document.getElementById("delete-point");
+  const clonePoints = (pts) => Array.isArray(pts) ? pts.map((p) => [p[0], p[1]]) : null;
   const isMacPlatform = /Mac|iPhone|iPad|iPod/.test(navigator.platform);
   const multiSelectKey = isMacPlatform ? "Cmd" : "Ctrl";
   const pointEditHint = document.createElement("div");
@@ -52819,40 +52877,36 @@ function initUI() {
   if (pointEditHintHost && !document.getElementById(pointEditHint.id)) {
     pointEditHintHost.appendChild(pointEditHint);
   }
-  const setDeletePointButtonEnabled = (enabled) => {
-    if (!deletePointButton)
+  const setButtonEnabled = (button, enabled) => {
+    if (!button)
       return;
     if (enabled)
-      deletePointButton.removeAttribute("disabled");
+      button.removeAttribute("disabled");
     else
-      deletePointButton.setAttribute("disabled", "");
+      button.setAttribute("disabled", "");
   };
-  const setDeletePointMode = (on) => {
+  const setPointMode = (mode, on) => {
+    if (mode === "add") {
+      state.addPointMode = on;
+      if (addPointButton) {
+        addPointButton.textContent = on ? "Exit Add Point" : "Add point";
+      }
+      return;
+    }
     state.deletePointMode = on;
     if (deletePointButton) {
       deletePointButton.textContent = on ? "Exit Delete Point" : "Delete point";
     }
   };
-  const setAddPointButtonEnabled = (enabled) => {
-    if (!addPointButton)
-      return;
-    if (enabled)
-      addPointButton.removeAttribute("disabled");
-    else
-      addPointButton.setAttribute("disabled", "");
-  };
-  const setAddPointMode = (on) => {
-    state.addPointMode = on;
-    if (addPointButton) {
-      addPointButton.textContent = on ? "Exit Add Point" : "Add point";
-    }
+  const resetPointModes = () => {
+    setPointMode("add", false);
+    setPointMode("delete", false);
   };
   const setPointEditUi = (editing) => {
     window.__editingPoints = editing;
-    setAddPointMode(false);
-    setDeletePointMode(false);
-    setAddPointButtonEnabled(editing);
-    setDeletePointButtonEnabled(editing);
+    resetPointModes();
+    setButtonEnabled(addPointButton, editing);
+    setButtonEnabled(deletePointButton, editing);
     pointEditHint.classList.toggle("is-visible", editing);
     if (editShapeButton) {
       editShapeButton.textContent = editing ? "Finish Edit" : "Edit points";
@@ -52863,34 +52917,96 @@ function initUI() {
     }
   };
   window.__setPointEditUi = setPointEditUi;
-  setAddPointButtonEnabled(false);
-  setAddPointMode(false);
-  setDeletePointButtonEnabled(false);
-  setDeletePointMode(false);
-  if (editShapeButton) {
-    editShapeButton.onclick = () => {
+  const pointEditSession = {
+    isEditing: false,
+    snapshot: null,
+    begin() {
       var _a;
       if (!state.selected || state.selected.kind !== "polygon")
         return;
+      if (this.isEditing)
+        return;
+      this.snapshot = {
+        shapeRef: state.selected,
+        shapeId: state.selected.id || null,
+        shapeIndex: state.shapesArray.indexOf(state.selected),
+        points: clonePoints(state.selected.points)
+      };
       if (((_a = state.selected) == null ? void 0 : _a.source) === "photoshape" && Array.isArray(state.selected.points)) {
         state.selected.points = simplifyPointsForDrag(state.selected.points, 300);
+        state.selected._pointsDirty = true;
       }
-      if (!isEditingPolygon) {
-        isEditingPolygon = true;
-        setPointEditUi(true);
-        if (!state.display2D) {
-          saveCameraView();
-          resetCameraToTopView();
-        }
-        state.display2D = true;
+      this.isEditing = true;
+      setPointEditUi(true);
+      if (!state.display2D) {
+        saveCameraView();
+        resetCameraToTopView();
+      }
+      state.display2D = true;
+    },
+    resolveSnapshotTarget() {
+      if (!this.snapshot)
+        return null;
+      if (this.snapshot.shapeRef && state.shapesArray.includes(this.snapshot.shapeRef)) {
+        return this.snapshot.shapeRef;
+      }
+      if (this.snapshot.shapeId) {
+        const byId = state.shapesArray.find((s) => (s == null ? void 0 : s.id) === this.snapshot.shapeId);
+        if (byId)
+          return byId;
+      }
+      const idx = this.snapshot.shapeIndex;
+      if (Number.isInteger(idx) && idx >= 0 && idx < state.shapesArray.length) {
+        const byIndex = state.shapesArray[idx];
+        if (byIndex && byIndex.kind === "polygon")
+          return byIndex;
+      }
+      return null;
+    },
+    cancel() {
+      var _a;
+      if (!this.isEditing)
+        return;
+      const target = this.resolveSnapshotTarget();
+      if (target && Array.isArray((_a = this.snapshot) == null ? void 0 : _a.points)) {
+        target.points = clonePoints(this.snapshot.points);
+        target._pointsDirty = true;
+        delete target._selectedPointIndex;
+        delete target._selectedPointIndices;
+        delete target._draggingPoint;
+        delete target._dragOriginalPoints;
+      }
+      this.snapshot = null;
+      this.isEditing = false;
+      setPointEditUi(false);
+      doCsg();
+    },
+    finish() {
+      if (!this.isEditing)
+        return;
+      this.snapshot = null;
+      this.isEditing = false;
+      setPointEditUi(false);
+      doCsg();
+      commit();
+      if (!state.display2D)
+        return;
+      state.display2D = false;
+      restoreCameraView();
+    }
+  };
+  setButtonEnabled(addPointButton, false);
+  setPointMode("add", false);
+  setButtonEnabled(deletePointButton, false);
+  setPointMode("delete", false);
+  if (editShapeButton) {
+    editShapeButton.onclick = () => {
+      if (!state.selected || state.selected.kind !== "polygon")
+        return;
+      if (!pointEditSession.isEditing) {
+        pointEditSession.begin();
       } else {
-        isEditingPolygon = false;
-        setPointEditUi(false);
-        commit();
-        if (!state.display2D)
-          return;
-        state.display2D = false;
-        restoreCameraView();
+        pointEditSession.finish();
       }
     };
   }
@@ -52899,11 +53015,11 @@ function initUI() {
     backButton.addEventListener(
       "click",
       () => {
+        if (window.__editingPoints) {
+          pointEditSession.cancel();
+        }
         if (window.__photoshapeExit)
           window.__photoshapeExit();
-        if (window.__editingPoints) {
-          setPointEditUi(false);
-        }
         if (state.display2D) {
           state.display2D = false;
           restoreCameraView();
@@ -52921,8 +53037,8 @@ function initUI() {
         return;
       if (!window.__editingPoints)
         return;
-      setDeletePointMode(false);
-      setAddPointMode(!state.addPointMode);
+      setPointMode("delete", false);
+      setPointMode("add", !state.addPointMode);
     };
   }
   if (deletePointButton) {
@@ -52933,8 +53049,8 @@ function initUI() {
         return;
       if (!window.__editingPoints)
         return;
-      setAddPointMode(false);
-      setDeletePointMode(!state.deletePointMode);
+      setPointMode("add", false);
+      setPointMode("delete", !state.deletePointMode);
     };
   }
   sliderButtonClick("polygon-rotate-input", "polygon-rotate-slider", doCsg, (rotation) => {
@@ -53216,4 +53332,4 @@ if (typeof window === "object") {
   initUI();
   commit();
 }
-//# sourceMappingURL=index-9d484f99.js.map
+//# sourceMappingURL=index-76fcc977.js.map

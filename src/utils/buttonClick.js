@@ -93,8 +93,6 @@ export const depthButtonClick = (
   };
 };
 
-
-
 export const sliderButtonClick = (sliderName, sliderInput, doCsg, callback) => {
   const slider = document.querySelector(`#${sliderName}`);
   const input = document.querySelector(`#${sliderInput}`);
@@ -106,20 +104,42 @@ export const sliderButtonClick = (sliderName, sliderInput, doCsg, callback) => {
   };
 };
 
-export const disableButton = (boolValue) => {
-  const depthBtn = document.querySelector("#polygon-depth-button");
-  const rotateBtn = document.querySelector("#polygon-rotate-button");
-  const deleteBtn = document.querySelector("#polygon-delete-button");
+const polygonActionButtonIds = {
+  depth: "polygon-depth-button",
+  rotate: "polygon-rotate-button",
+  remove: "polygon-delete-button",
+  edit: "edit-shape",
+};
 
-  if (!depthBtn || !rotateBtn || !deleteBtn) return;
+function setButtonEnabledById(id, enabled) {
+  const btn = document.getElementById(id);
+  if (!btn) return;
+  if (enabled) btn.removeAttribute("disabled");
+  else btn.setAttribute("disabled", "");
+}
 
-  if (boolValue) {
-    depthBtn.removeAttribute("disabled");
-    rotateBtn.removeAttribute("disabled");
-    deleteBtn.removeAttribute("disabled");
-  } else {
-    depthBtn.setAttribute("disabled", "");
-    rotateBtn.setAttribute("disabled", "");
-    deleteBtn.setAttribute("disabled", "");
+export const setPolygonActionButtons = (config = {}) => {
+  const { depth, rotate, remove, edit } = config;
+
+  if (typeof depth === "boolean") {
+    setButtonEnabledById(polygonActionButtonIds.depth, depth);
+  }
+  if (typeof rotate === "boolean") {
+    setButtonEnabledById(polygonActionButtonIds.rotate, rotate);
+  }
+  if (typeof remove === "boolean") {
+    setButtonEnabledById(polygonActionButtonIds.remove, remove);
+  }
+  if (typeof edit === "boolean") {
+    setButtonEnabledById(polygonActionButtonIds.edit, edit);
   }
 };
+
+export const disableButton = (enabled) => {
+  setPolygonActionButtons({
+    depth: enabled,
+    rotate: enabled,
+    remove: enabled,
+  });
+};
+

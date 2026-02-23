@@ -333,6 +333,7 @@ export function initUI() {
         (modifiedSelected, modifiedDisplay) => {
           state.selected = modifiedSelected;
           state.display2D = modifiedDisplay;
+          updateDeleteButtons(state.selected);
           if (!state.display2D) {
             saveCameraView();
             resetCameraToTopView();
@@ -375,10 +376,11 @@ export function initUI() {
   );
 
   const editShapeButton = document.getElementById("edit-shape");
-  let isEditingPolygon = false;
-
   const addPointButton = document.getElementById("add-point");
   const deletePointButton = document.getElementById("delete-point");
+
+  const clonePoints = (pts) =>
+    Array.isArray(pts) ? pts.map((p) => [p[0], p[1]]) : null;
 
   const isMacPlatform = /Mac|iPhone|iPad|iPod/.test(navigator.platform);
   const multiSelectKey = isMacPlatform ? "Cmd" : "Ctrl";
@@ -417,6 +419,15 @@ export function initUI() {
     </div>
   `;
 
+  /*
+   * Point Edit Smoke Checklist (do after any refactor here):
+   * 1. Edit points -> drag -> Finish Edit => changes persist.
+   * 2. Edit points -> drag/add/delete -> Back => changes revert.
+   * 3. Ctrl/Cmd multi-select + drag => selected points move together.
+   * 4. Add/Delete point modes reset when leaving edit mode.
+   * 5. Re-enter edit mode repeatedly => no stuck state or stale handlers.
+   */
+
   const pointEditHintHost =
     document.getElementById("polygon-panel") ||
     editShapeButton?.parentElement ||
@@ -427,39 +438,37 @@ export function initUI() {
     pointEditHintHost.appendChild(pointEditHint);
   }
 
-
-  const setDeletePointButtonEnabled = (enabled) => {
-    if (!deletePointButton) return;
-    if (enabled) deletePointButton.removeAttribute("disabled");
-    else deletePointButton.setAttribute("disabled", "");
+  const setButtonEnabled = (button, enabled) => {
+    if (!button) return;
+    if (enabled) button.removeAttribute("disabled");
+    else button.setAttribute("disabled", "");
   };
 
-  const setDeletePointMode = (on) => {
+  const setPointMode = (mode, on) => {
+    if (mode === "add") {
+      state.addPointMode = on;
+      if (addPointButton) {
+        addPointButton.textContent = on ? "Exit Add Point" : "Add point";
+      }
+      return;
+    }
+
     state.deletePointMode = on;
     if (deletePointButton) {
       deletePointButton.textContent = on ? "Exit Delete Point" : "Delete point";
     }
   };
 
-  const setAddPointButtonEnabled = (enabled) => {
-    if (!addPointButton) return;
-    if (enabled) addPointButton.removeAttribute("disabled");
-    else addPointButton.setAttribute("disabled", "");
-  };
-
-  const setAddPointMode = (on) => {
-    state.addPointMode = on;
-    if (addPointButton) {
-      addPointButton.textContent = on ? "Exit Add Point" : "Add point";
-    }
+  const resetPointModes = () => {
+    setPointMode("add", false);
+    setPointMode("delete", false);
   };
 
   const setPointEditUi = (editing) => {
     window.__editingPoints = editing;
-    setAddPointMode(false);
-    setDeletePointMode(false);
-    setAddPointButtonEnabled(editing);
-    setDeletePointButtonEnabled(editing);
+    resetPointModes();
+    setButtonEnabled(addPointButton, editing);
+    setButtonEnabled(deletePointButton, editing);
     pointEditHint.classList.toggle("is-visible", editing);
 
     if (editShapeButton) {
@@ -471,48 +480,110 @@ export function initUI() {
     }
   };
 
+
   window.__setPointEditUi = setPointEditUi;
 
-  const exitPolygonEditMode = () => {
-    if (!isEditingPolygon) return;
+  const pointEditSession = {
+    isEditing: false,
+    snapshot: null,
 
-    isEditingPolygon = false;
-    setPointEditUi(false);
+    begin() {
+      if (!state.selected || state.selected.kind !== "polygon") return;
+      if (this.isEditing) return;
 
-    commit();
+      this.snapshot = {
+        shapeRef: state.selected,
+        shapeId: state.selected.id || null,
+        shapeIndex: state.shapesArray.indexOf(state.selected),
+        points: clonePoints(state.selected.points),
+      };
 
-    if (state.display2D) {
+      if (state.selected?.source === "photoshape" && Array.isArray(state.selected.points)) {
+        state.selected.points = simplifyPointsForDrag(state.selected.points, 300);
+        state.selected._pointsDirty = true;
+      }
+
+      this.isEditing = true;
+      setPointEditUi(true);
+
+      if (!state.display2D) {
+        saveCameraView();
+        resetCameraToTopView();
+      }
+      state.display2D = true;
+    },
+
+    resolveSnapshotTarget() {
+      if (!this.snapshot) return null;
+
+      if (this.snapshot.shapeRef && state.shapesArray.includes(this.snapshot.shapeRef)) {
+        return this.snapshot.shapeRef;
+      }
+
+      if (this.snapshot.shapeId) {
+        const byId = state.shapesArray.find((s) => s?.id === this.snapshot.shapeId);
+        if (byId) return byId;
+      }
+
+      const idx = this.snapshot.shapeIndex;
+      if (Number.isInteger(idx) && idx >= 0 && idx < state.shapesArray.length) {
+        const byIndex = state.shapesArray[idx];
+        if (byIndex && byIndex.kind === "polygon") return byIndex;
+      }
+
+      return null;
+    },
+
+    cancel() {
+      if (!this.isEditing) return;
+
+      const target = this.resolveSnapshotTarget();
+
+      if (target && Array.isArray(this.snapshot?.points)) {
+        target.points = clonePoints(this.snapshot.points);
+        target._pointsDirty = true;
+
+        delete target._selectedPointIndex;
+        delete target._selectedPointIndices;
+        delete target._draggingPoint;
+        delete target._dragOriginalPoints;
+      }
+
+      this.snapshot = null;
+      this.isEditing = false;
+      setPointEditUi(false);
+      doCsg();
+    },
+
+    finish() {
+      if (!this.isEditing) return;
+
+      this.snapshot = null;
+      this.isEditing = false;
+      setPointEditUi(false);
+
+      doCsg();
+      commit();
+
+      if (!state.display2D) return;
       state.display2D = false;
       restoreCameraView();
-    }
+    },
   };
 
-  setAddPointButtonEnabled(false);
-  setAddPointMode(false);
-  setDeletePointButtonEnabled(false);
-  setDeletePointMode(false);
+  setButtonEnabled(addPointButton, false);
+  setPointMode("add", false);
+  setButtonEnabled(deletePointButton, false);
+  setPointMode("delete", false);
 
   if (editShapeButton) {
     editShapeButton.onclick = () => {
       if (!state.selected || state.selected.kind !== "polygon") return;
-      if (state.selected?.source === "photoshape" && Array.isArray(state.selected.points)) {
-        state.selected.points = simplifyPointsForDrag(state.selected.points, 300);
-      }
-      if (!isEditingPolygon) {
-        isEditingPolygon = true;
-        setPointEditUi(true);
-        if (!state.display2D) {
-          saveCameraView();
-          resetCameraToTopView();
-        }
-        state.display2D = true;
+
+      if (!pointEditSession.isEditing) {
+        pointEditSession.begin();
       } else {
-        isEditingPolygon = false;
-        setPointEditUi(false);
-        commit();
-        if (!state.display2D) return;
-        state.display2D = false;
-        restoreCameraView();
+        pointEditSession.finish();
       }
     };
   }
@@ -522,10 +593,12 @@ export function initUI() {
     backButton.addEventListener(
       "click",
       () => {
-        if (window.__photoshapeExit) window.__photoshapeExit();
         if (window.__editingPoints) {
-          setPointEditUi(false);
+          pointEditSession.cancel();
         }
+
+        if (window.__photoshapeExit) window.__photoshapeExit();
+
         if (state.display2D) {
           state.display2D = false;
           restoreCameraView();
@@ -541,8 +614,8 @@ export function initUI() {
       if (addPointButton.hasAttribute("disabled")) return;
       if (!state.selected || state.selected.kind !== "polygon") return;
       if (!window.__editingPoints) return;
-      setDeletePointMode(false);
-      setAddPointMode(!state.addPointMode);
+      setPointMode("delete", false);
+      setPointMode("add", !state.addPointMode);
     };
   }
 
@@ -551,8 +624,8 @@ export function initUI() {
       if (deletePointButton.hasAttribute("disabled")) return;
       if (!state.selected || state.selected.kind !== "polygon") return;
       if (!window.__editingPoints) return;
-      setAddPointMode(false);
-      setDeletePointMode(!state.deletePointMode);
+      setPointMode("add", false);
+      setPointMode("delete", !state.deletePointMode);
     };
   }
 
@@ -681,6 +754,7 @@ export function initUI() {
     highestPoint,
     lowestPoint
   );
+
   createPdfIso(
     state.foam,
     state.shapesArray,
@@ -690,19 +764,8 @@ export function initUI() {
     highestPoint,
     lowestPoint
   );
+
   createDFX(state.foam, state.shapesArray, shapeToGeom2, "my_foam_shapes.dxf");
-
-  // document.getElementById("nextBtn").addEventListener("click", () => {
-  //   state.currentIndex = (state.currentIndex + 1) % state.shapesArray.length;
-  //   updateSelectedShape(state.currentIndex);
-  // });
-
-  // document.getElementById("prevBtn").addEventListener("click", () => {
-  //   state.currentIndex =
-  //     (state.currentIndex - 1 + state.shapesArray.length) %
-  //     state.shapesArray.length;
-  //   updateSelectedShape(state.currentIndex);
-  // });
 
   let resizeHandler;
   const myShapesButton = document.getElementById("my-shapes-button");

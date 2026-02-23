@@ -33,7 +33,7 @@ import {
 import { LambertMaterial } from "../components/Material";
 import { createImage } from "../components/createImage";
 import { getCurrentPanel, showPanelFromRight, showPanelFromLeft } from "./panels";
-
+import { setPolygonActionButtons } from "../utils/buttonClick";
 
 const case1Url = "./models/case1.obj";
 const MAX_DPR = 1.0;
@@ -96,8 +96,21 @@ export const updateDeleteButtons = (selected) => {
     if (btn) btn.setAttribute("disabled", "");
   });
 
+  const polygonDepthBtn = document.querySelector("#polygon-depth-button");
+  const polygonRotateBtn = document.querySelector("#polygon-rotate-button");
+
+  if (polygonDepthBtn) polygonDepthBtn.setAttribute("disabled", "");
+  if (polygonRotateBtn) polygonRotateBtn.setAttribute("disabled", "");
+
   const unmergeBtn = document.querySelector("#polygon-unmerge-button");
   if (unmergeBtn) unmergeBtn.setAttribute("disabled", "");
+
+  setPolygonActionButtons({
+    depth: false,
+    rotate: false,
+    remove: false,
+    edit: false,
+  });
 
   if (!selected) return;
 
@@ -109,6 +122,11 @@ export const updateDeleteButtons = (selected) => {
   const copyBtn = copyId ? document.querySelector(`#${copyId}`) : null;
   if (copyBtn) copyBtn.removeAttribute("disabled");
 
+  if (selected.kind === "polygon") {
+    if (polygonDepthBtn) polygonDepthBtn.removeAttribute("disabled");
+    if (polygonRotateBtn) polygonRotateBtn.removeAttribute("disabled");
+  }
+
   if (
     unmergeBtn &&
     selected.kind === "polygon" &&
@@ -117,6 +135,17 @@ export const updateDeleteButtons = (selected) => {
   ) {
     unmergeBtn.removeAttribute("disabled");
   }
+
+
+  if (selected.kind === "polygon" && !window.__freehandActive) {
+    setPolygonActionButtons({
+      depth: true,
+      rotate: true,
+      remove: true,
+      edit: true,
+    });
+  }
+
 };
 
 function resetCopyPlacementState() {

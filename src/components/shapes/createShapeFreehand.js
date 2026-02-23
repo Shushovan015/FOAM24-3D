@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { displayLineXY, lineFunction } from "../../utils/displayLinesXY";
-import { disableButton } from "../../utils/buttonClick";
+import { setPolygonActionButtons } from "../../utils/buttonClick";
 import { generateId } from "../../utils/common";
 import { restoreCameraView } from "../../setup/scene";
 import { saveShapeToLibrary } from "../../utils/shapeLibrary";
@@ -30,8 +30,14 @@ export const createShapeFreehand = (
   defaultCornerRadius
 ) => {
   document.querySelector("#create-polygon").onclick = () => {
+    window.__freehandActive = true;
+    setPolygonActionButtons({
+      depth: false,
+      rotate: false,
+      remove: false,
+      edit: false,
+    });
     lineFunction("block", "flex", true);
-    disableButton(false);
     display2D = true;
     const foamBox = (() => {
       foamMesh.geometry.computeBoundingBox();
@@ -45,10 +51,22 @@ export const createShapeFreehand = (
       return foamBox.containsPoint(point);
     }
 
-    document.querySelector("#back-button").onclick = () => {
-      cleanupDrawing({ restoreView: true });
-      selected = null;
+    const backButton = document.querySelector("#back-button");
+    const previousBackOnClick = backButton ? backButton.onclick : null;
+
+    const restoreBackButton = () => {
+      if (!backButton) return;
+      backButton.onclick = previousBackOnClick;
+      backButton.setAttribute("disabled", "");
     };
+
+    if (backButton) {
+      backButton.removeAttribute("disabled");
+      backButton.onclick = () => {
+        cleanupDrawing({ restoreView: true });
+        selected = null;
+      };
+    }
 
     document.querySelector("#buttonContainer").onclick = () => {
       cleanupDrawing({ restoreView: true });
@@ -66,9 +84,17 @@ export const createShapeFreehand = (
 
       commit();
       selected = lastShape;
+      window.__freehandActive = false;
+      setPolygonActionButtons({
+        depth: true,
+        rotate: true,
+        remove: true,
+        edit: true,
+      });
       showPanelFromRight(selected.kind + "-panel");
       doCsg();
       callback(selected);
+
     };
 
     const saveButton = document.getElementById("saveButtonContainer");
@@ -186,7 +212,14 @@ export const createShapeFreehand = (
       registering = false;
 
       lineFunction("none", "none", true);
-      document.querySelector("#back-button").setAttribute("disabled", "");
+      window.__freehandActive = false;
+      setPolygonActionButtons({
+        depth: false,
+        rotate: false,
+        remove: false,
+        edit: true,
+      });
+      restoreBackButton();
 
       if (restoreView) {
         restoreCameraView();
@@ -274,7 +307,12 @@ export const createShapeFreehand = (
           const distanceToFirstPointMm =
             firstPoint.distanceTo(intersect) * millimeters;
           if (distanceToFirstPointMm < proximityThresholdMm) {
-            disableButton(true);
+            setPolygonActionButtons({
+              depth: false,
+              rotate: false,
+              remove: false,
+              edit: false,
+            });
             registering = false;
             document.getElementById("saveButtonContainer").disabled = false;
             const closedPoints = points.map((p) => [p.x, p.y]);
