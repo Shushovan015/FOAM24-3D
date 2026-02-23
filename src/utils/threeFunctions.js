@@ -865,8 +865,6 @@ export function drawOutline(
   }
 }
 
-
-
 function disposeObject3D(obj) {
   if (!obj) return;
   if (obj.geometry && typeof obj.geometry.dispose === "function") {
@@ -935,7 +933,6 @@ function setupControlPointInteractions(
 
   const cpState = {
     isDragging: false,
-    selectedPoints: [],
     dragStartWorld: null,
     dragStartLocalByIndex: null,
     raycaster: new Raycaster(),
@@ -950,6 +947,7 @@ function setupControlPointInteractions(
   target.style.pointerEvents = "auto";
 
   const getRect = () => renderer.domElement.getBoundingClientRect();
+
   const ndcFromEvent = (evt) => {
     const r = getRect();
     return {
@@ -974,193 +972,189 @@ function setupControlPointInteractions(
     return hit ? pos : null;
   }
 
-  function dist2PointToSegment(p, a, b) {
-    const ax = a[0], ay = a[1];
-    const bx = b[0], by = b[1];
-    const px = p[0], py = p[1];
+  const pointOps = {
+    dist2PointToSegmentLocal(p, a, b) {
+      const ax = a[0], ay = a[1];
+      const bx = b[0], by = b[1];
+      const px = p[0], py = p[1];
 
-    const abx = bx - ax;
-    const aby = by - ay;
-    const apx = px - ax;
-    const apy = py - ay;
+      const abx = bx - ax;
+      const aby = by - ay;
+      const apx = px - ax;
+      const apy = py - ay;
 
-    const abLen2 = abx * abx + aby * aby;
-    const t = abLen2 === 0 ? 0 : Math.max(0, Math.min(1, (apx * abx + apy * aby) / abLen2));
-    const cx = ax + abx * t;
-    const cy = ay + aby * t;
+      const abLen2 = abx * abx + aby * aby;
+      const t =
+        abLen2 === 0
+          ? 0
+          : Math.max(0, Math.min(1, (apx * abx + apy * aby) / abLen2));
 
-    const dx = px - cx;
-    const dy = py - cy;
-    return { dist2: dx * dx + dy * dy, t };
-  }
+      const cx = ax + abx * t;
+      const cy = ay + aby * t;
+      const dx = px - cx;
+      const dy = py - cy;
 
-  function dist2PointToSegment2D(p, a, b) {
-    const ax = a.x, ay = a.y;
-    const bx = b.x, by = b.y;
-    const px = p.x, py = p.y;
+      return { dist2: dx * dx + dy * dy, t };
+    },
 
-    const abx = bx - ax;
-    const aby = by - ay;
-    const apx = px - ax;
-    const apy = py - ay;
+    dist2PointToSegmentScreen(p, a, b) {
+      const ax = a.x, ay = a.y;
+      const bx = b.x, by = b.y;
+      const px = p.x, py = p.y;
 
-    const abLen2 = abx * abx + aby * aby;
-    const t = abLen2 === 0 ? 0 : Math.max(0, Math.min(1, (apx * abx + apy * aby) / abLen2));
-    const cx = ax + abx * t;
-    const cy = ay + aby * t;
+      const abx = bx - ax;
+      const aby = by - ay;
+      const apx = px - ax;
+      const apy = py - ay;
 
-    const dx = px - cx;
-    const dy = py - cy;
-    return dx * dx + dy * dy;
-  }
+      const abLen2 = abx * abx + aby * aby;
+      const t =
+        abLen2 === 0
+          ? 0
+          : Math.max(0, Math.min(1, (apx * abx + apy * aby) / abLen2));
 
-  function projectToClient(x, y, z) {
-    const v = new Vector3(x, y, z);
-    v.project(camera);
-    const r = getRect();
-    return {
-      x: r.left + (v.x + 1) * 0.5 * r.width,
-      y: r.top + (1 - v.y) * 0.5 * r.height,
-    };
-  }
+      const cx = ax + abx * t;
+      const cy = ay + aby * t;
+      const dx = px - cx;
+      const dy = py - cy;
 
-  function getNearestPointIndex(evt, pixelThreshold = 10) {
-    if (!evt || !Array.isArray(shape.points)) return -1;
+      return dx * dx + dy * dy;
+    },
 
-    const mx = evt.clientX;
-    const my = evt.clientY;
+    projectToClient(x, y, z = cpState.CP_Z) {
+      const v = new Vector3(x, y, z);
+      v.project(camera);
+      const r = getRect();
+      return {
+        x: r.left + (v.x + 1) * 0.5 * r.width,
+        y: r.top + (1 - v.y) * 0.5 * r.height,
+      };
+    },
 
-    let bestIdx = -1;
-    let bestDist2 = Infinity;
-
-    for (let i = 0; i < shape.points.length; i++) {
-      const pt = shape.points[i];
-      const screen = projectToClient(pt[0] + shape.x, pt[1] + shape.y, cpState.CP_Z);
-      const dx = screen.x - mx;
-      const dy = screen.y - my;
-      const d2 = dx * dx + dy * dy;
-      if (d2 < bestDist2) {
-        bestDist2 = d2;
-        bestIdx = i;
+    nearestFromEvent(evt, pixelThreshold = Infinity) {
+      if (!evt || !Array.isArray(shape.points) || shape.points.length === 0) {
+        return { idx: -1, dist2: Infinity };
       }
-    }
 
-    return bestDist2 <= pixelThreshold * pixelThreshold ? bestIdx : -1;
-  }
+      const mx = evt.clientX;
+      const my = evt.clientY;
 
-  function isNearExistingPoint(evt, pixelThreshold = 45) {
-    if (!evt || !Array.isArray(shape.points)) return false;
+      let bestIdx = -1;
+      let bestDist2 = Infinity;
 
-    const mx = evt.clientX;
-    const my = evt.clientY;
+      for (let i = 0; i < shape.points.length; i++) {
+        const pt = shape.points[i];
+        const screen = this.projectToClient(pt[0] + shape.x, pt[1] + shape.y);
+        const dx = screen.x - mx;
+        const dy = screen.y - my;
+        const d2 = dx * dx + dy * dy;
 
-    for (let i = 0; i < shape.points.length; i++) {
-      const pt = shape.points[i];
-      const screen = projectToClient(pt[0] + shape.x, pt[1] + shape.y, cpState.CP_Z);
-      const dx = screen.x - mx;
-      const dy = screen.y - my;
-      if (dx * dx + dy * dy <= pixelThreshold * pixelThreshold) {
-        return true;
+        if (d2 < bestDist2) {
+          bestDist2 = d2;
+          bestIdx = i;
+        }
       }
-    }
 
-    return false;
-  }
+      const threshold2 = pixelThreshold * pixelThreshold;
+      return bestDist2 <= threshold2
+        ? { idx: bestIdx, dist2: bestDist2 }
+        : { idx: -1, dist2: bestDist2 };
+    },
 
-  function getEdgeHit(evt, pixelThreshold = 12) {
-    const pos = getPlaneHit(evt);
-    if (!pos || !Array.isArray(shape.points) || shape.points.length < 2) {
-      return null;
-    }
+    edgeHitFromEvent(evt, pixelThreshold = 12) {
+      const pos = getPlaneHit(evt);
+      if (!pos || !Array.isArray(shape.points) || shape.points.length < 2) {
+        return null;
+      }
 
-    const mouse = { x: evt.clientX, y: evt.clientY };
-    let best = { i: 0, dist2: Infinity };
+      const mouse = { x: evt.clientX, y: evt.clientY };
+      let best = { i: 0, dist2: Infinity };
 
-    for (let i = 0; i < shape.points.length; i++) {
-      const a = shape.points[i];
-      const b = shape.points[(i + 1) % shape.points.length];
+      for (let i = 0; i < shape.points.length; i++) {
+        const a = shape.points[i];
+        const b = shape.points[(i + 1) % shape.points.length];
 
-      const aScreen = projectToClient(a[0] + shape.x, a[1] + shape.y, cpState.CP_Z);
-      const bScreen = projectToClient(b[0] + shape.x, b[1] + shape.y, cpState.CP_Z);
+        const aScreen = this.projectToClient(a[0] + shape.x, a[1] + shape.y);
+        const bScreen = this.projectToClient(b[0] + shape.x, b[1] + shape.y);
 
-      const dist2 = dist2PointToSegment2D(mouse, aScreen, bScreen);
-      if (dist2 < best.dist2) best = { i, dist2 };
-    }
+        const dist2 = this.dist2PointToSegmentScreen(mouse, aScreen, bScreen);
+        if (dist2 < best.dist2) best = { i, dist2 };
+      }
 
-    return best.dist2 <= pixelThreshold * pixelThreshold
-      ? { pos, edgeIndex: best.i }
-      : null;
-  }
+      return best.dist2 <= pixelThreshold * pixelThreshold
+        ? { pos, edgeIndex: best.i }
+        : null;
+    },
 
-  function getControlSphereByIndex(idx) {
-    return (
-      shape.controlPoints.find(
-        (p) => p?.userData?.isControlSphere && p.userData.pointIndex === idx
-      ) || null
-    );
-  }
+    controlSphereByIndex(idx) {
+      return (
+        shape.controlPoints.find(
+          (p) => p?.userData?.isControlSphere && p.userData.pointIndex === idx
+        ) || null
+      );
+    },
 
-  function getHitPointIndex(evt) {
-    syncRaycast(evt);
+    hitPointIndex(evt) {
+      syncRaycast(evt);
 
-    const spheres = (shape.controlPoints || []).filter(
-      (p) => p?.userData?.isControlSphere
-    );
+      const spheres = (shape.controlPoints || []).filter(
+        (p) => p?.userData?.isControlSphere
+      );
 
-    const hit = cpState.raycaster.intersectObjects(spheres, false);
-    if (hit.length) {
-      const idx = hit[0].object?.userData?.pointIndex;
-      if (Number.isInteger(idx)) return idx;
-    }
+      const hit = cpState.raycaster.intersectObjects(spheres, false);
+      if (hit.length) {
+        const idx = hit[0].object?.userData?.pointIndex;
+        if (Number.isInteger(idx)) return idx;
+      }
 
-    return getNearestPointIndex(evt, 12);
-  }
+      return this.nearestFromEvent(evt, 12).idx;
+    },
 
+    insertAtWorldPos(worldPos, evt) {
+      if (!Array.isArray(shape.points) || shape.points.length < 2) return;
+      if (this.nearestFromEvent(evt, 10).idx !== -1) return;
 
-  function insertPointAtWorldPos(worldPos, evt) {
-    if (!Array.isArray(shape.points) || shape.points.length < 2) return;
-    if (isNearExistingPoint(evt, 10)) return;
+      const local = [worldPos.x - shape.x, worldPos.y - shape.y];
 
-    const local = [worldPos.x - shape.x, worldPos.y - shape.y];
+      let best = { i: 0, dist2: Infinity };
+      for (let i = 0; i < shape.points.length; i++) {
+        const a = shape.points[i];
+        const b = shape.points[(i + 1) % shape.points.length];
+        const { dist2 } = this.dist2PointToSegmentLocal(local, a, b);
+        if (dist2 < best.dist2) best = { i, dist2 };
+      }
 
-    let best = { i: 0, dist2: Infinity };
-    for (let i = 0; i < shape.points.length; i++) {
-      const a = shape.points[i];
-      const b = shape.points[(i + 1) % shape.points.length];
-      const { dist2 } = dist2PointToSegment(local, a, b);
-      if (dist2 < best.dist2) best = { i, dist2 };
-    }
+      const prev = shape.points[best.i];
+      const next = shape.points[(best.i + 1) % shape.points.length];
 
-    const prev = shape.points[best.i];
-    const next = shape.points[(best.i + 1) % shape.points.length];
+      if (
+        (prev && prev[0] === local[0] && prev[1] === local[1]) ||
+        (next && next[0] === local[0] && next[1] === local[1])
+      ) {
+        return;
+      }
 
-    if (
-      (prev && prev[0] === local[0] && prev[1] === local[1]) ||
-      (next && next[0] === local[0] && next[1] === local[1])
-    ) {
-      return;
-    }
+      const newPoints = shape.points.slice();
+      newPoints.splice(best.i + 1, 0, local);
 
-    const newPoints = shape.points.slice();
-    newPoints.splice(best.i + 1, 0, local);
+      if (!isValidPolygonPoints(newPoints)) return;
 
-    if (!isValidPolygonPoints(newPoints)) return;
+      shape.points = newPoints;
+      shape._pointsDirty = true;
+      clearSelectedPointIndices(shape);
+      clearControlPoints(shape, scene);
+    },
 
-    shape.points = newPoints;
-    shape._pointsDirty = true;
-    clearSelectedPointIndices(shape);
-    clearControlPoints(shape, scene);
-  }
+    removeAtIndex(idx) {
+      if (!Array.isArray(shape.points) || shape.points.length <= 3) return;
+      if (!Number.isInteger(idx) || idx < 0 || idx >= shape.points.length) return;
 
-  function removePointAtIndex(idx) {
-    if (!Array.isArray(shape.points) || shape.points.length <= 3) return;
-    if (!Number.isInteger(idx) || idx < 0 || idx >= shape.points.length) return;
-
-    shape.points.splice(idx, 1);
-    shape._pointsDirty = true;
-    clearSelectedPointIndices(shape);
-    clearControlPoints(shape, scene);
-  }
+      shape.points.splice(idx, 1);
+      shape._pointsDirty = true;
+      clearSelectedPointIndices(shape);
+      clearControlPoints(shape, scene);
+    },
+  };
 
   function beginDrag(evt, indices) {
     if (!Array.isArray(shape.points) || !shape.points.length) return;
@@ -1171,15 +1165,12 @@ function setupControlPointInteractions(
     const selected = setSelectedPointIndices(shape, indices);
     if (!selected.length) return;
 
-    cpState.selectedPoints = [];
     cpState.dragStartLocalByIndex = new Map();
 
     for (const i of selected) {
       const pt = shape.points[i];
       if (!pt) continue;
       cpState.dragStartLocalByIndex.set(i, [pt[0], pt[1]]);
-      const sphere = getControlSphereByIndex(i);
-      if (sphere) cpState.selectedPoints.push(sphere);
     }
 
     if (!cpState.dragStartLocalByIndex.size) return;
@@ -1209,19 +1200,20 @@ function setupControlPointInteractions(
         showToast("No more point delete possible", { background: "#b00020" });
         return;
       }
-      const idx = getNearestPointIndex(evt, 10);
+
+      const idx = pointOps.nearestFromEvent(evt, 10).idx;
       if (idx === -1) return;
-      removePointAtIndex(idx);
+      pointOps.removeAtIndex(idx);
       return;
     }
 
-    const idx = getHitPointIndex(evt);
+    const idx = pointOps.hitPointIndex(evt);
 
     if (idx !== -1) {
       evt.preventDefault();
 
       if (evt.altKey) {
-        removePointAtIndex(idx);
+        pointOps.removeAtIndex(idx);
         return;
       }
 
@@ -1247,15 +1239,15 @@ function setupControlPointInteractions(
     }
 
     if (state.addPointMode) {
-      const edgeHit = getEdgeHit(evt);
+      const edgeHit = pointOps.edgeHitFromEvent(evt);
       if (!edgeHit) return;
-      insertPointAtWorldPos(edgeHit.pos, evt);
+      pointOps.insertAtWorldPos(edgeHit.pos, evt);
       return;
     }
 
     if (evt.shiftKey) {
       const pos = getPlaneHit(evt);
-      if (pos) insertPointAtWorldPos(pos, evt);
+      if (pos) pointOps.insertAtWorldPos(pos, evt);
       return;
     }
 
@@ -1270,7 +1262,8 @@ function setupControlPointInteractions(
         target.style.cursor = "not-allowed";
         return;
       }
-      const idx = getNearestPointIndex(evt, 10);
+
+      const idx = pointOps.nearestFromEvent(evt, 10).idx;
       if (idx !== -1) {
         shape._selectedPointIndex = idx;
         target.style.cursor = "pointer";
@@ -1281,7 +1274,7 @@ function setupControlPointInteractions(
       return;
     }
 
-    const idx = getHitPointIndex(evt);
+    const idx = pointOps.hitPointIndex(evt);
 
     if (idx !== -1) {
       shape._selectedPointIndex = idx;
@@ -1298,7 +1291,7 @@ function setupControlPointInteractions(
     else delete shape._selectedPointIndex;
 
     if (state.addPointMode) {
-      const edgeHit = getEdgeHit(evt);
+      const edgeHit = pointOps.edgeHitFromEvent(evt);
       target.style.cursor = edgeHit ? "copy" : "not-allowed";
       return;
     }
@@ -1338,7 +1331,7 @@ function setupControlPointInteractions(
         const ny = startLocal[1] + dy;
         shape.points[i] = [nx, ny];
 
-        const sphere = getControlSphereByIndex(i);
+        const sphere = pointOps.controlSphereByIndex(i);
         if (sphere) sphere.position.set(nx + shape.x, ny + shape.y, cpState.CP_Z);
       });
 
@@ -1353,7 +1346,6 @@ function setupControlPointInteractions(
     window.removeEventListener("mouseup", onMouseUp);
 
     cpState.isDragging = false;
-    cpState.selectedPoints = [];
     cpState.dragStartWorld = null;
     cpState.dragStartLocalByIndex = null;
     shape._draggingPoint = false;
@@ -1377,7 +1369,6 @@ function setupControlPointInteractions(
     clearSelectedPointIndices(shape);
 
     cpState.isDragging = false;
-    cpState.selectedPoints = [];
     cpState.dragStartWorld = null;
     cpState.dragStartLocalByIndex = null;
   };
