@@ -3,6 +3,9 @@ import {
   getPhotoshapeDepthLabel,
   beginPhotoshapeEditSession,
   advanceToNextUnvisited,
+  movePhotoshapeFlowControls,
+  setPhotoshapeFlowVisibility,
+  renderPhotoshapeStep,
 } from "../../utils/photoshapeFlow";
 import {
   saveCameraView,
@@ -38,15 +41,6 @@ export const createShapePhotoShape = (
     next: document.querySelector("#photoshape-step-next"),
   };
 
-  const moveFlowControls = (panelId) => {
-    const controls = document.getElementById("photoshape-flow-controls");
-    const panel = document.getElementById(panelId);
-    const anchor = panel?.querySelector(".photoshape-flow-anchor");
-    if (controls && anchor) {
-      anchor.appendChild(controls);
-    }
-  };
-
   let photoshapeFlowActive = false;
   let photoshapeFlowReady = false;
   let photoshapeStep = 1;
@@ -59,39 +53,12 @@ export const createShapePhotoShape = (
 
   const setPhotoshapeFlowActive = (active) => {
     photoshapeFlowActive = active;
-    if (stepUI.container) {
-      stepUI.container.style.display = active ? "block" : "none";
-    }
+    setPhotoshapeFlowVisibility(stepUI, active);
   };
 
   const setPhotoshapeStep = (step, options = {}) => {
     photoshapeStep = step;
-
-    if (stepUI.note && typeof options.note === "string") {
-      stepUI.note.textContent = options.note;
-    }
-    if (stepUI.back && typeof options.canBack === "boolean") {
-      stepUI.back.disabled = !options.canBack;
-    }
-    if (stepUI.next && typeof options.canNext === "boolean") {
-      stepUI.next.disabled = !options.canNext;
-    }
-    if (stepUI.next && typeof options.nextLabel === "string") {
-      stepUI.next.textContent = options.nextLabel;
-    }
-    if (stepUI.back && typeof options.backLabel === "string") {
-      stepUI.back.textContent = options.backLabel;
-    }
-
-    if (stepUI.steps && stepUI.steps.length) {
-      stepUI.steps.forEach((el) => {
-        const stepNum = parseInt(el.getAttribute("data-photoshape-step"), 10);
-        if (!Number.isNaN(stepNum)) {
-          el.style.opacity = stepNum <= photoshapeStep ? "1" : "0.35";
-          el.style.fontWeight = stepNum === photoshapeStep ? "700" : "400";
-        }
-      });
-    }
+    renderPhotoshapeStep(stepUI, photoshapeStep, options);
   };
 
   const setEditing = (on, restore = false) => {
@@ -217,7 +184,7 @@ export const createShapePhotoShape = (
     });
 
     showPanelFromLeft("upload-photo-panel");
-    moveFlowControls("upload-photo-panel");
+    movePhotoshapeFlowControls("upload-photo-panel");
   };
 
   setPhotoshapeFlowActive(false);
@@ -276,7 +243,7 @@ export const createShapePhotoShape = (
           nextLabel: "Depth",
         });
         showPanelFromLeft("upload-photo-panel");
-        moveFlowControls("upload-photo-panel");
+        movePhotoshapeFlowControls("upload-photo-panel");
         return;
       }
 
@@ -291,7 +258,7 @@ export const createShapePhotoShape = (
           nextLabel: getPhotoshapeDepthLabel(photoshapeSession),
         });
         showPanelFromRight(getDepthPanelId());
-        moveFlowControls(getDepthPanelId());
+        movePhotoshapeFlowControls(getDepthPanelId());
         if (!state.display2D) {
           saveCameraView();
           resetCameraToFrontView();
@@ -311,7 +278,7 @@ export const createShapePhotoShape = (
             nextLabel: "Depth",
           });
           showPanelFromLeft("upload-photo-panel");
-          moveFlowControls("upload-photo-panel");
+          movePhotoshapeFlowControls("upload-photo-panel");
           return;
         }
         setEditing(false, true);
@@ -355,7 +322,7 @@ export const createShapePhotoShape = (
     document.getElementById("photoshape-step-note").style.display = "flex";
     document.getElementById("photoshape-button").style.display = "flex";
     setEditing(false, true);
-    moveFlowControls("upload-photo-panel");
+    movePhotoshapeFlowControls("upload-photo-panel");
 
     document.querySelector("#back-button").removeAttribute("disabled");
     document.querySelector("#back-button").onclick = () => {

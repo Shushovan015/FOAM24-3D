@@ -138,3 +138,76 @@ export function showToast(message, opts = {}) {
     document.body.appendChild(msg);
     setTimeout(() => msg.remove(), duration);
 }
+
+export function getFoamWorldBox(foamMesh) {
+    foamMesh.geometry.computeBoundingBox();
+    const box = foamMesh.geometry.boundingBox.clone();
+    foamMesh.updateMatrixWorld();
+    box.applyMatrix4(foamMesh.matrixWorld);
+    return box;
+}
+
+export function createDistanceTextElement() {
+    const distanceText = document.createElement("div");
+    Object.assign(distanceText.style, {
+        position: "absolute",
+        top: "10px",
+        left: "10px",
+        color: "white",
+    });
+    document.body.appendChild(distanceText);
+    return distanceText;
+}
+
+export function createAngleOverlayCanvas() {
+    const angleOverlay = document.createElement("canvas");
+    angleOverlay.style.position = "absolute";
+    angleOverlay.style.top = "0";
+    angleOverlay.style.left = "0";
+    angleOverlay.style.pointerEvents = "none";
+    angleOverlay.style.zIndex = "10";
+    document.body.appendChild(angleOverlay);
+    return angleOverlay;
+}
+
+export function resizeOverlayCanvas(overlay) {
+    overlay.width = window.innerWidth * (window.devicePixelRatio || 1);
+    overlay.height = window.innerHeight * (window.devicePixelRatio || 1);
+    overlay.style.width = window.innerWidth + "px";
+    overlay.style.height = window.innerHeight + "px";
+}
+
+export function disposeObject3D(obj) {
+    if (!obj) return;
+    if (obj.geometry && typeof obj.geometry.dispose === "function") {
+        obj.geometry.dispose();
+    }
+    if (obj.material) {
+        if (Array.isArray(obj.material)) {
+            obj.material.forEach((m) => m && m.dispose && m.dispose());
+        } else if (typeof obj.material.dispose === "function") {
+            obj.material.dispose();
+        }
+    }
+}
+
+export function disposeListFromScene(scene, list) {
+    list.forEach((obj) => {
+        scene.remove(obj);
+        disposeObject3D(obj);
+    });
+}
+
+export function createFreehandPoint(point, zOffset = 1) {
+    const geometry = new THREE.CircleGeometry(3, 32);
+    const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+    const circle = new THREE.Mesh(geometry, material);
+    circle.position.set(point.x, point.y, point.z + zOffset);
+    return circle;
+}
+
+export function createFreehandSegment(points) {
+    const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
+    const lineMaterial = new THREE.LineBasicMaterial({ color: 0xffa500, linewidth: 15 });
+    return new THREE.Line(lineGeometry, lineMaterial);
+}

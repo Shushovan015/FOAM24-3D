@@ -70,3 +70,48 @@ export const advanceToNextUnvisited = (
         showPanelFromRight
     );
 };
+
+export const movePhotoshapeFlowControls = (panelId) => {
+  const controls = document.getElementById("photoshape-flow-controls");
+  const panel = document.getElementById(panelId);
+  const anchor = panel?.querySelector(".photoshape-flow-anchor");
+  if (controls && anchor) {
+    anchor.appendChild(controls);
+  }
+};
+
+export const setPhotoshapeFlowVisibility = (stepUI, active) => {
+  if (stepUI?.container) {
+    stepUI.container.style.display = active ? "block" : "none";
+  }
+};
+
+export const renderPhotoshapeStep = (stepUI, step, options = {}) => {
+  if (!stepUI) return;
+
+  if (stepUI.note && typeof options.note === "string") {
+    stepUI.note.textContent = options.note;
+  }
+  if (stepUI.back && typeof options.canBack === "boolean") {
+    stepUI.back.disabled = !options.canBack;
+  }
+  if (stepUI.next && typeof options.canNext === "boolean") {
+    stepUI.next.disabled = !options.canNext;
+  }
+  if (stepUI.next && typeof options.nextLabel === "string") {
+    stepUI.next.textContent = options.nextLabel;
+  }
+  if (stepUI.back && typeof options.backLabel === "string") {
+    stepUI.back.textContent = options.backLabel;
+  }
+
+  if (Array.isArray(stepUI.steps) && stepUI.steps.length) {
+    stepUI.steps.forEach((el) => {
+      const stepNum = parseInt(el.getAttribute("data-photoshape-step"), 10);
+      if (!Number.isNaN(stepNum)) {
+        el.style.opacity = stepNum <= step ? "1" : "0.35";
+        el.style.fontWeight = stepNum === step ? "700" : "400";
+      }
+    });
+  }
+};
