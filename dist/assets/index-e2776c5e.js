@@ -21531,11 +21531,11 @@ function getDefaultExportFromCjs(x) {
   return x && x.__esModule && Object.prototype.hasOwnProperty.call(x, "default") ? x["default"] : x;
 }
 const spatialResolution = 1e5;
-const EPS$e = 1e-5;
+const EPS$f = 1e-5;
 const NEPS$3 = 1e-13;
 const TAU$8 = Math.PI * 2;
 var constants$3 = {
-  EPS: EPS$e,
+  EPS: EPS$f,
   NEPS: NEPS$3,
   TAU: TAU$8,
   spatialResolution
@@ -21921,13 +21921,13 @@ const identity$1 = (out) => {
   return out;
 };
 var identity_1 = identity$1;
-const { EPS: EPS$d } = constants$3;
+const { EPS: EPS$e } = constants$3;
 const { sin: sin$a, cos: cos$a } = trigonometry;
 const identity = identity_1;
 const fromRotation$1 = (out, rad, axis) => {
   let [x, y, z] = axis;
   const lengthSquared = x * x + y * y + z * z;
-  if (Math.abs(lengthSquared) < EPS$d) {
+  if (Math.abs(lengthSquared) < EPS$e) {
     return identity(out);
   }
   const len = 1 / Math.sqrt(lengthSquared);
@@ -22526,13 +22526,13 @@ const multiply = (out, a, b) => {
   return out;
 };
 var multiply_1 = multiply;
-const { EPS: EPS$c } = constants$3;
+const { EPS: EPS$d } = constants$3;
 const { sin: sin$5, cos: cos$5 } = trigonometry;
 const copy$3 = copy_1$3;
 const rotate = (out, matrix, radians, axis) => {
   let [x, y, z] = axis;
   const lengthSquared = x * x + y * y + z * z;
-  if (Math.abs(lengthSquared) < EPS$c) {
+  if (Math.abs(lengthSquared) < EPS$d) {
     return copy$3(out, matrix);
   }
   const len = 1 / Math.sqrt(lengthSquared);
@@ -23109,7 +23109,7 @@ var commonChecks = {
   isGT: isGT$2,
   isGTE: isGTE$2
 };
-const { EPS: EPS$b, TAU: TAU$6 } = constants$3;
+const { EPS: EPS$c, TAU: TAU$6 } = constants$3;
 const vec2$p = vec2$w;
 const geom2$h = geom2$i;
 const { sin: sin$1, cos: cos$1 } = trigonometry;
@@ -23145,7 +23145,7 @@ const ellipse$1 = (options) => {
     rotation = endAngle + (TAU$6 - startAngle);
   }
   const minradius = Math.min(radius[0], radius[1]);
-  const minangle = Math.acos((minradius * minradius + minradius * minradius - EPS$b * EPS$b) / (2 * minradius * minradius));
+  const minangle = Math.acos((minradius * minradius + minradius * minradius - EPS$c * EPS$c) / (2 * minradius * minradius));
   if (rotation < minangle)
     throw new Error("startAngle and endAngle do not define a significant rotation");
   segments = Math.floor(segments * (rotation / TAU$6));
@@ -23210,7 +23210,7 @@ const rectangle = (options) => {
 };
 var rectangle_1 = rectangle;
 const rectangle$1 = /* @__PURE__ */ getDefaultExportFromCjs(rectangle_1);
-const { EPS: EPS$a, TAU: TAU$4 } = constants$3;
+const { EPS: EPS$b, TAU: TAU$4 } = constants$3;
 const vec2$n = vec2$w;
 const geom2$f = geom2$i;
 const { isGT, isGTE, isNumberArray } = commonChecks;
@@ -23233,7 +23233,7 @@ const roundedRectangle = (options) => {
   if (!isGTE(segments, 4))
     throw new Error("segments must be four or more");
   size = size.map((v) => v / 2);
-  if (roundRadius > size[0] - EPS$a || roundRadius > size[1] - EPS$a)
+  if (roundRadius > size[0] - EPS$b || roundRadius > size[1] - EPS$b)
     throw new Error("roundRadius must be smaller then the radius of all dimensions");
   const cornersegments = Math.floor(segments / 4);
   const corner0 = vec2$n.add(vec2$n.create(), center2, [size[0] - roundRadius, size[1] - roundRadius]);
@@ -23393,19 +23393,19 @@ const fromPoints$8 = (out, ...vertices) => {
   return out;
 };
 var fromPoints_1$4 = fromPoints$8;
-const { EPS: EPS$9 } = constants$3;
+const { EPS: EPS$a } = constants$3;
 const vec3$w = vec3$C;
 const fromPointsRandom = (out, a, b, c2) => {
   let ba = vec3$w.subtract(vec3$w.create(), b, a);
   let ca = vec3$w.subtract(vec3$w.create(), c2, a);
-  if (vec3$w.length(ba) < EPS$9) {
+  if (vec3$w.length(ba) < EPS$a) {
     ba = vec3$w.orthogonal(ba, ca);
   }
-  if (vec3$w.length(ca) < EPS$9) {
+  if (vec3$w.length(ca) < EPS$a) {
     ca = vec3$w.orthogonal(ca, ba);
   }
   let normal2 = vec3$w.cross(vec3$w.create(), ba, ca);
-  if (vec3$w.length(normal2) < EPS$9) {
+  if (vec3$w.length(normal2) < EPS$a) {
     ca = vec3$w.orthogonal(ca, ba);
     normal2 = vec3$w.cross(normal2, ba, ca);
   }
@@ -23997,7 +23997,7 @@ var geom3$d = {
 };
 const clone$4 = (geometry) => Object.assign({}, geometry);
 var clone_1$2 = clone$4;
-const { EPS: EPS$8 } = constants$3;
+const { EPS: EPS$9 } = constants$3;
 const vec2$m = vec2$w;
 const clone$3 = clone_1$2;
 const close$1 = (geometry) => {
@@ -24009,7 +24009,7 @@ const close$1 = (geometry) => {
     const points = cloned.points;
     const p0 = points[0];
     let pn = points[points.length - 1];
-    while (vec2$m.distance(p0, pn) < EPS$8 * EPS$8) {
+    while (vec2$m.distance(p0, pn) < EPS$9 * EPS$9) {
       points.pop();
       if (points.length === 1)
         break;
@@ -24031,7 +24031,7 @@ const create$f = (points) => {
   };
 };
 var create_1$3 = create$f;
-const { EPS: EPS$7 } = constants$3;
+const { EPS: EPS$8 } = constants$3;
 const vec2$l = vec2$w;
 const close = close_1;
 const create$e = create_1$3;
@@ -24043,7 +24043,7 @@ const fromPoints$5 = (options, points) => {
   if (created.points.length > 1) {
     const p0 = created.points[0];
     const pn = created.points[created.points.length - 1];
-    if (vec2$l.distance(p0, pn) < EPS$7 * EPS$7) {
+    if (vec2$l.distance(p0, pn) < EPS$8 * EPS$8) {
       closed = true;
     }
   }
@@ -24825,7 +24825,7 @@ var line2$2 = {
   transform: transform_1$1,
   xAtY: xAtY_1
 };
-const { EPS: EPS$6, TAU: TAU$1 } = constants$3;
+const { EPS: EPS$7, TAU: TAU$1 } = constants$3;
 const intersect$4 = intersect_1$1;
 const line2$1 = line2$2;
 const vec2$4 = vec2$w;
@@ -24838,7 +24838,7 @@ const offsetFromPoints$2 = (options, points) => {
     segments: 16
   };
   let { delta, corners, closed, segments } = Object.assign({}, defaults, options);
-  if (Math.abs(delta) < EPS$6)
+  if (Math.abs(delta) < EPS$7)
     return points;
   let rotation = options.closed ? area$6(points) : 1;
   if (rotation === 0)
@@ -25051,13 +25051,13 @@ var geometries = {
   poly2: poly2$1,
   poly3: poly3$m
 };
-const { EPS: EPS$5 } = constants$3;
+const { EPS: EPS$6 } = constants$3;
 const calculateEpsilonFromBounds$1 = (bounds, dimensions) => {
   let total = 0;
   for (let i = 0; i < dimensions; i++) {
     total += bounds[1][i] - bounds[0][i];
   }
-  return EPS$5 * total / dimensions;
+  return EPS$6 * total / dimensions;
 };
 var calculateEpsilonFromBounds_1 = calculateEpsilonFromBounds$1;
 const flatten$8 = flatten_1;
@@ -25353,7 +25353,7 @@ var utils$7 = {
   radiusToSegments: radiusToSegments_1,
   radToDeg: radToDeg_1
 };
-const { EPS: EPS$4 } = constants$3;
+const { EPS: EPS$5 } = constants$3;
 const line2 = line2$2;
 const vec2$1 = vec2$w;
 const OrthoNormalBasis = OrthoNormalBasis_1;
@@ -25372,7 +25372,7 @@ const reTesselateCoplanarPolygons$1 = (sourcepolygons) => {
   const topy2polygonindexes = /* @__PURE__ */ new Map();
   const ycoordinatetopolygonindexes = /* @__PURE__ */ new Map();
   const ycoordinatebins = /* @__PURE__ */ new Map();
-  const ycoordinateBinningFactor = 10 / EPS$4;
+  const ycoordinateBinningFactor = 10 / EPS$5;
   for (let polygonindex = 0; polygonindex < numpolygons; polygonindex++) {
     const poly3d = sourcepolygons[polygonindex];
     let vertices2d = [];
@@ -25563,7 +25563,7 @@ const reTesselateCoplanarPolygons$1 = (sourcepolygons) => {
         const prevoutpolygon = newoutpolygonrow[newoutpolygonrow.length - 1];
         const d1 = vec2$1.distance(outpolygon.topleft, prevoutpolygon.topright);
         const d2 = vec2$1.distance(outpolygon.bottomleft, prevoutpolygon.bottomright);
-        if (d1 < EPS$4 && d2 < EPS$4) {
+        if (d1 < EPS$5 && d2 < EPS$5) {
           outpolygon.topleft = prevoutpolygon.topleft;
           outpolygon.leftline = prevoutpolygon.leftline;
           outpolygon.bottomleft = prevoutpolygon.bottomleft;
@@ -25580,8 +25580,8 @@ const reTesselateCoplanarPolygons$1 = (sourcepolygons) => {
         for (let ii = 0; ii < prevoutpolygonrow.length; ii++) {
           if (!matchedindexes.has(ii)) {
             const prevpolygon = prevoutpolygonrow[ii];
-            if (vec2$1.distance(prevpolygon.bottomleft, thispolygon.topleft) < EPS$4) {
-              if (vec2$1.distance(prevpolygon.bottomright, thispolygon.topright) < EPS$4) {
+            if (vec2$1.distance(prevpolygon.bottomleft, thispolygon.topleft) < EPS$5) {
+              if (vec2$1.distance(prevpolygon.bottomright, thispolygon.topright) < EPS$5) {
                 matchedindexes.add(ii);
                 const v12 = line2.direction(thispolygon.leftline);
                 const v22 = line2.direction(prevpolygon.leftline);
@@ -25589,8 +25589,8 @@ const reTesselateCoplanarPolygons$1 = (sourcepolygons) => {
                 const v3 = line2.direction(thispolygon.rightline);
                 const v4 = line2.direction(prevpolygon.rightline);
                 const d2 = v3[0] - v4[0];
-                const leftlinecontinues = Math.abs(d1) < EPS$4;
-                const rightlinecontinues = Math.abs(d2) < EPS$4;
+                const leftlinecontinues = Math.abs(d1) < EPS$5;
+                const rightlinecontinues = Math.abs(d2) < EPS$5;
                 const leftlineisconvex = leftlinecontinues || d1 >= 0;
                 const rightlineisconvex = rightlinecontinues || d2 >= 0;
                 if (leftlineisconvex && rightlineisconvex) {
@@ -25609,7 +25609,7 @@ const reTesselateCoplanarPolygons$1 = (sourcepolygons) => {
         if (!prevcontinuedindexes.has(ii)) {
           const prevpolygon = prevoutpolygonrow[ii];
           prevpolygon.outpolygon.rightpoints.push(prevpolygon.bottomright);
-          if (vec2$1.distance(prevpolygon.bottomright, prevpolygon.bottomleft) > EPS$4) {
+          if (vec2$1.distance(prevpolygon.bottomright, prevpolygon.bottomleft) > EPS$5) {
             prevpolygon.outpolygon.leftpoints.push(prevpolygon.bottomleft);
           }
           prevpolygon.outpolygon.leftpoints.reverse();
@@ -25629,7 +25629,7 @@ const reTesselateCoplanarPolygons$1 = (sourcepolygons) => {
           rightpoints: []
         };
         thispolygon.outpolygon.leftpoints.push(thispolygon.topleft);
-        if (vec2$1.distance(thispolygon.topleft, thispolygon.topright) > EPS$4) {
+        if (vec2$1.distance(thispolygon.topleft, thispolygon.topright) > EPS$5) {
           thispolygon.outpolygon.rightpoints.push(thispolygon.topright);
         }
       } else {
@@ -25682,7 +25682,7 @@ const retessellate$2 = (geometry) => {
   return result;
 };
 var retessellate_1 = retessellate$2;
-const { EPS: EPS$3 } = constants$3;
+const { EPS: EPS$4 } = constants$3;
 const measureBoundingBox = measureBoundingBox_1;
 const mayOverlap$2 = (geometry1, geometry2) => {
   if (geometry1.polygons.length === 0 || geometry2.polygons.length === 0) {
@@ -25694,17 +25694,17 @@ const mayOverlap$2 = (geometry1, geometry2) => {
   const bounds2 = measureBoundingBox(geometry2);
   const min2 = bounds2[0];
   const max2 = bounds2[1];
-  if (min2[0] - max1[0] > EPS$3)
+  if (min2[0] - max1[0] > EPS$4)
     return false;
-  if (min1[0] - max2[0] > EPS$3)
+  if (min1[0] - max2[0] > EPS$4)
     return false;
-  if (min2[1] - max1[1] > EPS$3)
+  if (min2[1] - max1[1] > EPS$4)
     return false;
-  if (min1[1] - max2[1] > EPS$3)
+  if (min1[1] - max2[1] > EPS$4)
     return false;
-  if (min2[2] - max1[2] > EPS$3)
+  if (min2[2] - max1[2] > EPS$4)
     return false;
-  if (min1[2] - max2[2] > EPS$3)
+  if (min1[2] - max2[2] > EPS$4)
     return false;
   return true;
 };
@@ -25848,7 +25848,7 @@ const splitLineSegmentByPlane$1 = (plane2, p1, p2) => {
   return direction2;
 };
 var splitLineSegmentByPlane_1 = splitLineSegmentByPlane$1;
-const { EPS: EPS$2 } = constants$3;
+const { EPS: EPS$3 } = constants$3;
 const plane$2 = plane$9;
 const vec3$g = vec3$C;
 const poly3$8 = poly3$m;
@@ -25868,12 +25868,12 @@ const splitPolygonByPlane$1 = (splane, polygon) => {
     let hasfront = false;
     let hasback = false;
     const vertexIsBack = [];
-    const MINEPS = -EPS$2;
+    const MINEPS = -EPS$3;
     for (let i = 0; i < numvertices; i++) {
       const t = vec3$g.dot(splane, vertices[i]) - splane[3];
       const isback = t < MINEPS;
       vertexIsBack.push(isback);
-      if (t > EPS$2)
+      if (t > EPS$3)
         hasfront = true;
       if (t < MINEPS)
         hasback = true;
@@ -25917,7 +25917,7 @@ const splitPolygonByPlane$1 = (splane, polygon) => {
         }
         isback = nextisback;
       }
-      const EPS_SQUARED = EPS$2 * EPS$2;
+      const EPS_SQUARED = EPS$3 * EPS$3;
       if (backvertices.length >= 3) {
         let prevvertex = backvertices[backvertices.length - 1];
         for (let vertexindex = 0; vertexindex < backvertices.length; vertexindex++) {
@@ -25951,7 +25951,7 @@ const splitPolygonByPlane$1 = (splane, polygon) => {
   return result;
 };
 var splitPolygonByPlane_1 = splitPolygonByPlane$1;
-const { EPS: EPS$1 } = constants$3;
+const { EPS: EPS$2 } = constants$3;
 const vec3$f = vec3$C;
 const poly3$7 = poly3$m;
 const splitPolygonByPlane = splitPolygonByPlane_1;
@@ -26055,7 +26055,7 @@ let PolygonTreeNode$1 = class PolygonTreeNode {
     const polygon = this.polygon;
     if (polygon) {
       const bound = poly3$7.measureBoundingSphere(polygon);
-      const sphereradius = bound[3] + EPS$1;
+      const sphereradius = bound[3] + EPS$2;
       const spherecenter = bound;
       const d = vec3$f.dot(splane, spherecenter) - splane[3];
       if (d > sphereradius) {
@@ -27135,7 +27135,7 @@ const repair = (slice2) => {
   return create(edges);
 };
 var repair_1 = repair;
-const { EPS } = constants$3;
+const { EPS: EPS$1 } = constants$3;
 const vec3$5 = vec3$C;
 const poly3$5 = poly3$m;
 const slice$2 = slice$3;
@@ -27174,7 +27174,7 @@ const repartitionEdges = (newlength, edges) => {
   });
   return newEdges;
 };
-const EPSAREA = EPS * EPS / 2 * Math.sin(Math.PI / 3);
+const EPSAREA = EPS$1 * EPS$1 / 2 * Math.sin(Math.PI / 3);
 const extrudeWalls$1 = (slice0, slice1) => {
   let edges0 = slice$2.toEdges(slice0);
   let edges1 = slice$2.toEdges(slice1);
@@ -28446,6 +28446,72 @@ function showToast(message, opts = {}) {
   document.body.appendChild(msg2);
   setTimeout(() => msg2.remove(), duration);
 }
+function getFoamWorldBox(foamMesh) {
+  foamMesh.geometry.computeBoundingBox();
+  const box = foamMesh.geometry.boundingBox.clone();
+  foamMesh.updateMatrixWorld();
+  box.applyMatrix4(foamMesh.matrixWorld);
+  return box;
+}
+function createDistanceTextElement() {
+  const distanceText = document.createElement("div");
+  Object.assign(distanceText.style, {
+    position: "absolute",
+    top: "10px",
+    left: "10px",
+    color: "white"
+  });
+  document.body.appendChild(distanceText);
+  return distanceText;
+}
+function createAngleOverlayCanvas() {
+  const angleOverlay = document.createElement("canvas");
+  angleOverlay.style.position = "absolute";
+  angleOverlay.style.top = "0";
+  angleOverlay.style.left = "0";
+  angleOverlay.style.pointerEvents = "none";
+  angleOverlay.style.zIndex = "10";
+  document.body.appendChild(angleOverlay);
+  return angleOverlay;
+}
+function resizeOverlayCanvas(overlay) {
+  overlay.width = window.innerWidth * (window.devicePixelRatio || 1);
+  overlay.height = window.innerHeight * (window.devicePixelRatio || 1);
+  overlay.style.width = window.innerWidth + "px";
+  overlay.style.height = window.innerHeight + "px";
+}
+function disposeObject3D$1(obj) {
+  if (!obj)
+    return;
+  if (obj.geometry && typeof obj.geometry.dispose === "function") {
+    obj.geometry.dispose();
+  }
+  if (obj.material) {
+    if (Array.isArray(obj.material)) {
+      obj.material.forEach((m) => m && m.dispose && m.dispose());
+    } else if (typeof obj.material.dispose === "function") {
+      obj.material.dispose();
+    }
+  }
+}
+function disposeListFromScene(scene, list) {
+  list.forEach((obj) => {
+    scene.remove(obj);
+    disposeObject3D$1(obj);
+  });
+}
+function createFreehandPoint(point, zOffset = 1) {
+  const geometry = new CircleGeometry(3, 32);
+  const material = new MeshBasicMaterial({ color: 16711680 });
+  const circle2 = new Mesh(geometry, material);
+  circle2.position.set(point.x, point.y, point.z + zOffset);
+  return circle2;
+}
+function createFreehandSegment(points) {
+  const lineGeometry = new BufferGeometry().setFromPoints(points);
+  const lineMaterial = new LineBasicMaterial({ color: 16753920, linewidth: 15 });
+  return new Line(lineGeometry, lineMaterial);
+}
 const jscad = {
   primitives: { circle: circle$1, rectangle: rectangle$1, roundedRectangle: roundedRectangle$1 },
   geometries: { geom2: geom2$j },
@@ -28459,7 +28525,7 @@ const jscad = {
 };
 const CORNER_SEGMENTS = 16;
 function getDefaultCornerRadius() {
-  return !isNaN(state.cornerRadius) ? state.cornerRadius : 5;
+  return typeof (state == null ? void 0 : state.cornerRadius) === "number" && !isNaN(state.cornerRadius) ? state.cornerRadius : 5;
 }
 function clampCornerRadius(sizeX, sizeY, radius) {
   const maxR = Math.max(0, Math.min(sizeX, sizeY) / 2 - 1e-3);
@@ -30243,6 +30309,8 @@ function doCsg() {
       return shape;
     if (typeof shape.cornerRadius === "number")
       return shape;
+    if (typeof defaultCornerRadius !== "number")
+      return shape;
     return { ...shape, cornerRadius: defaultCornerRadius };
   });
   const payload = { id: ++requestId, foam: foamForWorker, shapesArray: shapesForWorker };
@@ -30336,6 +30404,184 @@ function redo() {
   document.querySelector("#back-button").setAttribute("disabled", "");
   showPanelFromLeft("main-panel");
   state.selected = null;
+}
+function buildCameraSnapshot(camera, controls) {
+  if (!camera || !controls)
+    return null;
+  return {
+    position: camera.position.clone(),
+    target: controls.target.clone(),
+    up: camera.up.clone()
+  };
+}
+function applyCameraSnapshot(camera, controls, saved) {
+  if (!saved || !camera || !controls)
+    return false;
+  camera.position.copy(saved.position);
+  controls.target.copy(saved.target);
+  camera.up.copy(saved.up);
+  camera.lookAt(saved.target);
+  controls.update();
+  return true;
+}
+function getViewParams(foam, units2) {
+  const targetX = (foam == null ? void 0 : foam.x) || 0;
+  const targetY = (foam == null ? void 0 : foam.y) || 0;
+  const targetZ = 37 * units2.centimeters;
+  const maxDim = Math.max((foam == null ? void 0 : foam.sizeX) || 0, (foam == null ? void 0 : foam.sizeY) || 0);
+  const distance2 = Math.max(maxDim * 2, 1 * units2.meters);
+  return { targetX, targetY, targetZ, distance: distance2 };
+}
+function setCameraTopView(camera, controls, foam, units2) {
+  if (!camera || !controls)
+    return false;
+  const { targetX, targetY, targetZ, distance: distance2 } = getViewParams(foam, units2);
+  const epsilon = distance2 * 1e-3;
+  camera.up.set(0, 0, 1);
+  controls.target.set(targetX, targetY, targetZ);
+  camera.position.set(targetX, targetY - epsilon, targetZ + distance2);
+  camera.lookAt(targetX, targetY, targetZ);
+  controls.update();
+  return true;
+}
+function setCameraFrontView(camera, controls, foam, units2) {
+  if (!camera || !controls)
+    return false;
+  const { targetX, targetY, targetZ, distance: distance2 } = getViewParams(foam, units2);
+  camera.up.set(0, 0, 1);
+  controls.target.set(targetX, targetY, targetZ);
+  camera.position.set(targetX, targetY - distance2, targetZ);
+  camera.lookAt(targetX, targetY, targetZ);
+  controls.update();
+  return true;
+}
+const EPS = 1e-3;
+const MIN_SIZE = 10;
+const GAP_MM = 10;
+function cleanShapeRuntimeFields(shape) {
+  if (!shape)
+    return;
+  delete shape.controlPoints;
+  delete shape.cleanup;
+  delete shape._controlPointsSetup;
+  delete shape._controlPointHandlersInitialized;
+  delete shape._selectedPointIndex;
+  delete shape._draggingPoint;
+  delete shape._dragOriginalPoints;
+  delete shape._drawPointsCache;
+  delete shape._drawPointsCacheTarget;
+  delete shape._pointsDirty;
+  delete shape._selectedPointIndices;
+}
+function boxesOverlap(a, b, eps = EPS) {
+  return !(a.maxX <= b.minX + eps || a.minX >= b.maxX - eps || a.maxY <= b.minY + eps || a.minY >= b.maxY - eps);
+}
+function isPreviewInsideFoam(copyShape, foam) {
+  const foamLeft = foam.x - foam.sizeX / 2;
+  const foamRight = foam.x + foam.sizeX / 2;
+  const foamBottom = foam.y - foam.sizeY / 2;
+  const foamTop = foam.y + foam.sizeY / 2;
+  const box = getBoundingBox(copyShape);
+  return box.minX >= foamLeft - EPS && box.maxX <= foamRight + EPS && box.minY >= foamBottom - EPS && box.maxY <= foamTop + EPS;
+}
+function isPreviewBlockedByExistingShape(previewShape, occupiedBoxes) {
+  const previewBox = getBoundingBox(previewShape);
+  for (const { shape, box } of occupiedBoxes) {
+    const samePosition = Math.abs(shape.x - previewShape.x) < EPS && Math.abs(shape.y - previewShape.y) < EPS;
+    if (samePosition || boxesOverlap(previewBox, box)) {
+      return true;
+    }
+  }
+  return false;
+}
+function buildCopyPreviewShapes({ sourceShape, foam, shapesArray }) {
+  const box = getBoundingBox(sourceShape);
+  const width = Math.max(MIN_SIZE, box.maxX - box.minX);
+  const height = Math.max(MIN_SIZE, box.maxY - box.minY);
+  const gap = GAP_MM * units.millimeters;
+  const offsets = [
+    [width + gap, 0],
+    [-(width + gap), 0],
+    [0, height + gap],
+    [0, -(height + gap)]
+  ];
+  const occupiedBoxes = shapesArray.filter((shape) => shape && shape.id !== sourceShape.id).map((shape) => ({ shape, box: getBoundingBox(shape) }));
+  const previews = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const [dx, dy] of offsets) {
+    const preview = structuredClone(sourceShape);
+    cleanShapeRuntimeFields(preview);
+    preview.x = sourceShape.x + dx;
+    preview.y = sourceShape.y + dy;
+    if (!isPreviewInsideFoam(preview, foam))
+      continue;
+    if (isPreviewBlockedByExistingShape(preview, occupiedBoxes))
+      continue;
+    const key = `${preview.x.toFixed(3)},${preview.y.toFixed(3)}`;
+    if (seen.has(key))
+      continue;
+    seen.add(key);
+    preview.id = `${sourceShape.id || "shape"}-copy-preview-${previews.length}`;
+    previews.push(preview);
+  }
+  return previews;
+}
+function getCopyPreviewUnderMouse({
+  copyPlacementActive,
+  mouseRayPlaneIntersection,
+  copyPreviewShapes
+}) {
+  if (!copyPlacementActive || !mouseRayPlaneIntersection)
+    return null;
+  for (const preview of copyPreviewShapes.slice().reverse()) {
+    if (mouseOverShape(preview, mouseRayPlaneIntersection, pointInsidePolygon)) {
+      return preview;
+    }
+  }
+  return null;
+}
+function cloneShapeForCopyCommit({ sourceShape, previewShape, generateId: generateId2 }) {
+  const newShape = structuredClone(sourceShape);
+  cleanShapeRuntimeFields(newShape);
+  newShape.id = generateId2();
+  newShape.x = previewShape.x;
+  newShape.y = previewShape.y;
+  return newShape;
+}
+function getShapeUnderMouse(shapesArray, mouseRayPlaneIntersection) {
+  if (!mouseRayPlaneIntersection)
+    return null;
+  for (const shape of shapesArray.slice().reverse()) {
+    if (mouseOverShape(shape, mouseRayPlaneIntersection, pointInsidePolygon)) {
+      return shape;
+    }
+  }
+  return null;
+}
+function resolveCopySourceShape({
+  selected,
+  copyPlacementSourceId,
+  shapesArray
+}) {
+  if (selected && selected.id === copyPlacementSourceId)
+    return selected;
+  return shapesArray.find((s) => s.id === copyPlacementSourceId) || null;
+}
+function maybeSimplifyForDrag(shape, maxPoints = 200) {
+  if (!shape || shape.kind !== "polygon" || !Array.isArray(shape.points))
+    return;
+  if (shape.points.length <= maxPoints)
+    return;
+  if (!shape._dragOriginalPoints) {
+    shape._dragOriginalPoints = shape.points;
+    shape.points = simplifyPointsForDrag(shape.points, maxPoints);
+  }
+}
+function restoreAfterDrag(shape) {
+  if (!shape || !shape._dragOriginalPoints)
+    return;
+  shape.points = shape._dragOriginalPoints;
+  delete shape._dragOriginalPoints;
 }
 function createImage(renderer, scene, camera, { buttonId = "export-image", scaleFactor = 4, filename = "foam-hd.png" } = {}) {
   const btn = document.getElementById(buttonId);
@@ -30516,15 +30762,13 @@ const setPolygonActionButtons = (config = {}) => {
 };
 const case1Url = "./models/case1.obj";
 const SSAA_SCALE = 1;
-function shapeUnderMouse() {
-  if (state.mouseRayPlaneIntersection) {
-    for (const shape of state.shapesArray.slice().reverse()) {
-      if (mouseOverShape(shape, state.mouseRayPlaneIntersection, pointInsidePolygon)) {
-        return shape;
-      }
-    }
-  }
-  return null;
+let copyBatchDirty = false;
+function flushCopyBatch() {
+  if (!copyBatchDirty)
+    return;
+  doCsg();
+  commit();
+  copyBatchDirty = false;
 }
 const deleteButtonsByKind = {
   circle: "delete-button",
@@ -30539,23 +30783,13 @@ const copyButtonsByKind = {
   photoshape: "photoshape-copy-button"
 };
 function saveCameraView() {
-  if (!state.camera || !state.controls)
+  const saved = buildCameraSnapshot(state.camera, state.controls);
+  if (!saved)
     return;
-  state._savedCameraView = {
-    position: state.camera.position.clone(),
-    target: state.controls.target.clone(),
-    up: state.camera.up.clone()
-  };
+  state._savedCameraView = saved;
 }
 function restoreCameraView() {
-  const saved = state._savedCameraView;
-  if (!saved || !state.camera || !state.controls)
-    return;
-  state.camera.position.copy(saved.position);
-  state.controls.target.copy(saved.target);
-  state.camera.up.copy(saved.up);
-  state.camera.lookAt(saved.target);
-  state.controls.update();
+  applyCameraSnapshot(state.camera, state.controls, state._savedCameraView);
 }
 const updateDeleteButtons = (selected) => {
   Object.values(deleteButtonsByKind).forEach((id) => {
@@ -30617,143 +30851,68 @@ function resetCopyPlacementState() {
   state.copyPreviewShapes = [];
 }
 function cancelCopyPlacement() {
+  flushCopyBatch();
   resetCopyPlacementState();
 }
-function cleanShapeRuntimeFields(shape) {
-  if (!shape)
-    return;
-  delete shape.controlPoints;
-  delete shape.cleanup;
-  delete shape._controlPointsSetup;
-  delete shape._controlPointHandlersInitialized;
-  delete shape._selectedPointIndex;
-  delete shape._draggingPoint;
-  delete shape._dragOriginalPoints;
-  delete shape._drawPointsCache;
-  delete shape._drawPointsCacheTarget;
-  delete shape._pointsDirty;
-  delete shape._selectedPointIndices;
-}
-function clampPreviewToFoam(copyShape) {
-  const foamLeft = state.foam.x - state.foam.sizeX / 2;
-  const foamRight = state.foam.x + state.foam.sizeX / 2;
-  const foamBottom = state.foam.y - state.foam.sizeY / 2;
-  const foamTop = state.foam.y + state.foam.sizeY / 2;
-  const box = getBoundingBox(copyShape);
-  let shiftX = 0;
-  let shiftY = 0;
-  if (box.minX < foamLeft)
-    shiftX = foamLeft - box.minX;
-  else if (box.maxX > foamRight)
-    shiftX = foamRight - box.maxX;
-  if (box.minY < foamBottom)
-    shiftY = foamBottom - box.minY;
-  else if (box.maxY > foamTop)
-    shiftY = foamTop - box.maxY;
-  copyShape.x += shiftX;
-  copyShape.y += shiftY;
-}
-function buildCopyPreviewShapes(sourceShape) {
-  const box = getBoundingBox(sourceShape);
-  const width = Math.max(10, box.maxX - box.minX);
-  const height = Math.max(10, box.maxY - box.minY);
-  const gap = 10 * units.millimeters;
-  const offsets = [
-    [width + gap, 0],
-    [-(width + gap), 0],
-    [0, height + gap],
-    [0, -(height + gap)]
-  ];
-  const previews = [];
-  const seen = /* @__PURE__ */ new Set();
-  for (const [dx, dy] of offsets) {
-    const preview = structuredClone(sourceShape);
-    cleanShapeRuntimeFields(preview);
-    preview.x = sourceShape.x + dx;
-    preview.y = sourceShape.y + dy;
-    clampPreviewToFoam(preview);
-    const key = `${preview.x.toFixed(3)},${preview.y.toFixed(3)}`;
-    if (seen.has(key))
-      continue;
-    seen.add(key);
-    if (Math.abs(preview.x - sourceShape.x) < 1e-3 && Math.abs(preview.y - sourceShape.y) < 1e-3) {
-      continue;
-    }
-    preview.id = `${sourceShape.id || "shape"}-copy-preview-${previews.length}`;
-    previews.push(preview);
-  }
-  return previews;
-}
 function beginCopyPlacement() {
-  if (!state.selected)
-    return;
-  if (!state.selected.id)
-    return;
-  const previews = buildCopyPreviewShapes(state.selected);
+  if (!state.copyPlacementActive) {
+    copyBatchDirty = false;
+  }
+  if (!activateCopyPlacementForSource(state.selected)) {
+    cancelCopyPlacement();
+  }
+}
+function activateCopyPlacementForSource(sourceShape) {
+  if (!sourceShape || !sourceShape.id)
+    return false;
+  const previews = buildCopyPreviewShapes({
+    sourceShape,
+    foam: state.foam,
+    shapesArray: state.shapesArray
+  });
   if (!previews.length)
-    return;
+    return false;
   state.copyPlacementActive = true;
-  state.copyPlacementSourceId = state.selected.id;
+  state.copyPlacementSourceId = sourceShape.id;
   state.copyPreviewShapes = previews;
+  return true;
 }
 function copyPreviewUnderMouse() {
-  if (!state.copyPlacementActive || !state.mouseRayPlaneIntersection)
-    return null;
-  for (const preview of state.copyPreviewShapes.slice().reverse()) {
-    if (mouseOverShape(preview, state.mouseRayPlaneIntersection, pointInsidePolygon)) {
-      return preview;
-    }
-  }
-  return null;
+  return getCopyPreviewUnderMouse({
+    copyPlacementActive: state.copyPlacementActive,
+    mouseRayPlaneIntersection: state.mouseRayPlaneIntersection,
+    copyPreviewShapes: state.copyPreviewShapes
+  });
 }
 function commitCopyFromPreview(previewShape) {
-  const sourceShape = state.selected && state.selected.id === state.copyPlacementSourceId ? state.selected : state.shapesArray.find((s) => s.id === state.copyPlacementSourceId);
+  const sourceShape = resolveCopySourceShape({
+    selected: state.selected,
+    copyPlacementSourceId: state.copyPlacementSourceId,
+    shapesArray: state.shapesArray
+  });
   if (!sourceShape) {
     cancelCopyPlacement();
     return;
   }
-  const newShape = structuredClone(sourceShape);
-  cleanShapeRuntimeFields(newShape);
-  newShape.id = generateId();
-  newShape.x = previewShape.x;
-  newShape.y = previewShape.y;
+  const newShape = cloneShapeForCopyCommit({
+    sourceShape,
+    previewShape,
+    generateId
+  });
   state.shapesArray.push(newShape);
   state.selected = newShape;
-  cancelCopyPlacement();
   updateDeleteButtons(state.selected);
+  if (!activateCopyPlacementForSource(newShape)) {
+    cancelCopyPlacement();
+  }
   doCsg();
   commit();
 }
 function resetCameraToTopView() {
-  var _a, _b;
-  if (!state.camera || !state.controls)
-    return;
-  const targetX = ((_a = state.foam) == null ? void 0 : _a.x) || 0;
-  const targetY = ((_b = state.foam) == null ? void 0 : _b.y) || 0;
-  const targetZ = 37 * units.centimeters;
-  const maxDim = Math.max(state.foam.sizeX, state.foam.sizeY);
-  const distance2 = Math.max(maxDim * 2, 1 * units.meters);
-  state.camera.up.set(0, 0, 1);
-  const epsilon = distance2 * 1e-3;
-  state.controls.target.set(targetX, targetY, targetZ);
-  state.camera.position.set(targetX, targetY - epsilon, targetZ + distance2);
-  state.camera.lookAt(targetX, targetY, targetZ);
-  state.controls.update();
+  setCameraTopView(state.camera, state.controls, state.foam, units);
 }
 function resetCameraToFrontView() {
-  var _a, _b;
-  if (!state.camera || !state.controls)
-    return;
-  const targetX = ((_a = state.foam) == null ? void 0 : _a.x) || 0;
-  const targetY = ((_b = state.foam) == null ? void 0 : _b.y) || 0;
-  const targetZ = 37 * units.centimeters;
-  const maxDim = Math.max(state.foam.sizeX, state.foam.sizeY);
-  const distance2 = Math.max(maxDim * 2, 1 * units.meters);
-  state.camera.up.set(0, 0, 1);
-  state.controls.target.set(targetX, targetY, targetZ);
-  state.camera.position.set(targetX, targetY - distance2, targetZ);
-  state.camera.lookAt(targetX, targetY, targetZ);
-  state.controls.update();
+  setCameraFrontView(state.camera, state.controls, state.foam, units);
 }
 function init3D() {
   var _a;
@@ -30915,22 +31074,6 @@ function init3D() {
       showPanelFromLeft("main-panel");
     };
   };
-  const maybeSimplifyForDrag = (shape) => {
-    if (!shape || shape.kind !== "polygon" || !Array.isArray(shape.points))
-      return;
-    if (shape.points.length <= 200)
-      return;
-    if (!shape._dragOriginalPoints) {
-      shape._dragOriginalPoints = shape.points;
-      shape.points = simplifyPointsForDrag(shape.points, 200);
-    }
-  };
-  const restoreAfterDrag = (shape) => {
-    if (shape && shape._dragOriginalPoints) {
-      shape.points = shape._dragOriginalPoints;
-      delete shape._dragOriginalPoints;
-    }
-  };
   state.renderer.domElement.addEventListener("pointerdown", (e) => {
     if (window.__editingPoints)
       return;
@@ -30940,8 +31083,14 @@ function init3D() {
       const previewHit = copyPreviewUnderMouse();
       if (previewHit) {
         commitCopyFromPreview(previewHit);
+        return;
       }
-      return;
+      const clickedShape = getShapeUnderMouse(state.shapesArray, state.mouseRayPlaneIntersection);
+      if (clickedShape) {
+        cancelCopyPlacement();
+      } else {
+        return;
+      }
     }
     state.oldSelected = state.selected;
     if (state.selected && mouseOverShape(state.selected, state.mouseRayPlaneIntersection, pointInsidePolygon)) {
@@ -30956,7 +31105,7 @@ function init3D() {
       state.controls.enabled = false;
       return;
     }
-    state.selected = shapeUnderMouse();
+    state.selected = getShapeUnderMouse(state.shapesArray, state.mouseRayPlaneIntersection);
     if (state.selected) {
       openSelectedPanel();
       maybeSimplifyForDrag(state.selected);
@@ -31079,7 +31228,7 @@ function drawMeasurements(shape) {
       drawMeasurementsPhotoshape(shape, state.ctx, state.camera, state.currPanel, units.centimeters);
       break;
     case "circleOnClick":
-      drawCircle(shape, state.ctx);
+      drawCircle(shape, state.ctx, state.camera);
       break;
     case "line":
       drawMeasurementsLine(shape, state.ctx, state.camera, units.centimeters);
@@ -31109,8 +31258,11 @@ function onFrame() {
   const baseZ = 37 * units.centimeters;
   const currentCamera = state.display2D ? state.camera1 : state.camera;
   const NEAR_THRESHOLD = 1 * units.centimeters;
+  const lightCopyRender = state.copyPlacementActive && state.shapesArray.length > 20;
   for (const shape of state.shapesArray) {
-    if (state.selected && shape !== state.selected && isNearGeneric(state.selected, shape, NEAR_THRESHOLD)) {
+    if (lightCopyRender && shape !== state.selected)
+      continue;
+    if (!lightCopyRender && state.selected && shape !== state.selected && isNearGeneric(state.selected, shape, NEAR_THRESHOLD)) {
       state.ctx.setLineDash([5, 5]);
       drawOutline(
         shape,
@@ -31174,7 +31326,7 @@ function onFrame() {
         );
         state.ctx.setLineDash([]);
       }
-      if (!window.__editingPoints) {
+      if (!window.__editingPoints && !state.copyPlacementActive) {
         drawMeasurements(shape);
         drawEdgeToFoamMeasurements(shape, state.foam, state.ctx, currentCamera);
       }
@@ -51582,13 +51734,7 @@ const createShapeFreehand = (millimeters, selected, shapesArray, commit2, showPa
     });
     lineFunction("block", "flex", true);
     display2D = true;
-    const foamBox = (() => {
-      foamMesh.geometry.computeBoundingBox();
-      const box = foamMesh.geometry.boundingBox.clone();
-      foamMesh.updateMatrixWorld();
-      box.applyMatrix4(foamMesh.matrixWorld);
-      return box;
-    })();
+    const foamBox = getFoamWorldBox(foamMesh);
     function isInsideFoam(point2) {
       return foamBox.containsPoint(point2);
     }
@@ -51656,8 +51802,8 @@ const createShapeFreehand = (millimeters, selected, shapesArray, commit2, showPa
       line.geometry.attributes.position.setXYZ(0, 0, 0, 0);
       line.geometry.attributes.position.setXYZ(1, 0, 0, 0);
       line.geometry.attributes.position.needsUpdate = true;
-      lines.forEach((l) => sceneCopy.remove(l));
-      circles.forEach((c2) => sceneCopy.remove(c2));
+      disposeListFromScene(sceneCopy, lines);
+      disposeListFromScene(sceneCopy, circles);
       lines = [];
       circles = [];
     };
@@ -51672,26 +51818,10 @@ const createShapeFreehand = (millimeters, selected, shapesArray, commit2, showPa
     let previewMeshes = [];
     var proximityThresholdMm = 5;
     let objectZCoordinate = 0;
-    const distanceText = document.createElement("div");
-    Object.assign(distanceText.style, {
-      position: "absolute",
-      top: "10px",
-      left: "10px",
-      color: "white"
-    });
-    document.body.appendChild(distanceText);
-    const angleOverlay = document.createElement("canvas");
-    angleOverlay.style.position = "absolute";
-    angleOverlay.style.top = "0";
-    angleOverlay.style.left = "0";
-    angleOverlay.style.pointerEvents = "none";
-    angleOverlay.style.zIndex = "10";
-    document.body.appendChild(angleOverlay);
+    const distanceText = createDistanceTextElement();
+    const angleOverlay = createAngleOverlayCanvas();
     function resizeAngleOverlay() {
-      angleOverlay.width = window.innerWidth * (window.devicePixelRatio || 1);
-      angleOverlay.height = window.innerHeight * (window.devicePixelRatio || 1);
-      angleOverlay.style.width = window.innerWidth + "px";
-      angleOverlay.style.height = window.innerHeight + "px";
+      resizeOverlayCanvas(angleOverlay);
     }
     resizeAngleOverlay();
     window.addEventListener("resize", resizeAngleOverlay);
@@ -51711,26 +51841,6 @@ const createShapeFreehand = (millimeters, selected, shapesArray, commit2, showPa
     document.addEventListener("mousemove", onMouseMove);
     let drawingActive = true;
     displayLineXY();
-    const disposeObject3D2 = (obj) => {
-      if (!obj)
-        return;
-      if (obj.geometry && typeof obj.geometry.dispose === "function") {
-        obj.geometry.dispose();
-      }
-      if (obj.material) {
-        if (Array.isArray(obj.material)) {
-          obj.material.forEach((m) => m && m.dispose && m.dispose());
-        } else if (typeof obj.material.dispose === "function") {
-          obj.material.dispose();
-        }
-      }
-    };
-    const disposeList = (list) => {
-      list.forEach((obj) => {
-        sceneCopy.remove(obj);
-        disposeObject3D2(obj);
-      });
-    };
     function cleanupDrawing({ restoreView = true } = {}) {
       drawingActive = false;
       document.body.style.cursor = originalCursor || "default";
@@ -51752,17 +51862,17 @@ const createShapeFreehand = (millimeters, selected, shapesArray, commit2, showPa
       points.length = 0;
       if (line) {
         sceneCopy.remove(line);
-        disposeObject3D2(line);
+        disposeObject3D$1(line);
       }
       if (mesh) {
         sceneCopy.remove(mesh);
-        disposeObject3D2(mesh);
+        disposeObject3D$1(mesh);
       }
-      disposeList(previewMeshes);
-      disposeList(circles);
-      disposeList(lines);
-      disposeList(closedCircles);
-      disposeList(closedLines);
+      disposeListFromScene(sceneCopy, previewMeshes);
+      disposeListFromScene(sceneCopy, circles);
+      disposeListFromScene(sceneCopy, lines);
+      disposeListFromScene(sceneCopy, closedCircles);
+      disposeListFromScene(sceneCopy, closedLines);
       previewMeshes = [];
       closedCircles = [];
       closedLines = [];
@@ -51851,27 +51961,19 @@ const createShapeFreehand = (millimeters, selected, shapesArray, commit2, showPa
         const unprojectedPoint = intersect2.clone();
         unprojectedPoint.z = objectZCoordinate + 1;
         points.push(unprojectedPoint);
-        const geometry = new CircleGeometry(3, 32);
-        const material = new MeshBasicMaterial({ color: 16711680 });
-        const circle2 = new Mesh(geometry, material);
-        circle2.position.copy(unprojectedPoint);
+        const circle2 = createFreehandPoint(unprojectedPoint, 0);
         sceneCopy.add(circle2);
         circles.push(circle2);
         if (points.length > 1) {
-          const lineGeometry2 = new BufferGeometry().setFromPoints(points);
-          const lineMaterial2 = new LineBasicMaterial({ color: 16753920, linewidth: 15 });
-          const line3 = new Line(lineGeometry2, lineMaterial2);
-          sceneCopy.add(line3);
-          lines.push(line3);
+          const segment = createFreehandSegment(points);
+          sceneCopy.add(segment);
+          lines.push(segment);
         }
       } else {
         drawing = true;
         const unprojectedPoint = intersect2.clone();
         unprojectedPoint.z = objectZCoordinate + 1;
-        const geometry = new CircleGeometry(3, 32);
-        const material = new MeshBasicMaterial({ color: 16711680 });
-        const circle2 = new Mesh(geometry, material);
-        circle2.position.copy(unprojectedPoint);
+        const circle2 = createFreehandPoint(unprojectedPoint, 0);
         sceneCopy.add(circle2);
         circles.push(circle2);
         points.push(unprojectedPoint.clone());
@@ -51910,6 +52012,43 @@ const createShapeRectangle = (millimeters, selected, shapesArray, commit2, showP
     callback(selected);
   };
 };
+const REMOVE_BG_URL = "https://api.remove.bg/v1.0/removebg";
+async function removeBackgroundFromFile(file) {
+  const base64Image = await getBase64(file);
+  const apiKey = "y7X524wbiR3cUWL9AinkUAqq";
+  const response = await fetch(REMOVE_BG_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-API-Key": apiKey
+    },
+    body: JSON.stringify({
+      image_file_b64: base64Image
+    })
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to remove background (${response.status})`);
+  }
+  return response.blob();
+}
+async function detectContoursFromBlob(blob) {
+  const formData = new FormData();
+  formData.append("image", blob, "image.png");
+  const contourApiBase = "https://fm24api.com";
+  const response = await fetch(`${contourApiBase}/detect_contours`, {
+    method: "POST",
+    body: formData
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to detect contours (${response.status})`);
+  }
+  const data = await response.json();
+  return (data == null ? void 0 : data.contours) || null;
+}
+async function uploadAndDetectContours(file) {
+  const blob = await removeBackgroundFromFile(file);
+  return detectContoursFromBlob(blob);
+}
 const getPhotoshapeDepthLabel = (session) => session.index < session.order.length - 1 ? "Next Shape" : "Finish";
 const rebuildOrderAndIndex = (session, shapesArray, selected) => {
   session.order = session.ids.map((id) => shapesArray.find((s) => s.id === id)).filter(Boolean).sort((a, b) => getBoundingBox(a).minX - getBoundingBox(b).minX).map((s) => s.id);
@@ -51952,6 +52091,174 @@ const advanceToNextUnvisited = (session, shapesArray, selected, setSelected, cal
     showPanelFromRight2
   );
 };
+const movePhotoshapeFlowControls = (panelId) => {
+  const controls = document.getElementById("photoshape-flow-controls");
+  const panel = document.getElementById(panelId);
+  const anchor = panel == null ? void 0 : panel.querySelector(".photoshape-flow-anchor");
+  if (controls && anchor) {
+    anchor.appendChild(controls);
+  }
+};
+const setPhotoshapeFlowVisibility = (stepUI, active) => {
+  if (stepUI == null ? void 0 : stepUI.container) {
+    stepUI.container.style.display = active ? "block" : "none";
+  }
+};
+const renderPhotoshapeStep = (stepUI, step, options = {}) => {
+  if (!stepUI)
+    return;
+  if (stepUI.note && typeof options.note === "string") {
+    stepUI.note.textContent = options.note;
+  }
+  if (stepUI.back && typeof options.canBack === "boolean") {
+    stepUI.back.disabled = !options.canBack;
+  }
+  if (stepUI.next && typeof options.canNext === "boolean") {
+    stepUI.next.disabled = !options.canNext;
+  }
+  if (stepUI.next && typeof options.nextLabel === "string") {
+    stepUI.next.textContent = options.nextLabel;
+  }
+  if (stepUI.back && typeof options.backLabel === "string") {
+    stepUI.back.textContent = options.backLabel;
+  }
+  if (Array.isArray(stepUI.steps) && stepUI.steps.length) {
+    stepUI.steps.forEach((el) => {
+      const stepNum = parseInt(el.getAttribute("data-photoshape-step"), 10);
+      if (!Number.isNaN(stepNum)) {
+        el.style.opacity = stepNum <= step ? "1" : "0.35";
+        el.style.fontWeight = stepNum === step ? "700" : "400";
+      }
+    });
+  }
+};
+const simplifyPhotoshapeContourPoints = (pts, simplifyFn, maxPoints = 150) => {
+  if (!Array.isArray(pts))
+    return pts;
+  return simplifyFn(pts, maxPoints);
+};
+const setPhotoshapeEditingMode = ({
+  on,
+  restore = false,
+  state: state2,
+  callback1,
+  saveCameraView: saveCameraView2,
+  resetCameraToTopView: resetCameraToTopView2,
+  restoreCameraView: restoreCameraView2
+}) => {
+  if (on && !state2.display2D) {
+    saveCameraView2();
+    resetCameraToTopView2();
+  }
+  if (window.__setPointEditUi) {
+    window.__setPointEditUi(on);
+  } else {
+    window.__editingPoints = on;
+  }
+  callback1(on);
+  if (!on && restore) {
+    restoreCameraView2();
+  }
+};
+const syncPhotoshapeDepthInputs = (selected) => {
+  if (!selected)
+    return;
+  const depthInput = document.querySelector("#polygon-depth-input") || document.querySelector("#photoshape-depth-input");
+  const depthSlider = document.querySelector("#polygon-depth-slider") || document.querySelector("#photoshape-depth-slider");
+  if (depthInput)
+    depthInput.value = selected.sizeZ;
+  if (depthSlider)
+    depthSlider.value = selected.sizeZ;
+};
+const getPhotoshapeDepthPanelId = (selected) => {
+  if (!selected)
+    return "polygon-depth-panel";
+  return selected.kind === "photoshape" ? "photoshape-depth-panel" : "polygon-depth-panel";
+};
+const setPhotoshapeAuxUiVisible = (visible) => {
+  const note = document.getElementById("photoshape-step-note");
+  const btn = document.getElementById("photoshape-button");
+  if (note)
+    note.style.display = visible ? "flex" : "none";
+  if (btn)
+    btn.style.display = visible ? "flex" : "none";
+};
+const resetPhotoshapeSessionState = (session) => {
+  session.ids = [];
+  session.order = [];
+  session.index = 0;
+  if (session.visited && typeof session.visited.clear === "function") {
+    session.visited.clear();
+  }
+  session.remaining = 0;
+};
+const createPhotoshapeShapesFromContours = ({
+  contoursData,
+  simplifyPhotoshapePoints,
+  generateId: generateId2,
+  millimeters,
+  defaultCornerRadius
+}) => {
+  if (!Array.isArray(contoursData))
+    return [];
+  return contoursData.map((contour) => {
+    const simplified = simplifyPhotoshapePoints(contour);
+    if (!Array.isArray(simplified) || simplified.length < 3)
+      return null;
+    return {
+      id: generateId2(),
+      kind: "polygon",
+      x: -225,
+      y: -225,
+      sizeZ: 300 * millimeters,
+      sizeX: 200 * millimeters,
+      sizeY: 250 * millimeters,
+      points: simplified,
+      rotation: 0,
+      free: true,
+      source: "photoshape",
+      cornerRadius: defaultCornerRadius
+    };
+  }).filter(Boolean);
+};
+const appendPhotoshapeShapes = (shapesArray, session, createdShapes) => {
+  createdShapes.forEach((shape) => {
+    shapesArray.push(shape);
+    session.ids.push(shape.id);
+  });
+};
+const getPhotoshapeStepUploadConfig = () => ({
+  note: "Upload an image to start.",
+  canBack: false,
+  canNext: false,
+  nextLabel: "Edit"
+});
+const getPhotoshapeStepProcessingConfig = () => ({
+  note: "Removing background and detecting outline...",
+  canBack: true,
+  canNext: false,
+  nextLabel: "Edit"
+});
+const getPhotoshapeStepReadyConfig = () => ({
+  note: "Outline ready. Click Edit to adjust points.",
+  canBack: true,
+  canNext: true,
+  nextLabel: "Edit"
+});
+const getPhotoshapeStepEditConfig = (session) => ({
+  note: getPhotoshapeEditStepNote(session),
+  canBack: true,
+  canNext: true,
+  nextLabel: "Depth"
+});
+const getPhotoshapeStepDepthConfig = (session) => ({
+  note: getPhotoshapeDepthStepNote(session),
+  canBack: true,
+  canNext: true,
+  nextLabel: getPhotoshapeDepthLabel(session)
+});
+const getPhotoshapeEditStepNote = (session) => `Edit outline: shape ${session.index + 1} of ${session.order.length || session.ids.length}`;
+const getPhotoshapeDepthStepNote = (session) => `Adjust depth: shape ${session.index + 1} of ${session.order.length || session.ids.length}`;
 const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, showPanelFromLeft2, showPanelFromRight2, doCsg2, display2D, callback, callback1, camera, renderer, scene, defaultCornerRadius) => {
   const stepUI = {
     container: document.querySelector("#photoshape-stepper"),
@@ -51960,89 +52267,47 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
     back: document.querySelector("#photoshape-step-back"),
     next: document.querySelector("#photoshape-step-next")
   };
-  const moveFlowControls = (panelId) => {
-    const controls = document.getElementById("photoshape-flow-controls");
-    const panel = document.getElementById(panelId);
-    const anchor = panel == null ? void 0 : panel.querySelector(".photoshape-flow-anchor");
-    if (controls && anchor) {
-      anchor.appendChild(controls);
-    }
-  };
   let photoshapeFlowActive = false;
   let photoshapeStep = 1;
   const MAX_PHOTOSHAPE_POINTS = 150;
-  const simplifyPhotoshapePoints = (pts) => {
-    if (!Array.isArray(pts))
-      return pts;
-    return simplifyPointsForDrag(pts, MAX_PHOTOSHAPE_POINTS);
-  };
+  const simplifyPhotoshapePoints = (pts) => simplifyPhotoshapeContourPoints(pts, simplifyPointsForDrag, MAX_PHOTOSHAPE_POINTS);
   const setPhotoshapeFlowActive = (active) => {
     photoshapeFlowActive = active;
-    if (stepUI.container) {
-      stepUI.container.style.display = active ? "block" : "none";
-    }
+    setPhotoshapeFlowVisibility(stepUI, active);
   };
   const setPhotoshapeStep = (step, options = {}) => {
     photoshapeStep = step;
-    if (stepUI.note && typeof options.note === "string") {
-      stepUI.note.textContent = options.note;
-    }
-    if (stepUI.back && typeof options.canBack === "boolean") {
-      stepUI.back.disabled = !options.canBack;
-    }
-    if (stepUI.next && typeof options.canNext === "boolean") {
-      stepUI.next.disabled = !options.canNext;
-    }
-    if (stepUI.next && typeof options.nextLabel === "string") {
-      stepUI.next.textContent = options.nextLabel;
-    }
-    if (stepUI.back && typeof options.backLabel === "string") {
-      stepUI.back.textContent = options.backLabel;
-    }
-    if (stepUI.steps && stepUI.steps.length) {
-      stepUI.steps.forEach((el) => {
-        const stepNum = parseInt(el.getAttribute("data-photoshape-step"), 10);
-        if (!Number.isNaN(stepNum)) {
-          el.style.opacity = stepNum <= photoshapeStep ? "1" : "0.35";
-          el.style.fontWeight = stepNum === photoshapeStep ? "700" : "400";
-        }
-      });
-    }
+    renderPhotoshapeStep(stepUI, photoshapeStep, options);
   };
-  const setEditing = (on, restore = false) => {
-    if (on && !state.display2D) {
-      saveCameraView();
-      resetCameraToTopView();
-    }
-    if (window.__setPointEditUi) {
-      window.__setPointEditUi(on);
-    } else {
-      window.__editingPoints = on;
-    }
-    callback1(on);
-    if (!on && restore) {
-      restoreCameraView();
-    }
-  };
-  const syncDepthInputs = () => {
-    if (!selected)
-      return;
-    const depthInput = document.querySelector("#polygon-depth-input") || document.querySelector("#photoshape-depth-input");
-    const depthSlider = document.querySelector("#polygon-depth-slider") || document.querySelector("#photoshape-depth-slider");
-    if (depthInput)
-      depthInput.value = selected.sizeZ;
-    if (depthSlider)
-      depthSlider.value = selected.sizeZ;
-  };
-  const getDepthPanelId = () => {
-    if (!selected)
-      return "polygon-depth-panel";
-    return selected.kind === "photoshape" ? "photoshape-depth-panel" : "polygon-depth-panel";
-  };
+  const setEditing = (on, restore = false) => setPhotoshapeEditingMode({
+    on,
+    restore,
+    state,
+    callback1,
+    saveCameraView,
+    resetCameraToTopView,
+    restoreCameraView
+  });
+  const syncDepthInputs = () => syncPhotoshapeDepthInputs(selected);
+  const getDepthPanelId = () => getPhotoshapeDepthPanelId(selected);
   const photoshapeSession = {
     ids: [],
     order: [],
     index: 0
+  };
+  const goStepUpload = () => setPhotoshapeStep(1, getPhotoshapeStepUploadConfig());
+  const goStepProcessing = () => setPhotoshapeStep(2, getPhotoshapeStepProcessingConfig());
+  const goStepReady = () => setPhotoshapeStep(2, getPhotoshapeStepReadyConfig());
+  const goStepEdit = () => setPhotoshapeStep(3, getPhotoshapeStepEditConfig(photoshapeSession));
+  const goStepDepth = () => setPhotoshapeStep(4, getPhotoshapeStepDepthConfig(photoshapeSession));
+  const openEditPanel = () => {
+    showPanelFromLeft2("upload-photo-panel");
+    movePhotoshapeFlowControls("upload-photo-panel");
+  };
+  const openDepthPanel = () => {
+    const depthPanelId = getDepthPanelId();
+    showPanelFromRight2(depthPanelId);
+    movePhotoshapeFlowControls(depthPanelId);
   };
   const beginSession = () => beginPhotoshapeEditSession(photoshapeSession, shapesArray, selected);
   const moveToNext = () => advanceToNextUnvisited(
@@ -52056,8 +52321,7 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
     showPanelFromRight2
   );
   const hidePhotoshapeUI = () => {
-    document.getElementById("photoshape-step-note").style.display = "none";
-    document.getElementById("photoshape-button").style.display = "none";
+    setPhotoshapeAuxUiVisible(false);
     setPhotoshapeFlowActive(false);
   };
   const cleanupPhotoshapeUI = () => {
@@ -52065,12 +52329,7 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
     if (!remaining) {
       photoshapeSession.ids = [];
       photoshapeSession.index = 0;
-      setPhotoshapeStep(1, {
-        note: "Upload an image to start.",
-        canBack: false,
-        canNext: false,
-        nextLabel: "Edit"
-      });
+      goStepUpload();
       hidePhotoshapeUI();
     }
   };
@@ -52078,18 +52337,8 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
   window.__photoshapeExit = () => {
     setEditing(false, true);
     setPhotoshapeFlowActive(false);
-    setPhotoshapeStep(1, {
-      note: "Upload an image to start.",
-      canBack: false,
-      canNext: false,
-      nextLabel: "Edit"
-    });
-    const note = document.getElementById("photoshape-step-note");
-    if (note)
-      note.style.display = "none";
-    const btn = document.getElementById("photoshape-button");
-    if (btn)
-      btn.style.display = "none";
+    goStepUpload();
+    setPhotoshapeAuxUiVisible(false);
   };
   photoshapeSession.visited = /* @__PURE__ */ new Set();
   photoshapeSession.remaining = 0;
@@ -52100,57 +52349,34 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
       saveCameraView();
       resetCameraToTopView();
     }
-    document.getElementById("photoshape-step-note").style.display = "flex";
-    document.getElementById("photoshape-button").style.display = "flex";
+    setPhotoshapeAuxUiVisible(true);
     setPhotoshapeFlowActive(true);
     beginSession();
     setEditing(true);
-    setPhotoshapeStep(3, {
-      note: `Edit outline: shape ${photoshapeSession.index + 1} of ${photoshapeSession.order.length || photoshapeSession.ids.length}`,
-      canBack: true,
-      canNext: true,
-      nextLabel: "Depth"
-    });
-    showPanelFromLeft2("upload-photo-panel");
-    moveFlowControls("upload-photo-panel");
+    goStepEdit();
+    openEditPanel();
   };
   setPhotoshapeFlowActive(false);
-  setPhotoshapeStep(1, {
-    note: "Upload an image to start.",
-    canBack: false,
-    canNext: false,
-    nextLabel: "Edit"
-  });
+  goStepUpload();
   if (stepUI.back) {
     stepUI.back.addEventListener("click", () => {
       if (!photoshapeFlowActive)
         return;
       if (photoshapeStep === 4) {
         setEditing(true);
-        setPhotoshapeStep(3, {
-          note: `Edit outline: shape ${photoshapeSession.index + 1} of ${photoshapeSession.order.length || photoshapeSession.ids.length}`,
-          canBack: true,
-          canNext: true,
-          nextLabel: "Depth"
-        });
+        goStepEdit();
         if (!state.display2D)
           restoreCameraView();
-        showPanelFromLeft2("upload-photo-panel");
-      } else if (photoshapeStep === 3) {
+        openEditPanel();
+        return;
+      }
+      if (photoshapeStep === 3) {
         setEditing(false, true);
-        setPhotoshapeStep(2, {
-          note: "Outline ready. Click Edit to adjust points.",
-          canBack: true,
-          canNext: true,
-          nextLabel: "Edit"
-        });
-      } else if (photoshapeStep === 2) {
-        setPhotoshapeStep(1, {
-          note: "Upload an image to start.",
-          canBack: false,
-          canNext: false,
-          nextLabel: "Edit"
-        });
+        goStepReady();
+        return;
+      }
+      if (photoshapeStep === 2) {
+        goStepUpload();
       }
     });
   }
@@ -52161,27 +52387,15 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
       if (photoshapeStep === 2) {
         beginSession();
         setEditing(true);
-        setPhotoshapeStep(3, {
-          note: `Edit outline: shape ${photoshapeSession.index + 1} of ${photoshapeSession.order.length || photoshapeSession.ids.length}`,
-          canBack: true,
-          canNext: true,
-          nextLabel: "Depth"
-        });
-        showPanelFromLeft2("upload-photo-panel");
-        moveFlowControls("upload-photo-panel");
+        goStepEdit();
+        openEditPanel();
         return;
       }
       if (photoshapeStep === 3) {
         setEditing(false);
         syncDepthInputs();
-        setPhotoshapeStep(4, {
-          note: `Adjust depth: shape ${photoshapeSession.index + 1} of ${photoshapeSession.order.length || photoshapeSession.ids.length}`,
-          canBack: true,
-          canNext: true,
-          nextLabel: getPhotoshapeDepthLabel(photoshapeSession)
-        });
-        showPanelFromRight2(getDepthPanelId());
-        moveFlowControls(getDepthPanelId());
+        goStepDepth();
+        openDepthPanel();
         if (!state.display2D) {
           saveCameraView();
           resetCameraToFrontView();
@@ -52192,29 +52406,16 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
         const moved = moveToNext();
         if (moved) {
           setEditing(true);
-          setPhotoshapeStep(3, {
-            note: `Edit outline: shape ${photoshapeSession.index + 1} of ${photoshapeSession.order.length || photoshapeSession.ids.length}`,
-            canBack: true,
-            canNext: true,
-            nextLabel: "Depth"
-          });
-          showPanelFromLeft2("upload-photo-panel");
-          moveFlowControls("upload-photo-panel");
+          goStepEdit();
+          openEditPanel();
           return;
         }
         setEditing(false, true);
-        setPhotoshapeStep(2, {
-          note: "Outline ready. Click Edit to adjust again.",
-          canBack: true,
-          canNext: true,
-          nextLabel: "Edit"
-        });
+        goStepReady();
         setPhotoshapeFlowActive(false);
-        document.getElementById("photoshape-step-note").style.display = "none";
-        document.getElementById("photoshape-button").style.display = "none";
-        if (selected) {
+        setPhotoshapeAuxUiVisible(false);
+        if (selected)
           showPanelFromRight2(selected.kind + "-panel");
-        }
       }
     });
   }
@@ -52229,134 +52430,72 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
     });
   }
   document.querySelector("#upload-photo-input").onchange = (e) => {
-    photoshapeSession.ids = [];
-    photoshapeSession.index = 0;
+    resetPhotoshapeSessionState(photoshapeSession);
     setPhotoshapeFlowActive(true);
-    setPhotoshapeStep(1, {
-      note: "Upload an image to start.",
-      canBack: false,
-      canNext: false,
-      nextLabel: "Edit"
-    });
-    document.getElementById("photoshape-step-note").style.display = "flex";
-    document.getElementById("photoshape-button").style.display = "flex";
+    goStepUpload();
+    setPhotoshapeAuxUiVisible(true);
     setEditing(false, true);
-    moveFlowControls("upload-photo-panel");
+    movePhotoshapeFlowControls("upload-photo-panel");
     document.querySelector("#back-button").removeAttribute("disabled");
     document.querySelector("#back-button").onclick = () => {
       document.querySelector("#back-button").setAttribute("disabled", "");
-      document.getElementById("photoshape-step-note").style.display = "none";
-      document.getElementById("photoshape-button").style.display = "none";
+      setPhotoshapeAuxUiVisible(false);
       showPanelFromLeft2("main-panel");
       setEditing(false, true);
       selected = null;
       setPhotoshapeFlowActive(false);
-      setPhotoshapeStep(1, {
-        note: "Upload an image to start.",
-        canBack: false,
-        canNext: false,
-        nextLabel: "Edit"
-      });
+      goStepUpload();
     };
     const file = e.target.files[0];
     if (file) {
       const imgElement = document.getElementById("upload-photo-img");
       const reader = new FileReader();
-      setPhotoshapeStep(2, {
-        note: "Removing background and detecting outline...",
-        canBack: true,
-        canNext: false,
-        nextLabel: "Edit"
-      });
+      goStepProcessing();
       reader.onload = function(ev) {
-        imgElement.src = ev.target.result;
-        uploadImage(file, ev.target.result);
+        const imageSrc = ev.target.result;
+        imgElement.src = imageSrc;
+        goStepProcessing();
+        uploadAndDetectContours(file).then((contoursData) => {
+          if (!contoursData) {
+            console.error("Contours data is null");
+            return;
+          }
+          createShape(contoursData, imageSrc);
+        }).catch((error2) => {
+          console.error("Error:", error2);
+        });
       };
       reader.readAsDataURL(file);
-    }
-    function uploadImage(fileParam, imageSrc) {
-      setPhotoshapeStep(2, {
-        note: "Removing background and detecting outline...",
-        canBack: true,
-        canNext: false,
-        nextLabel: "Edit"
-      });
-      getBase64(fileParam).then((base64Image) => {
-        return fetch("https://api.remove.bg/v1.0/removebg", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-API-Key": "y7X524wbiR3cUWL9AinkUAqq"
-          },
-          body: JSON.stringify({
-            image_file_b64: base64Image
-          })
-        });
-      }).then((response) => {
-        if (!response.ok) {
-          throw new Error("Failed to remove background");
-        }
-        return response.blob();
-      }).then((blob) => {
-        const formData = new FormData();
-        formData.append("image", blob, "image.png");
-        const CONTOUR_API_BASE = "https://fm24api.com";
-        return fetch(`${CONTOUR_API_BASE}/detect_contours`, {
-          method: "POST",
-          body: formData
-        });
-      }).then((response) => response.json()).then((data) => {
-        const contoursData = data == null ? void 0 : data.contours;
-        if (contoursData) {
-          createShape(contoursData, imageSrc);
-        } else {
-          console.error("Contours data is null");
-        }
-      }).catch((error2) => {
-        console.error("Error:", error2);
-      });
     }
     function createShape(contoursData, imageSrc) {
       const imgElement = document.querySelector("#upload-photo-img");
       imgElement.onload = () => {
-        photoshapeSession.ids = [];
-        photoshapeSession.index = 0;
-        contoursData.forEach((contour, index) => {
-          const simplified = simplifyPhotoshapePoints(contour);
-          let shape = {
-            id: generateId(),
-            kind: "polygon",
-            x: -225,
-            y: -225,
-            sizeZ: 300 * millimeters,
-            sizeX: 200 * millimeters,
-            sizeY: 250 * millimeters,
-            points: simplified,
-            rotation: 0,
-            free: true,
-            source: "photoshape",
-            cornerRadius: defaultCornerRadius
-          };
-          shapesArray.push(shape);
-          photoshapeSession.ids.push(shape.id);
-          if (index === 0) {
-            selected = shape;
-            showPanelFromRight2(selected.kind + "-panel");
-            doCsg2();
-            callback(selected);
-          }
+        resetPhotoshapeSessionState(photoshapeSession);
+        const createdShapes = createPhotoshapeShapesFromContours({
+          contoursData,
+          simplifyPhotoshapePoints,
+          generateId,
+          millimeters,
+          defaultCornerRadius
         });
+        if (!createdShapes.length) {
+          console.error("No valid contours to create shapes");
+          setPhotoshapeFlowActive(false);
+          setPhotoshapeAuxUiVisible(false);
+          goStepUpload();
+          return;
+        }
+        appendPhotoshapeShapes(shapesArray, photoshapeSession, createdShapes);
+        selected = createdShapes[0];
+        showPanelFromRight2(selected.kind + "-panel");
+        doCsg2();
+        callback(selected);
         commit2();
         photoshapeSession.index = 0;
         beginSession();
         setPhotoshapeFlowActive(true);
-        setPhotoshapeStep(2, {
-          note: "Outline ready. Click Edit to adjust points.",
-          canBack: true,
-          canNext: true,
-          nextLabel: "Edit"
-        });
-        showPanelFromLeft2("upload-photo-panel");
+        goStepReady();
+        openEditPanel();
       };
       imgElement.src = imageSrc;
     }
@@ -52801,7 +52940,8 @@ function initUI() {
             resetCameraToTopView();
           }
         },
-        foamMesh
+        foamMesh,
+        state.cornerRadius
       );
     } else {
       setTimeout(waitForFoamAndInitFreehand, 100);
@@ -52885,6 +53025,53 @@ function initUI() {
     else
       button.setAttribute("disabled", "");
   };
+  const setButtonVisible = (button, visible) => {
+    if (!button)
+      return;
+    if (visible)
+      button.style.removeProperty("display");
+    button.style.display = visible ? "" : "none";
+  };
+  const setButtonsEnabledById = (ids, enabled) => {
+    ids.forEach((id) => {
+      const btn = document.getElementById(id);
+      if (!btn)
+        return;
+      if (enabled)
+        btn.removeAttribute("disabled");
+      else
+        btn.setAttribute("disabled", "");
+    });
+  };
+  const polygonEditLockButtonIds = [
+    "polygon-depth-button",
+    "polygon-rotate-button",
+    "polygon-copy-button",
+    "polygon-delete-button",
+    "polygon-unmerge-button"
+  ];
+  const photoshapeEditLockButtonIds = [
+    "photoshape-depth-button",
+    "photoshape-rotate-button",
+    "photoshape-copy-button",
+    "photoshape-delete-button"
+  ];
+  const applyPointEditButtonLock = (editing) => {
+    var _a;
+    const allIds = [...polygonEditLockButtonIds, ...photoshapeEditLockButtonIds];
+    const isPhotoshape = ((_a = state.selected) == null ? void 0 : _a.source) === "photoshape";
+    if (editing) {
+      setButtonsEnabledById(allIds, false);
+      return;
+    }
+    updateDeleteButtons(state.selected);
+    if (isPhotoshape && state.selected) {
+      setButtonsEnabledById(
+        ["photoshape-depth-button", "photoshape-rotate-button", "photoshape-delete-button"],
+        true
+      );
+    }
+  };
   const setPointMode = (mode, on) => {
     if (mode === "add") {
       state.addPointMode = on;
@@ -52905,9 +53092,12 @@ function initUI() {
   const setPointEditUi = (editing) => {
     window.__editingPoints = editing;
     resetPointModes();
+    setButtonVisible(addPointButton, editing);
+    setButtonVisible(deletePointButton, editing);
     setButtonEnabled(addPointButton, editing);
     setButtonEnabled(deletePointButton, editing);
     pointEditHint.classList.toggle("is-visible", editing);
+    applyPointEditButtonLock(editing);
     if (editShapeButton) {
       editShapeButton.textContent = editing ? "Finish Edit" : "Edit points";
     }
@@ -52995,8 +53185,10 @@ function initUI() {
       restoreCameraView();
     }
   };
+  setButtonVisible(addPointButton, false);
   setButtonEnabled(addPointButton, false);
   setPointMode("add", false);
+  setButtonVisible(deletePointButton, false);
   setButtonEnabled(deletePointButton, false);
   setPointMode("delete", false);
   if (editShapeButton) {
@@ -53332,4 +53524,4 @@ if (typeof window === "object") {
   initUI();
   commit();
 }
-//# sourceMappingURL=index-76fcc977.js.map
+//# sourceMappingURL=index-e2776c5e.js.map

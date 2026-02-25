@@ -9,7 +9,15 @@ import {
   drawAngleArc,
   buildPreviewMesh,
   makePolygonShape,
-  showToast
+  showToast,
+  getFoamWorldBox,
+  createDistanceTextElement,
+  createAngleOverlayCanvas,
+  resizeOverlayCanvas,
+  disposeObject3D,
+  disposeListFromScene,
+  createFreehandPoint,
+  createFreehandSegment
 } from "../../utils/freehandUtils";
 
 export const createShapeFreehand = (
@@ -39,13 +47,7 @@ export const createShapeFreehand = (
     });
     lineFunction("block", "flex", true);
     display2D = true;
-    const foamBox = (() => {
-      foamMesh.geometry.computeBoundingBox();
-      const box = foamMesh.geometry.boundingBox.clone();
-      foamMesh.updateMatrixWorld();
-      box.applyMatrix4(foamMesh.matrixWorld);
-      return box;
-    })();
+    const foamBox = getFoamWorldBox(foamMesh);
 
     function isInsideFoam(point) {
       return foamBox.containsPoint(point);
@@ -122,8 +124,8 @@ export const createShapeFreehand = (
       line.geometry.attributes.position.setXYZ(1, 0, 0, 0);
       line.geometry.attributes.position.needsUpdate = true;
 
-      lines.forEach((l) => sceneCopy.remove(l));
-      circles.forEach((c) => sceneCopy.remove(c));
+      disposeListFromScene(sceneCopy, lines);
+      disposeListFromScene(sceneCopy, circles);
       lines = [];
       circles = [];
     };
@@ -140,27 +142,11 @@ export const createShapeFreehand = (
 
     var proximityThresholdMm = 5;
     let objectZCoordinate = 0;
-    const distanceText = document.createElement("div");
-    Object.assign(distanceText.style, {
-      position: "absolute",
-      top: "10px",
-      left: "10px",
-      color: "white",
-    });
-    document.body.appendChild(distanceText);
-    const angleOverlay = document.createElement("canvas");
-    angleOverlay.style.position = "absolute";
-    angleOverlay.style.top = "0";
-    angleOverlay.style.left = "0";
-    angleOverlay.style.pointerEvents = "none";
-    angleOverlay.style.zIndex = "10";
-    document.body.appendChild(angleOverlay);
+    const distanceText = createDistanceTextElement();
+    const angleOverlay = createAngleOverlayCanvas();
 
     function resizeAngleOverlay() {
-      angleOverlay.width = window.innerWidth * (window.devicePixelRatio || 1);
-      angleOverlay.height = window.innerHeight * (window.devicePixelRatio || 1);
-      angleOverlay.style.width = window.innerWidth + "px";
-      angleOverlay.style.height = window.innerHeight + "px";
+      resizeOverlayCanvas(angleOverlay);
     }
 
     resizeAngleOverlay();
@@ -183,27 +169,6 @@ export const createShapeFreehand = (
     document.addEventListener("mousemove", onMouseMove);
     let drawingActive = true;
     displayLineXY();
-
-    const disposeObject3D = (obj) => {
-      if (!obj) return;
-      if (obj.geometry && typeof obj.geometry.dispose === "function") {
-        obj.geometry.dispose();
-      }
-      if (obj.material) {
-        if (Array.isArray(obj.material)) {
-          obj.material.forEach((m) => m && m.dispose && m.dispose());
-        } else if (typeof obj.material.dispose === "function") {
-          obj.material.dispose();
-        }
-      }
-    };
-
-    const disposeList = (list) => {
-      list.forEach((obj) => {
-        sceneCopy.remove(obj);
-        disposeObject3D(obj);
-      });
-    };
 
     function cleanupDrawing({ restoreView = true } = {}) {
       drawingActive = false;
@@ -234,11 +199,11 @@ export const createShapeFreehand = (
         sceneCopy.remove(mesh);
         disposeObject3D(mesh);
       }
-      disposeList(previewMeshes);
-      disposeList(circles);
-      disposeList(lines);
-      disposeList(closedCircles);
-      disposeList(closedLines);
+      disposeListFromScene(sceneCopy, previewMeshes);
+      disposeListFromScene(sceneCopy, circles);
+      disposeListFromScene(sceneCopy, lines);
+      disposeListFromScene(sceneCopy, closedCircles);
+      disposeListFromScene(sceneCopy, closedLines);
 
       previewMeshes = [];
       closedCircles = [];
@@ -334,28 +299,20 @@ export const createShapeFreehand = (
         const unprojectedPoint = intersect.clone();
         unprojectedPoint.z = objectZCoordinate + 1;
         points.push(unprojectedPoint);
-        const geometry = new THREE.CircleGeometry(3, 32);
-        const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-        const circle = new THREE.Mesh(geometry, material);
-        circle.position.copy(unprojectedPoint);
+        const circle = createFreehandPoint(unprojectedPoint, 0);
         sceneCopy.add(circle);
         circles.push(circle);
 
         if (points.length > 1) {
-          const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
-          const lineMaterial = new THREE.LineBasicMaterial({ color: 0xffa500, linewidth: 15 });
-          const line = new THREE.Line(lineGeometry, lineMaterial);
-          sceneCopy.add(line);
-          lines.push(line);
+          const segment = createFreehandSegment(points);
+          sceneCopy.add(segment);
+          lines.push(segment);
         }
       } else {
         drawing = true;
         const unprojectedPoint = intersect.clone();
         unprojectedPoint.z = objectZCoordinate + 1;
-        const geometry = new THREE.CircleGeometry(3, 32);
-        const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-        const circle = new THREE.Mesh(geometry, material);
-        circle.position.copy(unprojectedPoint);
+        const circle = createFreehandPoint(unprojectedPoint, 0);
         sceneCopy.add(circle);
         circles.push(circle);
         points.push(unprojectedPoint.clone());

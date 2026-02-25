@@ -23,6 +23,12 @@ import {
   getBoundingBox
 } from "../utils/threeFunctions";
 import {
+  buildCameraSnapshot,
+  applyCameraSnapshot,
+  setCameraTopView,
+  setCameraFrontView,
+} from "../utils/cameraViewUtils";
+import {
   pointInsidePolygon,
   confirmMerge,
   getValues,
@@ -30,6 +36,15 @@ import {
   structuredClone,
   generateId
 } from "../utils/common";
+import {
+  buildCopyPreviewShapes,
+  getCopyPreviewUnderMouse,
+  cloneShapeForCopyCommit,
+  getShapeUnderMouse,
+  resolveCopySourceShape,
+  maybeSimplifyForDrag,
+  restoreAfterDrag,
+} from "../utils/copyPlacementUtils";
 import { LambertMaterial } from "../components/Material";
 import { createImage } from "../components/createImage";
 import { getCurrentPanel, showPanelFromRight, showPanelFromLeft } from "./panels";
@@ -39,15 +54,20 @@ const case1Url = "./models/case1.obj";
 const MAX_DPR = 1.0;
 const SSAA_SCALE = 1.0;
 
-function shapeUnderMouse() {
-  if (state.mouseRayPlaneIntersection) {
-    for (const shape of state.shapesArray.slice().reverse()) {
-      if (mouseOverShape(shape, state.mouseRayPlaneIntersection, pointInsidePolygon)) {
-        return shape;
-      }
-    }
+let copyBatchDirty = false;
+let copyBatchCsgTimer = null;
+
+function flushCopyBatch() {
+  if (!copyBatchDirty) return;
+
+  if (copyBatchCsgTimer) {
+    clearTimeout(copyBatchCsgTimer);
+    copyBatchCsgTimer = null;
   }
-  return null;
+
+  doCsg();
+  commit();
+  copyBatchDirty = false;
 }
 
 const deleteButtonsByKind = {
@@ -65,24 +85,13 @@ const copyButtonsByKind = {
 };
 
 export function saveCameraView() {
-  if (!state.camera || !state.controls) return;
-
-  state._savedCameraView = {
-    position: state.camera.position.clone(),
-    target: state.controls.target.clone(),
-    up: state.camera.up.clone(),
-  };
+  const saved = buildCameraSnapshot(state.camera, state.controls);
+  if (!saved) return;
+  state._savedCameraView = saved;
 }
 
 export function restoreCameraView() {
-  const saved = state._savedCameraView;
-  if (!saved || !state.camera || !state.controls) return;
-
-  state.camera.position.copy(saved.position);
-  state.controls.target.copy(saved.target);
-  state.camera.up.copy(saved.up);
-  state.camera.lookAt(saved.target);
-  state.controls.update();
+  applyCameraSnapshot(state.camera, state.controls, state._savedCameraView);
 }
 
 export const updateDeleteButtons = (selected) => {
@@ -155,171 +164,81 @@ function resetCopyPlacementState() {
 }
 
 export function cancelCopyPlacement() {
+  flushCopyBatch();
   resetCopyPlacementState();
 }
 
-function cleanShapeRuntimeFields(shape) {
-  if (!shape) return;
-  delete shape.controlPoints;
-  delete shape.cleanup;
-  delete shape._controlPointsSetup;
-  delete shape._controlPointHandlersInitialized;
-  delete shape._selectedPointIndex;
-  delete shape._draggingPoint;
-  delete shape._dragOriginalPoints;
-  delete shape._drawPointsCache;
-  delete shape._drawPointsCacheTarget;
-  delete shape._pointsDirty;
-  delete shape._selectedPointIndices;
-}
-
-function clampPreviewToFoam(copyShape) {
-  const foamLeft = state.foam.x - state.foam.sizeX / 2;
-  const foamRight = state.foam.x + state.foam.sizeX / 2;
-  const foamBottom = state.foam.y - state.foam.sizeY / 2;
-  const foamTop = state.foam.y + state.foam.sizeY / 2;
-
-  const box = getBoundingBox(copyShape);
-  let shiftX = 0;
-  let shiftY = 0;
-
-  if (box.minX < foamLeft) shiftX = foamLeft - box.minX;
-  else if (box.maxX > foamRight) shiftX = foamRight - box.maxX;
-
-  if (box.minY < foamBottom) shiftY = foamBottom - box.minY;
-  else if (box.maxY > foamTop) shiftY = foamTop - box.maxY;
-
-  copyShape.x += shiftX;
-  copyShape.y += shiftY;
-}
-
-function buildCopyPreviewShapes(sourceShape) {
-  const box = getBoundingBox(sourceShape);
-  const width = Math.max(10, box.maxX - box.minX);
-  const height = Math.max(10, box.maxY - box.minY);
-  const gap = 10 * units.millimeters;
-
-  const offsets = [
-    [width + gap, 0],
-    [-(width + gap), 0],
-    [0, height + gap],
-    [0, -(height + gap)],
-  ];
-
-  const previews = [];
-  const seen = new Set();
-
-  for (const [dx, dy] of offsets) {
-    const preview = structuredClone(sourceShape);
-    cleanShapeRuntimeFields(preview);
-
-    preview.x = sourceShape.x + dx;
-    preview.y = sourceShape.y + dy;
-
-    clampPreviewToFoam(preview);
-
-    const key = `${preview.x.toFixed(3)},${preview.y.toFixed(3)}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-
-    if (
-      Math.abs(preview.x - sourceShape.x) < 0.001 &&
-      Math.abs(preview.y - sourceShape.y) < 0.001
-    ) {
-      continue;
-    }
-
-    preview.id = `${sourceShape.id || "shape"}-copy-preview-${previews.length}`;
-    previews.push(preview);
+export function beginCopyPlacement() {
+  if (!state.copyPlacementActive) {
+    copyBatchDirty = false;
   }
 
-  return previews;
+  if (!activateCopyPlacementForSource(state.selected)) {
+    cancelCopyPlacement();
+  }
 }
 
-export function beginCopyPlacement() {
-  if (!state.selected) return;
-  if (!state.selected.id) return;
+function activateCopyPlacementForSource(sourceShape) {
+  if (!sourceShape || !sourceShape.id) return false;
 
-  const previews = buildCopyPreviewShapes(state.selected);
-  if (!previews.length) return;
+  const previews = buildCopyPreviewShapes({
+    sourceShape,
+    foam: state.foam,
+    shapesArray: state.shapesArray,
+  });
+
+  if (!previews.length) return false;
 
   state.copyPlacementActive = true;
-  state.copyPlacementSourceId = state.selected.id;
+  state.copyPlacementSourceId = sourceShape.id;
   state.copyPreviewShapes = previews;
+  return true;
 }
 
 function copyPreviewUnderMouse() {
-  if (!state.copyPlacementActive || !state.mouseRayPlaneIntersection) return null;
-  for (const preview of state.copyPreviewShapes.slice().reverse()) {
-    if (mouseOverShape(preview, state.mouseRayPlaneIntersection, pointInsidePolygon)) {
-      return preview;
-    }
-  }
-  return null;
+  return getCopyPreviewUnderMouse({
+    copyPlacementActive: state.copyPlacementActive,
+    mouseRayPlaneIntersection: state.mouseRayPlaneIntersection,
+    copyPreviewShapes: state.copyPreviewShapes,
+  });
 }
 
 function commitCopyFromPreview(previewShape) {
-  const sourceShape =
-    state.selected && state.selected.id === state.copyPlacementSourceId
-      ? state.selected
-      : state.shapesArray.find((s) => s.id === state.copyPlacementSourceId);
+  const sourceShape = resolveCopySourceShape({
+    selected: state.selected,
+    copyPlacementSourceId: state.copyPlacementSourceId,
+    shapesArray: state.shapesArray,
+  });
 
   if (!sourceShape) {
     cancelCopyPlacement();
     return;
   }
 
-  const newShape = structuredClone(sourceShape);
-  cleanShapeRuntimeFields(newShape);
-  newShape.id = generateId();
-  newShape.x = previewShape.x;
-  newShape.y = previewShape.y;
+  const newShape = cloneShapeForCopyCommit({
+    sourceShape,
+    previewShape,
+    generateId,
+  });
 
   state.shapesArray.push(newShape);
   state.selected = newShape;
-  cancelCopyPlacement();
   updateDeleteButtons(state.selected);
+
+  if (!activateCopyPlacementForSource(newShape)) {
+    cancelCopyPlacement();
+  }
 
   doCsg();
   commit();
 }
 
 export function resetCameraToTopView() {
-  if (!state.camera || !state.controls) return;
-
-  const targetX = state.foam?.x || 0;
-  const targetY = state.foam?.y || 0;
-  const targetZ = 37 * units.centimeters;
-
-  const maxDim = Math.max(state.foam.sizeX, state.foam.sizeY);
-  const distance = Math.max(maxDim * 2, 1 * units.meters);
-
-  state.camera.up.set(0, 0, 1);
-
-  const epsilon = distance * 0.001;
-
-  state.controls.target.set(targetX, targetY, targetZ);
-  state.camera.position.set(targetX, targetY - epsilon, targetZ + distance);
-  state.camera.lookAt(targetX, targetY, targetZ);
-  state.controls.update();
+  setCameraTopView(state.camera, state.controls, state.foam, units);
 }
 
 export function resetCameraToFrontView() {
-  if (!state.camera || !state.controls) return;
-
-  const targetX = state.foam?.x || 0;
-  const targetY = state.foam?.y || 0;
-  const targetZ = 37 * units.centimeters;
-
-  const maxDim = Math.max(state.foam.sizeX, state.foam.sizeY);
-  const distance = Math.max(maxDim * 2, 1 * units.meters);
-
-  state.camera.up.set(0, 0, 1);
-
-  state.controls.target.set(targetX, targetY, targetZ);
-  state.camera.position.set(targetX, targetY - distance, targetZ);
-  state.camera.lookAt(targetX, targetY, targetZ);
-  state.controls.update();
+  setCameraFrontView(state.camera, state.controls, state.foam, units);
 }
 
 export function init3D() {
@@ -502,22 +421,6 @@ export function init3D() {
     };
   };
 
-  const maybeSimplifyForDrag = (shape) => {
-    if (!shape || shape.kind !== "polygon" || !Array.isArray(shape.points)) return;
-    if (shape.points.length <= 200) return;
-    if (!shape._dragOriginalPoints) {
-      shape._dragOriginalPoints = shape.points;
-      shape.points = simplifyPointsForDrag(shape.points, 200);
-    }
-  };
-
-  const restoreAfterDrag = (shape) => {
-    if (shape && shape._dragOriginalPoints) {
-      shape.points = shape._dragOriginalPoints;
-      delete shape._dragOriginalPoints;
-    }
-  };
-
   state.renderer.domElement.addEventListener("pointerdown", (e) => {
     if (window.__editingPoints) return;
     recalculateMouse(e);
@@ -526,8 +429,16 @@ export function init3D() {
       const previewHit = copyPreviewUnderMouse();
       if (previewHit) {
         commitCopyFromPreview(previewHit);
+        return;
       }
-      return;
+
+      const clickedShape = getShapeUnderMouse(state.shapesArray, state.mouseRayPlaneIntersection)
+
+      if (clickedShape) {
+        cancelCopyPlacement();
+      } else {
+        return;
+      }
     }
 
     state.oldSelected = state.selected;
@@ -546,7 +457,8 @@ export function init3D() {
       state.controls.enabled = false;
       return;
     }
-    state.selected = shapeUnderMouse();
+    state.selected = getShapeUnderMouse(state.shapesArray, state.mouseRayPlaneIntersection)
+
     if (state.selected) {
       openSelectedPanel();
       maybeSimplifyForDrag(state.selected);
@@ -561,7 +473,6 @@ export function init3D() {
       state.selected = state.oldSelected;
     }
   });
-
 
   state.renderer.domElement.addEventListener("pointerup", () => {
     if (window.__editingPoints) return;
@@ -716,9 +627,12 @@ export function onFrame() {
   const baseZ = 37 * units.centimeters;
   const currentCamera = state.display2D ? state.camera1 : state.camera;
   const NEAR_THRESHOLD = 1 * units.centimeters;
+  const lightCopyRender = state.copyPlacementActive && state.shapesArray.length > 20;
 
   for (const shape of state.shapesArray) {
+    if (lightCopyRender && shape !== state.selected) continue;
     if (
+      !lightCopyRender &&
       state.selected &&
       shape !== state.selected &&
       isNearGeneric(state.selected, shape, NEAR_THRESHOLD)
@@ -788,11 +702,10 @@ export function onFrame() {
         );
         state.ctx.setLineDash([]);
       }
-      if (!window.__editingPoints) {
+      if (!window.__editingPoints && !state.copyPlacementActive) {
         drawMeasurements(shape);
         drawEdgeToFoamMeasurements(shape, state.foam, state.ctx, currentCamera);
       }
-
     } else {
       state.ctx.setLineDash([5, 5]);
       drawOutline(
@@ -840,7 +753,6 @@ export function onFrame() {
     }
     state.ctx.setLineDash([]);
   }
-
 
   getCameraValue(state.camera1, (camera1) => {
     state.orthoCamera = camera1;

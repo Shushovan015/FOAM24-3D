@@ -444,6 +444,55 @@ export function initUI() {
     else button.setAttribute("disabled", "");
   };
 
+  const setButtonVisible = (button, visible) => {
+    if (!button) return;
+    if (visible) button.style.removeProperty("display");
+    button.style.display = visible ? "" : "none";
+  };
+
+  const setButtonsEnabledById = (ids, enabled) => {
+    ids.forEach((id) => {
+      const btn = document.getElementById(id);
+      if (!btn) return;
+      if (enabled) btn.removeAttribute("disabled");
+      else btn.setAttribute("disabled", "");
+    });
+  };
+
+  const polygonEditLockButtonIds = [
+    "polygon-depth-button",
+    "polygon-rotate-button",
+    "polygon-copy-button",
+    "polygon-delete-button",
+    "polygon-unmerge-button",
+  ];
+
+  const photoshapeEditLockButtonIds = [
+    "photoshape-depth-button",
+    "photoshape-rotate-button",
+    "photoshape-copy-button",
+    "photoshape-delete-button",
+  ];
+
+  const applyPointEditButtonLock = (editing) => {
+    const allIds = [...polygonEditLockButtonIds, ...photoshapeEditLockButtonIds];
+    const isPhotoshape = state.selected?.source === "photoshape";
+
+    if (editing) {
+      setButtonsEnabledById(allIds, false);
+      return;
+    }
+
+    updateDeleteButtons(state.selected);
+
+    if (isPhotoshape && state.selected) {
+      setButtonsEnabledById(
+        ["photoshape-depth-button", "photoshape-rotate-button", "photoshape-delete-button"],
+        true
+      );
+    }
+  };
+
   const setPointMode = (mode, on) => {
     if (mode === "add") {
       state.addPointMode = on;
@@ -467,19 +516,25 @@ export function initUI() {
   const setPointEditUi = (editing) => {
     window.__editingPoints = editing;
     resetPointModes();
+
+    setButtonVisible(addPointButton, editing);
+    setButtonVisible(deletePointButton, editing);
+
     setButtonEnabled(addPointButton, editing);
     setButtonEnabled(deletePointButton, editing);
+
     pointEditHint.classList.toggle("is-visible", editing);
+    applyPointEditButtonLock(editing);
 
     if (editShapeButton) {
       editShapeButton.textContent = editing ? "Finish Edit" : "Edit points";
     }
+
     if (!editing && state.selected && state.selected.kind === "polygon") {
       delete state.selected._selectedPointIndex;
       delete state.selected._selectedPointIndices;
     }
   };
-
 
   window.__setPointEditUi = setPointEditUi;
 
@@ -571,8 +626,11 @@ export function initUI() {
     },
   };
 
+  setButtonVisible(addPointButton, false);
   setButtonEnabled(addPointButton, false);
   setPointMode("add", false);
+
+  setButtonVisible(deletePointButton, false);
   setButtonEnabled(deletePointButton, false);
   setPointMode("delete", false);
 
