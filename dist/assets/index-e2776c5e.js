@@ -28525,7 +28525,7 @@ const jscad = {
 };
 const CORNER_SEGMENTS = 16;
 function getDefaultCornerRadius() {
-  return !isNaN(state.cornerRadius) ? state.cornerRadius : 5;
+  return typeof (state == null ? void 0 : state.cornerRadius) === "number" && !isNaN(state.cornerRadius) ? state.cornerRadius : 5;
 }
 function clampCornerRadius(sizeX, sizeY, radius) {
   const maxR = Math.max(0, Math.min(sizeX, sizeY) / 2 - 1e-3);
@@ -30309,6 +30309,8 @@ function doCsg() {
       return shape;
     if (typeof shape.cornerRadius === "number")
       return shape;
+    if (typeof defaultCornerRadius !== "number")
+      return shape;
     return { ...shape, cornerRadius: defaultCornerRadius };
   });
   const payload = { id: ++requestId, foam: foamForWorker, shapesArray: shapesForWorker };
@@ -31226,7 +31228,7 @@ function drawMeasurements(shape) {
       drawMeasurementsPhotoshape(shape, state.ctx, state.camera, state.currPanel, units.centimeters);
       break;
     case "circleOnClick":
-      drawCircle(shape, state.ctx);
+      drawCircle(shape, state.ctx, state.camera);
       break;
     case "line":
       drawMeasurementsLine(shape, state.ctx, state.camera, units.centimeters);
@@ -52010,6 +52012,43 @@ const createShapeRectangle = (millimeters, selected, shapesArray, commit2, showP
     callback(selected);
   };
 };
+const REMOVE_BG_URL = "https://api.remove.bg/v1.0/removebg";
+async function removeBackgroundFromFile(file) {
+  const base64Image = await getBase64(file);
+  const apiKey = "y7X524wbiR3cUWL9AinkUAqq";
+  const response = await fetch(REMOVE_BG_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-API-Key": apiKey
+    },
+    body: JSON.stringify({
+      image_file_b64: base64Image
+    })
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to remove background (${response.status})`);
+  }
+  return response.blob();
+}
+async function detectContoursFromBlob(blob) {
+  const formData = new FormData();
+  formData.append("image", blob, "image.png");
+  const contourApiBase = "https://fm24api.com";
+  const response = await fetch(`${contourApiBase}/detect_contours`, {
+    method: "POST",
+    body: formData
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to detect contours (${response.status})`);
+  }
+  const data = await response.json();
+  return (data == null ? void 0 : data.contours) || null;
+}
+async function uploadAndDetectContours(file) {
+  const blob = await removeBackgroundFromFile(file);
+  return detectContoursFromBlob(blob);
+}
 const getPhotoshapeDepthLabel = (session) => session.index < session.order.length - 1 ? "Next Shape" : "Finish";
 const rebuildOrderAndIndex = (session, shapesArray, selected) => {
   session.order = session.ids.map((id) => shapesArray.find((s) => s.id === id)).filter(Boolean).sort((a, b) => getBoundingBox(a).minX - getBoundingBox(b).minX).map((s) => s.id);
@@ -52093,6 +52132,133 @@ const renderPhotoshapeStep = (stepUI, step, options = {}) => {
     });
   }
 };
+const simplifyPhotoshapeContourPoints = (pts, simplifyFn, maxPoints = 150) => {
+  if (!Array.isArray(pts))
+    return pts;
+  return simplifyFn(pts, maxPoints);
+};
+const setPhotoshapeEditingMode = ({
+  on,
+  restore = false,
+  state: state2,
+  callback1,
+  saveCameraView: saveCameraView2,
+  resetCameraToTopView: resetCameraToTopView2,
+  restoreCameraView: restoreCameraView2
+}) => {
+  if (on && !state2.display2D) {
+    saveCameraView2();
+    resetCameraToTopView2();
+  }
+  if (window.__setPointEditUi) {
+    window.__setPointEditUi(on);
+  } else {
+    window.__editingPoints = on;
+  }
+  callback1(on);
+  if (!on && restore) {
+    restoreCameraView2();
+  }
+};
+const syncPhotoshapeDepthInputs = (selected) => {
+  if (!selected)
+    return;
+  const depthInput = document.querySelector("#polygon-depth-input") || document.querySelector("#photoshape-depth-input");
+  const depthSlider = document.querySelector("#polygon-depth-slider") || document.querySelector("#photoshape-depth-slider");
+  if (depthInput)
+    depthInput.value = selected.sizeZ;
+  if (depthSlider)
+    depthSlider.value = selected.sizeZ;
+};
+const getPhotoshapeDepthPanelId = (selected) => {
+  if (!selected)
+    return "polygon-depth-panel";
+  return selected.kind === "photoshape" ? "photoshape-depth-panel" : "polygon-depth-panel";
+};
+const setPhotoshapeAuxUiVisible = (visible) => {
+  const note = document.getElementById("photoshape-step-note");
+  const btn = document.getElementById("photoshape-button");
+  if (note)
+    note.style.display = visible ? "flex" : "none";
+  if (btn)
+    btn.style.display = visible ? "flex" : "none";
+};
+const resetPhotoshapeSessionState = (session) => {
+  session.ids = [];
+  session.order = [];
+  session.index = 0;
+  if (session.visited && typeof session.visited.clear === "function") {
+    session.visited.clear();
+  }
+  session.remaining = 0;
+};
+const createPhotoshapeShapesFromContours = ({
+  contoursData,
+  simplifyPhotoshapePoints,
+  generateId: generateId2,
+  millimeters,
+  defaultCornerRadius
+}) => {
+  if (!Array.isArray(contoursData))
+    return [];
+  return contoursData.map((contour) => {
+    const simplified = simplifyPhotoshapePoints(contour);
+    if (!Array.isArray(simplified) || simplified.length < 3)
+      return null;
+    return {
+      id: generateId2(),
+      kind: "polygon",
+      x: -225,
+      y: -225,
+      sizeZ: 300 * millimeters,
+      sizeX: 200 * millimeters,
+      sizeY: 250 * millimeters,
+      points: simplified,
+      rotation: 0,
+      free: true,
+      source: "photoshape",
+      cornerRadius: defaultCornerRadius
+    };
+  }).filter(Boolean);
+};
+const appendPhotoshapeShapes = (shapesArray, session, createdShapes) => {
+  createdShapes.forEach((shape) => {
+    shapesArray.push(shape);
+    session.ids.push(shape.id);
+  });
+};
+const getPhotoshapeStepUploadConfig = () => ({
+  note: "Upload an image to start.",
+  canBack: false,
+  canNext: false,
+  nextLabel: "Edit"
+});
+const getPhotoshapeStepProcessingConfig = () => ({
+  note: "Removing background and detecting outline...",
+  canBack: true,
+  canNext: false,
+  nextLabel: "Edit"
+});
+const getPhotoshapeStepReadyConfig = () => ({
+  note: "Outline ready. Click Edit to adjust points.",
+  canBack: true,
+  canNext: true,
+  nextLabel: "Edit"
+});
+const getPhotoshapeStepEditConfig = (session) => ({
+  note: getPhotoshapeEditStepNote(session),
+  canBack: true,
+  canNext: true,
+  nextLabel: "Depth"
+});
+const getPhotoshapeStepDepthConfig = (session) => ({
+  note: getPhotoshapeDepthStepNote(session),
+  canBack: true,
+  canNext: true,
+  nextLabel: getPhotoshapeDepthLabel(session)
+});
+const getPhotoshapeEditStepNote = (session) => `Edit outline: shape ${session.index + 1} of ${session.order.length || session.ids.length}`;
+const getPhotoshapeDepthStepNote = (session) => `Adjust depth: shape ${session.index + 1} of ${session.order.length || session.ids.length}`;
 const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, showPanelFromLeft2, showPanelFromRight2, doCsg2, display2D, callback, callback1, camera, renderer, scene, defaultCornerRadius) => {
   const stepUI = {
     container: document.querySelector("#photoshape-stepper"),
@@ -52104,11 +52270,7 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
   let photoshapeFlowActive = false;
   let photoshapeStep = 1;
   const MAX_PHOTOSHAPE_POINTS = 150;
-  const simplifyPhotoshapePoints = (pts) => {
-    if (!Array.isArray(pts))
-      return pts;
-    return simplifyPointsForDrag(pts, MAX_PHOTOSHAPE_POINTS);
-  };
+  const simplifyPhotoshapePoints = (pts) => simplifyPhotoshapeContourPoints(pts, simplifyPointsForDrag, MAX_PHOTOSHAPE_POINTS);
   const setPhotoshapeFlowActive = (active) => {
     photoshapeFlowActive = active;
     setPhotoshapeFlowVisibility(stepUI, active);
@@ -52117,40 +52279,35 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
     photoshapeStep = step;
     renderPhotoshapeStep(stepUI, photoshapeStep, options);
   };
-  const setEditing = (on, restore = false) => {
-    if (on && !state.display2D) {
-      saveCameraView();
-      resetCameraToTopView();
-    }
-    if (window.__setPointEditUi) {
-      window.__setPointEditUi(on);
-    } else {
-      window.__editingPoints = on;
-    }
-    callback1(on);
-    if (!on && restore) {
-      restoreCameraView();
-    }
-  };
-  const syncDepthInputs = () => {
-    if (!selected)
-      return;
-    const depthInput = document.querySelector("#polygon-depth-input") || document.querySelector("#photoshape-depth-input");
-    const depthSlider = document.querySelector("#polygon-depth-slider") || document.querySelector("#photoshape-depth-slider");
-    if (depthInput)
-      depthInput.value = selected.sizeZ;
-    if (depthSlider)
-      depthSlider.value = selected.sizeZ;
-  };
-  const getDepthPanelId = () => {
-    if (!selected)
-      return "polygon-depth-panel";
-    return selected.kind === "photoshape" ? "photoshape-depth-panel" : "polygon-depth-panel";
-  };
+  const setEditing = (on, restore = false) => setPhotoshapeEditingMode({
+    on,
+    restore,
+    state,
+    callback1,
+    saveCameraView,
+    resetCameraToTopView,
+    restoreCameraView
+  });
+  const syncDepthInputs = () => syncPhotoshapeDepthInputs(selected);
+  const getDepthPanelId = () => getPhotoshapeDepthPanelId(selected);
   const photoshapeSession = {
     ids: [],
     order: [],
     index: 0
+  };
+  const goStepUpload = () => setPhotoshapeStep(1, getPhotoshapeStepUploadConfig());
+  const goStepProcessing = () => setPhotoshapeStep(2, getPhotoshapeStepProcessingConfig());
+  const goStepReady = () => setPhotoshapeStep(2, getPhotoshapeStepReadyConfig());
+  const goStepEdit = () => setPhotoshapeStep(3, getPhotoshapeStepEditConfig(photoshapeSession));
+  const goStepDepth = () => setPhotoshapeStep(4, getPhotoshapeStepDepthConfig(photoshapeSession));
+  const openEditPanel = () => {
+    showPanelFromLeft2("upload-photo-panel");
+    movePhotoshapeFlowControls("upload-photo-panel");
+  };
+  const openDepthPanel = () => {
+    const depthPanelId = getDepthPanelId();
+    showPanelFromRight2(depthPanelId);
+    movePhotoshapeFlowControls(depthPanelId);
   };
   const beginSession = () => beginPhotoshapeEditSession(photoshapeSession, shapesArray, selected);
   const moveToNext = () => advanceToNextUnvisited(
@@ -52164,8 +52321,7 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
     showPanelFromRight2
   );
   const hidePhotoshapeUI = () => {
-    document.getElementById("photoshape-step-note").style.display = "none";
-    document.getElementById("photoshape-button").style.display = "none";
+    setPhotoshapeAuxUiVisible(false);
     setPhotoshapeFlowActive(false);
   };
   const cleanupPhotoshapeUI = () => {
@@ -52173,12 +52329,7 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
     if (!remaining) {
       photoshapeSession.ids = [];
       photoshapeSession.index = 0;
-      setPhotoshapeStep(1, {
-        note: "Upload an image to start.",
-        canBack: false,
-        canNext: false,
-        nextLabel: "Edit"
-      });
+      goStepUpload();
       hidePhotoshapeUI();
     }
   };
@@ -52186,18 +52337,8 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
   window.__photoshapeExit = () => {
     setEditing(false, true);
     setPhotoshapeFlowActive(false);
-    setPhotoshapeStep(1, {
-      note: "Upload an image to start.",
-      canBack: false,
-      canNext: false,
-      nextLabel: "Edit"
-    });
-    const note = document.getElementById("photoshape-step-note");
-    if (note)
-      note.style.display = "none";
-    const btn = document.getElementById("photoshape-button");
-    if (btn)
-      btn.style.display = "none";
+    goStepUpload();
+    setPhotoshapeAuxUiVisible(false);
   };
   photoshapeSession.visited = /* @__PURE__ */ new Set();
   photoshapeSession.remaining = 0;
@@ -52208,57 +52349,34 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
       saveCameraView();
       resetCameraToTopView();
     }
-    document.getElementById("photoshape-step-note").style.display = "flex";
-    document.getElementById("photoshape-button").style.display = "flex";
+    setPhotoshapeAuxUiVisible(true);
     setPhotoshapeFlowActive(true);
     beginSession();
     setEditing(true);
-    setPhotoshapeStep(3, {
-      note: `Edit outline: shape ${photoshapeSession.index + 1} of ${photoshapeSession.order.length || photoshapeSession.ids.length}`,
-      canBack: true,
-      canNext: true,
-      nextLabel: "Depth"
-    });
-    showPanelFromLeft2("upload-photo-panel");
-    movePhotoshapeFlowControls("upload-photo-panel");
+    goStepEdit();
+    openEditPanel();
   };
   setPhotoshapeFlowActive(false);
-  setPhotoshapeStep(1, {
-    note: "Upload an image to start.",
-    canBack: false,
-    canNext: false,
-    nextLabel: "Edit"
-  });
+  goStepUpload();
   if (stepUI.back) {
     stepUI.back.addEventListener("click", () => {
       if (!photoshapeFlowActive)
         return;
       if (photoshapeStep === 4) {
         setEditing(true);
-        setPhotoshapeStep(3, {
-          note: `Edit outline: shape ${photoshapeSession.index + 1} of ${photoshapeSession.order.length || photoshapeSession.ids.length}`,
-          canBack: true,
-          canNext: true,
-          nextLabel: "Depth"
-        });
+        goStepEdit();
         if (!state.display2D)
           restoreCameraView();
-        showPanelFromLeft2("upload-photo-panel");
-      } else if (photoshapeStep === 3) {
+        openEditPanel();
+        return;
+      }
+      if (photoshapeStep === 3) {
         setEditing(false, true);
-        setPhotoshapeStep(2, {
-          note: "Outline ready. Click Edit to adjust points.",
-          canBack: true,
-          canNext: true,
-          nextLabel: "Edit"
-        });
-      } else if (photoshapeStep === 2) {
-        setPhotoshapeStep(1, {
-          note: "Upload an image to start.",
-          canBack: false,
-          canNext: false,
-          nextLabel: "Edit"
-        });
+        goStepReady();
+        return;
+      }
+      if (photoshapeStep === 2) {
+        goStepUpload();
       }
     });
   }
@@ -52269,27 +52387,15 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
       if (photoshapeStep === 2) {
         beginSession();
         setEditing(true);
-        setPhotoshapeStep(3, {
-          note: `Edit outline: shape ${photoshapeSession.index + 1} of ${photoshapeSession.order.length || photoshapeSession.ids.length}`,
-          canBack: true,
-          canNext: true,
-          nextLabel: "Depth"
-        });
-        showPanelFromLeft2("upload-photo-panel");
-        movePhotoshapeFlowControls("upload-photo-panel");
+        goStepEdit();
+        openEditPanel();
         return;
       }
       if (photoshapeStep === 3) {
         setEditing(false);
         syncDepthInputs();
-        setPhotoshapeStep(4, {
-          note: `Adjust depth: shape ${photoshapeSession.index + 1} of ${photoshapeSession.order.length || photoshapeSession.ids.length}`,
-          canBack: true,
-          canNext: true,
-          nextLabel: getPhotoshapeDepthLabel(photoshapeSession)
-        });
-        showPanelFromRight2(getDepthPanelId());
-        movePhotoshapeFlowControls(getDepthPanelId());
+        goStepDepth();
+        openDepthPanel();
         if (!state.display2D) {
           saveCameraView();
           resetCameraToFrontView();
@@ -52300,29 +52406,16 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
         const moved = moveToNext();
         if (moved) {
           setEditing(true);
-          setPhotoshapeStep(3, {
-            note: `Edit outline: shape ${photoshapeSession.index + 1} of ${photoshapeSession.order.length || photoshapeSession.ids.length}`,
-            canBack: true,
-            canNext: true,
-            nextLabel: "Depth"
-          });
-          showPanelFromLeft2("upload-photo-panel");
-          movePhotoshapeFlowControls("upload-photo-panel");
+          goStepEdit();
+          openEditPanel();
           return;
         }
         setEditing(false, true);
-        setPhotoshapeStep(2, {
-          note: "Outline ready. Click Edit to adjust again.",
-          canBack: true,
-          canNext: true,
-          nextLabel: "Edit"
-        });
+        goStepReady();
         setPhotoshapeFlowActive(false);
-        document.getElementById("photoshape-step-note").style.display = "none";
-        document.getElementById("photoshape-button").style.display = "none";
-        if (selected) {
+        setPhotoshapeAuxUiVisible(false);
+        if (selected)
           showPanelFromRight2(selected.kind + "-panel");
-        }
       }
     });
   }
@@ -52337,134 +52430,72 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
     });
   }
   document.querySelector("#upload-photo-input").onchange = (e) => {
-    photoshapeSession.ids = [];
-    photoshapeSession.index = 0;
+    resetPhotoshapeSessionState(photoshapeSession);
     setPhotoshapeFlowActive(true);
-    setPhotoshapeStep(1, {
-      note: "Upload an image to start.",
-      canBack: false,
-      canNext: false,
-      nextLabel: "Edit"
-    });
-    document.getElementById("photoshape-step-note").style.display = "flex";
-    document.getElementById("photoshape-button").style.display = "flex";
+    goStepUpload();
+    setPhotoshapeAuxUiVisible(true);
     setEditing(false, true);
     movePhotoshapeFlowControls("upload-photo-panel");
     document.querySelector("#back-button").removeAttribute("disabled");
     document.querySelector("#back-button").onclick = () => {
       document.querySelector("#back-button").setAttribute("disabled", "");
-      document.getElementById("photoshape-step-note").style.display = "none";
-      document.getElementById("photoshape-button").style.display = "none";
+      setPhotoshapeAuxUiVisible(false);
       showPanelFromLeft2("main-panel");
       setEditing(false, true);
       selected = null;
       setPhotoshapeFlowActive(false);
-      setPhotoshapeStep(1, {
-        note: "Upload an image to start.",
-        canBack: false,
-        canNext: false,
-        nextLabel: "Edit"
-      });
+      goStepUpload();
     };
     const file = e.target.files[0];
     if (file) {
       const imgElement = document.getElementById("upload-photo-img");
       const reader = new FileReader();
-      setPhotoshapeStep(2, {
-        note: "Removing background and detecting outline...",
-        canBack: true,
-        canNext: false,
-        nextLabel: "Edit"
-      });
+      goStepProcessing();
       reader.onload = function(ev) {
-        imgElement.src = ev.target.result;
-        uploadImage(file, ev.target.result);
+        const imageSrc = ev.target.result;
+        imgElement.src = imageSrc;
+        goStepProcessing();
+        uploadAndDetectContours(file).then((contoursData) => {
+          if (!contoursData) {
+            console.error("Contours data is null");
+            return;
+          }
+          createShape(contoursData, imageSrc);
+        }).catch((error2) => {
+          console.error("Error:", error2);
+        });
       };
       reader.readAsDataURL(file);
-    }
-    function uploadImage(fileParam, imageSrc) {
-      setPhotoshapeStep(2, {
-        note: "Removing background and detecting outline...",
-        canBack: true,
-        canNext: false,
-        nextLabel: "Edit"
-      });
-      getBase64(fileParam).then((base64Image) => {
-        return fetch("https://api.remove.bg/v1.0/removebg", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-API-Key": "y7X524wbiR3cUWL9AinkUAqq"
-          },
-          body: JSON.stringify({
-            image_file_b64: base64Image
-          })
-        });
-      }).then((response) => {
-        if (!response.ok) {
-          throw new Error("Failed to remove background");
-        }
-        return response.blob();
-      }).then((blob) => {
-        const formData = new FormData();
-        formData.append("image", blob, "image.png");
-        const CONTOUR_API_BASE = "https://fm24api.com";
-        return fetch(`${CONTOUR_API_BASE}/detect_contours`, {
-          method: "POST",
-          body: formData
-        });
-      }).then((response) => response.json()).then((data) => {
-        const contoursData = data == null ? void 0 : data.contours;
-        if (contoursData) {
-          createShape(contoursData, imageSrc);
-        } else {
-          console.error("Contours data is null");
-        }
-      }).catch((error2) => {
-        console.error("Error:", error2);
-      });
     }
     function createShape(contoursData, imageSrc) {
       const imgElement = document.querySelector("#upload-photo-img");
       imgElement.onload = () => {
-        photoshapeSession.ids = [];
-        photoshapeSession.index = 0;
-        contoursData.forEach((contour, index) => {
-          const simplified = simplifyPhotoshapePoints(contour);
-          let shape = {
-            id: generateId(),
-            kind: "polygon",
-            x: -225,
-            y: -225,
-            sizeZ: 300 * millimeters,
-            sizeX: 200 * millimeters,
-            sizeY: 250 * millimeters,
-            points: simplified,
-            rotation: 0,
-            free: true,
-            source: "photoshape",
-            cornerRadius: defaultCornerRadius
-          };
-          shapesArray.push(shape);
-          photoshapeSession.ids.push(shape.id);
-          if (index === 0) {
-            selected = shape;
-            showPanelFromRight2(selected.kind + "-panel");
-            doCsg2();
-            callback(selected);
-          }
+        resetPhotoshapeSessionState(photoshapeSession);
+        const createdShapes = createPhotoshapeShapesFromContours({
+          contoursData,
+          simplifyPhotoshapePoints,
+          generateId,
+          millimeters,
+          defaultCornerRadius
         });
+        if (!createdShapes.length) {
+          console.error("No valid contours to create shapes");
+          setPhotoshapeFlowActive(false);
+          setPhotoshapeAuxUiVisible(false);
+          goStepUpload();
+          return;
+        }
+        appendPhotoshapeShapes(shapesArray, photoshapeSession, createdShapes);
+        selected = createdShapes[0];
+        showPanelFromRight2(selected.kind + "-panel");
+        doCsg2();
+        callback(selected);
         commit2();
         photoshapeSession.index = 0;
         beginSession();
         setPhotoshapeFlowActive(true);
-        setPhotoshapeStep(2, {
-          note: "Outline ready. Click Edit to adjust points.",
-          canBack: true,
-          canNext: true,
-          nextLabel: "Edit"
-        });
-        showPanelFromLeft2("upload-photo-panel");
+        goStepReady();
+        openEditPanel();
       };
       imgElement.src = imageSrc;
     }
@@ -52909,7 +52940,8 @@ function initUI() {
             resetCameraToTopView();
           }
         },
-        foamMesh
+        foamMesh,
+        state.cornerRadius
       );
     } else {
       setTimeout(waitForFoamAndInitFreehand, 100);
@@ -52993,6 +53025,53 @@ function initUI() {
     else
       button.setAttribute("disabled", "");
   };
+  const setButtonVisible = (button, visible) => {
+    if (!button)
+      return;
+    if (visible)
+      button.style.removeProperty("display");
+    button.style.display = visible ? "" : "none";
+  };
+  const setButtonsEnabledById = (ids, enabled) => {
+    ids.forEach((id) => {
+      const btn = document.getElementById(id);
+      if (!btn)
+        return;
+      if (enabled)
+        btn.removeAttribute("disabled");
+      else
+        btn.setAttribute("disabled", "");
+    });
+  };
+  const polygonEditLockButtonIds = [
+    "polygon-depth-button",
+    "polygon-rotate-button",
+    "polygon-copy-button",
+    "polygon-delete-button",
+    "polygon-unmerge-button"
+  ];
+  const photoshapeEditLockButtonIds = [
+    "photoshape-depth-button",
+    "photoshape-rotate-button",
+    "photoshape-copy-button",
+    "photoshape-delete-button"
+  ];
+  const applyPointEditButtonLock = (editing) => {
+    var _a;
+    const allIds = [...polygonEditLockButtonIds, ...photoshapeEditLockButtonIds];
+    const isPhotoshape = ((_a = state.selected) == null ? void 0 : _a.source) === "photoshape";
+    if (editing) {
+      setButtonsEnabledById(allIds, false);
+      return;
+    }
+    updateDeleteButtons(state.selected);
+    if (isPhotoshape && state.selected) {
+      setButtonsEnabledById(
+        ["photoshape-depth-button", "photoshape-rotate-button", "photoshape-delete-button"],
+        true
+      );
+    }
+  };
   const setPointMode = (mode, on) => {
     if (mode === "add") {
       state.addPointMode = on;
@@ -53013,9 +53092,12 @@ function initUI() {
   const setPointEditUi = (editing) => {
     window.__editingPoints = editing;
     resetPointModes();
+    setButtonVisible(addPointButton, editing);
+    setButtonVisible(deletePointButton, editing);
     setButtonEnabled(addPointButton, editing);
     setButtonEnabled(deletePointButton, editing);
     pointEditHint.classList.toggle("is-visible", editing);
+    applyPointEditButtonLock(editing);
     if (editShapeButton) {
       editShapeButton.textContent = editing ? "Finish Edit" : "Edit points";
     }
@@ -53103,8 +53185,10 @@ function initUI() {
       restoreCameraView();
     }
   };
+  setButtonVisible(addPointButton, false);
   setButtonEnabled(addPointButton, false);
   setPointMode("add", false);
+  setButtonVisible(deletePointButton, false);
   setButtonEnabled(deletePointButton, false);
   setPointMode("delete", false);
   if (editShapeButton) {
@@ -53440,4 +53524,4 @@ if (typeof window === "object") {
   initUI();
   commit();
 }
-//# sourceMappingURL=index-097be770.js.map
+//# sourceMappingURL=index-e2776c5e.js.map
