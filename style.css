@@ -424,3 +424,83 @@ body {
   border-top: 1px dashed #c9d8ea;
   color: #3b4b5f;
 }
+
+.photoshape-info-card {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid #d8e4f0;
+  border-left: 4px solid #2f6feb;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #f8fbff 0%, #edf5ff 100%);
+  box-shadow: 0 2px 8px rgba(17, 24, 39, 0.08);
+}
+
+.photoshape-info-card__title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1f3a5a;
+  text-transform: uppercase;
+  letter-spacing: 0.2px;
+  margin-bottom: 4px;
+}
+
+.photoshape-info-card__text {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #2c3f57;
+}
+
+.photoshape-fit-card {
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid #d8e4f0;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #f8fbff 0%, #edf5ff 100%);
+  box-shadow: 0 2px 8px rgba(17, 24, 39, 0.08);
+}
+
+.photoshape-fit-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.photoshape-fit-card__title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1f3a5a;
+  letter-spacing: 0.2px;
+}
+
+.photoshape-fit-card__value {
+  font-size: 12px;
+  font-weight: 700;
+  color: #0b4a8a;
+  background: #d9ebff;
+  border: 1px solid #bfdcff;
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.photoshape-fit-card__help {
+  margin: 0 0 8px 0;
+  font-size: 12px;
+  line-height: 1.35;
+  color: #2c3f57;
+}
+
+.photoshape-fit-card__inputs {
+  width: 100%;
+  align-items: center;
+  gap: 8px;
+}
+
+.photoshape-fit-card__number {
+  width: 72px !important;
+}
+
+#photoshape-fit-slider {
+  accent-color: #2f6feb;
+}

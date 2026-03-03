@@ -49,6 +49,12 @@ export const createShapePhotoShape = (
   clearFoamPhotoOverlay
   // createEditor
 ) => {
+  const getSelected = () => state.selected ?? selected ?? null;
+  const setSelected = (nextSelected) => {
+    selected = nextSelected ?? null;
+    state.selected = selected;
+  };
+
   const stepUI = {
     container: document.querySelector("#photoshape-stepper"),
     steps: Array.from(document.querySelectorAll("[data-photoshape-step]")),
@@ -60,7 +66,10 @@ export const createShapePhotoShape = (
     group: document.querySelector("#photoshape-fit-group"),
     slider: document.querySelector("#photoshape-fit-slider"),
     input: document.querySelector("#photoshape-fit-input"),
+    value: document.querySelector("#photoshape-fit-value"),
   };
+  const flowInfo = document.querySelector("#photoshape-flow-info");
+
   const uploadPreview = document.querySelector("#upload-photo-img");
   if (uploadPreview) uploadPreview.style.display = "none";
 
@@ -98,8 +107,9 @@ export const createShapePhotoShape = (
   };
 
   const applyOverlayFromSelected = () => {
-    if (selected?.photoshapeImageSrc) {
-      applyFoamPhotoOverlay(selected.photoshapeImageSrc);
+    const current = getSelected();
+    if (current?.photoshapeImageSrc) {
+      applyFoamPhotoOverlay(current.photoshapeImageSrc);
     }
   };
 
@@ -122,28 +132,38 @@ export const createShapePhotoShape = (
     });
 
   const setFitUiVisible = (visible) => {
-    if (fitUI.group) fitUI.group.style.display = visible ? "flex" : "none";
+    if (fitUI.group) fitUI.group.style.display = visible ? "block" : "none";
+  };
+
+  const setFlowInfoVisible = (visible) => {
+    if (flowInfo) flowInfo.style.display = visible ? "block" : "none";
+  };
+
+  const syncFitValueBadge = (v) => {
+    if (fitUI.value) fitUI.value.textContent = `${clampPhotoshapeFitAccuracy(v)}%`;
   };
 
   const syncFitUiFromSelected = () => {
+    const current = getSelected();
     const visible =
       photoshapeFlowActive &&
       photoshapeStep === 3 &&
-      selected &&
-      selected.source === "photoshape" &&
-      selected._draft;
+      current &&
+      current.source === "photoshape" &&
+      current._draft;
 
     setFitUiVisible(!!visible);
     if (!visible) return;
 
-    const v = clampPhotoshapeFitAccuracy(selected.photoshapeFitAccuracy);
+    const v = clampPhotoshapeFitAccuracy(current.photoshapeFitAccuracy);
     if (fitUI.slider) fitUI.slider.value = String(v);
     if (fitUI.input) fitUI.input.value = String(v);
+    syncFitValueBadge(v);
   };
 
-  const syncDepthInputs = () => syncPhotoshapeDepthInputs(selected);
+  const syncDepthInputs = () => syncPhotoshapeDepthInputs(getSelected());
 
-  const getDepthPanelId = () => getPhotoshapeDepthPanelId(selected);
+  const getDepthPanelId = () => getPhotoshapeDepthPanelId(getSelected());
 
   const photoshapeSession = {
     ids: [],
@@ -169,15 +189,15 @@ export const createShapePhotoShape = (
   };
 
   const beginSession = () =>
-    beginPhotoshapeEditSession(photoshapeSession, shapesArray, selected);
+    beginPhotoshapeEditSession(photoshapeSession, shapesArray, getSelected());
 
   const moveToNext = () =>
     advanceToNextUnvisited(
       photoshapeSession,
       shapesArray,
-      selected,
+      getSelected(),
       (shape) => {
-        selected = shape;
+        setSelected(shape);
       },
       callback,
       showPanelFromRight
@@ -189,6 +209,48 @@ export const createShapePhotoShape = (
     setPhotoshapeFlowActive(false);
     photoshapeFlowReady = false;
     setFitUiVisible(false);
+    setFlowInfoVisible(false);
+  };
+
+  const rollbackCurrentUploadDrafts = () => {
+    const ids = new Set(photoshapeSession.ids || []);
+    let removed = false;
+
+    for (let i = shapesArray.length - 1; i >= 0; i--) {
+      const s = shapesArray[i];
+      if (!s || s.source !== "photoshape" || !s._draft) continue;
+      if (ids.size && !ids.has(s.id)) continue;
+      shapesArray.splice(i, 1);
+      removed = true;
+    }
+
+    resetPhotoshapeSessionState(photoshapeSession);
+    setSelected(null);
+
+    if (removed) {
+      doCsg();
+      commit();
+    }
+  };
+
+  const cancelPhotoshapeFlow = () => {
+    setEditing(false, true);
+    rollbackCurrentUploadDrafts();
+
+    setPhotoshapeFlowActive(false);
+    photoshapeFlowReady = false;
+    goStepUpload();
+
+    removeFoamPhotoOverlay();
+    setPhotoshapeAuxUiVisible(false);
+    setFitUiVisible(false);
+
+    if (typeof setFlowInfoVisible === "function") {
+      setFlowInfoVisible(false);
+    }
+
+    const uploadInput = document.querySelector("#upload-photo-input");
+    if (uploadInput) uploadInput.value = "";
   };
 
   const cleanupPhotoshapeUI = () => {
@@ -203,16 +265,8 @@ export const createShapePhotoShape = (
 
   window.__photoshapeCleanup = cleanupPhotoshapeUI;
   window.__photoshapeExit = () => {
-    setEditing(false, true);
-
-    setPhotoshapeFlowActive(false);
-    photoshapeFlowReady = false;
-
-    goStepUpload();
-    removeFoamPhotoOverlay();
-
-    setPhotoshapeAuxUiVisible(false);
-    setFitUiVisible(false);
+    if (!photoshapeFlowActive && !photoshapeSession.ids.length) return;
+    cancelPhotoshapeFlow();
   };
 
   photoshapeSession.visited = new Set();
@@ -237,15 +291,17 @@ export const createShapePhotoShape = (
   goStepUpload();
 
   const onFitChanged = (nextValue) => {
+    const current = getSelected();
     const v = clampPhotoshapeFitAccuracy(nextValue);
     if (fitUI.slider) fitUI.slider.value = String(v);
     if (fitUI.input) fitUI.input.value = String(v);
+    syncFitValueBadge(v);
 
-    if (!selected || selected.source !== "photoshape" || !selected._draft) return;
-    const changed = applyPhotoshapeFitAccuracyToShape(selected, v, state.foam);
+    if (!current || current.source !== "photoshape" || !current._draft) return;
+    const changed = applyPhotoshapeFitAccuracyToShape(current, v, state.foam);
     if (!changed) return;
 
-    callback(selected);
+    callback(current);
     doCsg();
   };
 
@@ -278,6 +334,7 @@ export const createShapePhotoShape = (
       if (photoshapeStep === 2) {
         goStepUpload();
         removeFoamPhotoOverlay();
+        setFlowInfoVisible(false);
       }
 
     });
@@ -309,8 +366,9 @@ export const createShapePhotoShape = (
       if (photoshapeStep === 4) {
         const moved = moveToNext();
         if (moved) {
-          if (selected?.photoshapeImageSrc) {
-            applyFoamPhotoOverlay(selected.photoshapeImageSrc);
+          const current = getSelected();
+          if (current?.photoshapeImageSrc) {
+            applyFoamPhotoOverlay(current.photoshapeImageSrc);
           }
           setEditing(true);
           goStepEdit();
@@ -324,6 +382,7 @@ export const createShapePhotoShape = (
         photoshapeFlowReady = false;
         removeFoamPhotoOverlay();
         setFitUiVisible(false);
+        setFlowInfoVisible(false);
         shapesArray.forEach((s) => {
           if (s?.source === "photoshape") {
             s._draft = false;
@@ -336,7 +395,8 @@ export const createShapePhotoShape = (
         });
         doCsg();
         commit();
-        if (selected) showPanelFromRight(selected.kind + "-panel");
+        const current = getSelected();
+        if (current) showPanelFromRight(current.kind + "-panel");
       }
     });
   }
@@ -344,7 +404,8 @@ export const createShapePhotoShape = (
   const editShapeButton = document.querySelector("#edit-shape");
   if (editShapeButton) {
     editShapeButton.addEventListener("click", () => {
-      if (!selected || selected.source !== "photoshape") return;
+      const current = getSelected();
+      if (!current || current.source !== "photoshape") return;
       if (!photoshapeFlowActive) return;
       startPhotoshapeEditFlow();
     });
@@ -354,24 +415,22 @@ export const createShapePhotoShape = (
     resetPhotoshapeSessionState(photoshapeSession);
     setPhotoshapeFlowActive(true);
     goStepUpload();
+    setFlowInfoVisible(false);
     photoshapeFlowReady = false;
     setPhotoshapeAuxUiVisible(true);
     setEditing(false, true);
     movePhotoshapeFlowControls("upload-photo-panel");
     removeFoamPhotoOverlay();
+    setFlowInfoVisible(false);
 
-    document.querySelector("#back-button").removeAttribute("disabled");
-    document.querySelector("#back-button").onclick = () => {
-      document.querySelector("#back-button").setAttribute("disabled", "");
-      setPhotoshapeAuxUiVisible(false);
+    const mainBackButton = document.querySelector("#back-button");
+    mainBackButton.removeAttribute("disabled");
+    mainBackButton.onclick = () => {
+      mainBackButton.setAttribute("disabled", "");
+      cancelPhotoshapeFlow();
       showPanelFromLeft("main-panel");
-      setEditing(false, true);
-      selected = null;
-      setPhotoshapeFlowActive(false);
-      photoshapeFlowReady = false;
-      goStepUpload();
-      removeFoamPhotoOverlay();
     };
+
 
     const file = e.target.files?.[0];
     if (!file) return;
@@ -411,18 +470,20 @@ export const createShapePhotoShape = (
       if (!createdShapes.length) {
         throw new Error("No valid contours to create shapes");
       }
-
       appendPhotoshapeShapes(shapesArray, photoshapeSession, createdShapes);
-      selected = createdShapes[0];
+      setSelected(createdShapes[0]);
+      setFlowInfoVisible(true);
+      syncFitValueBadge(getSelected()?.photoshapeFitAccuracy ?? 75);
 
-      showPanelFromRight(selected.kind + "-panel");
+      const current = getSelected();
+      if (current) {
+        showPanelFromRight(current.kind + "-panel");
+      }
       doCsg();
-      callback(selected);
+      if (current) callback(current);
       commit();
-
       photoshapeSession.index = 0;
       beginSession();
-
       photoshapeFlowReady = true;
       setPhotoshapeFlowActive(true);
       goStepReady();
@@ -433,6 +494,7 @@ export const createShapePhotoShape = (
       setPhotoshapeFlowActive(false);
       setPhotoshapeAuxUiVisible(false);
       goStepUpload();
+      setFlowInfoVisible(false);
     }
   };
 };

@@ -214,14 +214,29 @@
           </div>
         </div>
         <div class="photoshape-flow-anchor"></div>
-        <div id="photoshape-fit-group" class="group column" style="display:none; margin-top:10px;">
-          <label for="photoshape-fit-slider" style="font-size:12px; font-weight:600;">Fit Accuracy</label>
-          <div class="group">
+        <div id="photoshape-fit-group" class="photoshape-fit-card" style="display:none;">
+          <div class="photoshape-fit-card__header">
+            <label for="photoshape-fit-slider" class="photoshape-fit-card__title">Fit Accuracy</label>
+            <span id="photoshape-fit-value" class="photoshape-fit-card__value">75%</span>
+          </div>
+          <p class="photoshape-fit-card__help">
+            Higher accuracy keeps more contour detail. Lower accuracy smooths the outline.
+          </p>
+          <div class="group photoshape-fit-card__inputs">
             <input id="photoshape-fit-slider" class="column grow" type="range" min="1" max="100" step="1" value="75">
-            <input id="photoshape-fit-input" class="column" style="width:72px;" type="number" min="1" max="100" step="1"
-              value="75">
+            <input id="photoshape-fit-input" class="column photoshape-fit-card__number" type="number" min="1" max="100"
+              step="1" value="75">
           </div>
         </div>
+        <div id="photoshape-flow-info" class="photoshape-info-card" style="display:none;">
+          <div class="photoshape-info-card__title">Editing Flow</div>
+          <p class="photoshape-info-card__text">
+            Flow: Edit outline -> Next Step (depth) -> Save & Next Shape.
+            Each shape is reviewed once. Last shape ends with Save & Finish.
+          </p>
+        </div>
+
+
       </div>
       <!--
         <div class="panel" id="shape-panel">

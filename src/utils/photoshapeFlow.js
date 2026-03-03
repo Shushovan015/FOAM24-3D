@@ -4,71 +4,94 @@ export const getPhotoshapeNextLabel = (session) =>
     session.index < session.order.length - 1 ? "Next" : "Finish";
 
 export const getPhotoshapeDepthLabel = (session) =>
-    session.index < session.order.length - 1 ? "Next Shape" : "Finish";
+  session.index < session.order.length - 1 ? "Save & Next Shape" : "Save & Finish";
+
+const buildSessionOrder = (session, shapesArray) =>
+  session.ids
+    .map((id) => shapesArray.find((s) => s.id === id))
+    .filter(Boolean)
+    .sort((a, b) => getBoundingBox(a).minX - getBoundingBox(b).minX)
+    .map((s) => s.id);
+
+const rotateOrderToSelectedFirst = (order, selectedId) => {
+  if (!selectedId) return order;
+  const idx = order.indexOf(selectedId);
+  if (idx <= 0) return order;
+  return order.slice(idx).concat(order.slice(0, idx));
+};
 
 export const rebuildOrderAndIndex = (session, shapesArray, selected) => {
-    session.order = session.ids
-        .map((id) => shapesArray.find((s) => s.id === id))
-        .filter(Boolean)
-        .sort((a, b) => getBoundingBox(a).minX - getBoundingBox(b).minX)
-        .map((s) => s.id);
+  session.order = buildSessionOrder(session, shapesArray);
 
-    if (selected && selected.id) {
-        const idx = session.order.indexOf(selected.id);
-        session.index = idx !== -1 ? idx : 0;
-    } else {
-        session.index = 0;
-    }
+  if (selected && selected.id) {
+    const idx = session.order.indexOf(selected.id);
+    session.index = idx !== -1 ? idx : 0;
+  } else {
+    session.index = 0;
+  }
 };
 
 export const beginPhotoshapeEditSession = (session, shapesArray, selected) => {
-    rebuildOrderAndIndex(session, shapesArray, selected);
+  const sortedOrder = buildSessionOrder(session, shapesArray);
+  session.order = rotateOrderToSelectedFirst(sortedOrder, selected?.id);
+  session.index = 0;
 };
 
 export const selectPhotoshapeByIndex = (
-    idx,
-    session,
-    shapesArray,
-    setSelected,
-    callback,
-    showPanelFromRight
+  idx,
+  session,
+  shapesArray,
+  setSelected,
+  callback,
+  showPanelFromRight
 ) => {
-    if (!session.order.length) return false;
-    if (idx < 0 || idx >= session.order.length) return false;
+  if (!session.order.length) return false;
+  if (idx < 0 || idx >= session.order.length) return false;
 
-    const id = session.order[idx];
-    const nextShape = shapesArray.find((s) => s.id === id);
-    if (!nextShape) return false;
+  const id = session.order[idx];
+  const nextShape = shapesArray.find((s) => s.id === id);
+  if (!nextShape) return false;
 
-    setSelected(nextShape);
-    session.index = idx;
-    callback(nextShape);
+  setSelected(nextShape);
+  session.index = idx;
+  callback(nextShape);
 
-    showPanelFromRight(nextShape.kind + "-panel");
-    return true;
+  showPanelFromRight(nextShape.kind + "-panel");
+  return true;
 };
 
 export const advanceToNextUnvisited = (
+  session,
+  shapesArray,
+  selected,
+  setSelected,
+  callback,
+  showPanelFromRight
+) => {
+  // Keep existing traversal order, but remove deleted/missing shapes.
+  const existingIds = new Set(shapesArray.map((s) => s?.id).filter(Boolean));
+  session.order = session.order.filter((id) => existingIds.has(id));
+  if (!session.order.length) return false;
+
+  // Sync pointer to currently selected shape when possible.
+  if (selected?.id) {
+    const idx = session.order.indexOf(selected.id);
+    if (idx !== -1) session.index = idx;
+  }
+
+  session.index = Math.max(0, Math.min(session.index, session.order.length - 1));
+
+  const nextIdx = session.index + 1;
+  if (nextIdx >= session.order.length) return false;
+
+  return selectPhotoshapeByIndex(
+    nextIdx,
     session,
     shapesArray,
-    selected,
     setSelected,
     callback,
     showPanelFromRight
-) => {
-    rebuildOrderAndIndex(session, shapesArray, selected);
-
-    const nextIdx = session.index + 1;
-    if (nextIdx >= session.order.length) return false;
-
-    return selectPhotoshapeByIndex(
-        nextIdx,
-        session,
-        shapesArray,
-        setSelected,
-        callback,
-        showPanelFromRight
-    );
+  );
 };
 
 export const movePhotoshapeFlowControls = (panelId) => {
@@ -451,24 +474,28 @@ export const getPhotoshapeStepProcessingConfig = () => ({
 });
 
 export const getPhotoshapeStepReadyConfig = () => ({
-    note: "Outline ready. Click Edit to adjust points.",
-    canBack: true,
-    canNext: true,
-    nextLabel: "Edit",
+  note: "Outline ready. Click Start Editing to review each shape once.",
+  canBack: false, 
+  canNext: true,
+  backLabel: "Back to Upload",
+  nextLabel: "Start Editing",
 });
 
+
 export const getPhotoshapeStepEditConfig = (session) => ({
-    note: getPhotoshapeEditStepNote(session),
-    canBack: true,
-    canNext: true,
-    nextLabel: "Depth",
+  note: getPhotoshapeEditStepNote(session),
+  canBack: true,
+  canNext: true,
+  backLabel: "Back to Detect",
+  nextLabel: "Next Step",
 });
 
 export const getPhotoshapeStepDepthConfig = (session) => ({
-    note: getPhotoshapeDepthStepNote(session),
-    canBack: true,
-    canNext: true,
-    nextLabel: getPhotoshapeDepthLabel(session),
+  note: getPhotoshapeDepthStepNote(session),
+  canBack: true,
+  canNext: true,
+  backLabel: "Back to Outline",
+  nextLabel: getPhotoshapeDepthLabel(session),
 });
 
 export const getPhotoshapeEditStepNote = (session) =>
