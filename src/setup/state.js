@@ -19,6 +19,9 @@ export const state = {
   deletePointMode: false,
   _lastFrameTime: 0,
 
+  photoshapeOverlayMesh: null,
+  photoshapeOverlayTexture: null,
+
   renderer: null,
   overlayCanvas: null,
   ctx: null,
