@@ -187,78 +187,164 @@ export const resetPhotoshapeSessionState = (session) => {
     session.remaining = 0;
 };
 
+const polygonAreaAbs = (points) => {
+    if (!Array.isArray(points) || points.length < 3) return 0;
+    let area = 0;
+    for (let i = 0; i < points.length; i++) {
+        const [x1, y1] = points[i];
+        const [x2, y2] = points[(i + 1) % points.length];
+        area += x1 * y2 - x2 * y1;
+    }
+    return Math.abs(area) * 0.5;
+};
+
+const getContourBounds = (points) => {
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    for (const [x, y] of points) {
+        if (x < minX) minX = x;
+        if (y < minY) minY = y;
+        if (x > maxX) maxX = x;
+        if (y > maxY) maxY = y;
+    }
+    return { minX, minY, maxX, maxY };
+};
+
+const isLikelyBackgroundContour = (points, imageWidth, imageHeight) => {
+    const area = polygonAreaAbs(points);
+    const imageArea = imageWidth * imageHeight;
+    if (area > imageArea * 0.55) return true;
+
+    const b = getContourBounds(points);
+    const bw = b.maxX - b.minX;
+    const bh = b.maxY - b.minY;
+    const near = 2;
+
+    const touchesBorder =
+        b.minX <= near ||
+        b.minY <= near ||
+        b.maxX >= imageWidth - near ||
+        b.maxY >= imageHeight - near;
+
+    if (touchesBorder && bw > imageWidth * 0.85 && bh > imageHeight * 0.85) {
+        return true;
+    }
+
+    return false;
+};
+
+const mapImagePointToFoamLocal = (x, y, foam, imageWidth, imageHeight) => {
+    const left = foam.x - foam.sizeX / 2;
+    const top = foam.y + foam.sizeY / 2;
+    const worldX = left + (x / imageWidth) * foam.sizeX;
+    const worldY = top - (y / imageHeight) * foam.sizeY;
+    return [worldX - foam.x, worldY - foam.y];
+};
+
 export const createPhotoshapeShapesFromContours = ({
-  contoursData,
-  simplifyPhotoshapePoints,
-  generateId,
-  millimeters,
-  defaultCornerRadius,
+    contoursData,
+    simplifyPhotoshapePoints,
+    generateId,
+    millimeters,
+    defaultCornerRadius,
+    imageSrc,
+    foam,
+    imageWidth,
+    imageHeight,
 }) => {
-  if (!Array.isArray(contoursData)) return [];
+    if (!Array.isArray(contoursData)) return [];
+    if (!foam || !imageWidth || !imageHeight) return [];
 
-  return contoursData
-    .map((contour) => {
-      const simplified = simplifyPhotoshapePoints(contour);
-      if (!Array.isArray(simplified) || simplified.length < 3) return null;
+    const minAreaPx = Math.max(80, imageWidth * imageHeight * 0.0006);
 
-      return {
-        id: generateId(),
-        kind: "polygon",
-        x: -225,
-        y: -225,
-        sizeZ: 300 * millimeters,
-        sizeX: 200 * millimeters,
-        sizeY: 250 * millimeters,
-        points: simplified,
-        rotation: 0,
-        free: true,
-        source: "photoshape",
-        cornerRadius: defaultCornerRadius,
-      };
-    })
-    .filter(Boolean);
+    const created = contoursData
+        .map((contour) => {
+            if (!Array.isArray(contour) || contour.length < 3) return null;
+            if (polygonAreaAbs(contour) < minAreaPx) return null;
+            if (isLikelyBackgroundContour(contour, imageWidth, imageHeight)) return null;
+
+            const simplified = simplifyPhotoshapePoints(contour);
+            if (!Array.isArray(simplified) || simplified.length < 3) return null;
+
+            const mapped = simplified
+                .map(([x, y]) => mapImagePointToFoamLocal(x, y, foam, imageWidth, imageHeight))
+                .filter(([x, y]) => Number.isFinite(x) && Number.isFinite(y));
+
+            if (mapped.length < 3) return null;
+
+            const xs = mapped.map((p) => p[0]);
+            const ys = mapped.map((p) => p[1]);
+            const minX = Math.min(...xs);
+            const maxX = Math.max(...xs);
+            const minY = Math.min(...ys);
+            const maxY = Math.max(...ys);
+
+            return {
+                id: generateId(),
+                kind: "polygon",
+                x: foam.x,
+                y: foam.y,
+                sizeZ: 300 * millimeters,
+                sizeX: Math.max(1, maxX - minX),
+                sizeY: Math.max(1, maxY - minY),
+                points: mapped,
+                rotation: 0,
+                free: true,
+                source: "photoshape",
+                cornerRadius: defaultCornerRadius,
+                photoshapeImageSrc: imageSrc || null,
+                _draft: true,
+                photoshapeFitValue: 100,
+                _fitBasePoints: mapped.map(([x, y]) => [x, y]),
+            };
+        })
+        .filter(Boolean);
+
+    return created;
 };
 
 export const appendPhotoshapeShapes = (shapesArray, session, createdShapes) => {
-  createdShapes.forEach((shape) => {
-    shapesArray.push(shape);
-    session.ids.push(shape.id);
-  });
+    createdShapes.forEach((shape) => {
+        shapesArray.push(shape);
+        session.ids.push(shape.id);
+    });
 };
 
 export const getPhotoshapeStepUploadConfig = () => ({
-  note: "Upload an image to start.",
-  canBack: false,
-  canNext: false,
-  nextLabel: "Edit",
+    note: "Upload an image to start.",
+    canBack: false,
+    canNext: false,
+    nextLabel: "Edit",
 });
 
 export const getPhotoshapeStepProcessingConfig = () => ({
-  note: "Removing background and detecting outline...",
-  canBack: true,
-  canNext: false,
-  nextLabel: "Edit",
+    note: "Removing background and detecting outline...",
+    canBack: true,
+    canNext: false,
+    nextLabel: "Edit",
 });
 
 export const getPhotoshapeStepReadyConfig = () => ({
-  note: "Outline ready. Click Edit to adjust points.",
-  canBack: true,
-  canNext: true,
-  nextLabel: "Edit",
+    note: "Outline ready. Click Edit to adjust points.",
+    canBack: true,
+    canNext: true,
+    nextLabel: "Edit",
 });
 
 export const getPhotoshapeStepEditConfig = (session) => ({
-  note: getPhotoshapeEditStepNote(session),
-  canBack: true,
-  canNext: true,
-  nextLabel: "Depth",
+    note: getPhotoshapeEditStepNote(session),
+    canBack: true,
+    canNext: true,
+    nextLabel: "Depth",
 });
 
 export const getPhotoshapeStepDepthConfig = (session) => ({
-  note: getPhotoshapeDepthStepNote(session),
-  canBack: true,
-  canNext: true,
-  nextLabel: getPhotoshapeDepthLabel(session),
+    note: getPhotoshapeDepthStepNote(session),
+    canBack: true,
+    canNext: true,
+    nextLabel: getPhotoshapeDepthLabel(session),
 });
 
 export const getPhotoshapeEditStepNote = (session) =>

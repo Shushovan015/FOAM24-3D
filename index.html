@@ -202,7 +202,7 @@
       </div>
       <div class="panel" id="upload-photo-panel">
         <input id="upload-photo-input" type="file">
-        <img id="upload-photo-img"></img>
+        <img id="upload-photo-img" style="display:none;" alt="">
         <div id="photoshape-stepper" style="display: none; margin-top: 10px;">
           <div id="photoshape-step-list" style="display: flex; gap: 8px; flex-wrap: wrap;">
             <div data-photoshape-step="1" style="padding: 4px 8px; border: 1px solid #666; border-radius: 4px;">1 Upload
@@ -214,6 +214,14 @@
           </div>
         </div>
         <div class="photoshape-flow-anchor"></div>
+        <div id="photoshape-fit-group" class="group column" style="display:none; margin-top:10px;">
+          <label for="photoshape-fit-slider" style="font-size:12px; font-weight:600;">Fit Accuracy</label>
+          <div class="group">
+            <input id="photoshape-fit-slider" class="column grow" type="range" min="70" max="130" step="1" value="100">
+            <input id="photoshape-fit-input" class="column" style="width:72px;" type="number" min="70" max="130"
+              step="1" value="100">
+          </div>
+        </div>
       </div>
       <!--
         <div class="panel" id="shape-panel">

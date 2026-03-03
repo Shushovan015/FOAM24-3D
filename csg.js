@@ -91,6 +91,7 @@ function shapeToGeom2(shape) {
             }
 
             let polygon = contour
+              .slice()
               .reverse()
               .map(([x, y]) => [x, y])
               .map((v) =>
@@ -115,24 +116,38 @@ function shapeToGeom2(shape) {
         );
         return [];
       }
-    case "polygon":
+    case "polygon": {
       if (!Array.isArray(shape.points) || shape.points.length < 3) return null;
-      const area = Math.abs(polygonArea(shape.points));
-      if (area < 1e-6) return null;
 
-      let newShape = shape.free ? shape.points.slice().reverse() : shape.points;
-      let poly = newShape
-        .map(([x, y]) => [x, y])
-        .map((v) =>
-          jscad.maths.vec2.rotate(
-            v,
-            v,
-            [0, 0],
-            jscad.utils.degToRad(shape.rotation)
+      const basePts = shape.points.map(([x, y]) => [x, y]);
+      if (Math.abs(polygonArea(basePts)) < 1e-6) return null;
+
+      const tryBuild = (pts) => {
+        let poly = pts
+          .map(([x, y]) => [x, y])
+          .map((v) =>
+            jscad.maths.vec2.rotate(
+              v,
+              v,
+              [0, 0],
+              jscad.utils.degToRad(shape.rotation)
+            )
           )
-        );
-      poly = poly.map(([x, y]) => [x + shape.x, y + shape.y]);
-      return jscad.geometries.geom2.fromPoints(poly);
+          .map(([x, y]) => [x + shape.x, y + shape.y]);
+
+        return jscad.geometries.geom2.fromPoints(poly);
+      };
+
+      try {
+        return tryBuild(basePts);
+      } catch {
+        try {
+          return tryBuild(basePts.slice().reverse());
+        } catch {
+          return null;
+        }
+      }
+    }
   }
 
 }
@@ -160,7 +175,6 @@ function shapeToGeom3(shape) {
   }
 }
 
-
 onmessage = (e) => {
   let { id, foam, shapesArray } = e.data;
   const foamGeom3 = shapeToGeom3(foam);
@@ -170,6 +184,8 @@ onmessage = (e) => {
   }
   let geom3s = [foamGeom3];
   for (let shape of shapesArray) {
+    if (shape?.source === "photoshape" && shape?._draft) continue;
+
     let geom3 = shapeToGeom3(shape);
     if (!geom3) continue;
     geom3 = jscad.transforms.translateZ(foam.sizeZ - shape.sizeZ, geom3);

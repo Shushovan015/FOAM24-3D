@@ -28,7 +28,9 @@ import {
   saveCameraView,
   restoreCameraView,
   beginCopyPlacement,
-  cancelCopyPlacement
+  cancelCopyPlacement,
+  setFoamPhotoOverlay,
+  clearFoamPhotoOverlay
 } from "./scene";
 import { rightestPoint, leftestPoint, highestPoint, lowestPoint, structuredClone } from "../utils/common";
 import { shapeToGeom2, simplifyPointsForDrag } from "../utils/threeFunctions";
@@ -145,7 +147,9 @@ export function initUI() {
         state.cameraCopy,
         state.rendererCopy,
         state.sceneCopy,
-        state.cornerRadius
+        state.cornerRadius,
+        setFoamPhotoOverlay,
+        clearFoamPhotoOverlay
       );
       return;
     }

@@ -46,7 +46,9 @@ export const createShapePhotoShape = (
   camera,
   renderer,
   scene,
-  defaultCornerRadius
+  defaultCornerRadius,
+  setFoamPhotoOverlay,
+  clearFoamPhotoOverlay
   // createEditor
 ) => {
   const stepUI = {
@@ -56,14 +58,24 @@ export const createShapePhotoShape = (
     back: document.querySelector("#photoshape-step-back"),
     next: document.querySelector("#photoshape-step-next"),
   };
+  const fitUI = {
+    group: document.querySelector("#photoshape-fit-group"),
+    slider: document.querySelector("#photoshape-fit-slider"),
+    input: document.querySelector("#photoshape-fit-input"),
+  };
+  const uploadPreview = document.querySelector("#upload-photo-img");
+  if (uploadPreview) uploadPreview.style.display = "none";
 
   let photoshapeFlowActive = false;
   let photoshapeFlowReady = false;
   let photoshapeStep = 1;
   const MAX_PHOTOSHAPE_POINTS = 150;
 
-  const simplifyPhotoshapePoints = (pts) =>
-    simplifyPhotoshapeContourPoints(pts, simplifyPointsForDrag, MAX_PHOTOSHAPE_POINTS);
+  const simplifyPhotoshapePoints = (pts) => {
+    if (!Array.isArray(pts)) return pts;
+    if (pts.length <= 500) return pts;
+    return simplifyPhotoshapeContourPoints(pts, simplifyPointsForDrag, 500);
+  };
 
   const setPhotoshapeFlowActive = (active) => {
     photoshapeFlowActive = active;
@@ -73,6 +85,7 @@ export const createShapePhotoShape = (
   const setPhotoshapeStep = (step, options = {}) => {
     photoshapeStep = step;
     renderPhotoshapeStep(stepUI, photoshapeStep, options);
+    syncFitUiFromSelected();
   };
 
   const setEditing = (on, restore = false) =>
@@ -85,6 +98,94 @@ export const createShapePhotoShape = (
       resetCameraToTopView,
       restoreCameraView,
     });
+
+  const applyFoamPhotoOverlay = (imageSrc) => {
+    if (!imageSrc) return;
+    if (typeof setFoamPhotoOverlay === "function") {
+      setFoamPhotoOverlay(imageSrc);
+    }
+  };
+
+  const applyOverlayFromSelected = () => {
+    if (selected?.photoshapeImageSrc) {
+      applyFoamPhotoOverlay(selected.photoshapeImageSrc);
+    }
+  };
+
+  const removeFoamPhotoOverlay = () => {
+    if (typeof clearFoamPhotoOverlay === "function") {
+      clearFoamPhotoOverlay();
+    }
+  };
+
+  const readImageDimensions = (src) =>
+    new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () =>
+        resolve({
+          width: img.naturalWidth || img.width,
+          height: img.naturalHeight || img.height,
+        });
+      img.onerror = reject;
+      img.src = src;
+    });
+
+  const clonePoints = (pts) => (Array.isArray(pts) ? pts.map(([x, y]) => [x, y]) : []);
+  const clampFit = (v) => Math.max(70, Math.min(130, Number(v) || 100));
+
+  const setFitUiVisible = (visible) => {
+    if (fitUI.group) fitUI.group.style.display = visible ? "flex" : "none";
+  };
+
+  const ensureShapeFitBase = (shape) => {
+    if (!shape || shape.source !== "photoshape") return;
+    if (!Array.isArray(shape._fitBasePoints) || shape._fitBasePoints.length < 3) {
+      shape._fitBasePoints = clonePoints(shape.points);
+    }
+    if (typeof shape.photoshapeFitValue !== "number") {
+      shape.photoshapeFitValue = 100;
+    }
+  };
+
+  const applyFitToShape = (shape, fitValue) => {
+    if (!shape || shape.source !== "photoshape" || !shape._draft) return;
+    ensureShapeFitBase(shape);
+
+    const v = clampFit(fitValue);
+    const scale = v / 100;
+    const base = shape._fitBasePoints;
+    if (!Array.isArray(base) || base.length < 3) return;
+
+    let cx = 0;
+    let cy = 0;
+    for (const [x, y] of base) {
+      cx += x;
+      cy += y;
+    }
+    cx /= base.length;
+    cy /= base.length;
+
+    shape.points = base.map(([x, y]) => [cx + (x - cx) * scale, cy + (y - cy) * scale]);
+    shape.photoshapeFitValue = v;
+    shape._pointsDirty = true;
+  };
+
+  const syncFitUiFromSelected = () => {
+    const visible =
+      photoshapeFlowActive &&
+      photoshapeStep === 3 &&
+      selected &&
+      selected.source === "photoshape" &&
+      selected._draft;
+
+    setFitUiVisible(!!visible);
+    if (!visible) return;
+
+    ensureShapeFitBase(selected);
+    const v = clampFit(selected.photoshapeFitValue);
+    if (fitUI.slider) fitUI.slider.value = String(v);
+    if (fitUI.input) fitUI.input.value = String(v);
+  };
 
   const syncDepthInputs = () => syncPhotoshapeDepthInputs(selected);
 
@@ -113,6 +214,21 @@ export const createShapePhotoShape = (
     movePhotoshapeFlowControls(depthPanelId);
   };
 
+  const setSessionDraftState = (isDraft) => {
+    photoshapeSession.ids.forEach((id) => {
+      const shape = shapesArray.find((s) => s.id === id);
+      if (!shape) return;
+      shape._draft = isDraft;
+    });
+  };
+
+  const clearSessionOverlayRefs = () => {
+    photoshapeSession.ids.forEach((id) => {
+      const shape = shapesArray.find((s) => s.id === id);
+      if (!shape) return;
+      shape.photoshapeImageSrc = null;
+    });
+  };
 
   const beginSession = () =>
     beginPhotoshapeEditSession(photoshapeSession, shapesArray, selected);
@@ -130,9 +246,11 @@ export const createShapePhotoShape = (
     );
 
   const hidePhotoshapeUI = () => {
+    removeFoamPhotoOverlay();
     setPhotoshapeAuxUiVisible(false);
     setPhotoshapeFlowActive(false);
     photoshapeFlowReady = false;
+    setFitUiVisible(false);
   };
 
   const cleanupPhotoshapeUI = () => {
@@ -153,8 +271,10 @@ export const createShapePhotoShape = (
     photoshapeFlowReady = false;
 
     goStepUpload();
+    removeFoamPhotoOverlay();
 
     setPhotoshapeAuxUiVisible(false);
+    setFitUiVisible(false);
   };
 
   photoshapeSession.visited = new Set();
@@ -166,6 +286,7 @@ export const createShapePhotoShape = (
       saveCameraView();
       resetCameraToTopView();
     }
+    applyOverlayFromSelected();
     setPhotoshapeAuxUiVisible(true);
     setPhotoshapeFlowActive(true);
     beginSession();
@@ -176,6 +297,30 @@ export const createShapePhotoShape = (
 
   setPhotoshapeFlowActive(false);
   goStepUpload();
+
+  if (fitUI.slider) {
+    fitUI.slider.addEventListener("input", () => {
+      const v = clampFit(fitUI.slider.value);
+      if (fitUI.input) fitUI.input.value = String(v);
+      if (selected && selected.source === "photoshape" && selected._draft) {
+        applyFitToShape(selected, v);
+        callback(selected);
+        doCsg();
+      }
+    });
+  }
+
+  if (fitUI.input) {
+    fitUI.input.addEventListener("input", () => {
+      const v = clampFit(fitUI.input.value);
+      if (fitUI.slider) fitUI.slider.value = String(v);
+      if (selected && selected.source === "photoshape" && selected._draft) {
+        applyFitToShape(selected, v);
+        callback(selected);
+        doCsg();
+      }
+    });
+  }
 
   if (stepUI.back) {
     stepUI.back.addEventListener("click", () => {
@@ -197,6 +342,7 @@ export const createShapePhotoShape = (
 
       if (photoshapeStep === 2) {
         goStepUpload();
+        removeFoamPhotoOverlay();
       }
 
     });
@@ -229,15 +375,35 @@ export const createShapePhotoShape = (
       if (photoshapeStep === 4) {
         const moved = moveToNext();
         if (moved) {
+          if (selected?.photoshapeImageSrc) {
+            applyFoamPhotoOverlay(selected.photoshapeImageSrc);
+          }
           setEditing(true);
           goStepEdit();
           openEditPanel();
           return;
         }
+
         setEditing(false, true);
         goStepReady();
         setPhotoshapeFlowActive(false);
         setPhotoshapeAuxUiVisible(false);
+
+        removeFoamPhotoOverlay();
+
+        shapesArray.forEach((s) => {
+          if (s?.source === "photoshape") {
+            s._draft = false;
+            s.photoshapeImageSrc = null;
+            delete s._fitBasePoints;
+            delete s.photoshapeFitValue;
+          }
+        });
+        setFitUiVisible(false);
+
+        doCsg();
+        commit();
+
         if (selected) showPanelFromRight(selected.kind + "-panel");
       }
     });
@@ -252,7 +418,7 @@ export const createShapePhotoShape = (
     });
   }
 
-  document.querySelector("#upload-photo-input").onchange = (e) => {
+  document.querySelector("#upload-photo-input").onchange = async (e) => {
     resetPhotoshapeSessionState(photoshapeSession);
     setPhotoshapeFlowActive(true);
     goStepUpload();
@@ -260,6 +426,7 @@ export const createShapePhotoShape = (
     setPhotoshapeAuxUiVisible(true);
     setEditing(false, true);
     movePhotoshapeFlowControls("upload-photo-panel");
+    removeFoamPhotoOverlay();
 
     document.querySelector("#back-button").removeAttribute("disabled");
     document.querySelector("#back-button").onclick = () => {
@@ -271,67 +438,66 @@ export const createShapePhotoShape = (
       setPhotoshapeFlowActive(false);
       photoshapeFlowReady = false;
       goStepUpload();
+      removeFoamPhotoOverlay();
     };
 
-    const file = e.target.files[0];
-    if (file) {
-      const imgElement = document.getElementById("upload-photo-img");
-      const reader = new FileReader();
-      goStepProcessing();
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-      reader.onload = function (ev) {
-        const imageSrc = ev.target.result;
-        imgElement.src = imageSrc;
-        goStepProcessing();
-        uploadAndDetectContours(file)
-          .then((contoursData) => {
-            if (!contoursData) {
-              console.error("Contours data is null");
-              return;
-            }
-            createShape(contoursData, imageSrc);
-          })
-          .catch((error) => {
-            console.error("Error:", error);
-          });
-      };
-      reader.readAsDataURL(file);
+    goStepProcessing();
 
-    }
+    try {
+      const { contours, imageSrc } = await uploadAndDetectContours(file);
+      if (!Array.isArray(contours) || !contours.length) {
+        throw new Error("Contours data is empty");
+      }
+      if (!imageSrc) {
+        throw new Error("Background-removed image missing");
+      }
 
-    function createShape(contoursData, imageSrc) {
-      const imgElement = document.querySelector("#upload-photo-img");
-      imgElement.onload = () => {
-        resetPhotoshapeSessionState(photoshapeSession);
-        const createdShapes = createPhotoshapeShapesFromContours({
-          contoursData,
-          simplifyPhotoshapePoints,
-          generateId,
-          millimeters,
-          defaultCornerRadius,
-        });
-        if (!createdShapes.length) {
-          console.error("No valid contours to create shapes");
-          setPhotoshapeFlowActive(false);
-          setPhotoshapeAuxUiVisible(false);
-          goStepUpload();
-          return;
-        }
-        appendPhotoshapeShapes(shapesArray, photoshapeSession, createdShapes);
-        selected = createdShapes[0];
-        showPanelFromRight(selected.kind + "-panel");
-        doCsg();
-        callback(selected);
-        commit();
-        photoshapeSession.index = 0;
-        beginSession();
+      applyFoamPhotoOverlay(imageSrc);
+      const { width: imageWidth, height: imageHeight } =
+        await readImageDimensions(imageSrc);
 
-        photoshapeFlowReady = true;
-        setPhotoshapeFlowActive(true);
-        goStepReady();
-        openEditPanel();
-      };
-      imgElement.src = imageSrc;
+      resetPhotoshapeSessionState(photoshapeSession);
+
+      const createdShapes = createPhotoshapeShapesFromContours({
+        contoursData: contours,
+        simplifyPhotoshapePoints,
+        generateId,
+        millimeters,
+        defaultCornerRadius,
+        imageSrc,
+        foam: state.foam,
+        imageWidth,
+        imageHeight,
+      });
+
+      if (!createdShapes.length) {
+        throw new Error("No valid contours to create shapes");
+      }
+
+      appendPhotoshapeShapes(shapesArray, photoshapeSession, createdShapes);
+      selected = createdShapes[0];
+
+      showPanelFromRight(selected.kind + "-panel");
+      doCsg();
+      callback(selected);
+      commit();
+
+      photoshapeSession.index = 0;
+      beginSession();
+
+      photoshapeFlowReady = true;
+      setPhotoshapeFlowActive(true);
+      goStepReady();
+      openEditPanel();
+    } catch (error) {
+      console.error("Error:", error);
+      removeFoamPhotoOverlay();
+      setPhotoshapeFlowActive(false);
+      setPhotoshapeAuxUiVisible(false);
+      goStepUpload();
     }
   };
 };

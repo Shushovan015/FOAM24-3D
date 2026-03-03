@@ -241,7 +241,105 @@ export function resetCameraToFrontView() {
   setCameraFrontView(state.camera, state.controls, state.foam, units);
 }
 
+function ensurePhotoshapeOverlayMesh() {
+  if (!state.scene) return null;
+
+  const foam = state.foam;
+  let mesh = state.photoshapeOverlayMesh;
+
+  if (!mesh) {
+    const geometry = new THREE.PlaneGeometry(foam.sizeX, foam.sizeY, 1, 1);
+    const material = new THREE.MeshBasicMaterial({
+      transparent: true,
+      opacity: 0.95,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    });
+
+    mesh = new THREE.Mesh(geometry, material);
+    mesh.name = "photoshapeOverlay";
+    mesh.renderOrder = 1000;
+
+    state.photoshapeOverlayMesh = mesh;
+    state.scene.add(mesh);
+  }
+
+  const currentWidth = mesh.geometry?.parameters?.width;
+  const currentHeight = mesh.geometry?.parameters?.height;
+  if (currentWidth !== foam.sizeX || currentHeight !== foam.sizeY) {
+    mesh.geometry?.dispose();
+    mesh.geometry = new THREE.PlaneGeometry(foam.sizeX, foam.sizeY, 1, 1);
+  }
+
+  mesh.position.set(foam.x, foam.y, foam.sizeZ + 0.2);
+  mesh.rotation.set(0, 0, 0);
+  mesh.visible = true;
+
+  if (!state.scene.children.includes(mesh)) {
+    state.scene.add(mesh);
+  }
+
+  return mesh;
+}
+
+export function setFoamPhotoOverlay(imageSrc) {
+  if (!imageSrc) return;
+
+  const mesh = ensurePhotoshapeOverlayMesh();
+  if (!mesh) return;
+
+  if (mesh.userData?.imageSrc === imageSrc && state.photoshapeOverlayTexture) {
+    mesh.visible = true;
+    return;
+  }
+
+  const loader = new THREE.TextureLoader();
+  loader.load(
+    imageSrc,
+    (texture) => {
+      texture.wrapS = THREE.ClampToEdgeWrapping;
+      texture.wrapT = THREE.ClampToEdgeWrapping;
+      texture.minFilter = THREE.LinearFilter;
+      texture.magFilter = THREE.LinearFilter;
+      texture.encoding = THREE.sRGBEncoding;
+      texture.needsUpdate = true;
+
+      if (state.photoshapeOverlayTexture) {
+        state.photoshapeOverlayTexture.dispose();
+      }
+
+      state.photoshapeOverlayTexture = texture;
+      mesh.material.map = texture;
+      mesh.material.needsUpdate = true;
+      mesh.userData.imageSrc = imageSrc;
+      mesh.visible = true;
+    },
+    undefined,
+    (error) => {
+      console.error("Failed to load photoshape overlay image:", error);
+    }
+  );
+}
+
+export function clearFoamPhotoOverlay() {
+  const mesh = state.photoshapeOverlayMesh;
+
+  if (mesh) {
+    if (mesh.parent) mesh.parent.remove(mesh);
+    mesh.geometry?.dispose();
+    mesh.material?.dispose();
+  }
+
+  state.photoshapeOverlayMesh = null;
+
+  if (state.photoshapeOverlayTexture) {
+    state.photoshapeOverlayTexture.dispose();
+    state.photoshapeOverlayTexture = null;
+  }
+}
+
 export function init3D() {
+  clearFoamPhotoOverlay();
   if (state.renderer) {
     state.renderer.dispose();
     state.renderer.forceContextLoss();
@@ -408,6 +506,9 @@ export function init3D() {
 
   const openSelectedPanel = () => {
     if (!state.selected) return;
+    if (state.photoshapeOverlayMesh) {
+      state.photoshapeOverlayMesh.visible = false;
+    }
     showPanelFromRight(state.selected.kind + "-panel");
     updateDeleteButtons(state.selected);
     document.querySelector("#back-button").removeAttribute("disabled");

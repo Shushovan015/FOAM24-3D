@@ -11038,7 +11038,7 @@ ${nonManifold.join("\n")}`);
               );
               return null;
             }
-            let polygon2 = contour.reverse().map(([x, y]) => [x, y]).map(
+            let polygon2 = contour.slice().reverse().map(([x, y]) => [x, y]).map(
               (v) => src.maths.vec2.rotate(
                 v,
                 v,
@@ -11056,23 +11056,33 @@ ${nonManifold.join("\n")}`);
           );
           return [];
         }
-      case "polygon":
+      case "polygon": {
         if (!Array.isArray(shape.points) || shape.points.length < 3)
           return null;
-        const area2 = Math.abs(polygonArea(shape.points));
-        if (area2 < 1e-6)
+        const basePts = shape.points.map(([x, y]) => [x, y]);
+        if (Math.abs(polygonArea(basePts)) < 1e-6)
           return null;
-        let newShape = shape.free ? shape.points.slice().reverse() : shape.points;
-        let poly = newShape.map(([x, y]) => [x, y]).map(
-          (v) => src.maths.vec2.rotate(
-            v,
-            v,
-            [0, 0],
-            src.utils.degToRad(shape.rotation)
-          )
-        );
-        poly = poly.map(([x, y]) => [x + shape.x, y + shape.y]);
-        return src.geometries.geom2.fromPoints(poly);
+        const tryBuild = (pts) => {
+          let poly = pts.map(([x, y]) => [x, y]).map(
+            (v) => src.maths.vec2.rotate(
+              v,
+              v,
+              [0, 0],
+              src.utils.degToRad(shape.rotation)
+            )
+          ).map(([x, y]) => [x + shape.x, y + shape.y]);
+          return src.geometries.geom2.fromPoints(poly);
+        };
+        try {
+          return tryBuild(basePts);
+        } catch {
+          try {
+            return tryBuild(basePts.slice().reverse());
+          } catch {
+            return null;
+          }
+        }
+      }
     }
   }
   function shapeToGeom3(shape) {
@@ -11109,6 +11119,8 @@ ${nonManifold.join("\n")}`);
     }
     let geom3s = [foamGeom3];
     for (let shape of shapesArray) {
+      if ((shape == null ? void 0 : shape.source) === "photoshape" && (shape == null ? void 0 : shape._draft))
+        continue;
       let geom32 = shapeToGeom3(shape);
       if (!geom32)
         continue;
@@ -11119,4 +11131,4 @@ ${nonManifold.join("\n")}`);
     postMessage({ id, geom: result });
   };
 })();
-//# sourceMappingURL=csg-e7f20cc8.js.map
+//# sourceMappingURL=csg-d9be818d.js.map
