@@ -1,20 +1,16 @@
 import { generateId } from "../../utils/common";
 import { uploadAndDetectContours } from "../../utils/photoshapeApi";
 import {
-  getPhotoshapeDepthLabel,
   beginPhotoshapeEditSession,
   advanceToNextUnvisited,
   movePhotoshapeFlowControls,
   setPhotoshapeFlowVisibility,
   renderPhotoshapeStep,
-  simplifyPhotoshapeContourPoints,
   setPhotoshapeEditingMode,
   syncPhotoshapeDepthInputs,
   getPhotoshapeDepthPanelId,
   setPhotoshapeAuxUiVisible,
   resetPhotoshapeSessionState,
-  getPhotoshapeEditStepNote,
-  getPhotoshapeDepthStepNote,
   createPhotoshapeShapesFromContours,
   appendPhotoshapeShapes,
   getPhotoshapeStepUploadConfig,
@@ -22,7 +18,10 @@ import {
   getPhotoshapeStepReadyConfig,
   getPhotoshapeStepEditConfig,
   getPhotoshapeStepDepthConfig,
+  applyPhotoshapeFitAccuracyToShape,
+  clampPhotoshapeFitAccuracy,
 } from "../../utils/photoshapeFlow";
+
 import {
   saveCameraView,
   restoreCameraView,
@@ -30,7 +29,6 @@ import {
   resetCameraToTopView
 } from "../../setup/scene";
 import { state } from "../../setup/state";
-import { simplifyPointsForDrag } from "../../utils/threeFunctions";
 
 export const createShapePhotoShape = (
   millimeters,
@@ -69,13 +67,6 @@ export const createShapePhotoShape = (
   let photoshapeFlowActive = false;
   let photoshapeFlowReady = false;
   let photoshapeStep = 1;
-  const MAX_PHOTOSHAPE_POINTS = 150;
-
-  const simplifyPhotoshapePoints = (pts) => {
-    if (!Array.isArray(pts)) return pts;
-    if (pts.length <= 500) return pts;
-    return simplifyPhotoshapeContourPoints(pts, simplifyPointsForDrag, 500);
-  };
 
   const setPhotoshapeFlowActive = (active) => {
     photoshapeFlowActive = active;
@@ -130,44 +121,8 @@ export const createShapePhotoShape = (
       img.src = src;
     });
 
-  const clonePoints = (pts) => (Array.isArray(pts) ? pts.map(([x, y]) => [x, y]) : []);
-  const clampFit = (v) => Math.max(70, Math.min(130, Number(v) || 100));
-
   const setFitUiVisible = (visible) => {
     if (fitUI.group) fitUI.group.style.display = visible ? "flex" : "none";
-  };
-
-  const ensureShapeFitBase = (shape) => {
-    if (!shape || shape.source !== "photoshape") return;
-    if (!Array.isArray(shape._fitBasePoints) || shape._fitBasePoints.length < 3) {
-      shape._fitBasePoints = clonePoints(shape.points);
-    }
-    if (typeof shape.photoshapeFitValue !== "number") {
-      shape.photoshapeFitValue = 100;
-    }
-  };
-
-  const applyFitToShape = (shape, fitValue) => {
-    if (!shape || shape.source !== "photoshape" || !shape._draft) return;
-    ensureShapeFitBase(shape);
-
-    const v = clampFit(fitValue);
-    const scale = v / 100;
-    const base = shape._fitBasePoints;
-    if (!Array.isArray(base) || base.length < 3) return;
-
-    let cx = 0;
-    let cy = 0;
-    for (const [x, y] of base) {
-      cx += x;
-      cy += y;
-    }
-    cx /= base.length;
-    cy /= base.length;
-
-    shape.points = base.map(([x, y]) => [cx + (x - cx) * scale, cy + (y - cy) * scale]);
-    shape.photoshapeFitValue = v;
-    shape._pointsDirty = true;
   };
 
   const syncFitUiFromSelected = () => {
@@ -181,8 +136,7 @@ export const createShapePhotoShape = (
     setFitUiVisible(!!visible);
     if (!visible) return;
 
-    ensureShapeFitBase(selected);
-    const v = clampFit(selected.photoshapeFitValue);
+    const v = clampPhotoshapeFitAccuracy(selected.photoshapeFitAccuracy);
     if (fitUI.slider) fitUI.slider.value = String(v);
     if (fitUI.input) fitUI.input.value = String(v);
   };
@@ -212,22 +166,6 @@ export const createShapePhotoShape = (
     const depthPanelId = getDepthPanelId();
     showPanelFromRight(depthPanelId);
     movePhotoshapeFlowControls(depthPanelId);
-  };
-
-  const setSessionDraftState = (isDraft) => {
-    photoshapeSession.ids.forEach((id) => {
-      const shape = shapesArray.find((s) => s.id === id);
-      if (!shape) return;
-      shape._draft = isDraft;
-    });
-  };
-
-  const clearSessionOverlayRefs = () => {
-    photoshapeSession.ids.forEach((id) => {
-      const shape = shapesArray.find((s) => s.id === id);
-      if (!shape) return;
-      shape.photoshapeImageSrc = null;
-    });
   };
 
   const beginSession = () =>
@@ -298,28 +236,25 @@ export const createShapePhotoShape = (
   setPhotoshapeFlowActive(false);
   goStepUpload();
 
+  const onFitChanged = (nextValue) => {
+    const v = clampPhotoshapeFitAccuracy(nextValue);
+    if (fitUI.slider) fitUI.slider.value = String(v);
+    if (fitUI.input) fitUI.input.value = String(v);
+
+    if (!selected || selected.source !== "photoshape" || !selected._draft) return;
+    const changed = applyPhotoshapeFitAccuracyToShape(selected, v, state.foam);
+    if (!changed) return;
+
+    callback(selected);
+    doCsg();
+  };
+
   if (fitUI.slider) {
-    fitUI.slider.addEventListener("input", () => {
-      const v = clampFit(fitUI.slider.value);
-      if (fitUI.input) fitUI.input.value = String(v);
-      if (selected && selected.source === "photoshape" && selected._draft) {
-        applyFitToShape(selected, v);
-        callback(selected);
-        doCsg();
-      }
-    });
+    fitUI.slider.addEventListener("input", () => onFitChanged(fitUI.slider.value));
   }
 
   if (fitUI.input) {
-    fitUI.input.addEventListener("input", () => {
-      const v = clampFit(fitUI.input.value);
-      if (fitUI.slider) fitUI.slider.value = String(v);
-      if (selected && selected.source === "photoshape" && selected._draft) {
-        applyFitToShape(selected, v);
-        callback(selected);
-        doCsg();
-      }
-    });
+    fitUI.input.addEventListener("input", () => onFitChanged(fitUI.input.value));
   }
 
   if (stepUI.back) {
@@ -371,7 +306,6 @@ export const createShapePhotoShape = (
         }
         return;
       }
-
       if (photoshapeStep === 4) {
         const moved = moveToNext();
         if (moved) {
@@ -383,27 +317,25 @@ export const createShapePhotoShape = (
           openEditPanel();
           return;
         }
-
         setEditing(false, true);
         goStepReady();
         setPhotoshapeFlowActive(false);
         setPhotoshapeAuxUiVisible(false);
-
+        photoshapeFlowReady = false;
         removeFoamPhotoOverlay();
-
+        setFitUiVisible(false);
         shapesArray.forEach((s) => {
           if (s?.source === "photoshape") {
             s._draft = false;
             s.photoshapeImageSrc = null;
-            delete s._fitBasePoints;
-            delete s.photoshapeFitValue;
+            delete s._rawContourImage;
+            delete s._contourImageWidth;
+            delete s._contourImageHeight;
+            delete s.photoshapeFitAccuracy;
           }
         });
-        setFitUiVisible(false);
-
         doCsg();
         commit();
-
         if (selected) showPanelFromRight(selected.kind + "-panel");
       }
     });
@@ -447,7 +379,8 @@ export const createShapePhotoShape = (
     goStepProcessing();
 
     try {
-      const { contours, imageSrc } = await uploadAndDetectContours(file);
+      const { contours, imageSrc, imageWidth: apiWidth, imageHeight: apiHeight } =
+        await uploadAndDetectContours(file);
       if (!Array.isArray(contours) || !contours.length) {
         throw new Error("Contours data is empty");
       }
@@ -457,13 +390,14 @@ export const createShapePhotoShape = (
 
       applyFoamPhotoOverlay(imageSrc);
       const { width: imageWidth, height: imageHeight } =
-        await readImageDimensions(imageSrc);
+        apiWidth && apiHeight
+          ? { width: apiWidth, height: apiHeight }
+          : await readImageDimensions(imageSrc);
 
       resetPhotoshapeSessionState(photoshapeSession);
 
       const createdShapes = createPhotoshapeShapesFromContours({
         contoursData: contours,
-        simplifyPhotoshapePoints,
         generateId,
         millimeters,
         defaultCornerRadius,
@@ -471,6 +405,7 @@ export const createShapePhotoShape = (
         foam: state.foam,
         imageWidth,
         imageHeight,
+        fitAccuracy: 75,
       });
 
       if (!createdShapes.length) {

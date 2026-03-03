@@ -59,49 +59,36 @@ CORS(app, resources={r"/*": {"origins": ["http://localhost:5174", "https://fm24a
 def detect_contours():
     try:
         image_file = request.files['image']
-        img_fs = image_file.read()  # FS to readable form
-        np_ary = np.frombuffer(img_fs, np.uint8)  # binary to ary form
-        image = cv2.imdecode(np_ary, cv2.IMREAD_COLOR)  # to color readable form
+        img_fs = image_file.read()
+        np_ary = np.frombuffer(img_fs, np.uint8)
+        image = cv2.imdecode(np_ary, cv2.IMREAD_COLOR)
+        if image is None:
+            return jsonify({"error": "Invalid image"}), 400
+
         bnw = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         gus_blr = cv2.GaussianBlur(bnw, (5, 5), 0)
-        _, roi = cv2.threshold(gus_blr, 0, 255, cv2.THRESH_BINARY)  # image thresholding for segmenting
-
-        print(f"ROI shape: {roi.shape}, Non-zero pixels: {np.count_nonzero(roi)}")
+        _, roi = cv2.threshold(gus_blr, 0, 255, cv2.THRESH_BINARY)
 
         contours, _ = cv2.findContours(roi, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
 
-        print(f"Number of contours found: {len(contours)}")
+        raw_contours = []
+        for contour in contours:
+            if contour is None or len(contour) < 3:
+                continue
+            raw_contours.append(contour.reshape(-1, 2).tolist())
 
-        if contours:
-            epsilon_factor = 0.002  # Start with a very small value for high precision
-            simplified_contours = []
+        if not raw_contours:
+            return jsonify({"error": "No contours found."}), 200
 
-            for contour in contours:
-                epsilon = epsilon_factor * cv2.arcLength(contour, True)
-                approx = cv2.approxPolyDP(contour, epsilon, closed=True)
-                if approx is not None and len(approx) > 0:
-                    simplified_contours.append(approx.reshape(-1, 2).tolist())
-                else:
-                    print(f"Approximation returned empty for contour with {len(contour)} points")
-
-            for i, sc in enumerate(simplified_contours):
-                print(f"Simplified contour {i + 1} has {len(sc)} points")
-
-            simplified_image = image.copy()
-            for sc in simplified_contours:
-                cv2.drawContours(simplified_image, [np.array(sc, dtype=np.int32)], -1, (0, 255, 0), 2)
-
-            _, buffer = cv2.imencode('.png', simplified_image)  # Encode simplified image to base64
-            image_data = base64.b64encode(buffer).decode('utf-8')  # Base64 encode
-
-            return jsonify({"image_data": image_data, "contours": simplified_contours})
-
-        else:
-            return jsonify({"error": "No contours found."})
+        return jsonify({
+            "contours": raw_contours,          # keep compatibility
+            "contours_raw": raw_contours,      # explicit raw
+            "image_width": int(image.shape[1]),
+            "image_height": int(image.shape[0]),
+        })
 
     except Exception as e:
-        return jsonify({"error": str(e)})
-
+        return jsonify({"error": str(e)}), 500
 
 # if __name__ == '__main__':
 #      app.run(host='0.0.0.0', port=5000, debug=True)

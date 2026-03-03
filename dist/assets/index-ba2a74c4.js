@@ -30328,7 +30328,7 @@ let latestId = 0;
 function ensureWorker() {
   if (worker)
     return;
-  worker = new Worker(new URL("/assets/csg-d9be818d.js", self.location), {
+  worker = new Worker(new URL("/assets/csg-2a71be5e.js", self.location), {
     type: "module"
   });
   worker.onmessage = (e) => {
@@ -30336,6 +30336,15 @@ function ensureWorker() {
     if (typeof id === "number" && id < latestId)
       ;
     else {
+      if (!geom) {
+        inFlight = false;
+        if (pending) {
+          const next = pending;
+          pending = null;
+          sendToWorker(next);
+        }
+        return;
+      }
       const csgModel = state.scene.getObjectByName("csgModel");
       if (csgModel) {
         if (csgModel.material)
@@ -52202,7 +52211,12 @@ async function detectContoursFromBlob(blob) {
     throw new Error(`Failed to detect contours (${response.status})`);
   }
   const data = await response.json();
-  return (data == null ? void 0 : data.contours) || null;
+  const contours = Array.isArray(data == null ? void 0 : data.contours_raw) ? data.contours_raw : Array.isArray(data == null ? void 0 : data.contours) ? data.contours : null;
+  return {
+    contours,
+    imageWidth: Number(data == null ? void 0 : data.image_width) || null,
+    imageHeight: Number(data == null ? void 0 : data.image_height) || null
+  };
 }
 const blobToDataUrl = (blob) => new Promise((resolve, reject) => {
   const reader = new FileReader();
@@ -52212,9 +52226,12 @@ const blobToDataUrl = (blob) => new Promise((resolve, reject) => {
 });
 async function uploadAndDetectContours(file) {
   const blob = await removeBackgroundFromFile(file);
-  const contours = await detectContoursFromBlob(blob);
+  const detected = await detectContoursFromBlob(blob);
   const imageSrc = await blobToDataUrl(blob);
-  return { contours, imageSrc };
+  return {
+    ...detected,
+    imageSrc
+  };
 }
 const getPhotoshapeDepthLabel = (session) => session.index < session.order.length - 1 ? "Next Shape" : "Finish";
 const rebuildOrderAndIndex = (session, shapesArray, selected) => {
@@ -52299,11 +52316,6 @@ const renderPhotoshapeStep = (stepUI, step, options = {}) => {
     });
   }
 };
-const simplifyPhotoshapeContourPoints = (pts, simplifyFn, maxPoints = 150) => {
-  if (!Array.isArray(pts))
-    return pts;
-  return simplifyFn(pts, maxPoints);
-};
 const setPhotoshapeEditingMode = ({
   on,
   restore = false,
@@ -52387,6 +52399,87 @@ const getContourBounds = (points) => {
   }
   return { minX, minY, maxX, maxY };
 };
+const dedupeConsecutivePoints = (points) => {
+  if (!Array.isArray(points) || !points.length)
+    return [];
+  const out = [points[0]];
+  for (let i = 1; i < points.length; i++) {
+    const a = out[out.length - 1];
+    const b = points[i];
+    if (a[0] !== b[0] || a[1] !== b[1])
+      out.push(b);
+  }
+  if (out.length > 2) {
+    const first = out[0];
+    const last2 = out[out.length - 1];
+    if (first[0] === last2[0] && first[1] === last2[1])
+      out.pop();
+  }
+  return out;
+};
+const contourPerimeter = (points) => {
+  if (!Array.isArray(points) || points.length < 2)
+    return 0;
+  let p = 0;
+  for (let i = 0; i < points.length; i++) {
+    const [x1, y1] = points[i];
+    const [x2, y2] = points[(i + 1) % points.length];
+    p += Math.hypot(x2 - x1, y2 - y1);
+  }
+  return p;
+};
+const perpendicularDistance = (p, a, b) => {
+  const [px2, py2] = p;
+  const [ax, ay] = a;
+  const [bx, by] = b;
+  const dx = bx - ax;
+  const dy = by - ay;
+  if (dx === 0 && dy === 0)
+    return Math.hypot(px2 - ax, py2 - ay);
+  const t = ((px2 - ax) * dx + (py2 - ay) * dy) / (dx * dx + dy * dy);
+  const cx2 = ax + t * dx;
+  const cy2 = ay + t * dy;
+  return Math.hypot(px2 - cx2, py2 - cy2);
+};
+const rdp = (points, epsilon) => {
+  if (points.length < 3)
+    return points;
+  let maxDist = 0;
+  let index = -1;
+  const start = points[0];
+  const end = points[points.length - 1];
+  for (let i = 1; i < points.length - 1; i++) {
+    const d = perpendicularDistance(points[i], start, end);
+    if (d > maxDist) {
+      maxDist = d;
+      index = i;
+    }
+  }
+  if (maxDist <= epsilon || index === -1) {
+    return [start, end];
+  }
+  const left = rdp(points.slice(0, index + 1), epsilon);
+  const right = rdp(points.slice(index), epsilon);
+  return left.slice(0, -1).concat(right);
+};
+const clampPhotoshapeFitAccuracy = (v) => Math.max(1, Math.min(100, Number(v) || 75));
+const epsilonFactorForAccuracy = (accuracy) => {
+  const a = clampPhotoshapeFitAccuracy(accuracy);
+  const minFactor = 4e-4;
+  const maxFactor = 0.02;
+  return minFactor + (100 - a) / 99 * (maxFactor - minFactor);
+};
+const simplifyContourByAccuracy = (contour, accuracy) => {
+  const pts = dedupeConsecutivePoints(contour);
+  if (pts.length < 4)
+    return pts;
+  const perimeter = contourPerimeter(pts);
+  const eps = Math.max(0.5, perimeter * epsilonFactorForAccuracy(accuracy));
+  const closed = pts.concat([pts[0]]);
+  const simplifiedClosed = rdp(closed, eps);
+  const simplified = dedupeConsecutivePoints(simplifiedClosed);
+  return simplified.length >= 3 ? simplified : pts;
+};
 const isLikelyBackgroundContour = (points, imageWidth, imageHeight) => {
   const area2 = polygonAreaAbs(points);
   const imageArea = imageWidth * imageHeight;
@@ -52409,49 +52502,74 @@ const mapImagePointToFoamLocal = (x, y, foam, imageWidth, imageHeight) => {
   const worldY = top - y / imageHeight * foam.sizeY;
   return [worldX - foam.x, worldY - foam.y];
 };
+const mapImageContourToFoamLocalPoints = (contour, foam, imageWidth, imageHeight) => contour.map(([x, y]) => mapImagePointToFoamLocal(x, y, foam, imageWidth, imageHeight)).filter(([x, y]) => Number.isFinite(x) && Number.isFinite(y));
+const applyPhotoshapeFitAccuracyToShape = (shape, fitAccuracy, foam) => {
+  if (!shape || shape.source !== "photoshape" || !shape._draft)
+    return false;
+  if (!Array.isArray(shape._rawContourImage) || shape._rawContourImage.length < 3)
+    return false;
+  if (!shape._contourImageWidth || !shape._contourImageHeight)
+    return false;
+  const acc = clampPhotoshapeFitAccuracy(fitAccuracy);
+  const simplified = simplifyContourByAccuracy(shape._rawContourImage, acc);
+  const mapped = mapImageContourToFoamLocalPoints(
+    simplified,
+    foam,
+    shape._contourImageWidth,
+    shape._contourImageHeight
+  );
+  if (mapped.length < 3)
+    return false;
+  const b = getContourBounds(mapped);
+  shape.points = mapped;
+  shape.sizeX = Math.max(1, b.maxX - b.minX);
+  shape.sizeY = Math.max(1, b.maxY - b.minY);
+  shape.photoshapeFitAccuracy = acc;
+  shape._pointsDirty = true;
+  return true;
+};
 const createPhotoshapeShapesFromContours = ({
   contoursData,
-  simplifyPhotoshapePoints,
   generateId: generateId2,
   millimeters,
   defaultCornerRadius,
   imageSrc,
   foam,
   imageWidth,
-  imageHeight
+  imageHeight,
+  fitAccuracy = 75
 }) => {
   if (!Array.isArray(contoursData))
     return [];
   if (!foam || !imageWidth || !imageHeight)
     return [];
   const minAreaPx = Math.max(80, imageWidth * imageHeight * 6e-4);
-  const created = contoursData.map((contour) => {
-    if (!Array.isArray(contour) || contour.length < 3)
+  return contoursData.map((rawContour) => {
+    if (!Array.isArray(rawContour) || rawContour.length < 3)
       return null;
-    if (polygonAreaAbs(contour) < minAreaPx)
+    if (polygonAreaAbs(rawContour) < minAreaPx)
       return null;
-    if (isLikelyBackgroundContour(contour, imageWidth, imageHeight))
+    if (isLikelyBackgroundContour(rawContour, imageWidth, imageHeight))
       return null;
-    const simplified = simplifyPhotoshapePoints(contour);
-    if (!Array.isArray(simplified) || simplified.length < 3)
-      return null;
-    const mapped = simplified.map(([x, y]) => mapImagePointToFoamLocal(x, y, foam, imageWidth, imageHeight)).filter(([x, y]) => Number.isFinite(x) && Number.isFinite(y));
+    const acc = clampPhotoshapeFitAccuracy(fitAccuracy);
+    const simplified = simplifyContourByAccuracy(rawContour, acc);
+    const mapped = mapImageContourToFoamLocalPoints(
+      simplified,
+      foam,
+      imageWidth,
+      imageHeight
+    );
     if (mapped.length < 3)
       return null;
-    const xs = mapped.map((p) => p[0]);
-    const ys = mapped.map((p) => p[1]);
-    const minX = Math.min(...xs);
-    const maxX = Math.max(...xs);
-    const minY = Math.min(...ys);
-    const maxY = Math.max(...ys);
+    const b = getContourBounds(mapped);
     return {
       id: generateId2(),
       kind: "polygon",
       x: foam.x,
       y: foam.y,
       sizeZ: 300 * millimeters,
-      sizeX: Math.max(1, maxX - minX),
-      sizeY: Math.max(1, maxY - minY),
+      sizeX: Math.max(1, b.maxX - b.minX),
+      sizeY: Math.max(1, b.maxY - b.minY),
       points: mapped,
       rotation: 0,
       free: true,
@@ -52459,11 +52577,12 @@ const createPhotoshapeShapesFromContours = ({
       cornerRadius: defaultCornerRadius,
       photoshapeImageSrc: imageSrc || null,
       _draft: true,
-      photoshapeFitValue: 100,
-      _fitBasePoints: mapped.map(([x, y]) => [x, y])
+      photoshapeFitAccuracy: acc,
+      _rawContourImage: rawContour.map(([x, y]) => [x, y]),
+      _contourImageWidth: imageWidth,
+      _contourImageHeight: imageHeight
     };
   }).filter(Boolean);
-  return created;
 };
 const appendPhotoshapeShapes = (shapesArray, session, createdShapes) => {
   createdShapes.forEach((shape) => {
@@ -52522,13 +52641,6 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
   let photoshapeFlowActive = false;
   let photoshapeFlowReady = false;
   let photoshapeStep = 1;
-  const simplifyPhotoshapePoints = (pts) => {
-    if (!Array.isArray(pts))
-      return pts;
-    if (pts.length <= 500)
-      return pts;
-    return simplifyPhotoshapeContourPoints(pts, simplifyPointsForDrag, 500);
-  };
   const setPhotoshapeFlowActive = (active) => {
     photoshapeFlowActive = active;
     setPhotoshapeFlowVisibility(stepUI, active);
@@ -52573,50 +52685,16 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
     img.onerror = reject;
     img.src = src;
   });
-  const clonePoints = (pts) => Array.isArray(pts) ? pts.map(([x, y]) => [x, y]) : [];
-  const clampFit = (v) => Math.max(70, Math.min(130, Number(v) || 100));
   const setFitUiVisible = (visible) => {
     if (fitUI.group)
       fitUI.group.style.display = visible ? "flex" : "none";
-  };
-  const ensureShapeFitBase = (shape) => {
-    if (!shape || shape.source !== "photoshape")
-      return;
-    if (!Array.isArray(shape._fitBasePoints) || shape._fitBasePoints.length < 3) {
-      shape._fitBasePoints = clonePoints(shape.points);
-    }
-    if (typeof shape.photoshapeFitValue !== "number") {
-      shape.photoshapeFitValue = 100;
-    }
-  };
-  const applyFitToShape = (shape, fitValue) => {
-    if (!shape || shape.source !== "photoshape" || !shape._draft)
-      return;
-    ensureShapeFitBase(shape);
-    const v = clampFit(fitValue);
-    const scale2 = v / 100;
-    const base = shape._fitBasePoints;
-    if (!Array.isArray(base) || base.length < 3)
-      return;
-    let cx2 = 0;
-    let cy2 = 0;
-    for (const [x, y] of base) {
-      cx2 += x;
-      cy2 += y;
-    }
-    cx2 /= base.length;
-    cy2 /= base.length;
-    shape.points = base.map(([x, y]) => [cx2 + (x - cx2) * scale2, cy2 + (y - cy2) * scale2]);
-    shape.photoshapeFitValue = v;
-    shape._pointsDirty = true;
   };
   const syncFitUiFromSelected = () => {
     const visible = photoshapeFlowActive && photoshapeStep === 3 && selected && selected.source === "photoshape" && selected._draft;
     setFitUiVisible(!!visible);
     if (!visible)
       return;
-    ensureShapeFitBase(selected);
-    const v = clampFit(selected.photoshapeFitValue);
+    const v = clampPhotoshapeFitAccuracy(selected.photoshapeFitAccuracy);
     if (fitUI.slider)
       fitUI.slider.value = String(v);
     if (fitUI.input)
@@ -52699,29 +52777,25 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
   };
   setPhotoshapeFlowActive(false);
   goStepUpload();
+  const onFitChanged = (nextValue) => {
+    const v = clampPhotoshapeFitAccuracy(nextValue);
+    if (fitUI.slider)
+      fitUI.slider.value = String(v);
+    if (fitUI.input)
+      fitUI.input.value = String(v);
+    if (!selected || selected.source !== "photoshape" || !selected._draft)
+      return;
+    const changed = applyPhotoshapeFitAccuracyToShape(selected, v, state.foam);
+    if (!changed)
+      return;
+    callback(selected);
+    doCsg2();
+  };
   if (fitUI.slider) {
-    fitUI.slider.addEventListener("input", () => {
-      const v = clampFit(fitUI.slider.value);
-      if (fitUI.input)
-        fitUI.input.value = String(v);
-      if (selected && selected.source === "photoshape" && selected._draft) {
-        applyFitToShape(selected, v);
-        callback(selected);
-        doCsg2();
-      }
-    });
+    fitUI.slider.addEventListener("input", () => onFitChanged(fitUI.slider.value));
   }
   if (fitUI.input) {
-    fitUI.input.addEventListener("input", () => {
-      const v = clampFit(fitUI.input.value);
-      if (fitUI.slider)
-        fitUI.slider.value = String(v);
-      if (selected && selected.source === "photoshape" && selected._draft) {
-        applyFitToShape(selected, v);
-        callback(selected);
-        doCsg2();
-      }
-    });
+    fitUI.input.addEventListener("input", () => onFitChanged(fitUI.input.value));
   }
   if (stepUI.back) {
     stepUI.back.addEventListener("click", () => {
@@ -52783,16 +52857,19 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
         goStepReady();
         setPhotoshapeFlowActive(false);
         setPhotoshapeAuxUiVisible(false);
+        photoshapeFlowReady = false;
         removeFoamPhotoOverlay();
+        setFitUiVisible(false);
         shapesArray.forEach((s) => {
           if ((s == null ? void 0 : s.source) === "photoshape") {
             s._draft = false;
             s.photoshapeImageSrc = null;
-            delete s._fitBasePoints;
-            delete s.photoshapeFitValue;
+            delete s._rawContourImage;
+            delete s._contourImageWidth;
+            delete s._contourImageHeight;
+            delete s.photoshapeFitAccuracy;
           }
         });
-        setFitUiVisible(false);
         doCsg2();
         commit2();
         if (selected)
@@ -52837,7 +52914,7 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
       return;
     goStepProcessing();
     try {
-      const { contours, imageSrc } = await uploadAndDetectContours(file);
+      const { contours, imageSrc, imageWidth: apiWidth, imageHeight: apiHeight } = await uploadAndDetectContours(file);
       if (!Array.isArray(contours) || !contours.length) {
         throw new Error("Contours data is empty");
       }
@@ -52845,18 +52922,18 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
         throw new Error("Background-removed image missing");
       }
       applyFoamPhotoOverlay(imageSrc);
-      const { width: imageWidth, height: imageHeight } = await readImageDimensions(imageSrc);
+      const { width: imageWidth, height: imageHeight } = apiWidth && apiHeight ? { width: apiWidth, height: apiHeight } : await readImageDimensions(imageSrc);
       resetPhotoshapeSessionState(photoshapeSession);
       const createdShapes = createPhotoshapeShapesFromContours({
         contoursData: contours,
-        simplifyPhotoshapePoints,
         generateId,
         millimeters,
         defaultCornerRadius,
         imageSrc,
         foam: state.foam,
         imageWidth,
-        imageHeight
+        imageHeight,
+        fitAccuracy: 75
       });
       if (!createdShapes.length) {
         throw new Error("No valid contours to create shapes");
@@ -53907,4 +53984,4 @@ if (typeof window === "object") {
   initUI();
   commit();
 }
-//# sourceMappingURL=index-9abcc024.js.map
+//# sourceMappingURL=index-ba2a74c4.js.map

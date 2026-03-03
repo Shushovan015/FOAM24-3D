@@ -11111,24 +11111,33 @@ ${nonManifold.join("\n")}`);
     }
   }
   onmessage = (e) => {
-    let { id, foam, shapesArray } = e.data;
+    const { id, foam, shapesArray } = e.data;
     const foamGeom3 = shapeToGeom3(foam);
     if (!foamGeom3) {
       postMessage({ id, geom: null });
       return;
     }
-    let geom3s = [foamGeom3];
-    for (let shape of shapesArray) {
+    const cutters = [];
+    for (const shape of shapesArray) {
       if ((shape == null ? void 0 : shape.source) === "photoshape" && (shape == null ? void 0 : shape._draft))
         continue;
       let geom32 = shapeToGeom3(shape);
       if (!geom32)
         continue;
       geom32 = src.transforms.translateZ(foam.sizeZ - shape.sizeZ, geom32);
-      geom3s.push(geom32);
+      cutters.push(geom32);
     }
-    const result = src.booleans.subtract(geom3s);
-    postMessage({ id, geom: result });
+    if (cutters.length === 0) {
+      postMessage({ id, geom: foamGeom3 });
+      return;
+    }
+    try {
+      const result = src.booleans.subtract(foamGeom3, ...cutters);
+      postMessage({ id, geom: result || foamGeom3 });
+    } catch (err) {
+      console.error("CSG subtract failed:", err);
+      postMessage({ id, geom: foamGeom3 });
+    }
   };
 })();
-//# sourceMappingURL=csg-d9be818d.js.map
+//# sourceMappingURL=csg-2a71be5e.js.map
