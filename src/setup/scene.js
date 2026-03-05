@@ -506,9 +506,15 @@ export function init3D() {
 
   const openSelectedPanel = () => {
     if (!state.selected) return;
-    if (state.photoshapeOverlayMesh) {
-      state.photoshapeOverlayMesh.visible = false;
+
+    // Keep overlay visible while photoshape draft(s) exist.
+    const hasDraftPhotoshape = state.shapesArray.some(
+      (s) => s?.source === "photoshape" && s?._draft
+    );
+    if (state.photoshapeOverlayMesh && hasDraftPhotoshape) {
+      state.photoshapeOverlayMesh.visible = true;
     }
+
     showPanelFromRight(state.selected.kind + "-panel");
     updateDeleteButtons(state.selected);
     document.querySelector("#back-button").removeAttribute("disabled");

@@ -350,6 +350,7 @@ export function initUI() {
       setTimeout(waitForFoamAndInitFreehand, 100);
     }
   }
+  
   waitForFoamAndInitFreehand();
 
   depthButtonClick(

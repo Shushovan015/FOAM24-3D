@@ -19,8 +19,17 @@ function ensureWorker() {
   worker.onmessage = (e) => {
     const { id, geom } = e.data || {};
     if (typeof id === "number" && id < latestId) {
-      // stale result
     } else {
+      if (!geom) {
+        inFlight = false;
+        if (pending) {
+          const next = pending;
+          pending = null;
+          sendToWorker(next);
+        }
+        return;
+      }
+
       const csgModel = state.scene.getObjectByName("csgModel");
       if (csgModel) {
         if (csgModel.material) csgModel.material.dispose();
@@ -28,6 +37,7 @@ function ensureWorker() {
         state.scene.remove(csgModel);
       }
       const mesh = geom3ToMesh(geom);
+
       mesh.material = new FoamMaterial(
         "red",
         "#333",

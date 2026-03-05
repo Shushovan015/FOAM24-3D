@@ -176,23 +176,37 @@ function shapeToGeom3(shape) {
 }
 
 onmessage = (e) => {
-  let { id, foam, shapesArray } = e.data;
+  const { id, foam, shapesArray } = e.data;
+
   const foamGeom3 = shapeToGeom3(foam);
   if (!foamGeom3) {
     postMessage({ id, geom: null });
     return;
   }
-  let geom3s = [foamGeom3];
-  for (let shape of shapesArray) {
+
+  const cutters = [];
+  for (const shape of shapesArray) {
     if (shape?.source === "photoshape" && shape?._draft) continue;
 
     let geom3 = shapeToGeom3(shape);
     if (!geom3) continue;
     geom3 = jscad.transforms.translateZ(foam.sizeZ - shape.sizeZ, geom3);
-    geom3s.push(geom3);
+    cutters.push(geom3);
   }
-  const result = jscad.booleans.subtract(geom3s);
-  postMessage({ id, geom: result });
+
+  if (cutters.length === 0) {
+    postMessage({ id, geom: foamGeom3 });
+    return;
+  }
+
+  try {
+    const result = jscad.booleans.subtract(foamGeom3, ...cutters);
+    postMessage({ id, geom: result || foamGeom3 });
+  } catch (err) {
+    console.error("CSG subtract failed:", err);
+    postMessage({ id, geom: foamGeom3 });
+  }
 };
+
 
 export { };

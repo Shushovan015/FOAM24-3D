@@ -42,7 +42,18 @@ export async function detectContoursFromBlob(blob) {
   }
 
   const data = await response.json();
-  return data?.contours || null;
+
+  const contours = Array.isArray(data?.contours_raw)
+    ? data.contours_raw
+    : Array.isArray(data?.contours)
+      ? data.contours
+      : null;
+
+  return {
+    contours,
+    imageWidth: Number(data?.image_width) || null,
+    imageHeight: Number(data?.image_height) || null,
+  };
 }
 
 const blobToDataUrl = (blob) =>
@@ -55,7 +66,11 @@ const blobToDataUrl = (blob) =>
 
 export async function uploadAndDetectContours(file) {
   const blob = await removeBackgroundFromFile(file);
-  const contours = await detectContoursFromBlob(blob);
-  const imageSrc = await blobToDataUrl(blob); // background-removed image
-  return { contours, imageSrc };
+  const detected = await detectContoursFromBlob(blob);
+  const imageSrc = await blobToDataUrl(blob);
+
+  return {
+    ...detected,
+    imageSrc,
+  };
 }
