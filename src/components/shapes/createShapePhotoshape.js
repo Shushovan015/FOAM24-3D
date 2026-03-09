@@ -431,7 +431,6 @@ export const createShapePhotoShape = (
       showPanelFromLeft("main-panel");
     };
 
-
     const file = e.target.files?.[0];
     if (!file) return;
 
