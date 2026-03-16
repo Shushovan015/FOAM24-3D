@@ -71,8 +71,11 @@ export const createShapeFreehand = (
     }
 
     document.querySelector("#buttonContainer").onclick = () => {
-      cleanupDrawing({ restoreView: true });
-      if (!finalizedPolygons.length) return;
+      if (!finalizedPolygons.length) {
+        cleanupDrawing({ restoreView: true });
+        return;
+      }
+
       let lastShape = null;
       finalizedPolygons.forEach((pts) => {
         if (!Array.isArray(pts) || pts.length < 3) return;
@@ -81,6 +84,8 @@ export const createShapeFreehand = (
         shapesArray.push(shape);
         lastShape = shape;
       });
+
+      cleanupDrawing({ restoreView: false });
 
       if (!lastShape) return;
 
@@ -95,8 +100,7 @@ export const createShapeFreehand = (
       });
       showPanelFromRight(selected.kind + "-panel");
       doCsg();
-      callback(selected);
-
+      callback(selected, false);
     };
 
     const saveButton = document.getElementById("saveButtonContainer");

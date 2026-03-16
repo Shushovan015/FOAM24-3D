@@ -28414,6 +28414,68 @@ function isValidPolygonPoints(pts) {
   }
   return Math.abs(area2) > 1e-6;
 }
+function getPolygonSignedArea(pts) {
+  if (!Array.isArray(pts) || pts.length < 3)
+    return 0;
+  const clean = [];
+  for (const p of pts) {
+    if (!Array.isArray(p) || p.length < 2)
+      continue;
+    if (!clean.length) {
+      clean.push([p[0], p[1]]);
+      continue;
+    }
+    const last2 = clean[clean.length - 1];
+    if (last2[0] !== p[0] || last2[1] !== p[1]) {
+      clean.push([p[0], p[1]]);
+    }
+  }
+  if (clean.length > 1) {
+    const first = clean[0];
+    const last2 = clean[clean.length - 1];
+    if (first[0] === last2[0] && first[1] === last2[1]) {
+      clean.pop();
+    }
+  }
+  if (clean.length < 3)
+    return 0;
+  let area2 = 0;
+  for (let i = 0; i < clean.length; i++) {
+    const [x1, y1] = clean[i];
+    const [x2, y2] = clean[(i + 1) % clean.length];
+    area2 += x1 * y2 - x2 * y1;
+  }
+  return area2 / 2;
+}
+function ensureCounterClockwisePoints(pts) {
+  if (!Array.isArray(pts))
+    return [];
+  const clean = [];
+  for (const p of pts) {
+    if (!Array.isArray(p) || p.length < 2)
+      continue;
+    const point = [p[0], p[1]];
+    if (!clean.length) {
+      clean.push(point);
+      continue;
+    }
+    const last2 = clean[clean.length - 1];
+    if (last2[0] !== point[0] || last2[1] !== point[1]) {
+      clean.push(point);
+    }
+  }
+  if (clean.length > 1) {
+    const first = clean[0];
+    const last2 = clean[clean.length - 1];
+    if (first[0] === last2[0] && first[1] === last2[1]) {
+      clean.pop();
+    }
+  }
+  if (getPolygonSignedArea(clean) < 0) {
+    clean.reverse();
+  }
+  return clean;
+}
 function projectToScreen(vec32, camera) {
   const v = vec32.clone().project(camera);
   const x = (v.x * 0.5 + 0.5) * window.innerWidth;
@@ -28469,11 +28531,23 @@ function drawAngleArc(prev, curr, next, angleCtx, angleOverlay, camera) {
   angleCtx.restore();
 }
 function buildPreviewMesh(points, objectZ) {
-  const newPoints = points.map((p) => new Vector3(p.x, p.y, p.z));
-  const shape = new Shape(newPoints.map((p) => new Vector2(p.x, p.y)));
+  const normalizedPoints = ensureCounterClockwisePoints(
+    points.map((p) => [p.x, p.y])
+  );
+  if (normalizedPoints.length < 3)
+    return null;
+  const newPoints = normalizedPoints.map(
+    ([x, y]) => new Vector3(x, y, 0)
+  );
+  const shape = new Shape(
+    newPoints.map((p) => new Vector2(p.x, p.y))
+  );
   const extrudeSettings = { depth: 0, bevelEnabled: false };
   const geometry = new ExtrudeGeometry(shape, extrudeSettings);
-  const material = new MeshBasicMaterial({ color: 16777215, side: DoubleSide });
+  const material = new MeshBasicMaterial({
+    color: 16777215,
+    side: DoubleSide
+  });
   const mesh = new Mesh(geometry, material);
   mesh.position.z = objectZ;
   return mesh;
@@ -28487,7 +28561,7 @@ function makePolygonShape(points, millimeters) {
     sizeZ: 300 * millimeters,
     sizeX: 200 * millimeters,
     sizeY: 200 * millimeters,
-    points,
+    points: ensureCounterClockwisePoints(points),
     rotation: 0,
     free: true
   };
@@ -28684,12 +28758,14 @@ function shapeToGeom2(shape) {
       if (!Array.isArray(shape.points) || shape.points.length < 3) {
         return jscad.primitives.rectangle({ center: [cx2, cy2], size: [1, 1] });
       }
-      let pts = shape.points.map(([x, y]) => {
-        const px2 = num(x), py2 = num(y);
-        let v = [px2, py2];
-        jscad.maths.vec2.rotate(v, v, [0, 0], jscad.utils.degToRad(rot));
-        return [v[0] + cx2, v[1] + cy2];
-      });
+      let pts = ensureCounterClockwisePoints(
+        shape.points.map(([x, y]) => {
+          const px2 = num(x), py2 = num(y);
+          let v = [px2, py2];
+          jscad.maths.vec2.rotate(v, v, [0, 0], jscad.utils.degToRad(rot));
+          return [v[0] + cx2, v[1] + cy2];
+        })
+      );
       if (!isValidPolygonPoints(pts)) {
         return jscad.primitives.rectangle({ center: [cx2, cy2], size: [1, 1] });
       }
@@ -30328,7 +30404,7 @@ let latestId = 0;
 function ensureWorker() {
   if (worker)
     return;
-  worker = new Worker(new URL("/assets/csg-2a71be5e.js", self.location), {
+  worker = new Worker(new URL("/assets/csg-687cf608.js", self.location), {
     type: "module"
   });
   worker.onmessage = (e) => {
@@ -51925,9 +52001,10 @@ const createShapeFreehand = (millimeters, selected, shapesArray, commit2, showPa
       };
     }
     document.querySelector("#buttonContainer").onclick = () => {
-      cleanupDrawing({ restoreView: true });
-      if (!finalizedPolygons.length)
+      if (!finalizedPolygons.length) {
+        cleanupDrawing({ restoreView: true });
         return;
+      }
       let lastShape = null;
       finalizedPolygons.forEach((pts) => {
         if (!Array.isArray(pts) || pts.length < 3)
@@ -51937,6 +52014,7 @@ const createShapeFreehand = (millimeters, selected, shapesArray, commit2, showPa
         shapesArray.push(shape);
         lastShape = shape;
       });
+      cleanupDrawing({ restoreView: false });
       if (!lastShape)
         return;
       commit2();
@@ -51950,7 +52028,7 @@ const createShapeFreehand = (millimeters, selected, shapesArray, commit2, showPa
       });
       showPanelFromRight2(selected.kind + "-panel");
       doCsg2();
-      callback(selected);
+      callback(selected, false);
     };
     const saveButton = document.getElementById("saveButtonContainer");
     saveButton.onclick = () => {
@@ -54062,4 +54140,4 @@ if (typeof window === "object") {
   initUI();
   commit();
 }
-//# sourceMappingURL=index-93812a4c.js.map
+//# sourceMappingURL=index-e6f69114.js.map

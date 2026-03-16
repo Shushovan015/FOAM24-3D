@@ -14,8 +14,11 @@ import degToRad from "@jscad/modeling/src/utils/degToRad";
 import earcut from "earcut";
 import { isOverlapping } from "./shapeOverlapping";
 import { state } from "../setup/state";
-import { isValidPolygonPoints } from "./freehandUtils";
-import { showToast } from "./freehandUtils";
+import {
+  isValidPolygonPoints,
+  showToast,
+  ensureCounterClockwisePoints,
+} from "./freehandUtils";
 
 import {
   Vector2,
@@ -164,13 +167,15 @@ export function shapeToGeom2(shape) {
       if (!Array.isArray(shape.points) || shape.points.length < 3) {
         return jscad.primitives.rectangle({ center: [cx, cy], size: [1, 1] });
       }
-      let pts = shape.points.map(([x, y]) => {
-        const px = num(x),
-          py = num(y);
-        let v = [px, py];
-        jscad.maths.vec2.rotate(v, v, [0, 0], jscad.utils.degToRad(rot));
-        return [v[0] + cx, v[1] + cy];
-      });
+      let pts = ensureCounterClockwisePoints(
+        shape.points.map(([x, y]) => {
+          const px = num(x),
+            py = num(y);
+          let v = [px, py];
+          jscad.maths.vec2.rotate(v, v, [0, 0], jscad.utils.degToRad(rot));
+          return [v[0] + cx, v[1] + cy];
+        })
+      );
       if (!isValidPolygonPoints(pts)) {
         return jscad.primitives.rectangle({ center: [cx, cy], size: [1, 1] });
       }

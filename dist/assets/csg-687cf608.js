@@ -10993,6 +10993,33 @@ ${nonManifold.join("\n")}`);
     }
     return area2 / 2;
   }
+  function normalizePolygonPoints(points) {
+    const clean = [];
+    for (const point of points) {
+      if (!Array.isArray(point) || point.length < 2)
+        continue;
+      const [x, y] = point;
+      if (!clean.length) {
+        clean.push([x, y]);
+        continue;
+      }
+      const last = clean[clean.length - 1];
+      if (last[0] !== x || last[1] !== y) {
+        clean.push([x, y]);
+      }
+    }
+    if (clean.length > 1) {
+      const first = clean[0];
+      const last = clean[clean.length - 1];
+      if (first[0] === last[0] && first[1] === last[1]) {
+        clean.pop();
+      }
+    }
+    if (polygonArea(clean) < 0) {
+      clean.reverse();
+    }
+    return clean;
+  }
   function shapeToGeom2(shape) {
     switch (shape.kind) {
       case "circle":
@@ -11059,11 +11086,14 @@ ${nonManifold.join("\n")}`);
       case "polygon": {
         if (!Array.isArray(shape.points) || shape.points.length < 3)
           return null;
-        const basePts = shape.points.map(([x, y]) => [x, y]);
-        if (Math.abs(polygonArea(basePts)) < 1e-6)
+        const basePts = normalizePolygonPoints(
+          shape.points.map(([x, y]) => [x, y])
+        );
+        if (basePts.length < 3 || Math.abs(polygonArea(basePts)) < 1e-6) {
           return null;
-        const tryBuild = (pts) => {
-          let poly = pts.map(([x, y]) => [x, y]).map(
+        }
+        try {
+          const poly = basePts.map(([x, y]) => [x, y]).map(
             (v) => src.maths.vec2.rotate(
               v,
               v,
@@ -11072,15 +11102,8 @@ ${nonManifold.join("\n")}`);
             )
           ).map(([x, y]) => [x + shape.x, y + shape.y]);
           return src.geometries.geom2.fromPoints(poly);
-        };
-        try {
-          return tryBuild(basePts);
         } catch {
-          try {
-            return tryBuild(basePts.slice().reverse());
-          } catch {
-            return null;
-          }
+          return null;
         }
       }
     }
@@ -11140,4 +11163,4 @@ ${nonManifold.join("\n")}`);
     }
   };
 })();
-//# sourceMappingURL=csg-2a71be5e.js.map
+//# sourceMappingURL=csg-687cf608.js.map
