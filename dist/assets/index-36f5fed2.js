@@ -21553,6 +21553,7 @@ const state = {
   addPointMode: false,
   deletePointMode: false,
   _lastFrameTime: 0,
+  copySpacingMm: 10,
   photoshapeOverlayMesh: null,
   photoshapeOverlayTexture: null,
   renderer: null,
@@ -21595,7 +21596,8 @@ const state = {
   undoRedoPosition: 0,
   copyPlacementActive: false,
   copyPlacementSourceId: null,
-  copyPreviewShapes: []
+  copyPreviewShapes: [],
+  copySpacingMm: 10
 };
 function getDefaultExportFromCjs(x) {
   return x && x.__esModule && Object.prototype.hasOwnProperty.call(x, "default") ? x["default"] : x;
@@ -30612,7 +30614,6 @@ function setCameraFrontView(camera, controls, foam, units2) {
 }
 const EPS = 1e-3;
 const MIN_SIZE = 10;
-const GAP_MM = 10;
 function cleanShapeRuntimeFields(shape) {
   if (!shape)
     return;
@@ -30649,11 +30650,16 @@ function isPreviewBlockedByExistingShape(previewShape, occupiedBoxes) {
   }
   return false;
 }
-function buildCopyPreviewShapes({ sourceShape, foam, shapesArray }) {
+function buildCopyPreviewShapes({
+  sourceShape,
+  foam,
+  shapesArray,
+  gapMm = 10
+}) {
   const box = getBoundingBox(sourceShape);
   const width = Math.max(MIN_SIZE, box.maxX - box.minX);
   const height = Math.max(MIN_SIZE, box.maxY - box.minY);
-  const gap = GAP_MM * units.millimeters;
+  const gap = Math.max(0, Number(gapMm) || 0) * units.millimeters;
   const offsets = [
     [width + gap, 0],
     [-(width + gap), 0],
@@ -30680,6 +30686,29 @@ function buildCopyPreviewShapes({ sourceShape, foam, shapesArray }) {
     previews.push(preview);
   }
   return previews;
+}
+function getMaxCopySpacingMm({ sourceShape, foam }) {
+  if (!sourceShape || !foam)
+    return 0;
+  const box = getBoundingBox(sourceShape);
+  const width = Math.max(MIN_SIZE, box.maxX - box.minX);
+  const height = Math.max(MIN_SIZE, box.maxY - box.minY);
+  const foamLeft = foam.x - foam.sizeX / 2;
+  const foamRight = foam.x + foam.sizeX / 2;
+  const foamBottom = foam.y - foam.sizeY / 2;
+  const foamTop = foam.y + foam.sizeY / 2;
+  const maxGapRight = foamRight - box.maxX - width;
+  const maxGapLeft = box.minX - foamLeft - width;
+  const maxGapTop = foamTop - box.maxY - height;
+  const maxGapBottom = box.minY - foamBottom - height;
+  const maxGap = Math.max(
+    0,
+    maxGapRight,
+    maxGapLeft,
+    maxGapTop,
+    maxGapBottom
+  );
+  return Math.floor(maxGap / units.millimeters);
 }
 function getCopyPreviewUnderMouse({
   copyPlacementActive,
@@ -31020,17 +31049,31 @@ function beginCopyPlacement() {
 function activateCopyPlacementForSource(sourceShape) {
   if (!sourceShape || !sourceShape.id)
     return false;
-  const previews = buildCopyPreviewShapes({
-    sourceShape,
-    foam: state.foam,
-    shapesArray: state.shapesArray
-  });
-  if (!previews.length)
-    return false;
   state.copyPlacementActive = true;
   state.copyPlacementSourceId = sourceShape.id;
-  state.copyPreviewShapes = previews;
+  state.copyPreviewShapes = buildCopyPreviewShapes({
+    sourceShape,
+    foam: state.foam,
+    shapesArray: state.shapesArray,
+    gapMm: state.copySpacingMm
+  });
   return true;
+}
+function updateCopyPlacementSpacing(spacingMm) {
+  const nextSpacing = Math.max(0, Number(spacingMm) || 0);
+  state.copySpacingMm = nextSpacing;
+  if (!state.copyPlacementActive)
+    return;
+  const sourceShape = resolveCopySourceShape({
+    selected: state.selected,
+    copyPlacementSourceId: state.copyPlacementSourceId,
+    shapesArray: state.shapesArray
+  });
+  if (!sourceShape) {
+    cancelCopyPlacement();
+    return;
+  }
+  activateCopyPlacementForSource(sourceShape);
 }
 function copyPreviewUnderMouse() {
   return getCopyPreviewUnderMouse({
@@ -31595,7 +31638,7 @@ function onFrame() {
       state.ctx.setLineDash([]);
     }
   }
-  if (state.copyPlacementActive && (!state.selected || state.selected.id !== state.copyPlacementSourceId || !state.copyPreviewShapes.length)) {
+  if (state.copyPlacementActive && (!state.selected || state.selected.id !== state.copyPlacementSourceId)) {
     cancelCopyPlacement();
   }
   if (state.copyPlacementActive && state.copyPreviewShapes.length) {
@@ -53303,6 +53346,47 @@ function initUI() {
     "polygon-copy-button",
     "photoshape-copy-button"
   ];
+  const copySpacingSlider = document.getElementById("copy-spacing-slider");
+  const copySpacingInput = document.getElementById("copy-spacing-input");
+  const copySpacingValue = document.getElementById("copy-spacing-value");
+  const syncCopySpacingUi = (value) => {
+    const spacing = Math.max(0, Number(value) || 0);
+    if (copySpacingSlider)
+      copySpacingSlider.value = spacing;
+    if (copySpacingInput)
+      copySpacingInput.value = spacing;
+    if (copySpacingValue)
+      copySpacingValue.textContent = `${spacing} mm`;
+  };
+  const updateCopySpacingMax = () => {
+    const maxSpacing = state.selected ? getMaxCopySpacingMm({
+      sourceShape: state.selected,
+      foam: state.foam
+    }) : 0;
+    if (copySpacingSlider)
+      copySpacingSlider.max = maxSpacing;
+    if (copySpacingInput)
+      copySpacingInput.max = maxSpacing;
+    const nextSpacing = Math.min(state.copySpacingMm, maxSpacing);
+    updateCopyPlacementSpacing(nextSpacing);
+    syncCopySpacingUi(nextSpacing);
+  };
+  const applyCopySpacing = (value) => {
+    const maxSpacing = Number((copySpacingSlider == null ? void 0 : copySpacingSlider.max) || (copySpacingInput == null ? void 0 : copySpacingInput.max) || 200);
+    const spacing = Math.min(maxSpacing, Math.max(0, Number(value) || 0));
+    updateCopyPlacementSpacing(spacing);
+    syncCopySpacingUi(spacing);
+  };
+  updateCopySpacingMax();
+  syncCopySpacingUi(state.copySpacingMm);
+  if (copySpacingSlider && copySpacingInput) {
+    copySpacingSlider.oninput = (e) => {
+      applyCopySpacing(e.target.value);
+    };
+    copySpacingInput.oninput = (e) => {
+      applyCopySpacing(e.target.value);
+    };
+  }
   copyButtonIds.forEach((id) => {
     const btn = document.getElementById(id);
     if (!btn)
@@ -53310,6 +53394,23 @@ function initUI() {
     btn.onclick = () => {
       if (btn.hasAttribute("disabled"))
         return;
+      if (!state.selected)
+        return;
+      updateCopySpacingMax();
+      syncCopySpacingUi(state.copySpacingMm);
+      const sourcePanelId = `${state.selected.kind}-panel`;
+      const backButton2 = document.querySelector("#back-button");
+      backButton2.removeAttribute("disabled");
+      backButton2.onclick = () => {
+        showPanelFromLeft(sourcePanelId);
+        backButton2.removeAttribute("disabled");
+        backButton2.onclick = () => {
+          backButton2.setAttribute("disabled", "");
+          showPanelFromLeft("main-panel");
+          state.selected = null;
+        };
+      };
+      showPanelFromRight("copy-spacing-panel");
       beginCopyPlacement();
     };
   });
@@ -54140,4 +54241,4 @@ if (typeof window === "object") {
   initUI();
   commit();
 }
-//# sourceMappingURL=index-e6f69114.js.map
+//# sourceMappingURL=index-36f5fed2.js.map

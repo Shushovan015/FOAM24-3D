@@ -200,6 +200,22 @@
           <input id="polygon-rotate-input" class="column" style="width:auto;" type="number" min="0" max="360" value="0">
         </div>
       </div>
+      <div class="panel" id="copy-spacing-panel">
+        <div id="copy-spacing-card" class="copy-spacing-card">
+          <div class="copy-spacing-card__header">
+            <label for="copy-spacing-slider" class="copy-spacing-card__title">Copy Spacing</label>
+            <span id="copy-spacing-value" class="copy-spacing-card__value">10 mm</span>
+          </div>
+          <p class="copy-spacing-card__help">
+            Set the gap between each copied shape, then click one of the blue outlines to place the next copy.
+          </p>
+          <div class="group copy-spacing-card__inputs">
+            <input id="copy-spacing-slider" class="column grow" type="range" min="0" max="200" step="1" value="10">
+            <input id="copy-spacing-input" class="column copy-spacing-card__number" type="number" min="0" max="200"
+              step="1" value="10">
+          </div>
+        </div>
+      </div>
       <div class="panel" id="upload-photo-panel">
         <input id="upload-photo-input" type="file">
         <img id="upload-photo-img" style="display:none;" alt="">
