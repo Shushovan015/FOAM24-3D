@@ -4,7 +4,6 @@ import { pointInsidePolygon, structuredClone } from "./common";
 
 const EPS = 0.001;
 const MIN_SIZE = 10;
-const GAP_MM = 10;
 
 export function cleanShapeRuntimeFields(shape) {
     if (!shape) return;
@@ -62,11 +61,16 @@ function isPreviewBlockedByExistingShape(previewShape, occupiedBoxes) {
     return false;
 }
 
-export function buildCopyPreviewShapes({ sourceShape, foam, shapesArray }) {
+export function buildCopyPreviewShapes({
+    sourceShape,
+    foam,
+    shapesArray,
+    gapMm = 10,
+}) {
     const box = getBoundingBox(sourceShape);
     const width = Math.max(MIN_SIZE, box.maxX - box.minX);
     const height = Math.max(MIN_SIZE, box.maxY - box.minY);
-    const gap = GAP_MM * units.millimeters;
+    const gap = Math.max(0, Number(gapMm) || 0) * units.millimeters;
 
     const offsets = [
         [width + gap, 0],
@@ -101,6 +105,34 @@ export function buildCopyPreviewShapes({ sourceShape, foam, shapesArray }) {
     }
 
     return previews;
+}
+
+export function getMaxCopySpacingMm({ sourceShape, foam }) {
+    if (!sourceShape || !foam) return 0;
+
+    const box = getBoundingBox(sourceShape);
+    const width = Math.max(MIN_SIZE, box.maxX - box.minX);
+    const height = Math.max(MIN_SIZE, box.maxY - box.minY);
+
+    const foamLeft = foam.x - foam.sizeX / 2;
+    const foamRight = foam.x + foam.sizeX / 2;
+    const foamBottom = foam.y - foam.sizeY / 2;
+    const foamTop = foam.y + foam.sizeY / 2;
+
+    const maxGapRight = foamRight - box.maxX - width;
+    const maxGapLeft = box.minX - foamLeft - width;
+    const maxGapTop = foamTop - box.maxY - height;
+    const maxGapBottom = box.minY - foamBottom - height;
+
+    const maxGap = Math.max(
+        0,
+        maxGapRight,
+        maxGapLeft,
+        maxGapTop,
+        maxGapBottom
+    );
+
+    return Math.floor(maxGap / units.millimeters);
 }
 
 export function getCopyPreviewUnderMouse({

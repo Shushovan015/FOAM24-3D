@@ -29,6 +29,7 @@ import {
   restoreCameraView,
   beginCopyPlacement,
   cancelCopyPlacement,
+  updateCopyPlacementSpacing,
   setFoamPhotoOverlay,
   clearFoamPhotoOverlay
 } from "./scene";
@@ -40,6 +41,7 @@ import {
   removeShapeFromLibrary,
   cloneShapeForInsert
 } from "../utils/shapeLibrary";
+import { getMaxCopySpacingMm } from "../utils/copyPlacementUtils";
 
 export function initUI() {
   initPanels();
@@ -78,11 +80,78 @@ export function initUI() {
     "photoshape-copy-button",
   ];
 
+  const copySpacingSlider = document.getElementById("copy-spacing-slider");
+  const copySpacingInput = document.getElementById("copy-spacing-input");
+  const copySpacingValue = document.getElementById("copy-spacing-value");
+
+  const syncCopySpacingUi = (value) => {
+    const spacing = Math.max(0, Number(value) || 0);
+    if (copySpacingSlider) copySpacingSlider.value = spacing;
+    if (copySpacingInput) copySpacingInput.value = spacing;
+    if (copySpacingValue) copySpacingValue.textContent = `${spacing} mm`;
+  };
+
+  const updateCopySpacingMax = () => {
+    const maxSpacing = state.selected
+      ? getMaxCopySpacingMm({
+        sourceShape: state.selected,
+        foam: state.foam,
+      })
+      : 0;
+
+    if (copySpacingSlider) copySpacingSlider.max = maxSpacing;
+    if (copySpacingInput) copySpacingInput.max = maxSpacing;
+
+    const nextSpacing = Math.min(state.copySpacingMm, maxSpacing);
+    updateCopyPlacementSpacing(nextSpacing);
+    syncCopySpacingUi(nextSpacing);
+  };
+
+  const applyCopySpacing = (value) => {
+    const maxSpacing = Number(copySpacingSlider?.max || copySpacingInput?.max || 200);
+    const spacing = Math.min(maxSpacing, Math.max(0, Number(value) || 0));
+    updateCopyPlacementSpacing(spacing);
+    syncCopySpacingUi(spacing);
+  };
+
+  updateCopySpacingMax();
+  syncCopySpacingUi(state.copySpacingMm);
+
+  if (copySpacingSlider && copySpacingInput) {
+    copySpacingSlider.oninput = (e) => {
+      applyCopySpacing(e.target.value);
+    };
+
+    copySpacingInput.oninput = (e) => {
+      applyCopySpacing(e.target.value);
+    };
+  }
+
   copyButtonIds.forEach((id) => {
     const btn = document.getElementById(id);
     if (!btn) return;
     btn.onclick = () => {
       if (btn.hasAttribute("disabled")) return;
+      if (!state.selected) return;
+
+      updateCopySpacingMax();
+      syncCopySpacingUi(state.copySpacingMm);
+
+      const sourcePanelId = `${state.selected.kind}-panel`;
+      const backButton = document.querySelector("#back-button");
+
+      backButton.removeAttribute("disabled");
+      backButton.onclick = () => {
+        showPanelFromLeft(sourcePanelId);
+        backButton.removeAttribute("disabled");
+        backButton.onclick = () => {
+          backButton.setAttribute("disabled", "");
+          showPanelFromLeft("main-panel");
+          state.selected = null;
+        };
+      };
+
+      showPanelFromRight("copy-spacing-panel");
       beginCopyPlacement();
     };
   });
@@ -350,7 +419,7 @@ export function initUI() {
       setTimeout(waitForFoamAndInitFreehand, 100);
     }
   }
-  
+
   waitForFoamAndInitFreehand();
 
   depthButtonClick(

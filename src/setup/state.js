@@ -18,6 +18,7 @@ export const state = {
   addPointMode: false,
   deletePointMode: false,
   _lastFrameTime: 0,
+  copySpacingMm: 10,
 
   photoshapeOverlayMesh: null,
   photoshapeOverlayTexture: null,
@@ -68,4 +69,5 @@ export const state = {
   copyPlacementActive: false,
   copyPlacementSourceId: null,
   copyPreviewShapes: [],
+  copySpacingMm: 10,
 };

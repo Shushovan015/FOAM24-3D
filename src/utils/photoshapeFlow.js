@@ -68,12 +68,10 @@ export const advanceToNextUnvisited = (
   callback,
   showPanelFromRight
 ) => {
-  // Keep existing traversal order, but remove deleted/missing shapes.
   const existingIds = new Set(shapesArray.map((s) => s?.id).filter(Boolean));
   session.order = session.order.filter((id) => existingIds.has(id));
   if (!session.order.length) return false;
 
-  // Sync pointer to currently selected shape when possible.
   if (selected?.id) {
     const idx = session.order.indexOf(selected.id);
     if (idx !== -1) session.index = idx;

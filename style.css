@@ -504,3 +504,57 @@ body {
 #photoshape-fit-slider {
   accent-color: #2f6feb;
 }
+
+.copy-spacing-card {
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid #d8e4f0;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #f8fbff 0%, #edf5ff 100%);
+  box-shadow: 0 2px 8px rgba(17, 24, 39, 0.08);
+}
+
+.copy-spacing-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.copy-spacing-card__title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1f3a5a;
+  letter-spacing: 0.2px;
+}
+
+.copy-spacing-card__value {
+  font-size: 12px;
+  font-weight: 700;
+  color: #0b4a8a;
+  background: #d9ebff;
+  border: 1px solid #bfdcff;
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.copy-spacing-card__help {
+  margin: 0 0 8px 0;
+  font-size: 12px;
+  line-height: 1.35;
+  color: #2c3f57;
+}
+
+.copy-spacing-card__inputs {
+  width: 100%;
+  align-items: center;
+  gap: 8px;
+}
+
+.copy-spacing-card__number {
+  width: 72px !important;
+}
+
+#copy-spacing-slider {
+  accent-color: #2f6feb;
+}

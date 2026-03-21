@@ -181,18 +181,35 @@ export function beginCopyPlacement() {
 function activateCopyPlacementForSource(sourceShape) {
   if (!sourceShape || !sourceShape.id) return false;
 
-  const previews = buildCopyPreviewShapes({
+  state.copyPlacementActive = true;
+  state.copyPlacementSourceId = sourceShape.id;
+  state.copyPreviewShapes = buildCopyPreviewShapes({
     sourceShape,
     foam: state.foam,
     shapesArray: state.shapesArray,
+    gapMm: state.copySpacingMm,
+  });
+  return true;
+}
+
+export function updateCopyPlacementSpacing(spacingMm) {
+  const nextSpacing = Math.max(0, Number(spacingMm) || 0);
+  state.copySpacingMm = nextSpacing;
+
+  if (!state.copyPlacementActive) return;
+
+  const sourceShape = resolveCopySourceShape({
+    selected: state.selected,
+    copyPlacementSourceId: state.copyPlacementSourceId,
+    shapesArray: state.shapesArray,
   });
 
-  if (!previews.length) return false;
+  if (!sourceShape) {
+    cancelCopyPlacement();
+    return;
+  }
 
-  state.copyPlacementActive = true;
-  state.copyPlacementSourceId = sourceShape.id;
-  state.copyPreviewShapes = previews;
-  return true;
+  activateCopyPlacementForSource(sourceShape);
 }
 
 function copyPreviewUnderMouse() {
@@ -834,9 +851,7 @@ export function onFrame() {
 
   if (
     state.copyPlacementActive &&
-    (!state.selected ||
-      state.selected.id !== state.copyPlacementSourceId ||
-      !state.copyPreviewShapes.length)
+    (!state.selected || state.selected.id !== state.copyPlacementSourceId)
   ) {
     cancelCopyPlacement();
   }

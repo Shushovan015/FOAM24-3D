@@ -21553,6 +21553,7 @@ const state = {
   addPointMode: false,
   deletePointMode: false,
   _lastFrameTime: 0,
+  copySpacingMm: 10,
   photoshapeOverlayMesh: null,
   photoshapeOverlayTexture: null,
   renderer: null,
@@ -21595,7 +21596,8 @@ const state = {
   undoRedoPosition: 0,
   copyPlacementActive: false,
   copyPlacementSourceId: null,
-  copyPreviewShapes: []
+  copyPreviewShapes: [],
+  copySpacingMm: 10
 };
 function getDefaultExportFromCjs(x) {
   return x && x.__esModule && Object.prototype.hasOwnProperty.call(x, "default") ? x["default"] : x;
@@ -28414,6 +28416,68 @@ function isValidPolygonPoints(pts) {
   }
   return Math.abs(area2) > 1e-6;
 }
+function getPolygonSignedArea(pts) {
+  if (!Array.isArray(pts) || pts.length < 3)
+    return 0;
+  const clean = [];
+  for (const p of pts) {
+    if (!Array.isArray(p) || p.length < 2)
+      continue;
+    if (!clean.length) {
+      clean.push([p[0], p[1]]);
+      continue;
+    }
+    const last2 = clean[clean.length - 1];
+    if (last2[0] !== p[0] || last2[1] !== p[1]) {
+      clean.push([p[0], p[1]]);
+    }
+  }
+  if (clean.length > 1) {
+    const first = clean[0];
+    const last2 = clean[clean.length - 1];
+    if (first[0] === last2[0] && first[1] === last2[1]) {
+      clean.pop();
+    }
+  }
+  if (clean.length < 3)
+    return 0;
+  let area2 = 0;
+  for (let i = 0; i < clean.length; i++) {
+    const [x1, y1] = clean[i];
+    const [x2, y2] = clean[(i + 1) % clean.length];
+    area2 += x1 * y2 - x2 * y1;
+  }
+  return area2 / 2;
+}
+function ensureCounterClockwisePoints(pts) {
+  if (!Array.isArray(pts))
+    return [];
+  const clean = [];
+  for (const p of pts) {
+    if (!Array.isArray(p) || p.length < 2)
+      continue;
+    const point = [p[0], p[1]];
+    if (!clean.length) {
+      clean.push(point);
+      continue;
+    }
+    const last2 = clean[clean.length - 1];
+    if (last2[0] !== point[0] || last2[1] !== point[1]) {
+      clean.push(point);
+    }
+  }
+  if (clean.length > 1) {
+    const first = clean[0];
+    const last2 = clean[clean.length - 1];
+    if (first[0] === last2[0] && first[1] === last2[1]) {
+      clean.pop();
+    }
+  }
+  if (getPolygonSignedArea(clean) < 0) {
+    clean.reverse();
+  }
+  return clean;
+}
 function projectToScreen(vec32, camera) {
   const v = vec32.clone().project(camera);
   const x = (v.x * 0.5 + 0.5) * window.innerWidth;
@@ -28469,11 +28533,23 @@ function drawAngleArc(prev, curr, next, angleCtx, angleOverlay, camera) {
   angleCtx.restore();
 }
 function buildPreviewMesh(points, objectZ) {
-  const newPoints = points.map((p) => new Vector3(p.x, p.y, p.z));
-  const shape = new Shape(newPoints.map((p) => new Vector2(p.x, p.y)));
+  const normalizedPoints = ensureCounterClockwisePoints(
+    points.map((p) => [p.x, p.y])
+  );
+  if (normalizedPoints.length < 3)
+    return null;
+  const newPoints = normalizedPoints.map(
+    ([x, y]) => new Vector3(x, y, 0)
+  );
+  const shape = new Shape(
+    newPoints.map((p) => new Vector2(p.x, p.y))
+  );
   const extrudeSettings = { depth: 0, bevelEnabled: false };
   const geometry = new ExtrudeGeometry(shape, extrudeSettings);
-  const material = new MeshBasicMaterial({ color: 16777215, side: DoubleSide });
+  const material = new MeshBasicMaterial({
+    color: 16777215,
+    side: DoubleSide
+  });
   const mesh = new Mesh(geometry, material);
   mesh.position.z = objectZ;
   return mesh;
@@ -28487,7 +28563,7 @@ function makePolygonShape(points, millimeters) {
     sizeZ: 300 * millimeters,
     sizeX: 200 * millimeters,
     sizeY: 200 * millimeters,
-    points,
+    points: ensureCounterClockwisePoints(points),
     rotation: 0,
     free: true
   };
@@ -28684,12 +28760,14 @@ function shapeToGeom2(shape) {
       if (!Array.isArray(shape.points) || shape.points.length < 3) {
         return jscad.primitives.rectangle({ center: [cx2, cy2], size: [1, 1] });
       }
-      let pts = shape.points.map(([x, y]) => {
-        const px2 = num(x), py2 = num(y);
-        let v = [px2, py2];
-        jscad.maths.vec2.rotate(v, v, [0, 0], jscad.utils.degToRad(rot));
-        return [v[0] + cx2, v[1] + cy2];
-      });
+      let pts = ensureCounterClockwisePoints(
+        shape.points.map(([x, y]) => {
+          const px2 = num(x), py2 = num(y);
+          let v = [px2, py2];
+          jscad.maths.vec2.rotate(v, v, [0, 0], jscad.utils.degToRad(rot));
+          return [v[0] + cx2, v[1] + cy2];
+        })
+      );
       if (!isValidPolygonPoints(pts)) {
         return jscad.primitives.rectangle({ center: [cx2, cy2], size: [1, 1] });
       }
@@ -30328,7 +30406,7 @@ let latestId = 0;
 function ensureWorker() {
   if (worker)
     return;
-  worker = new Worker(new URL("/assets/csg-2a71be5e.js", self.location), {
+  worker = new Worker(new URL("/assets/csg-687cf608.js", self.location), {
     type: "module"
   });
   worker.onmessage = (e) => {
@@ -30536,7 +30614,6 @@ function setCameraFrontView(camera, controls, foam, units2) {
 }
 const EPS = 1e-3;
 const MIN_SIZE = 10;
-const GAP_MM = 10;
 function cleanShapeRuntimeFields(shape) {
   if (!shape)
     return;
@@ -30573,11 +30650,16 @@ function isPreviewBlockedByExistingShape(previewShape, occupiedBoxes) {
   }
   return false;
 }
-function buildCopyPreviewShapes({ sourceShape, foam, shapesArray }) {
+function buildCopyPreviewShapes({
+  sourceShape,
+  foam,
+  shapesArray,
+  gapMm = 10
+}) {
   const box = getBoundingBox(sourceShape);
   const width = Math.max(MIN_SIZE, box.maxX - box.minX);
   const height = Math.max(MIN_SIZE, box.maxY - box.minY);
-  const gap = GAP_MM * units.millimeters;
+  const gap = Math.max(0, Number(gapMm) || 0) * units.millimeters;
   const offsets = [
     [width + gap, 0],
     [-(width + gap), 0],
@@ -30604,6 +30686,29 @@ function buildCopyPreviewShapes({ sourceShape, foam, shapesArray }) {
     previews.push(preview);
   }
   return previews;
+}
+function getMaxCopySpacingMm({ sourceShape, foam }) {
+  if (!sourceShape || !foam)
+    return 0;
+  const box = getBoundingBox(sourceShape);
+  const width = Math.max(MIN_SIZE, box.maxX - box.minX);
+  const height = Math.max(MIN_SIZE, box.maxY - box.minY);
+  const foamLeft = foam.x - foam.sizeX / 2;
+  const foamRight = foam.x + foam.sizeX / 2;
+  const foamBottom = foam.y - foam.sizeY / 2;
+  const foamTop = foam.y + foam.sizeY / 2;
+  const maxGapRight = foamRight - box.maxX - width;
+  const maxGapLeft = box.minX - foamLeft - width;
+  const maxGapTop = foamTop - box.maxY - height;
+  const maxGapBottom = box.minY - foamBottom - height;
+  const maxGap = Math.max(
+    0,
+    maxGapRight,
+    maxGapLeft,
+    maxGapTop,
+    maxGapBottom
+  );
+  return Math.floor(maxGap / units.millimeters);
 }
 function getCopyPreviewUnderMouse({
   copyPlacementActive,
@@ -30944,17 +31049,31 @@ function beginCopyPlacement() {
 function activateCopyPlacementForSource(sourceShape) {
   if (!sourceShape || !sourceShape.id)
     return false;
-  const previews = buildCopyPreviewShapes({
-    sourceShape,
-    foam: state.foam,
-    shapesArray: state.shapesArray
-  });
-  if (!previews.length)
-    return false;
   state.copyPlacementActive = true;
   state.copyPlacementSourceId = sourceShape.id;
-  state.copyPreviewShapes = previews;
+  state.copyPreviewShapes = buildCopyPreviewShapes({
+    sourceShape,
+    foam: state.foam,
+    shapesArray: state.shapesArray,
+    gapMm: state.copySpacingMm
+  });
   return true;
+}
+function updateCopyPlacementSpacing(spacingMm) {
+  const nextSpacing = Math.max(0, Number(spacingMm) || 0);
+  state.copySpacingMm = nextSpacing;
+  if (!state.copyPlacementActive)
+    return;
+  const sourceShape = resolveCopySourceShape({
+    selected: state.selected,
+    copyPlacementSourceId: state.copyPlacementSourceId,
+    shapesArray: state.shapesArray
+  });
+  if (!sourceShape) {
+    cancelCopyPlacement();
+    return;
+  }
+  activateCopyPlacementForSource(sourceShape);
 }
 function copyPreviewUnderMouse() {
   return getCopyPreviewUnderMouse({
@@ -31519,7 +31638,7 @@ function onFrame() {
       state.ctx.setLineDash([]);
     }
   }
-  if (state.copyPlacementActive && (!state.selected || state.selected.id !== state.copyPlacementSourceId || !state.copyPreviewShapes.length)) {
+  if (state.copyPlacementActive && (!state.selected || state.selected.id !== state.copyPlacementSourceId)) {
     cancelCopyPlacement();
   }
   if (state.copyPlacementActive && state.copyPreviewShapes.length) {
@@ -51925,9 +52044,10 @@ const createShapeFreehand = (millimeters, selected, shapesArray, commit2, showPa
       };
     }
     document.querySelector("#buttonContainer").onclick = () => {
-      cleanupDrawing({ restoreView: true });
-      if (!finalizedPolygons.length)
+      if (!finalizedPolygons.length) {
+        cleanupDrawing({ restoreView: true });
         return;
+      }
       let lastShape = null;
       finalizedPolygons.forEach((pts) => {
         if (!Array.isArray(pts) || pts.length < 3)
@@ -51937,6 +52057,7 @@ const createShapeFreehand = (millimeters, selected, shapesArray, commit2, showPa
         shapesArray.push(shape);
         lastShape = shape;
       });
+      cleanupDrawing({ restoreView: false });
       if (!lastShape)
         return;
       commit2();
@@ -51950,7 +52071,7 @@ const createShapeFreehand = (millimeters, selected, shapesArray, commit2, showPa
       });
       showPanelFromRight2(selected.kind + "-panel");
       doCsg2();
-      callback(selected);
+      callback(selected, false);
     };
     const saveButton = document.getElementById("saveButtonContainer");
     saveButton.onclick = () => {
@@ -53225,6 +53346,47 @@ function initUI() {
     "polygon-copy-button",
     "photoshape-copy-button"
   ];
+  const copySpacingSlider = document.getElementById("copy-spacing-slider");
+  const copySpacingInput = document.getElementById("copy-spacing-input");
+  const copySpacingValue = document.getElementById("copy-spacing-value");
+  const syncCopySpacingUi = (value) => {
+    const spacing = Math.max(0, Number(value) || 0);
+    if (copySpacingSlider)
+      copySpacingSlider.value = spacing;
+    if (copySpacingInput)
+      copySpacingInput.value = spacing;
+    if (copySpacingValue)
+      copySpacingValue.textContent = `${spacing} mm`;
+  };
+  const updateCopySpacingMax = () => {
+    const maxSpacing = state.selected ? getMaxCopySpacingMm({
+      sourceShape: state.selected,
+      foam: state.foam
+    }) : 0;
+    if (copySpacingSlider)
+      copySpacingSlider.max = maxSpacing;
+    if (copySpacingInput)
+      copySpacingInput.max = maxSpacing;
+    const nextSpacing = Math.min(state.copySpacingMm, maxSpacing);
+    updateCopyPlacementSpacing(nextSpacing);
+    syncCopySpacingUi(nextSpacing);
+  };
+  const applyCopySpacing = (value) => {
+    const maxSpacing = Number((copySpacingSlider == null ? void 0 : copySpacingSlider.max) || (copySpacingInput == null ? void 0 : copySpacingInput.max) || 200);
+    const spacing = Math.min(maxSpacing, Math.max(0, Number(value) || 0));
+    updateCopyPlacementSpacing(spacing);
+    syncCopySpacingUi(spacing);
+  };
+  updateCopySpacingMax();
+  syncCopySpacingUi(state.copySpacingMm);
+  if (copySpacingSlider && copySpacingInput) {
+    copySpacingSlider.oninput = (e) => {
+      applyCopySpacing(e.target.value);
+    };
+    copySpacingInput.oninput = (e) => {
+      applyCopySpacing(e.target.value);
+    };
+  }
   copyButtonIds.forEach((id) => {
     const btn = document.getElementById(id);
     if (!btn)
@@ -53232,6 +53394,23 @@ function initUI() {
     btn.onclick = () => {
       if (btn.hasAttribute("disabled"))
         return;
+      if (!state.selected)
+        return;
+      updateCopySpacingMax();
+      syncCopySpacingUi(state.copySpacingMm);
+      const sourcePanelId = `${state.selected.kind}-panel`;
+      const backButton2 = document.querySelector("#back-button");
+      backButton2.removeAttribute("disabled");
+      backButton2.onclick = () => {
+        showPanelFromLeft(sourcePanelId);
+        backButton2.removeAttribute("disabled");
+        backButton2.onclick = () => {
+          backButton2.setAttribute("disabled", "");
+          showPanelFromLeft("main-panel");
+          state.selected = null;
+        };
+      };
+      showPanelFromRight("copy-spacing-panel");
       beginCopyPlacement();
     };
   });
@@ -54062,4 +54241,4 @@ if (typeof window === "object") {
   initUI();
   commit();
 }
-//# sourceMappingURL=index-93812a4c.js.map
+//# sourceMappingURL=index-36f5fed2.js.map

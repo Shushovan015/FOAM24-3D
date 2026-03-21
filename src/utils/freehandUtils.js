@@ -22,6 +22,78 @@ export function isValidPolygonPoints(pts) {
     return Math.abs(area) > 1e-6;
 }
 
+export function getPolygonSignedArea(pts) {
+    if (!Array.isArray(pts) || pts.length < 3) return 0;
+
+    const clean = [];
+    for (const p of pts) {
+        if (!Array.isArray(p) || p.length < 2) continue;
+
+        if (!clean.length) {
+            clean.push([p[0], p[1]]);
+            continue;
+        }
+
+        const last = clean[clean.length - 1];
+        if (last[0] !== p[0] || last[1] !== p[1]) {
+            clean.push([p[0], p[1]]);
+        }
+    }
+
+    if (clean.length > 1) {
+        const first = clean[0];
+        const last = clean[clean.length - 1];
+        if (first[0] === last[0] && first[1] === last[1]) {
+            clean.pop();
+        }
+    }
+
+    if (clean.length < 3) return 0;
+
+    let area = 0;
+    for (let i = 0; i < clean.length; i++) {
+        const [x1, y1] = clean[i];
+        const [x2, y2] = clean[(i + 1) % clean.length];
+        area += x1 * y2 - x2 * y1;
+    }
+
+    return area / 2;
+}
+
+export function ensureCounterClockwisePoints(pts) {
+    if (!Array.isArray(pts)) return [];
+
+    const clean = [];
+    for (const p of pts) {
+        if (!Array.isArray(p) || p.length < 2) continue;
+
+        const point = [p[0], p[1]];
+        if (!clean.length) {
+            clean.push(point);
+            continue;
+        }
+
+        const last = clean[clean.length - 1];
+        if (last[0] !== point[0] || last[1] !== point[1]) {
+            clean.push(point);
+        }
+    }
+
+    if (clean.length > 1) {
+        const first = clean[0];
+        const last = clean[clean.length - 1];
+        if (first[0] === last[0] && first[1] === last[1]) {
+            clean.pop();
+        }
+    }
+
+    if (getPolygonSignedArea(clean) < 0) {
+        clean.reverse();
+    }
+
+    return clean;
+}
+
 export function projectToScreen(vec3, camera) {
     const v = vec3.clone().project(camera);
     const x = (v.x * 0.5 + 0.5) * window.innerWidth;
@@ -88,11 +160,25 @@ export function drawAngleArc(prev, curr, next, angleCtx, angleOverlay, camera) {
 }
 
 export function buildPreviewMesh(points, objectZ) {
-    const newPoints = points.map((p) => new THREE.Vector3(p.x, p.y, p.z));
-    const shape = new THREE.Shape(newPoints.map((p) => new THREE.Vector2(p.x, p.y)));
+    const normalizedPoints = ensureCounterClockwisePoints(
+        points.map((p) => [p.x, p.y])
+    );
+    if (normalizedPoints.length < 3) return null;
+
+    const newPoints = normalizedPoints.map(
+        ([x, y]) => new THREE.Vector3(x, y, 0)
+    );
+
+    const shape = new THREE.Shape(
+        newPoints.map((p) => new THREE.Vector2(p.x, p.y))
+    );
     const extrudeSettings = { depth: 0, bevelEnabled: false };
     const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-    const material = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
+    const material = new THREE.MeshBasicMaterial({
+        color: 0xffffff,
+        side: THREE.DoubleSide,
+    });
+
     const mesh = new THREE.Mesh(geometry, material);
     mesh.position.z = objectZ;
     return mesh;
@@ -107,7 +193,7 @@ export function makePolygonShape(points, millimeters) {
         sizeZ: 300 * millimeters,
         sizeX: 200 * millimeters,
         sizeY: 200 * millimeters,
-        points,
+        points: ensureCounterClockwisePoints(points),
         rotation: 0,
         free: true,
     };

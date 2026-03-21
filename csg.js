@@ -39,6 +39,38 @@ function polygonArea(points) {
   return area / 2;
 }
 
+function normalizePolygonPoints(points) {
+  const clean = [];
+
+  for (const point of points) {
+    if (!Array.isArray(point) || point.length < 2) continue;
+
+    const [x, y] = point;
+    if (!clean.length) {
+      clean.push([x, y]);
+      continue;
+    }
+
+    const last = clean[clean.length - 1];
+    if (last[0] !== x || last[1] !== y) {
+      clean.push([x, y]);
+    }
+  }
+
+  if (clean.length > 1) {
+    const first = clean[0];
+    const last = clean[clean.length - 1];
+    if (first[0] === last[0] && first[1] === last[1]) {
+      clean.pop();
+    }
+  }
+
+  if (polygonArea(clean) < 0) {
+    clean.reverse();
+  }
+
+  return clean;
+}
 
 function shapeToGeom2(shape) {
   switch (shape.kind) {
@@ -119,11 +151,16 @@ function shapeToGeom2(shape) {
     case "polygon": {
       if (!Array.isArray(shape.points) || shape.points.length < 3) return null;
 
-      const basePts = shape.points.map(([x, y]) => [x, y]);
-      if (Math.abs(polygonArea(basePts)) < 1e-6) return null;
+      const basePts = normalizePolygonPoints(
+        shape.points.map(([x, y]) => [x, y])
+      );
 
-      const tryBuild = (pts) => {
-        let poly = pts
+      if (basePts.length < 3 || Math.abs(polygonArea(basePts)) < 1e-6) {
+        return null;
+      }
+
+      try {
+        const poly = basePts
           .map(([x, y]) => [x, y])
           .map((v) =>
             jscad.maths.vec2.rotate(
@@ -136,16 +173,8 @@ function shapeToGeom2(shape) {
           .map(([x, y]) => [x + shape.x, y + shape.y]);
 
         return jscad.geometries.geom2.fromPoints(poly);
-      };
-
-      try {
-        return tryBuild(basePts);
       } catch {
-        try {
-          return tryBuild(basePts.slice().reverse());
-        } catch {
-          return null;
-        }
+        return null;
       }
     }
   }
