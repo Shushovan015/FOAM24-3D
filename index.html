@@ -244,6 +244,37 @@
               step="1" value="75">
           </div>
         </div>
+        <div id="photoshape-calibration-group" class="photoshape-calibration-card" style="display:none;">
+          <div class="photoshape-calibration-card__header">
+            <div class="photoshape-calibration-card__title">Shape Calibration</div>
+            <span id="photoshape-calibration-status" class="photoshape-calibration-card__status">Pick 2 points</span>
+          </div>
+
+          <p id="photoshape-calibration-help" class="photoshape-calibration-card__help">
+            Click two points on the selected shape outline.
+          </p>
+
+          <div class="group">
+            <button id="photoshape-calibration-start" class="column grow white" type="button">Select 2 Points</button>
+            <button id="photoshape-calibration-reset" class="column white" type="button">Reset</button>
+          </div>
+
+          <div id="photoshape-calibration-picked" class="photoshape-calibration-card__picked">Picked: 0 / 2 points</div>
+          <div id="photoshape-calibration-px" class="photoshape-calibration-card__meta">Pixel distance: -</div>
+          <div id="photoshape-calibration-scale" class="photoshape-calibration-card__meta">Scale: -</div>
+          <div id="photoshape-calibration-error" class="photoshape-calibration-card__error" style="display:none;"></div>
+
+          <div class="group photoshape-calibration-card__inputs">
+            <input id="photoshape-calibration-mm" class="column grow" type="number" min="0.1" step="0.1"
+              placeholder="Known distance (mm)">
+            <button id="photoshape-calibration-apply" class="column white" type="button">Apply Scale</button>
+          </div>
+
+          <div id="photoshape-calibration-deferred" class="photoshape-calibration-card__deferred" style="display:none;">
+            Scale saved. Final size will appear after all shapes are finished.
+          </div>
+        </div>
+
         <div id="photoshape-flow-info" class="photoshape-info-card" style="display:none;">
           <div class="photoshape-info-card__title">Editing Flow</div>
           <p class="photoshape-info-card__text">

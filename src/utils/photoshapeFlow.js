@@ -1,7 +1,7 @@
 import { getBoundingBox } from "./threeFunctions";
 
 export const getPhotoshapeNextLabel = (session) =>
-    session.index < session.order.length - 1 ? "Next" : "Finish";
+  session.index < session.order.length - 1 ? "Next" : "Finish";
 
 export const getPhotoshapeDepthLabel = (session) =>
   session.index < session.order.length - 1 ? "Save & Next Shape" : "Save & Finish";
@@ -19,6 +19,69 @@ const rotateOrderToSelectedFirst = (order, selectedId) => {
   if (idx <= 0) return order;
   return order.slice(idx).concat(order.slice(0, idx));
 };
+
+export const mapFoamLocalPointToImagePixel = (localX, localY, foam, imageWidth, imageHeight) => {
+  const px = ((localX + foam.sizeX / 2) / foam.sizeX) * imageWidth;
+  const py = ((foam.sizeY / 2 - localY) / foam.sizeY) * imageHeight;
+  return [px, py];
+};
+
+const getPointsBounds = (points) => {
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const [x, y] of points) {
+    if (x < minX) minX = x;
+    if (y < minY) minY = y;
+    if (x > maxX) maxX = x;
+    if (y > maxY) maxY = y;
+  }
+  return { minX, minY, maxX, maxY };
+};
+
+const mapFoamLocalPointsToImagePixels = (points, foam, imageWidth, imageHeight) =>
+  (Array.isArray(points) ? points : [])
+    .map(([x, y]) => mapFoamLocalPointToImagePixel(x, y, foam, imageWidth, imageHeight))
+    .filter(([x, y]) => Number.isFinite(x) && Number.isFinite(y));
+
+const imagePointsToRealMmLocal = (pointsPx, mmPerPixel) => {
+  const b = getPointsBounds(pointsPx);
+  const cx = (b.minX + b.maxX) / 2;
+  const cy = (b.minY + b.maxY) / 2;
+  return pointsPx.map(([px, py]) => [(px - cx) * mmPerPixel, (cy - py) * mmPerPixel]);
+};
+
+export const applyDeferredCalibrationScaleToShape = (shape, foam) => {
+  if (!shape || shape.source !== "photoshape") return false;
+  if (!Array.isArray(shape.points) || shape.points.length < 3) return false;
+  const mmPerPixel = Number(shape?._calibration?.mmPerPixel);
+  if (!Number.isFinite(mmPerPixel) || mmPerPixel <= 0) return false;
+  if (!shape._contourImageWidth || !shape._contourImageHeight) return false;
+
+  const worldBefore = shape.points.map(([x, y]) => [x + shape.x, y + shape.y]);
+  const wb = getPointsBounds(worldBefore);
+  const worldCenterX = (wb.minX + wb.maxX) / 2;
+  const worldCenterY = (wb.minY + wb.maxY) / 2;
+
+  const imagePts = mapFoamLocalPointsToImagePixels(
+    shape.points,
+    foam,
+    shape._contourImageWidth,
+    shape._contourImageHeight
+  );
+  if (imagePts.length < 3) return false;
+
+  const realLocal = imagePointsToRealMmLocal(imagePts, mmPerPixel);
+  const rb = getPointsBounds(realLocal);
+
+  shape.points = realLocal;
+  shape.x = worldCenterX;
+  shape.y = worldCenterY;
+  shape.sizeX = Math.max(1, rb.maxX - rb.minX);
+  shape.sizeY = Math.max(1, rb.maxY - rb.minY);
+  shape._pointsDirty = true;
+  shape._realScaleApplied = true;
+  return true;
+};
+
 
 export const rebuildOrderAndIndex = (session, shapesArray, selected) => {
   session.order = buildSessionOrder(session, shapesArray);
@@ -93,119 +156,119 @@ export const advanceToNextUnvisited = (
 };
 
 export const movePhotoshapeFlowControls = (panelId) => {
-    const controls = document.getElementById("photoshape-flow-controls");
-    const panel = document.getElementById(panelId);
-    const anchor = panel?.querySelector(".photoshape-flow-anchor");
-    if (controls && anchor) {
-        anchor.appendChild(controls);
-    }
+  const controls = document.getElementById("photoshape-flow-controls");
+  const panel = document.getElementById(panelId);
+  const anchor = panel?.querySelector(".photoshape-flow-anchor");
+  if (controls && anchor) {
+    anchor.appendChild(controls);
+  }
 };
 
 export const setPhotoshapeFlowVisibility = (stepUI, active) => {
-    if (stepUI?.container) {
-        stepUI.container.style.display = active ? "block" : "none";
-    }
+  if (stepUI?.container) {
+    stepUI.container.style.display = active ? "block" : "none";
+  }
 };
 
 export const renderPhotoshapeStep = (stepUI, step, options = {}) => {
-    if (!stepUI) return;
+  if (!stepUI) return;
 
-    if (stepUI.note && typeof options.note === "string") {
-        stepUI.note.textContent = options.note;
-    }
-    if (stepUI.back && typeof options.canBack === "boolean") {
-        stepUI.back.disabled = !options.canBack;
-    }
-    if (stepUI.next && typeof options.canNext === "boolean") {
-        stepUI.next.disabled = !options.canNext;
-    }
-    if (stepUI.next && typeof options.nextLabel === "string") {
-        stepUI.next.textContent = options.nextLabel;
-    }
-    if (stepUI.back && typeof options.backLabel === "string") {
-        stepUI.back.textContent = options.backLabel;
-    }
+  if (stepUI.note && typeof options.note === "string") {
+    stepUI.note.textContent = options.note;
+  }
+  if (stepUI.back && typeof options.canBack === "boolean") {
+    stepUI.back.disabled = !options.canBack;
+  }
+  if (stepUI.next && typeof options.canNext === "boolean") {
+    stepUI.next.disabled = !options.canNext;
+  }
+  if (stepUI.next && typeof options.nextLabel === "string") {
+    stepUI.next.textContent = options.nextLabel;
+  }
+  if (stepUI.back && typeof options.backLabel === "string") {
+    stepUI.back.textContent = options.backLabel;
+  }
 
-    if (Array.isArray(stepUI.steps) && stepUI.steps.length) {
-        stepUI.steps.forEach((el) => {
-            const stepNum = parseInt(el.getAttribute("data-photoshape-step"), 10);
-            if (!Number.isNaN(stepNum)) {
-                el.style.opacity = stepNum <= step ? "1" : "0.35";
-                el.style.fontWeight = stepNum === step ? "700" : "400";
-            }
-        });
-    }
+  if (Array.isArray(stepUI.steps) && stepUI.steps.length) {
+    stepUI.steps.forEach((el) => {
+      const stepNum = parseInt(el.getAttribute("data-photoshape-step"), 10);
+      if (!Number.isNaN(stepNum)) {
+        el.style.opacity = stepNum <= step ? "1" : "0.35";
+        el.style.fontWeight = stepNum === step ? "700" : "400";
+      }
+    });
+  }
 };
 
 export const simplifyPhotoshapeContourPoints = (pts, simplifyFn, maxPoints = 150) => {
-    if (!Array.isArray(pts)) return pts;
-    return simplifyFn(pts, maxPoints);
+  if (!Array.isArray(pts)) return pts;
+  return simplifyFn(pts, maxPoints);
 };
 
 export const setPhotoshapeEditingMode = ({
-    on,
-    restore = false,
-    state,
-    callback1,
-    saveCameraView,
-    resetCameraToTopView,
-    restoreCameraView,
+  on,
+  restore = false,
+  state,
+  callback1,
+  saveCameraView,
+  resetCameraToTopView,
+  restoreCameraView,
 }) => {
-    if (on && !state.display2D) {
-        saveCameraView();
-        resetCameraToTopView();
-    }
+  if (on && !state.display2D) {
+    saveCameraView();
+    resetCameraToTopView();
+  }
 
-    if (window.__setPointEditUi) {
-        window.__setPointEditUi(on);
-    } else {
-        window.__editingPoints = on;
-    }
+  if (window.__setPointEditUi) {
+    window.__setPointEditUi(on);
+  } else {
+    window.__editingPoints = on;
+  }
 
-    callback1(on);
+  callback1(on);
 
-    if (!on && restore) {
-        restoreCameraView();
-    }
+  if (!on && restore) {
+    restoreCameraView();
+  }
 };
 
 export const syncPhotoshapeDepthInputs = (selected) => {
-    if (!selected) return;
+  if (!selected) return;
 
-    const depthInput =
-        document.querySelector("#polygon-depth-input") ||
-        document.querySelector("#photoshape-depth-input");
-    const depthSlider =
-        document.querySelector("#polygon-depth-slider") ||
-        document.querySelector("#photoshape-depth-slider");
+  const depthInput =
+    document.querySelector("#polygon-depth-input") ||
+    document.querySelector("#photoshape-depth-input");
+  const depthSlider =
+    document.querySelector("#polygon-depth-slider") ||
+    document.querySelector("#photoshape-depth-slider");
 
-    if (depthInput) depthInput.value = selected.sizeZ;
-    if (depthSlider) depthSlider.value = selected.sizeZ;
+  if (depthInput) depthInput.value = selected.sizeZ;
+  if (depthSlider) depthSlider.value = selected.sizeZ;
 };
 
 export const getPhotoshapeDepthPanelId = (selected) => {
-    if (!selected) return "polygon-depth-panel";
-    return selected.kind === "photoshape"
-        ? "photoshape-depth-panel"
-        : "polygon-depth-panel";
+  if (!selected) return "polygon-depth-panel";
+  return selected.kind === "photoshape"
+    ? "photoshape-depth-panel"
+    : "polygon-depth-panel";
 };
 
 export const setPhotoshapeAuxUiVisible = (visible) => {
-    const note = document.getElementById("photoshape-step-note");
-    const btn = document.getElementById("photoshape-button");
+  const note = document.getElementById("photoshape-step-note");
+  const btn = document.getElementById("photoshape-button");
 
-    if (note) note.style.display = visible ? "flex" : "none";
-    if (btn) btn.style.display = visible ? "flex" : "none";
+  if (note) note.style.display = visible ? "flex" : "none";
+  if (btn) btn.style.display = visible ? "flex" : "none";
 };
 
 export const resetPhotoshapeSessionState = (session) => {
-    session.ids = [];
-    session.order = [];
-    session.index = 0;
-    if (session.visited && typeof session.visited.clear === "function") {
-        session.visited.clear();
-    }
-    session.remaining = 0;
+  session.ids = [];
+  session.order = [];
+  session.index = 0;
+  if (session.visited && typeof session.visited.clear === "function") {
+    session.visited.clear();
+  }
+  session.remaining = 0;
 };
 
 const polygonAreaAbs = (points) => {
@@ -305,8 +368,8 @@ export const clampPhotoshapeFitAccuracy = (v) =>
 
 const epsilonFactorForAccuracy = (accuracy) => {
   const a = clampPhotoshapeFitAccuracy(accuracy);
-  const minFactor = 0.0004; 
-  const maxFactor = 0.02;   
+  const minFactor = 0.0004;
+  const maxFactor = 0.02;
   return minFactor + ((100 - a) / 99) * (maxFactor - minFactor);
 };
 
@@ -444,6 +507,13 @@ export const createPhotoshapeShapesFromContours = ({
         _rawContourImage: rawContour.map(([x, y]) => [x, y]),
         _contourImageWidth: imageWidth,
         _contourImageHeight: imageHeight,
+        _calibration: {
+          pointIndices: [],
+          realDistanceMm: null,
+          pixelDistance: null,
+          mmPerPixel: null,
+        },
+        _realScaleApplied: false,
       };
     })
     .filter(Boolean);
@@ -456,29 +526,27 @@ export const appendPhotoshapeShapes = (shapesArray, session, createdShapes) => {
   });
 };
 
-
 export const getPhotoshapeStepUploadConfig = () => ({
-    note: "Upload an image to start.",
-    canBack: false,
-    canNext: false,
-    nextLabel: "Edit",
+  note: "Upload an image to start.",
+  canBack: false,
+  canNext: false,
+  nextLabel: "Edit",
 });
 
 export const getPhotoshapeStepProcessingConfig = () => ({
-    note: "Removing background and detecting outline...",
-    canBack: true,
-    canNext: false,
-    nextLabel: "Edit",
+  note: "Removing background and detecting outline...",
+  canBack: true,
+  canNext: false,
+  nextLabel: "Edit",
 });
 
 export const getPhotoshapeStepReadyConfig = () => ({
   note: "Outline ready. Click Start Editing to review each shape once.",
-  canBack: false, 
+  canBack: false,
   canNext: true,
   backLabel: "Back to Upload",
   nextLabel: "Start Editing",
 });
-
 
 export const getPhotoshapeStepEditConfig = (session) => ({
   note: getPhotoshapeEditStepNote(session),
@@ -497,7 +565,7 @@ export const getPhotoshapeStepDepthConfig = (session) => ({
 });
 
 export const getPhotoshapeEditStepNote = (session) =>
-    `Edit outline: shape ${session.index + 1} of ${session.order.length || session.ids.length}`;
+  `Edit outline: shape ${session.index + 1} of ${session.order.length || session.ids.length}`;
 
 export const getPhotoshapeDepthStepNote = (session) =>
-    `Adjust depth: shape ${session.index + 1} of ${session.order.length || session.ids.length}`;
+  `Adjust depth: shape ${session.index + 1} of ${session.order.length || session.ids.length}`;
