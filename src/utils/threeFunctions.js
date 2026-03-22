@@ -654,18 +654,35 @@ function updateControlPointSelectionVisuals(shape) {
   if (!shape || !Array.isArray(shape.controlPoints)) return;
 
   const selected = new Set(getSelectedPointIndices(shape));
+  const calibrationPoints = Array.isArray(shape?._calibration?.pointIndices)
+    ? shape._calibration.pointIndices
+    : [];
+
+  const calP1 = calibrationPoints[0];
+  const calP2 = calibrationPoints[1];
 
   for (let i = 0; i < shape.controlPoints.length; i += 2) {
     const sphere = shape.controlPoints[i];
     if (!sphere?.userData?.isControlSphere) continue;
 
-    const isSelected = selected.has(sphere.userData.pointIndex);
+    const idx = sphere.userData.pointIndex;
+    const isSelected = selected.has(idx);
 
-    if (sphere.material?.color) {
-      sphere.material.color.setHex(isSelected ? 0xffa000 : 0x00ffff);
+    let color = 0x00ffff;
+    let scale = 1;
+
+    if (idx === calP1) {
+      color = 0xffd400;
+      scale = 1.35;
+    } else if (idx === calP2) {
+      color = 0xff8a00;
+      scale = 1.35;
+    } else if (isSelected) {
+      color = 0xffa000;
+      scale = 1.25;
     }
 
-    const scale = isSelected ? 1.25 : 1;
+    if (sphere.material?.color) sphere.material.color.setHex(color);
     sphere.scale.set(scale, scale, scale);
   }
 }
@@ -773,13 +790,6 @@ export function drawOutline(
 
       const v1 = new Vector2(prev[0] - curr[0], prev[1] - curr[1]);
       const v2 = new Vector2(next[0] - curr[0], next[1] - curr[1]);
-      const seedSelection = Array.isArray(shape._selectedPointIndices)
-        ? shape._selectedPointIndices
-        : typeof shape._selectedPointIndex === "number"
-          ? [shape._selectedPointIndex]
-          : [];
-      setSelectedPointIndices(shape, seedSelection);
-      updateControlPointSelectionVisuals(shape);
 
       const denom = v1.length() * v2.length();
       if (denom > 0) {
@@ -852,6 +862,15 @@ export function drawOutline(
         ctx.restore();
       }
     }
+
+    const seedSelection = Array.isArray(shape._selectedPointIndices)
+      ? shape._selectedPointIndices
+      : typeof shape._selectedPointIndex === "number"
+        ? [shape._selectedPointIndex]
+        : [];
+
+    setSelectedPointIndices(shape, seedSelection);
+    updateControlPointSelectionVisuals(shape);
 
     if (!shape._controlPointsSetup) {
       shape._controlPointsSetup = true;
@@ -1194,6 +1213,22 @@ function setupControlPointInteractions(
     evt.stopPropagation();
     if (shape !== state.selected) return;
 
+    const calibration = window.__photoshapeCalibration;
+    const calibrationLocked = !!calibration?.lockEditing;
+    const idxForCalibration = pointOps.hitPointIndex(evt);
+
+    if (calibrationLocked) {
+      if (
+        idxForCalibration !== -1 &&
+        calibration?.active &&
+        typeof calibration.onPointPicked === "function"
+      ) {
+        evt.preventDefault();
+        calibration.onPointPicked({ shape, idx: idxForCalibration, event: evt });
+      }
+      return;
+    }
+
     if (state.deletePointMode) {
       if (state._deletePointLock) return;
       state._deletePointLock = true;
@@ -1261,13 +1296,18 @@ function setupControlPointInteractions(
   }
 
   function onHover(evt) {
+    const calibration = window.__photoshapeCalibration;
+    if (calibration?.lockEditing) {
+      const idx = pointOps.hitPointIndex(evt);
+      target.style.cursor = idx !== -1 ? "crosshair" : "";
+      return;
+    }
     if (state.deletePointMode) {
       if (!Array.isArray(shape.points) || shape.points.length <= 3) {
         delete shape._selectedPointIndex;
         target.style.cursor = "not-allowed";
         return;
       }
-
       const idx = pointOps.nearestFromEvent(evt, 10).idx;
       if (idx !== -1) {
         shape._selectedPointIndex = idx;

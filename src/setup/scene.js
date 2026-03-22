@@ -524,7 +524,6 @@ export function init3D() {
   const openSelectedPanel = () => {
     if (!state.selected) return;
 
-    // Keep overlay visible while photoshape draft(s) exist.
     const hasDraftPhotoshape = state.shapesArray.some(
       (s) => s?.source === "photoshape" && s?._draft
     );
