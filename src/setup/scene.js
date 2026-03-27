@@ -193,7 +193,7 @@ function activateCopyPlacementForSource(sourceShape) {
 }
 
 export function updateCopyPlacementSpacing(spacingMm) {
-  const nextSpacing = Math.max(0, Number(spacingMm) || 0);
+  const nextSpacing = Math.max(10, Number(spacingMm) || 10);
   state.copySpacingMm = nextSpacing;
 
   if (!state.copyPlacementActive) return;

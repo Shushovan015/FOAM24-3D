@@ -31090,7 +31090,7 @@ function activateCopyPlacementForSource(sourceShape) {
   return true;
 }
 function updateCopyPlacementSpacing(spacingMm) {
-  const nextSpacing = Math.max(0, Number(spacingMm) || 0);
+  const nextSpacing = Math.max(10, Number(spacingMm) || 10);
   state.copySpacingMm = nextSpacing;
   if (!state.copyPlacementActive)
     return;
@@ -53722,8 +53722,9 @@ function initUI() {
   const copySpacingSlider = document.getElementById("copy-spacing-slider");
   const copySpacingInput = document.getElementById("copy-spacing-input");
   const copySpacingValue = document.getElementById("copy-spacing-value");
+  const MIN_COPY_SPACING_MM = 10;
   const syncCopySpacingUi = (value) => {
-    const spacing = Math.max(0, Number(value) || 0);
+    const spacing = Math.max(MIN_COPY_SPACING_MM, Number(value) || MIN_COPY_SPACING_MM);
     if (copySpacingSlider)
       copySpacingSlider.value = spacing;
     if (copySpacingInput)
@@ -53736,17 +53737,25 @@ function initUI() {
       sourceShape: state.selected,
       foam: state.foam
     }) : 0;
+    const effectiveMaxSpacing = Math.max(MIN_COPY_SPACING_MM, maxSpacing);
     if (copySpacingSlider)
-      copySpacingSlider.max = maxSpacing;
+      copySpacingSlider.max = effectiveMaxSpacing;
     if (copySpacingInput)
-      copySpacingInput.max = maxSpacing;
-    const nextSpacing = Math.min(state.copySpacingMm, maxSpacing);
+      copySpacingInput.max = effectiveMaxSpacing;
+    const nextSpacing = Math.min(
+      Math.max(state.copySpacingMm, MIN_COPY_SPACING_MM),
+      effectiveMaxSpacing
+    );
     updateCopyPlacementSpacing(nextSpacing);
     syncCopySpacingUi(nextSpacing);
   };
   const applyCopySpacing = (value) => {
     const maxSpacing = Number((copySpacingSlider == null ? void 0 : copySpacingSlider.max) || (copySpacingInput == null ? void 0 : copySpacingInput.max) || 200);
-    const spacing = Math.min(maxSpacing, Math.max(0, Number(value) || 0));
+    const effectiveMaxSpacing = Math.max(MIN_COPY_SPACING_MM, maxSpacing);
+    const spacing = Math.min(
+      effectiveMaxSpacing,
+      Math.max(MIN_COPY_SPACING_MM, Number(value) || MIN_COPY_SPACING_MM)
+    );
     updateCopyPlacementSpacing(spacing);
     syncCopySpacingUi(spacing);
   };
@@ -54614,4 +54623,4 @@ if (typeof window === "object") {
   initUI();
   commit();
 }
-//# sourceMappingURL=index-449e7313.js.map
+//# sourceMappingURL=index-3ce67f8e.js.map

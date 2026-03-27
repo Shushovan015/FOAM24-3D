@@ -83,9 +83,10 @@ export function initUI() {
   const copySpacingSlider = document.getElementById("copy-spacing-slider");
   const copySpacingInput = document.getElementById("copy-spacing-input");
   const copySpacingValue = document.getElementById("copy-spacing-value");
+  const MIN_COPY_SPACING_MM = 10;
 
   const syncCopySpacingUi = (value) => {
-    const spacing = Math.max(0, Number(value) || 0);
+    const spacing = Math.max(MIN_COPY_SPACING_MM, Number(value) || MIN_COPY_SPACING_MM);
     if (copySpacingSlider) copySpacingSlider.value = spacing;
     if (copySpacingInput) copySpacingInput.value = spacing;
     if (copySpacingValue) copySpacingValue.textContent = `${spacing} mm`;
@@ -99,17 +100,25 @@ export function initUI() {
       })
       : 0;
 
-    if (copySpacingSlider) copySpacingSlider.max = maxSpacing;
-    if (copySpacingInput) copySpacingInput.max = maxSpacing;
+    const effectiveMaxSpacing = Math.max(MIN_COPY_SPACING_MM, maxSpacing);
+    if (copySpacingSlider) copySpacingSlider.max = effectiveMaxSpacing;
+    if (copySpacingInput) copySpacingInput.max = effectiveMaxSpacing;
 
-    const nextSpacing = Math.min(state.copySpacingMm, maxSpacing);
+    const nextSpacing = Math.min(
+      Math.max(state.copySpacingMm, MIN_COPY_SPACING_MM),
+      effectiveMaxSpacing
+    );
     updateCopyPlacementSpacing(nextSpacing);
     syncCopySpacingUi(nextSpacing);
   };
 
   const applyCopySpacing = (value) => {
     const maxSpacing = Number(copySpacingSlider?.max || copySpacingInput?.max || 200);
-    const spacing = Math.min(maxSpacing, Math.max(0, Number(value) || 0));
+    const effectiveMaxSpacing = Math.max(MIN_COPY_SPACING_MM, maxSpacing);
+    const spacing = Math.min(
+      effectiveMaxSpacing,
+      Math.max(MIN_COPY_SPACING_MM, Number(value) || MIN_COPY_SPACING_MM)
+    );
     updateCopyPlacementSpacing(spacing);
     syncCopySpacingUi(spacing);
   };
