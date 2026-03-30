@@ -1,3 +1,5 @@
+import { DEFAULT_CASE } from "./caseConfigs";
+
 export const units = {
   millimeters: 1,
   centimeters: 10,
@@ -50,17 +52,20 @@ export const state = {
   topScene: null,
   currentIndex: 0,
 
+  currentCaseId: DEFAULT_CASE.id,
+
   foam: {
     kind: "rectangle",
     x: 0,
     y: 0,
-    sizeX: 70 * 10,
-    sizeY: 50 * 10,
-    sizeZ: 37 * 10,
+    sizeX: DEFAULT_CASE.foam.sizeX,
+    sizeY: DEFAULT_CASE.foam.sizeY,
+    sizeZ: DEFAULT_CASE.foam.sizeZ,
     rotation: 0,
-    cornerRadius: 5,
+    cornerRadius: DEFAULT_CASE.foam.cornerRadius,
   },
-  cornerRadius: 5,
+  cornerRadius: DEFAULT_CASE.foam.cornerRadius,
+
   shapesArray: [],
   worker: null,
   undoRedoHistory: [],

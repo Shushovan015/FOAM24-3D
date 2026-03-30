@@ -7,6 +7,7 @@ import {
   showPanelFromLeft,
   getCurrentPanel,
 } from "./panels";
+import { CASES } from "./caseConfigs";
 import { createPdf } from "../components/createPdf";
 import { createPdfIso } from "../components/createPdfIsometric";
 import { createShapeCircle } from "../components/shapes/createShapeCircle";
@@ -31,7 +32,8 @@ import {
   cancelCopyPlacement,
   updateCopyPlacementSpacing,
   setFoamPhotoOverlay,
-  clearFoamPhotoOverlay
+  clearFoamPhotoOverlay,
+  applyCaseConfig
 } from "./scene";
 import { rightestPoint, leftestPoint, highestPoint, lowestPoint, structuredClone } from "../utils/common";
 import { shapeToGeom2, simplifyPointsForDrag } from "../utils/threeFunctions";
@@ -52,6 +54,19 @@ export function initUI() {
     state.display2D = false;
     restoreCameraView();
   };
+
+  const caseSelect = document.getElementById("case-select");
+  if (caseSelect) {
+    caseSelect.innerHTML =
+      `<option value="" disabled selected hidden>Select Case</option>` +
+      CASES.map((c) => `<option value="${c.id}">${c.label}</option>`).join("");
+
+    caseSelect.onchange = async () => {
+      if (!caseSelect.value) return;
+      await applyCaseConfig(caseSelect.value, { refitCamera: false });
+      commit();
+    };
+  }
 
   document.querySelectorAll("button").forEach((button) => {
     const { icon } = button.dataset;

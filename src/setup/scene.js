@@ -49,13 +49,103 @@ import { LambertMaterial } from "../components/Material";
 import { createImage } from "../components/createImage";
 import { getCurrentPanel, showPanelFromRight, showPanelFromLeft } from "./panels";
 import { setPolygonActionButtons } from "../utils/buttonClick";
+import { getCaseById } from "./caseConfigs";
 
-const case1Url = "./models/case1.obj";
 const MAX_DPR = 1.0;
 const SSAA_SCALE = 1.0;
 
 let copyBatchDirty = false;
 let copyBatchCsgTimer = null;
+
+function disposeCaseModel(model) {
+  model?.traverse?.((obj) => {
+    if (obj.geometry?.dispose) obj.geometry.dispose();
+    if (obj.material) {
+      if (Array.isArray(obj.material)) obj.material.forEach((m) => m?.dispose?.());
+      else obj.material.dispose?.();
+    }
+  });
+}
+
+function applyModelTransform(group, cfg) {
+  const t = cfg.modelTransform || {};
+  const p = t.position || {};
+  const r = t.rotationDeg || {};
+  const s = t.scale || {};
+
+  group.position.set(p.x || 0, p.y || 0, p.z || 0);
+  group.rotation.set(
+    THREE.MathUtils.degToRad(r.x || 0),
+    THREE.MathUtils.degToRad(r.y || 0),
+    THREE.MathUtils.degToRad(r.z || 0)
+  );
+  group.scale.set(s.x || 1, s.y || 1, s.z || 1);
+}
+
+function loadCaseModel(cfg) {
+  return new Promise((resolve, reject) => {
+    const loader = new OBJLoader.OBJLoader();
+    loader.load(
+      cfg.objUrl,
+      (group) => {
+        group.traverse((object) => {
+          if (object instanceof THREE.Mesh) object.material = new LambertMaterial("cadetblue");
+        });
+
+        const old = state.scene.getObjectByName("caseModel");
+        if (old) {
+          disposeCaseModel(old);
+          state.scene.remove(old);
+        }
+
+        group.name = "caseModel";
+        applyModelTransform(group, cfg);
+        state.scene.add(group);
+
+        group.updateMatrixWorld(true);
+        const box = new THREE.Box3().setFromObject(group);
+        const size = new THREE.Vector3();
+        box.getSize(size);
+
+        resolve({ group, boxSize: size });
+      },
+      undefined,
+      (err) => {
+        console.error(`Failed to load case OBJ: ${cfg.objUrl}`, err);
+        reject(err);
+      }
+    );
+  });
+}
+
+export async function applyCaseConfig(caseId, { refitCamera = true } = {}) {
+  const cfg = getCaseById(caseId);
+  state.currentCaseId = cfg.id;
+
+  try {
+    const { boxSize } = await loadCaseModel(cfg);
+
+    if (cfg.foam) {
+      state.foam.sizeX = cfg.foam.sizeX;
+      state.foam.sizeY = cfg.foam.sizeY;
+      state.foam.sizeZ = cfg.foam.sizeZ;
+      state.foam.cornerRadius = cfg.foam.cornerRadius ?? state.foam.cornerRadius;
+    }
+
+    state.cornerRadius = state.foam.cornerRadius;
+
+    doCsg();
+
+    if (state.controls) {
+      state.controls.target.set(state.foam.x, state.foam.y, state.foam.sizeZ);
+      state.controls.update();
+    }
+
+    if (refitCamera) setCameraTopView(state.camera, state.controls, state.foam, units);
+  } catch (e) {
+    console.error("applyCaseConfig failed:", e);
+  }
+}
 
 function flushCopyBatch() {
   if (!copyBatchDirty) return;
@@ -422,7 +512,7 @@ export function init3D() {
     state.camera,
     state.renderer.domElement
   );
-  state.controls.target.set(0, 0, 37 * units.centimeters);
+  state.controls.target.set(0, 0, state.foam.sizeZ);
   state.controls.update();
   state.controls.mouseButtons.LEFT = THREE.MOUSE.ROTATE;
   state.controls.mouseButtons.MIDDLE = THREE.MOUSE.PAN;
@@ -492,10 +582,7 @@ export function init3D() {
     const raycaster = new THREE.Raycaster();
     raycaster.setFromCamera({ x: state.mouseNdcX, y: state.mouseNdcY }, state.camera);
     const ray = raycaster.ray;
-    const foamPlane = new THREE.Plane(
-      new THREE.Vector3(0, 0, 1),
-      -37 * units.centimeters
-    );
+    const foamPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -state.foam.sizeZ);
 
     const intersection = ray.intersectPlane(foamPlane, new THREE.Vector3());
     if (intersection) {
@@ -645,20 +732,7 @@ export function init3D() {
   );
   state.scene.add(ground);
 
-  const loader = new OBJLoader.OBJLoader();
-  loader.load(case1Url, (group) => {
-    group.traverse((object) => {
-      if (object instanceof THREE.Mesh) {
-        object.material = new LambertMaterial("cadetblue");
-      }
-    });
-    const caseModel = state.scene.getObjectByName("caseModel");
-    if (caseModel) {
-      state.scene.remove(caseModel);
-    }
-    group.name = "caseModel";
-    state.scene.add(group);
-  });
+  applyCaseConfig(state.currentCaseId, { refitCamera: false });
 
   state.postScene = new THREE.Scene();
   state.postCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
@@ -747,7 +821,7 @@ export function onFrame() {
     ? state.renderer.render(state.topScene, state.camera1)
     : state.renderer.render(state.topScene, state.camera);
 
-  const baseZ = 37 * units.centimeters;
+  const baseZ = state.foam.sizeZ;
   const currentCamera = state.display2D ? state.camera1 : state.camera;
   const NEAR_THRESHOLD = 1 * units.centimeters;
   const lightCopyRender = state.copyPlacementActive && state.shapesArray.length > 20;
