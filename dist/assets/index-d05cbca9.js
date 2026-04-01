@@ -21534,6 +21534,56 @@ class OBJLoader extends Loader {
     return container;
   }
 }
+const CASES = [
+  {
+    id: "case1",
+    label: "Case 1",
+    objUrl: "./models/case1.obj",
+    foam: { sizeX: 700, sizeY: 500, sizeZ: 370, cornerRadius: 5 },
+    modelTransform: {
+      position: { x: 0, y: 0, z: 0 },
+      rotationDeg: { x: 0, y: 0, z: 0 },
+      scale: { x: 1, y: 1, z: 1 }
+    }
+  },
+  {
+    id: "case2",
+    label: "Case 2",
+    objUrl: "./models/case2.obj",
+    foam: { sizeX: 1095, sizeY: 690, sizeZ: 480, cornerRadius: 5 },
+    modelTransform: {
+      position: { x: 0, y: 0, z: 0 },
+      rotationDeg: { x: 0, y: 0, z: 0 },
+      scale: { x: 1, y: 1, z: 1 }
+    }
+  },
+  {
+    id: "case3",
+    label: "Case 3",
+    objUrl: "./models/case3.obj",
+    foam: { sizeX: 519, sizeY: 333, sizeZ: 148, cornerRadius: 5 },
+    modelTransform: {
+      position: { x: 0, y: 0, z: 0 },
+      rotationDeg: { x: 0, y: 0, z: 0 },
+      scale: { x: 1, y: 1, z: 1 }
+    }
+  },
+  {
+    id: "case4",
+    label: "Case 4",
+    objUrl: "./models/case4.obj",
+    foam: { sizeX: 519, sizeY: 497, sizeZ: 370, cornerRadius: 5 },
+    modelTransform: {
+      position: { x: 0, y: 0, z: 0 },
+      rotationDeg: { x: 0, y: 0, z: 0 },
+      scale: { x: 1, y: 1, z: 1 }
+    }
+  }
+];
+const DEFAULT_CASE = CASES[0];
+function getCaseById(caseId) {
+  return CASES.find((c2) => c2.id === caseId) || DEFAULT_CASE;
+}
 const units = {
   millimeters: 1,
   centimeters: 10,
@@ -21579,17 +21629,18 @@ const state = {
   postQuad: null,
   topScene: null,
   currentIndex: 0,
+  currentCaseId: DEFAULT_CASE.id,
   foam: {
     kind: "rectangle",
     x: 0,
     y: 0,
-    sizeX: 70 * 10,
-    sizeY: 50 * 10,
-    sizeZ: 37 * 10,
+    sizeX: DEFAULT_CASE.foam.sizeX,
+    sizeY: DEFAULT_CASE.foam.sizeY,
+    sizeZ: DEFAULT_CASE.foam.sizeZ,
     rotation: 0,
-    cornerRadius: 5
+    cornerRadius: DEFAULT_CASE.foam.cornerRadius
   },
-  cornerRadius: 5,
+  cornerRadius: DEFAULT_CASE.foam.cornerRadius,
   shapesArray: [],
   worker: null,
   undoRedoHistory: [],
@@ -30440,6 +30491,7 @@ function ensureWorker() {
     type: "module"
   });
   worker.onmessage = (e) => {
+    var _a;
     const { id, geom } = e.data || {};
     if (typeof id === "number" && id < latestId)
       ;
@@ -30466,7 +30518,7 @@ function ensureWorker() {
         "red",
         "#333",
         2 * units.centimeters,
-        37 * units.centimeters
+        ((_a = state.foam) == null ? void 0 : _a.sizeZ) || 37 * units.centimeters
       );
       mesh.name = "csgModel";
       state.scene.add(mesh);
@@ -30614,7 +30666,7 @@ function applyCameraSnapshot(camera, controls, saved) {
 function getViewParams(foam, units2) {
   const targetX = (foam == null ? void 0 : foam.x) || 0;
   const targetY = (foam == null ? void 0 : foam.y) || 0;
-  const targetZ = 37 * units2.centimeters;
+  const targetZ = (foam == null ? void 0 : foam.sizeZ) || 37 * units2.centimeters;
   const maxDim = Math.max((foam == null ? void 0 : foam.sizeX) || 0, (foam == null ? void 0 : foam.sizeY) || 0);
   const distance2 = Math.max(maxDim * 2, 1 * units2.meters);
   return { targetX, targetY, targetZ, distance: distance2 };
@@ -30974,9 +31026,93 @@ const setPolygonActionButtons = (config = {}) => {
     setButtonEnabledById(polygonActionButtonIds.edit, edit);
   }
 };
-const case1Url = "./models/case1.obj";
 const SSAA_SCALE = 1;
 let copyBatchDirty = false;
+function disposeCaseModel(model) {
+  var _a;
+  (_a = model == null ? void 0 : model.traverse) == null ? void 0 : _a.call(model, (obj) => {
+    var _a2, _b, _c;
+    if ((_a2 = obj.geometry) == null ? void 0 : _a2.dispose)
+      obj.geometry.dispose();
+    if (obj.material) {
+      if (Array.isArray(obj.material))
+        obj.material.forEach((m) => {
+          var _a3;
+          return (_a3 = m == null ? void 0 : m.dispose) == null ? void 0 : _a3.call(m);
+        });
+      else
+        (_c = (_b = obj.material).dispose) == null ? void 0 : _c.call(_b);
+    }
+  });
+}
+function applyModelTransform(group, cfg) {
+  const t = cfg.modelTransform || {};
+  const p = t.position || {};
+  const r = t.rotationDeg || {};
+  const s = t.scale || {};
+  group.position.set(p.x || 0, p.y || 0, p.z || 0);
+  group.rotation.set(
+    MathUtils.degToRad(r.x || 0),
+    MathUtils.degToRad(r.y || 0),
+    MathUtils.degToRad(r.z || 0)
+  );
+  group.scale.set(s.x || 1, s.y || 1, s.z || 1);
+}
+function loadCaseModel(cfg) {
+  return new Promise((resolve, reject) => {
+    const loader = new OBJLoader();
+    loader.load(
+      cfg.objUrl,
+      (group) => {
+        group.traverse((object) => {
+          if (object instanceof Mesh)
+            object.material = new LambertMaterial("cadetblue");
+        });
+        const old = state.scene.getObjectByName("caseModel");
+        if (old) {
+          disposeCaseModel(old);
+          state.scene.remove(old);
+        }
+        group.name = "caseModel";
+        applyModelTransform(group, cfg);
+        state.scene.add(group);
+        group.updateMatrixWorld(true);
+        const box = new Box3().setFromObject(group);
+        const size = new Vector3();
+        box.getSize(size);
+        resolve({ group, boxSize: size });
+      },
+      void 0,
+      (err2) => {
+        console.error(`Failed to load case OBJ: ${cfg.objUrl}`, err2);
+        reject(err2);
+      }
+    );
+  });
+}
+async function applyCaseConfig(caseId, { refitCamera = true } = {}) {
+  const cfg = getCaseById(caseId);
+  state.currentCaseId = cfg.id;
+  try {
+    const { boxSize } = await loadCaseModel(cfg);
+    if (cfg.foam) {
+      state.foam.sizeX = cfg.foam.sizeX;
+      state.foam.sizeY = cfg.foam.sizeY;
+      state.foam.sizeZ = cfg.foam.sizeZ;
+      state.foam.cornerRadius = cfg.foam.cornerRadius ?? state.foam.cornerRadius;
+    }
+    state.cornerRadius = state.foam.cornerRadius;
+    doCsg();
+    if (state.controls) {
+      state.controls.target.set(state.foam.x, state.foam.y, state.foam.sizeZ);
+      state.controls.update();
+    }
+    if (refitCamera)
+      setCameraTopView(state.camera, state.controls, state.foam, units);
+  } catch (e) {
+    console.error("applyCaseConfig failed:", e);
+  }
+}
 function flushCopyBatch() {
   if (!copyBatchDirty)
     return;
@@ -31090,7 +31226,7 @@ function activateCopyPlacementForSource(sourceShape) {
   return true;
 }
 function updateCopyPlacementSpacing(spacingMm) {
-  const nextSpacing = Math.max(0, Number(spacingMm) || 0);
+  const nextSpacing = Math.max(10, Number(spacingMm) || 10);
   state.copySpacingMm = nextSpacing;
   if (!state.copyPlacementActive)
     return;
@@ -31289,7 +31425,7 @@ function init3D() {
     state.camera,
     state.renderer.domElement
   );
-  state.controls.target.set(0, 0, 37 * units.centimeters);
+  state.controls.target.set(0, 0, state.foam.sizeZ);
   state.controls.update();
   state.controls.mouseButtons.LEFT = MOUSE.ROTATE;
   state.controls.mouseButtons.MIDDLE = MOUSE.PAN;
@@ -31347,10 +31483,7 @@ function init3D() {
     const raycaster = new Raycaster();
     raycaster.setFromCamera({ x: state.mouseNdcX, y: state.mouseNdcY }, state.camera);
     const ray = raycaster.ray;
-    const foamPlane = new Plane$1(
-      new Vector3(0, 0, 1),
-      -37 * units.centimeters
-    );
+    const foamPlane = new Plane$1(new Vector3(0, 0, 1), -state.foam.sizeZ);
     const intersection = ray.intersectPlane(foamPlane, new Vector3());
     if (intersection) {
       state.mouseRayPlaneIntersection = new Vector2(
@@ -31488,20 +31621,7 @@ function init3D() {
     new LambertMaterial("white")
   );
   state.scene.add(ground);
-  const loader = new OBJLoader();
-  loader.load(case1Url, (group) => {
-    group.traverse((object) => {
-      if (object instanceof Mesh) {
-        object.material = new LambertMaterial("cadetblue");
-      }
-    });
-    const caseModel = state.scene.getObjectByName("caseModel");
-    if (caseModel) {
-      state.scene.remove(caseModel);
-    }
-    group.name = "caseModel";
-    state.scene.add(group);
-  });
+  applyCaseConfig(state.currentCaseId, { refitCamera: false });
   state.postScene = new Scene();
   state.postCamera = new OrthographicCamera(-1, 1, 1, -1, 0, 1);
   state.postQuad = new Mesh(
@@ -31575,7 +31695,7 @@ function onFrame() {
   state.display2D ? state.renderer.render(state.scene, state.camera1) : state.renderer.render(state.scene, state.camera);
   state.renderer.clearDepth();
   state.display2D ? state.renderer.render(state.topScene, state.camera1) : state.renderer.render(state.topScene, state.camera);
-  const baseZ = 37 * units.centimeters;
+  const baseZ = state.foam.sizeZ;
   const currentCamera = state.display2D ? state.camera1 : state.camera;
   const NEAR_THRESHOLD = 1 * units.centimeters;
   const lightCopyRender = state.copyPlacementActive && state.shapesArray.length > 20;
@@ -53695,6 +53815,16 @@ function initUI() {
     state.display2D = false;
     restoreCameraView();
   };
+  const caseSelect = document.getElementById("case-select");
+  if (caseSelect) {
+    caseSelect.innerHTML = `<option value="" disabled selected hidden>Select Case</option>` + CASES.map((c2) => `<option value="${c2.id}">${c2.label}</option>`).join("");
+    caseSelect.onchange = async () => {
+      if (!caseSelect.value)
+        return;
+      await applyCaseConfig(caseSelect.value, { refitCamera: false });
+      commit();
+    };
+  }
   document.querySelectorAll("button").forEach((button) => {
     const { icon } = button.dataset;
     if (icon) {
@@ -53722,8 +53852,9 @@ function initUI() {
   const copySpacingSlider = document.getElementById("copy-spacing-slider");
   const copySpacingInput = document.getElementById("copy-spacing-input");
   const copySpacingValue = document.getElementById("copy-spacing-value");
+  const MIN_COPY_SPACING_MM = 10;
   const syncCopySpacingUi = (value) => {
-    const spacing = Math.max(0, Number(value) || 0);
+    const spacing = Math.max(MIN_COPY_SPACING_MM, Number(value) || MIN_COPY_SPACING_MM);
     if (copySpacingSlider)
       copySpacingSlider.value = spacing;
     if (copySpacingInput)
@@ -53736,17 +53867,25 @@ function initUI() {
       sourceShape: state.selected,
       foam: state.foam
     }) : 0;
+    const effectiveMaxSpacing = Math.max(MIN_COPY_SPACING_MM, maxSpacing);
     if (copySpacingSlider)
-      copySpacingSlider.max = maxSpacing;
+      copySpacingSlider.max = effectiveMaxSpacing;
     if (copySpacingInput)
-      copySpacingInput.max = maxSpacing;
-    const nextSpacing = Math.min(state.copySpacingMm, maxSpacing);
+      copySpacingInput.max = effectiveMaxSpacing;
+    const nextSpacing = Math.min(
+      Math.max(state.copySpacingMm, MIN_COPY_SPACING_MM),
+      effectiveMaxSpacing
+    );
     updateCopyPlacementSpacing(nextSpacing);
     syncCopySpacingUi(nextSpacing);
   };
   const applyCopySpacing = (value) => {
     const maxSpacing = Number((copySpacingSlider == null ? void 0 : copySpacingSlider.max) || (copySpacingInput == null ? void 0 : copySpacingInput.max) || 200);
-    const spacing = Math.min(maxSpacing, Math.max(0, Number(value) || 0));
+    const effectiveMaxSpacing = Math.max(MIN_COPY_SPACING_MM, maxSpacing);
+    const spacing = Math.min(
+      effectiveMaxSpacing,
+      Math.max(MIN_COPY_SPACING_MM, Number(value) || MIN_COPY_SPACING_MM)
+    );
     updateCopyPlacementSpacing(spacing);
     syncCopySpacingUi(spacing);
   };
@@ -54614,4 +54753,4 @@ if (typeof window === "object") {
   initUI();
   commit();
 }
-//# sourceMappingURL=index-449e7313.js.map
+//# sourceMappingURL=index-d05cbca9.js.map

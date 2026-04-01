@@ -42,7 +42,7 @@ function ensureWorker() {
         "red",
         "#333",
         2 * units.centimeters,
-        37 * units.centimeters
+        state.foam?.sizeZ || 37 * units.centimeters
       );
       mesh.name = "csgModel";
       state.scene.add(mesh);

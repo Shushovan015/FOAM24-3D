@@ -7,6 +7,7 @@ import {
   showPanelFromLeft,
   getCurrentPanel,
 } from "./panels";
+import { CASES } from "./caseConfigs";
 import { createPdf } from "../components/createPdf";
 import { createPdfIso } from "../components/createPdfIsometric";
 import { createShapeCircle } from "../components/shapes/createShapeCircle";
@@ -31,7 +32,8 @@ import {
   cancelCopyPlacement,
   updateCopyPlacementSpacing,
   setFoamPhotoOverlay,
-  clearFoamPhotoOverlay
+  clearFoamPhotoOverlay,
+  applyCaseConfig
 } from "./scene";
 import { rightestPoint, leftestPoint, highestPoint, lowestPoint, structuredClone } from "../utils/common";
 import { shapeToGeom2, simplifyPointsForDrag } from "../utils/threeFunctions";
@@ -52,6 +54,19 @@ export function initUI() {
     state.display2D = false;
     restoreCameraView();
   };
+
+  const caseSelect = document.getElementById("case-select");
+  if (caseSelect) {
+    caseSelect.innerHTML =
+      `<option value="" disabled selected hidden>Select Case</option>` +
+      CASES.map((c) => `<option value="${c.id}">${c.label}</option>`).join("");
+
+    caseSelect.onchange = async () => {
+      if (!caseSelect.value) return;
+      await applyCaseConfig(caseSelect.value, { refitCamera: false });
+      commit();
+    };
+  }
 
   document.querySelectorAll("button").forEach((button) => {
     const { icon } = button.dataset;
@@ -83,9 +98,10 @@ export function initUI() {
   const copySpacingSlider = document.getElementById("copy-spacing-slider");
   const copySpacingInput = document.getElementById("copy-spacing-input");
   const copySpacingValue = document.getElementById("copy-spacing-value");
+  const MIN_COPY_SPACING_MM = 10;
 
   const syncCopySpacingUi = (value) => {
-    const spacing = Math.max(0, Number(value) || 0);
+    const spacing = Math.max(MIN_COPY_SPACING_MM, Number(value) || MIN_COPY_SPACING_MM);
     if (copySpacingSlider) copySpacingSlider.value = spacing;
     if (copySpacingInput) copySpacingInput.value = spacing;
     if (copySpacingValue) copySpacingValue.textContent = `${spacing} mm`;
@@ -99,17 +115,25 @@ export function initUI() {
       })
       : 0;
 
-    if (copySpacingSlider) copySpacingSlider.max = maxSpacing;
-    if (copySpacingInput) copySpacingInput.max = maxSpacing;
+    const effectiveMaxSpacing = Math.max(MIN_COPY_SPACING_MM, maxSpacing);
+    if (copySpacingSlider) copySpacingSlider.max = effectiveMaxSpacing;
+    if (copySpacingInput) copySpacingInput.max = effectiveMaxSpacing;
 
-    const nextSpacing = Math.min(state.copySpacingMm, maxSpacing);
+    const nextSpacing = Math.min(
+      Math.max(state.copySpacingMm, MIN_COPY_SPACING_MM),
+      effectiveMaxSpacing
+    );
     updateCopyPlacementSpacing(nextSpacing);
     syncCopySpacingUi(nextSpacing);
   };
 
   const applyCopySpacing = (value) => {
     const maxSpacing = Number(copySpacingSlider?.max || copySpacingInput?.max || 200);
-    const spacing = Math.min(maxSpacing, Math.max(0, Number(value) || 0));
+    const effectiveMaxSpacing = Math.max(MIN_COPY_SPACING_MM, maxSpacing);
+    const spacing = Math.min(
+      effectiveMaxSpacing,
+      Math.max(MIN_COPY_SPACING_MM, Number(value) || MIN_COPY_SPACING_MM)
+    );
     updateCopyPlacementSpacing(spacing);
     syncCopySpacingUi(spacing);
   };
