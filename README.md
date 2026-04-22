@@ -1,81 +1,111 @@
 # FOAM24-3D Shape Editor
 
-FOAM24-3D Shape Editor is a web-based 3D design application built using **Three.js**. It allows users to create, manipulate, and visualize 3D shapes in real time through an intuitive and interactive interface. The tool supports drawing basic and freehand shapes, modifying dimensions and rotations, and exporting designs.
+FOAM24-3D is a browser-based 3D editor for designing custom foam inserts around real product cases. Users can create and adjust cutout shapes, preview results in 3D, and export manufacturing-ready outputs.
 
----
+<!-- ## Screenshots
 
-## 🚀 Features
+Add screenshots in `docs/screenshots/` and keep these names to render automatically in this README.
 
-- Create circles, rectangles, and freehand 3D shapes
-- Modify width, height, depth, and rotation in real time
-- Undo and redo actions
-- Export 3D designs to PDF
-- Clean and intuitive user interface
+![Main editor](docs/screenshots/main-editor.png)
+![Shape controls](docs/screenshots/shape-controls.png)
+![Photoshape flow](docs/screenshots/photoshape-flow.png)
+![PDF export preview](docs/screenshots/pdf-export.png) -->
 
----
+## What Problem This Solves
 
-## 🧰 Tech Stack
+Designing protective foam inserts manually is slow and error-prone when done in generic CAD tools.
 
-- **Three.js**
-- **JavaScript / HTML / CSS**
-- **Node.js & npm**
+This project solves that by providing a focused workflow for:
+- Building foam cutouts directly on top of case dimensions
+- Editing shapes interactively (circle, rectangle, freehand, photo-derived)
+- Running live CSG subtraction previews
+- Exporting outputs for production documentation (PDF) and geometry handoff (DXF)
 
----
+## Tech Stack
 
-## 📦 Prerequisites
+Frontend:
+- JavaScript (ES modules)
+- Three.js for 3D scene rendering and interaction
+- Vite for local dev/build pipeline
 
-Make sure you have the following installed:
+Geometry and export:
+- `@jscad/modeling` for CSG operations
+- `dxf-writer` for DXF generation
+- `pdf-lib` for PDF export
+- `martinez-polygon-clipping` and `earcut` for polygon processing
 
-- **Node.js** v14.0.0 or higher
-- **npm** v6.0.0 or higher
+Photo contour workflow:
+- remove.bg API integration (background removal)
+- Optional Python Flask microservice (`src/outline_detection_service`) with OpenCV for contour detection
 
----
+## Architecture Decisions
 
-## 🏁 Getting Started
+1. Three.js-first interaction model
+The app keeps direct, imperative control of the scene and interaction states instead of introducing a UI framework. This reduces abstraction overhead for complex 3D editing behavior.
 
-Follow the steps below to run the project locally:
+2. CSG offloaded to a Web Worker
+Boolean geometry updates run in `src/setup/csgWorker.js` and `csg.js` so UI interactions remain responsive during expensive recomputation.
+
+3. Centralized mutable editor state
+`src/setup/state.js` holds editor-wide runtime state (foam config, selected shape, undo history, camera references). This keeps multi-panel UI and scene behavior synchronized.
+
+4. Action-based history snapshots
+Undo/redo is implemented via commit snapshots in `src/setup/history.js` with bounded history (`MAX_HISTORY`) for predictable memory usage.
+
+5. Optional decoupled contour service
+Photo contour extraction is handled by a separate Flask service. The frontend can point to local or remote endpoints using `VITE_CONTOUR_API_BASE`, keeping deployment flexible.
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 18+
+- npm 8+
+
+### Run the frontend
 
 ```bash
-# Clone the repository
-git clone https://github.com/MA-INDUSTRIE/FOAM24-3D-V3-Shakya-
-
-# Navigate to the project directory
-cd FOAM24-3D-V3-Shakya-
-
-# Install dependencies
 npm install
-
-# Run the development server
 npm run dev
+```
 
+Open `http://localhost:5174`.
 
-Once running, open **http://localhost:5174** in your browser.
-
-
-## 🏗️ Build for Production
-
-To create a production build:
+### Build for production
 
 ```bash
 npm run build
+npm run preview
+```
 
+## Environment Variables
 
-## 📁 Project Structure
+Create a `.env.local` file if needed:
+
+```env
+VITE_REMOVE_BG_KEY=your_remove_bg_key
+VITE_CONTOUR_API_BASE=http://localhost:5000
+```
+
+## Optional: Run Contour Detection Service
+
+The service is located at `src/outline_detection_service`.
+
+```bash
+cd src/outline_detection_service
+pip install -r requirements.txt
+python app.py
+```
+
+Default endpoint: `http://localhost:5000/detect_contours`
+
+## Project Structure
 
 ```text
-FOAM24-3D-V3-Shakya-
-│
-├── public/                 # Static files and assets
-│   └── index.html
-│
-├── src/                    # Application source code
-│   ├── components/         # Reusable UI and 3D components
-│   ├── utils/              # Helper functions and utilities
-│   ├── styles/             # Global and component styles
-│   ├── main.js             # Application entry point
-│   └── scene.js            # Three.js scene setup and rendering
-│
-├── package.json            # Project metadata and dependencies
-├── package-lock.json       # Dependency lock file
-├── README.md               # Project documentation
-└── LICENSE                 # License information
+src/
+  components/                 UI + creation/export modules
+  setup/                      scene bootstrap, state, UI wiring, worker bridge
+  utils/                      geometry, camera, interaction, photoshape helpers
+  outline_detection_service/  optional Flask + OpenCV service
+models/                       OBJ case models
+```
