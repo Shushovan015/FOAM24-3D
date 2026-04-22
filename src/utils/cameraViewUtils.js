@@ -22,7 +22,7 @@ export function applyCameraSnapshot(camera, controls, saved) {
 function getViewParams(foam, units) {
   const targetX = foam?.x || 0;
   const targetY = foam?.y || 0;
-  const targetZ = 37 * units.centimeters;
+  const targetZ = foam?.sizeZ || 37 * units.centimeters;
 
   const maxDim = Math.max(foam?.sizeX || 0, foam?.sizeY || 0);
   const distance = Math.max(maxDim * 2, 1 * units.meters);

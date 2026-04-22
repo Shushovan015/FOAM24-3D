@@ -20,6 +20,8 @@ import {
   getPhotoshapeStepDepthConfig,
   applyPhotoshapeFitAccuracyToShape,
   clampPhotoshapeFitAccuracy,
+  mapFoamLocalPointToImagePixel,
+  applyDeferredCalibrationScaleToShape
 } from "../../utils/photoshapeFlow";
 
 import {
@@ -47,7 +49,6 @@ export const createShapePhotoShape = (
   defaultCornerRadius,
   setFoamPhotoOverlay,
   clearFoamPhotoOverlay
-  // createEditor
 ) => {
   const getSelected = () => state.selected ?? selected ?? null;
   const setSelected = (nextSelected) => {
@@ -68,6 +69,21 @@ export const createShapePhotoShape = (
     input: document.querySelector("#photoshape-fit-input"),
     value: document.querySelector("#photoshape-fit-value"),
   };
+  const calibrationUI = {
+    group: document.querySelector("#photoshape-calibration-group"),
+    start: document.querySelector("#photoshape-calibration-start"),
+    reset: document.querySelector("#photoshape-calibration-reset"),
+    mm: document.querySelector("#photoshape-calibration-mm"),
+    apply: document.querySelector("#photoshape-calibration-apply"),
+    status: document.querySelector("#photoshape-calibration-status"),
+    picked: document.querySelector("#photoshape-calibration-picked"),
+    help: document.querySelector("#photoshape-calibration-help"),
+    px: document.querySelector("#photoshape-calibration-px"),
+    scale: document.querySelector("#photoshape-calibration-scale"),
+    error: document.querySelector("#photoshape-calibration-error"),
+    deferred: document.querySelector("#photoshape-calibration-deferred"),
+  };
+
   const flowInfo = document.querySelector("#photoshape-flow-info");
 
   const uploadPreview = document.querySelector("#upload-photo-img");
@@ -76,6 +92,13 @@ export const createShapePhotoShape = (
   let photoshapeFlowActive = false;
   let photoshapeFlowReady = false;
   let photoshapeStep = 1;
+  if (!window.__photoshapeCalibration) {
+    window.__photoshapeCalibration = {
+      active: false,
+      lockEditing: false,
+      onPointPicked: null,
+    };
+  }
 
   const setPhotoshapeFlowActive = (active) => {
     photoshapeFlowActive = active;
@@ -85,6 +108,7 @@ export const createShapePhotoShape = (
   const setPhotoshapeStep = (step, options = {}) => {
     photoshapeStep = step;
     renderPhotoshapeStep(stepUI, photoshapeStep, options);
+    syncCalibrationUiFromSelected();
     syncFitUiFromSelected();
   };
 
@@ -119,6 +143,26 @@ export const createShapePhotoShape = (
     }
   };
 
+  const ensureCalibration = (shape) => {
+    if (!shape) return null;
+    if (!shape._calibration) {
+      shape._calibration = {
+        pointIndices: [],
+        realDistanceMm: null,
+        pixelDistance: null,
+        mmPerPixel: null,
+      };
+    }
+    return shape._calibration;
+  };
+
+  const isCurrentShapeCalibrated = () => {
+    const current = getSelected();
+    if (!current) return false;
+    const c = ensureCalibration(current);
+    return Number.isFinite(c.mmPerPixel) && c.mmPerPixel > 0;
+  };
+
   const readImageDimensions = (src) =>
     new Promise((resolve, reject) => {
       const img = new Image();
@@ -130,6 +174,204 @@ export const createShapePhotoShape = (
       img.onerror = reject;
       img.src = src;
     });
+
+  const showCalibrationError = (msg) => {
+    if (!calibrationUI.error) return;
+    calibrationUI.error.style.display = "block";
+    calibrationUI.error.textContent = msg;
+  };
+
+  const clearCalibrationError = () => {
+    if (!calibrationUI.error) return;
+    calibrationUI.error.style.display = "none";
+    calibrationUI.error.textContent = "";
+  };
+
+  const syncCalibrationUiFromSelected = () => {
+    const current = getSelected();
+    const visible =
+      photoshapeFlowActive &&
+      photoshapeStep === 3 &&
+      current &&
+      current.source === "photoshape" &&
+      current._draft;
+
+    if (calibrationUI.group) calibrationUI.group.style.display = visible ? "block" : "none";
+    if (!visible) {
+      window.__photoshapeCalibration.active = false;
+      window.__photoshapeCalibration.lockEditing = false;
+      window.__photoshapeCalibration.onPointPicked = null;
+      return;
+    }
+
+    const c = ensureCalibration(current);
+    const pickedCount = Array.isArray(c.pointIndices) ? c.pointIndices.length : 0;
+    const mmValue = Number(calibrationUI.mm?.value);
+    const mmValid = Number.isFinite(mmValue) && mmValue > 0;
+    const calibrated = Number.isFinite(c.mmPerPixel) && c.mmPerPixel > 0;
+    const canApply = pickedCount === 2 && mmValid && !calibrated;
+
+    if (calibrationUI.picked) {
+      calibrationUI.picked.textContent = `Picked: ${pickedCount} / 2 points`;
+    }
+
+    if (calibrationUI.status) {
+      if (calibrated) calibrationUI.status.textContent = "Calibrated";
+      else if (pickedCount < 2) calibrationUI.status.textContent = "Pick 2 points";
+      else if (!mmValid) calibrationUI.status.textContent = "Enter distance (mm)";
+      else calibrationUI.status.textContent = "Ready";
+    }
+
+    if (calibrationUI.help) {
+      if (calibrated) calibrationUI.help.textContent = "Scale saved. Final size is applied after all shapes are finished.";
+      else if (pickedCount < 2) calibrationUI.help.textContent = "Click two points on the selected shape outline.";
+      else if (!mmValid) calibrationUI.help.textContent = "Two points selected. Enter known real distance in mm.";
+      else calibrationUI.help.textContent = "Press Apply to save scale for this shape.";
+    }
+
+    if (calibrationUI.px) {
+      calibrationUI.px.textContent = Number.isFinite(c.pixelDistance)
+        ? `Pixel distance: ${c.pixelDistance.toFixed(1)} px`
+        : "Pixel distance: -";
+    }
+
+    if (calibrationUI.scale) {
+      calibrationUI.scale.textContent = Number.isFinite(c.mmPerPixel)
+        ? `Scale: ${c.mmPerPixel.toFixed(4)} mm/px`
+        : "Scale: -";
+    }
+
+    if (calibrationUI.deferred) {
+      calibrationUI.deferred.style.display = calibrated ? "block" : "none";
+    }
+
+    if (calibrationUI.apply) {
+      calibrationUI.apply.disabled = !canApply;
+      calibrationUI.apply.textContent = calibrated ? "Calibrated" : "Apply Scale";
+    }
+
+    if (stepUI.next && photoshapeStep === 3) {
+      stepUI.next.disabled = !calibrated;
+    }
+
+    current._selectedPointIndices = [...(c.pointIndices || [])];
+    current._selectedPointIndex = c.pointIndices?.[0];
+
+    window.__photoshapeCalibration.lockEditing = !calibrated;
+  };
+
+  const startCalibrationSelection = () => {
+    const current = getSelected();
+    if (!current || current.source !== "photoshape" || photoshapeStep !== 3) return;
+
+    const c = ensureCalibration(current);
+    c.pointIndices = [];
+    c.realDistanceMm = null;
+    c.pixelDistance = null;
+    c.mmPerPixel = null;
+
+    current._selectedPointIndices = [];
+    delete current._selectedPointIndex;
+
+    if (calibrationUI.mm) calibrationUI.mm.value = "";
+    clearCalibrationError();
+
+    window.__photoshapeCalibration.active = true;
+    window.__photoshapeCalibration.lockEditing = true;
+    window.__photoshapeCalibration.onPointPicked = ({ shape, idx }) => {
+      const selected = getSelected();
+      if (!selected || shape !== selected) return;
+
+      const cal = ensureCalibration(selected);
+      if (cal.pointIndices.includes(idx)) return;
+      if (cal.pointIndices.length >= 2) cal.pointIndices.shift();
+      cal.pointIndices.push(idx);
+
+      selected._selectedPointIndices = [...cal.pointIndices];
+      selected._selectedPointIndex = cal.pointIndices[0];
+
+      syncCalibrationUiFromSelected();
+    };
+
+    syncCalibrationUiFromSelected();
+    syncFitUiFromSelected();
+  };
+
+  const applyCalibrationForCurrent = () => {
+    const shape = getSelected();
+    if (!shape) return;
+
+    const c = ensureCalibration(shape);
+    if (!Array.isArray(shape.points) || shape.points.length < 3) return;
+
+    if (!Array.isArray(c.pointIndices) || c.pointIndices.length !== 2) {
+      showCalibrationError("Select 2 points and enter a valid mm value.");
+      return;
+    }
+
+    const realDistanceMm = Number(calibrationUI.mm?.value);
+    if (!Number.isFinite(realDistanceMm) || realDistanceMm <= 0) {
+      showCalibrationError("Select 2 points and enter a valid mm value.");
+      return;
+    }
+
+    const p1 = shape.points[c.pointIndices[0]];
+    const p2 = shape.points[c.pointIndices[1]];
+    if (!p1 || !p2) {
+      showCalibrationError("Invalid selected points.");
+      return;
+    }
+
+    const [p1x, p1y] = mapFoamLocalPointToImagePixel(
+      p1[0], p1[1], state.foam, shape._contourImageWidth, shape._contourImageHeight
+    );
+    const [p2x, p2y] = mapFoamLocalPointToImagePixel(
+      p2[0], p2[1], state.foam, shape._contourImageWidth, shape._contourImageHeight
+    );
+
+    const pixelDistance = Math.hypot(p2x - p1x, p2y - p1y);
+    if (!Number.isFinite(pixelDistance) || pixelDistance <= 0) {
+      showCalibrationError("Could not calculate pixel distance.");
+      return;
+    }
+
+    c.realDistanceMm = realDistanceMm;
+    c.pixelDistance = pixelDistance;
+    c.mmPerPixel = realDistanceMm / pixelDistance;
+
+    clearCalibrationError();
+
+    window.__photoshapeCalibration.active = false;
+    window.__photoshapeCalibration.lockEditing = false;
+    window.__photoshapeCalibration.onPointPicked = null;
+
+    syncCalibrationUiFromSelected();
+    syncFitUiFromSelected();
+  };
+
+  const resetCalibrationForCurrent = () => {
+    const shape = getSelected();
+    if (!shape) return;
+    const c = ensureCalibration(shape);
+
+    c.pointIndices = [];
+    c.realDistanceMm = null;
+    c.pixelDistance = null;
+    c.mmPerPixel = null;
+
+    shape._selectedPointIndices = [];
+    delete shape._selectedPointIndex;
+
+    if (calibrationUI.mm) calibrationUI.mm.value = "";
+    clearCalibrationError();
+
+    window.__photoshapeCalibration.active = false;
+    window.__photoshapeCalibration.lockEditing = true;
+    window.__photoshapeCalibration.onPointPicked = null;
+
+    syncCalibrationUiFromSelected();
+    syncFitUiFromSelected();
+  };
 
   const setFitUiVisible = (visible) => {
     if (fitUI.group) fitUI.group.style.display = visible ? "block" : "none";
@@ -145,6 +387,7 @@ export const createShapePhotoShape = (
 
   const syncFitUiFromSelected = () => {
     const current = getSelected();
+
     const visible =
       photoshapeFlowActive &&
       photoshapeStep === 3 &&
@@ -154,6 +397,11 @@ export const createShapePhotoShape = (
 
     setFitUiVisible(!!visible);
     if (!visible) return;
+
+    const calibrated = isCurrentShapeCalibrated();
+
+    if (fitUI.slider) fitUI.slider.disabled = !calibrated;
+    if (fitUI.input) fitUI.input.disabled = !calibrated;
 
     const v = clampPhotoshapeFitAccuracy(current.photoshapeFitAccuracy);
     if (fitUI.slider) fitUI.slider.value = String(v);
@@ -210,6 +458,10 @@ export const createShapePhotoShape = (
     photoshapeFlowReady = false;
     setFitUiVisible(false);
     setFlowInfoVisible(false);
+    if (calibrationUI.group) calibrationUI.group.style.display = "none";
+    window.__photoshapeCalibration.active = false;
+    window.__photoshapeCalibration.lockEditing = false;
+    window.__photoshapeCalibration.onPointPicked = null;
   };
 
   const rollbackCurrentUploadDrafts = () => {
@@ -249,6 +501,11 @@ export const createShapePhotoShape = (
       setFlowInfoVisible(false);
     }
 
+    if (calibrationUI.group) calibrationUI.group.style.display = "none";
+    window.__photoshapeCalibration.active = false;
+    window.__photoshapeCalibration.lockEditing = false;
+    window.__photoshapeCalibration.onPointPicked = null;
+
     const uploadInput = document.querySelector("#upload-photo-input");
     if (uploadInput) uploadInput.value = "";
   };
@@ -284,6 +541,8 @@ export const createShapePhotoShape = (
     beginSession();
     setEditing(true);
     goStepEdit();
+    syncCalibrationUiFromSelected();
+    syncFitUiFromSelected();
     openEditPanel();
   };
 
@@ -320,6 +579,8 @@ export const createShapePhotoShape = (
       if (photoshapeStep === 4) {
         setEditing(true);
         goStepEdit();
+        syncCalibrationUiFromSelected();
+        syncFitUiFromSelected();
         if (!state.display2D) restoreCameraView();
         openEditPanel();
         return;
@@ -348,30 +609,51 @@ export const createShapePhotoShape = (
         beginSession();
         setEditing(true);
         goStepEdit();
+        syncCalibrationUiFromSelected();
+        syncFitUiFromSelected();
         openEditPanel();
         return;
       }
 
       if (photoshapeStep === 3) {
+        if (!isCurrentShapeCalibrated()) {
+          showCalibrationError("Select 2 points and apply calibration before continuing.");
+          syncCalibrationUiFromSelected();
+          return;
+        }
+
         setEditing(false);
         syncDepthInputs();
         goStepDepth();
         openDepthPanel();
+
         if (!state.display2D) {
           saveCameraView();
           resetCameraToFrontView();
         }
         return;
       }
+
       if (photoshapeStep === 4) {
         const moved = moveToNext();
         if (moved) {
           const current = getSelected();
+
           if (current?.photoshapeImageSrc) {
             applyFoamPhotoOverlay(current.photoshapeImageSrc);
           }
+
+          syncCalibrationUiFromSelected();
+
+          const calibrated = isCurrentShapeCalibrated();
+          if (!window.__photoshapeCalibration) window.__photoshapeCalibration = {};
+          window.__photoshapeCalibration.lockEditing = !calibrated;
+          window.__photoshapeCalibration.active = false;
+
           setEditing(true);
           goStepEdit();
+          syncCalibrationUiFromSelected();
+          syncFitUiFromSelected();
           openEditPanel();
           return;
         }
@@ -383,6 +665,13 @@ export const createShapePhotoShape = (
         removeFoamPhotoOverlay();
         setFitUiVisible(false);
         setFlowInfoVisible(false);
+        let scaledAny = false;
+        shapesArray.forEach((s) => {
+          if (s?.source === "photoshape" && s?._draft) {
+            const changed = applyDeferredCalibrationScaleToShape(s, state.foam);
+            if (changed) scaledAny = true;
+          }
+        });
         shapesArray.forEach((s) => {
           if (s?.source === "photoshape") {
             s._draft = false;
@@ -391,6 +680,8 @@ export const createShapePhotoShape = (
             delete s._contourImageWidth;
             delete s._contourImageHeight;
             delete s.photoshapeFitAccuracy;
+            delete s._calibration;
+            delete s._realScaleApplied;
           }
         });
         doCsg();
@@ -398,6 +689,16 @@ export const createShapePhotoShape = (
         const current = getSelected();
         if (current) showPanelFromRight(current.kind + "-panel");
       }
+    });
+  }
+
+  if (calibrationUI.start) calibrationUI.start.onclick = startCalibrationSelection;
+  if (calibrationUI.apply) calibrationUI.apply.onclick = applyCalibrationForCurrent;
+  if (calibrationUI.reset) calibrationUI.reset.onclick = resetCalibrationForCurrent;
+  if (calibrationUI.mm) {
+    calibrationUI.mm.addEventListener("input", () => {
+      clearCalibrationError();
+      syncCalibrationUiFromSelected();
     });
   }
 
@@ -471,6 +772,9 @@ export const createShapePhotoShape = (
       }
       appendPhotoshapeShapes(shapesArray, photoshapeSession, createdShapes);
       setSelected(createdShapes[0]);
+      window.__photoshapeCalibration.active = false;
+      window.__photoshapeCalibration.lockEditing = false;
+      window.__photoshapeCalibration.onPointPicked = null;
       setFlowInfoVisible(true);
       syncFitValueBadge(getSelected()?.photoshapeFitAccuracy ?? 75);
 

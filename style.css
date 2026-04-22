@@ -558,3 +558,77 @@ body {
 #copy-spacing-slider {
   accent-color: #2f6feb;
 }
+
+.photoshape-calibration-card {
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid #d8e4f0;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #f8fbff 0%, #edf5ff 100%);
+  box-shadow: 0 2px 8px rgba(17, 24, 39, 0.08);
+}
+.photoshape-calibration-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.photoshape-calibration-card__title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1f3a5a;
+}
+.photoshape-calibration-card__status {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid #bfdcff;
+  background: #d9ebff;
+  color: #0b4a8a;
+}
+.photoshape-calibration-card__help,
+.photoshape-calibration-card__picked,
+.photoshape-calibration-card__meta {
+  margin: 0 0 8px 0;
+  font-size: 12px;
+  line-height: 1.35;
+  color: #2c3f57;
+}
+.photoshape-calibration-card__inputs {
+  width: 100%;
+  align-items: center;
+  gap: 8px;
+}
+.photoshape-calibration-card__error {
+  margin: 0 0 8px 0;
+  font-size: 12px;
+  color: #b00020;
+  font-weight: 600;
+}
+.photoshape-calibration-card__deferred {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #1f3a5a;
+}
+
+#case-panel label[for="case-select"] {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1f2a37;
+}
+
+#case-select {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid #c7cdd8;
+  border-radius: 6px;
+  background: #fff;
+  color: #1f2a37;
+  font-size: 13px;
+  font-weight: 500;
+  box-sizing: border-box;
+}

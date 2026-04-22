@@ -21534,6 +21534,56 @@ class OBJLoader extends Loader {
     return container;
   }
 }
+const CASES = [
+  {
+    id: "case1",
+    label: "Case 1",
+    objUrl: "./models/case1.obj",
+    foam: { sizeX: 700, sizeY: 500, sizeZ: 370, cornerRadius: 5 },
+    modelTransform: {
+      position: { x: 0, y: 0, z: 0 },
+      rotationDeg: { x: 0, y: 0, z: 0 },
+      scale: { x: 1, y: 1, z: 1 }
+    }
+  },
+  {
+    id: "case2",
+    label: "Case 2",
+    objUrl: "./models/case2.obj",
+    foam: { sizeX: 1095, sizeY: 690, sizeZ: 480, cornerRadius: 5 },
+    modelTransform: {
+      position: { x: 0, y: 0, z: 0 },
+      rotationDeg: { x: 0, y: 0, z: 0 },
+      scale: { x: 1, y: 1, z: 1 }
+    }
+  },
+  {
+    id: "case3",
+    label: "Case 3",
+    objUrl: "./models/case3.obj",
+    foam: { sizeX: 519, sizeY: 333, sizeZ: 148, cornerRadius: 5 },
+    modelTransform: {
+      position: { x: 0, y: 0, z: 0 },
+      rotationDeg: { x: 0, y: 0, z: 0 },
+      scale: { x: 1, y: 1, z: 1 }
+    }
+  },
+  {
+    id: "case4",
+    label: "Case 4",
+    objUrl: "./models/case4.obj",
+    foam: { sizeX: 519, sizeY: 497, sizeZ: 370, cornerRadius: 5 },
+    modelTransform: {
+      position: { x: 0, y: 0, z: 0 },
+      rotationDeg: { x: 0, y: 0, z: 0 },
+      scale: { x: 1, y: 1, z: 1 }
+    }
+  }
+];
+const DEFAULT_CASE = CASES[0];
+function getCaseById(caseId) {
+  return CASES.find((c2) => c2.id === caseId) || DEFAULT_CASE;
+}
 const units = {
   millimeters: 1,
   centimeters: 10,
@@ -21579,17 +21629,18 @@ const state = {
   postQuad: null,
   topScene: null,
   currentIndex: 0,
+  currentCaseId: DEFAULT_CASE.id,
   foam: {
     kind: "rectangle",
     x: 0,
     y: 0,
-    sizeX: 70 * 10,
-    sizeY: 50 * 10,
-    sizeZ: 37 * 10,
+    sizeX: DEFAULT_CASE.foam.sizeX,
+    sizeY: DEFAULT_CASE.foam.sizeY,
+    sizeZ: DEFAULT_CASE.foam.sizeZ,
     rotation: 0,
-    cornerRadius: 5
+    cornerRadius: DEFAULT_CASE.foam.cornerRadius
   },
-  cornerRadius: 5,
+  cornerRadius: DEFAULT_CASE.foam.cornerRadius,
   shapesArray: [],
   worker: null,
   undoRedoHistory: [],
@@ -29090,19 +29141,33 @@ function clearSelectedPointIndices(shape) {
   delete shape._selectedPointIndices;
 }
 function updateControlPointSelectionVisuals(shape) {
-  var _a, _b;
+  var _a, _b, _c;
   if (!shape || !Array.isArray(shape.controlPoints))
     return;
   const selected = new Set(getSelectedPointIndices(shape));
+  const calibrationPoints = Array.isArray((_a = shape == null ? void 0 : shape._calibration) == null ? void 0 : _a.pointIndices) ? shape._calibration.pointIndices : [];
+  const calP1 = calibrationPoints[0];
+  const calP2 = calibrationPoints[1];
   for (let i = 0; i < shape.controlPoints.length; i += 2) {
     const sphere = shape.controlPoints[i];
-    if (!((_a = sphere == null ? void 0 : sphere.userData) == null ? void 0 : _a.isControlSphere))
+    if (!((_b = sphere == null ? void 0 : sphere.userData) == null ? void 0 : _b.isControlSphere))
       continue;
-    const isSelected = selected.has(sphere.userData.pointIndex);
-    if ((_b = sphere.material) == null ? void 0 : _b.color) {
-      sphere.material.color.setHex(isSelected ? 16752640 : 65535);
+    const idx = sphere.userData.pointIndex;
+    const isSelected = selected.has(idx);
+    let color = 65535;
+    let scale2 = 1;
+    if (idx === calP1) {
+      color = 16765952;
+      scale2 = 1.35;
+    } else if (idx === calP2) {
+      color = 16747008;
+      scale2 = 1.35;
+    } else if (isSelected) {
+      color = 16752640;
+      scale2 = 1.25;
     }
-    const scale2 = isSelected ? 1.25 : 1;
+    if ((_c = sphere.material) == null ? void 0 : _c.color)
+      sphere.material.color.setHex(color);
     sphere.scale.set(scale2, scale2, scale2);
   }
 }
@@ -29180,9 +29245,6 @@ function drawOutline(shape, style2, width, z, ctx, camera, display2D, renderer, 
       const next = shape.points[(i + 1) % n];
       const v12 = new Vector2(prev[0] - curr[0], prev[1] - curr[1]);
       const v22 = new Vector2(next[0] - curr[0], next[1] - curr[1]);
-      const seedSelection = Array.isArray(shape._selectedPointIndices) ? shape._selectedPointIndices : typeof shape._selectedPointIndex === "number" ? [shape._selectedPointIndex] : [];
-      setSelectedPointIndices(shape, seedSelection);
-      updateControlPointSelectionVisuals(shape);
       const denom = v12.length() * v22.length();
       if (denom > 0) {
         const cos2 = MathUtils.clamp(v12.dot(v22) / denom, -1, 1);
@@ -29246,6 +29308,9 @@ function drawOutline(shape, style2, width, z, ctx, camera, display2D, renderer, 
         ctx.restore();
       }
     }
+    const seedSelection = Array.isArray(shape._selectedPointIndices) ? shape._selectedPointIndices : typeof shape._selectedPointIndex === "number" ? [shape._selectedPointIndex] : [];
+    setSelectedPointIndices(shape, seedSelection);
+    updateControlPointSelectionVisuals(shape);
     if (!shape._controlPointsSetup) {
       shape._controlPointsSetup = true;
       setupControlPointInteractions(shape, scene, camera, renderer, z);
@@ -29523,6 +29588,16 @@ function setupControlPointInteractions(shape, scene, camera, renderer, CP_Z = 0)
     evt.stopPropagation();
     if (shape !== state.selected)
       return;
+    const calibration = window.__photoshapeCalibration;
+    const calibrationLocked = !!(calibration == null ? void 0 : calibration.lockEditing);
+    const idxForCalibration = pointOps.hitPointIndex(evt);
+    if (calibrationLocked) {
+      if (idxForCalibration !== -1 && (calibration == null ? void 0 : calibration.active) && typeof calibration.onPointPicked === "function") {
+        evt.preventDefault();
+        calibration.onPointPicked({ shape, idx: idxForCalibration, event: evt });
+      }
+      return;
+    }
     if (state.deletePointMode) {
       if (state._deletePointLock)
         return;
@@ -29580,6 +29655,12 @@ function setupControlPointInteractions(shape, scene, camera, renderer, CP_Z = 0)
     updateControlPointSelectionVisuals(shape);
   }
   function onHover(evt) {
+    const calibration = window.__photoshapeCalibration;
+    if (calibration == null ? void 0 : calibration.lockEditing) {
+      const idx2 = pointOps.hitPointIndex(evt);
+      target.style.cursor = idx2 !== -1 ? "crosshair" : "";
+      return;
+    }
     if (state.deletePointMode) {
       if (!Array.isArray(shape.points) || shape.points.length <= 3) {
         delete shape._selectedPointIndex;
@@ -30410,6 +30491,7 @@ function ensureWorker() {
     type: "module"
   });
   worker.onmessage = (e) => {
+    var _a;
     const { id, geom } = e.data || {};
     if (typeof id === "number" && id < latestId)
       ;
@@ -30436,7 +30518,7 @@ function ensureWorker() {
         "red",
         "#333",
         2 * units.centimeters,
-        37 * units.centimeters
+        ((_a = state.foam) == null ? void 0 : _a.sizeZ) || 37 * units.centimeters
       );
       mesh.name = "csgModel";
       state.scene.add(mesh);
@@ -30584,7 +30666,7 @@ function applyCameraSnapshot(camera, controls, saved) {
 function getViewParams(foam, units2) {
   const targetX = (foam == null ? void 0 : foam.x) || 0;
   const targetY = (foam == null ? void 0 : foam.y) || 0;
-  const targetZ = 37 * units2.centimeters;
+  const targetZ = (foam == null ? void 0 : foam.sizeZ) || 37 * units2.centimeters;
   const maxDim = Math.max((foam == null ? void 0 : foam.sizeX) || 0, (foam == null ? void 0 : foam.sizeY) || 0);
   const distance2 = Math.max(maxDim * 2, 1 * units2.meters);
   return { targetX, targetY, targetZ, distance: distance2 };
@@ -30944,9 +31026,93 @@ const setPolygonActionButtons = (config = {}) => {
     setButtonEnabledById(polygonActionButtonIds.edit, edit);
   }
 };
-const case1Url = "./models/case1.obj";
 const SSAA_SCALE = 1;
 let copyBatchDirty = false;
+function disposeCaseModel(model) {
+  var _a;
+  (_a = model == null ? void 0 : model.traverse) == null ? void 0 : _a.call(model, (obj) => {
+    var _a2, _b, _c;
+    if ((_a2 = obj.geometry) == null ? void 0 : _a2.dispose)
+      obj.geometry.dispose();
+    if (obj.material) {
+      if (Array.isArray(obj.material))
+        obj.material.forEach((m) => {
+          var _a3;
+          return (_a3 = m == null ? void 0 : m.dispose) == null ? void 0 : _a3.call(m);
+        });
+      else
+        (_c = (_b = obj.material).dispose) == null ? void 0 : _c.call(_b);
+    }
+  });
+}
+function applyModelTransform(group, cfg) {
+  const t = cfg.modelTransform || {};
+  const p = t.position || {};
+  const r = t.rotationDeg || {};
+  const s = t.scale || {};
+  group.position.set(p.x || 0, p.y || 0, p.z || 0);
+  group.rotation.set(
+    MathUtils.degToRad(r.x || 0),
+    MathUtils.degToRad(r.y || 0),
+    MathUtils.degToRad(r.z || 0)
+  );
+  group.scale.set(s.x || 1, s.y || 1, s.z || 1);
+}
+function loadCaseModel(cfg) {
+  return new Promise((resolve, reject) => {
+    const loader = new OBJLoader();
+    loader.load(
+      cfg.objUrl,
+      (group) => {
+        group.traverse((object) => {
+          if (object instanceof Mesh)
+            object.material = new LambertMaterial("cadetblue");
+        });
+        const old = state.scene.getObjectByName("caseModel");
+        if (old) {
+          disposeCaseModel(old);
+          state.scene.remove(old);
+        }
+        group.name = "caseModel";
+        applyModelTransform(group, cfg);
+        state.scene.add(group);
+        group.updateMatrixWorld(true);
+        const box = new Box3().setFromObject(group);
+        const size = new Vector3();
+        box.getSize(size);
+        resolve({ group, boxSize: size });
+      },
+      void 0,
+      (err2) => {
+        console.error(`Failed to load case OBJ: ${cfg.objUrl}`, err2);
+        reject(err2);
+      }
+    );
+  });
+}
+async function applyCaseConfig(caseId, { refitCamera = true } = {}) {
+  const cfg = getCaseById(caseId);
+  state.currentCaseId = cfg.id;
+  try {
+    const { boxSize } = await loadCaseModel(cfg);
+    if (cfg.foam) {
+      state.foam.sizeX = cfg.foam.sizeX;
+      state.foam.sizeY = cfg.foam.sizeY;
+      state.foam.sizeZ = cfg.foam.sizeZ;
+      state.foam.cornerRadius = cfg.foam.cornerRadius ?? state.foam.cornerRadius;
+    }
+    state.cornerRadius = state.foam.cornerRadius;
+    doCsg();
+    if (state.controls) {
+      state.controls.target.set(state.foam.x, state.foam.y, state.foam.sizeZ);
+      state.controls.update();
+    }
+    if (refitCamera)
+      setCameraTopView(state.camera, state.controls, state.foam, units);
+  } catch (e) {
+    console.error("applyCaseConfig failed:", e);
+  }
+}
 function flushCopyBatch() {
   if (!copyBatchDirty)
     return;
@@ -31060,7 +31226,7 @@ function activateCopyPlacementForSource(sourceShape) {
   return true;
 }
 function updateCopyPlacementSpacing(spacingMm) {
-  const nextSpacing = Math.max(0, Number(spacingMm) || 0);
+  const nextSpacing = Math.max(10, Number(spacingMm) || 10);
   state.copySpacingMm = nextSpacing;
   if (!state.copyPlacementActive)
     return;
@@ -31259,7 +31425,7 @@ function init3D() {
     state.camera,
     state.renderer.domElement
   );
-  state.controls.target.set(0, 0, 37 * units.centimeters);
+  state.controls.target.set(0, 0, state.foam.sizeZ);
   state.controls.update();
   state.controls.mouseButtons.LEFT = MOUSE.ROTATE;
   state.controls.mouseButtons.MIDDLE = MOUSE.PAN;
@@ -31317,10 +31483,7 @@ function init3D() {
     const raycaster = new Raycaster();
     raycaster.setFromCamera({ x: state.mouseNdcX, y: state.mouseNdcY }, state.camera);
     const ray = raycaster.ray;
-    const foamPlane = new Plane$1(
-      new Vector3(0, 0, 1),
-      -37 * units.centimeters
-    );
+    const foamPlane = new Plane$1(new Vector3(0, 0, 1), -state.foam.sizeZ);
     const intersection = ray.intersectPlane(foamPlane, new Vector3());
     if (intersection) {
       state.mouseRayPlaneIntersection = new Vector2(
@@ -31458,20 +31621,7 @@ function init3D() {
     new LambertMaterial("white")
   );
   state.scene.add(ground);
-  const loader = new OBJLoader();
-  loader.load(case1Url, (group) => {
-    group.traverse((object) => {
-      if (object instanceof Mesh) {
-        object.material = new LambertMaterial("cadetblue");
-      }
-    });
-    const caseModel = state.scene.getObjectByName("caseModel");
-    if (caseModel) {
-      state.scene.remove(caseModel);
-    }
-    group.name = "caseModel";
-    state.scene.add(group);
-  });
+  applyCaseConfig(state.currentCaseId, { refitCamera: false });
   state.postScene = new Scene();
   state.postCamera = new OrthographicCamera(-1, 1, 1, -1, 0, 1);
   state.postQuad = new Mesh(
@@ -31545,7 +31695,7 @@ function onFrame() {
   state.display2D ? state.renderer.render(state.scene, state.camera1) : state.renderer.render(state.scene, state.camera);
   state.renderer.clearDepth();
   state.display2D ? state.renderer.render(state.topScene, state.camera1) : state.renderer.render(state.topScene, state.camera);
-  const baseZ = 37 * units.centimeters;
+  const baseZ = state.foam.sizeZ;
   const currentCamera = state.display2D ? state.camera1 : state.camera;
   const NEAR_THRESHOLD = 1 * units.centimeters;
   const lightCopyRender = state.copyPlacementActive && state.shapesArray.length > 20;
@@ -52367,6 +52517,66 @@ const rotateOrderToSelectedFirst = (order, selectedId) => {
     return order;
   return order.slice(idx).concat(order.slice(0, idx));
 };
+const mapFoamLocalPointToImagePixel = (localX, localY, foam, imageWidth, imageHeight) => {
+  const px2 = (localX + foam.sizeX / 2) / foam.sizeX * imageWidth;
+  const py2 = (foam.sizeY / 2 - localY) / foam.sizeY * imageHeight;
+  return [px2, py2];
+};
+const getPointsBounds = (points) => {
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const [x, y] of points) {
+    if (x < minX)
+      minX = x;
+    if (y < minY)
+      minY = y;
+    if (x > maxX)
+      maxX = x;
+    if (y > maxY)
+      maxY = y;
+  }
+  return { minX, minY, maxX, maxY };
+};
+const mapFoamLocalPointsToImagePixels = (points, foam, imageWidth, imageHeight) => (Array.isArray(points) ? points : []).map(([x, y]) => mapFoamLocalPointToImagePixel(x, y, foam, imageWidth, imageHeight)).filter(([x, y]) => Number.isFinite(x) && Number.isFinite(y));
+const imagePointsToRealMmLocal = (pointsPx, mmPerPixel) => {
+  const b = getPointsBounds(pointsPx);
+  const cx2 = (b.minX + b.maxX) / 2;
+  const cy2 = (b.minY + b.maxY) / 2;
+  return pointsPx.map(([px2, py2]) => [(px2 - cx2) * mmPerPixel, (cy2 - py2) * mmPerPixel]);
+};
+const applyDeferredCalibrationScaleToShape = (shape, foam) => {
+  var _a;
+  if (!shape || shape.source !== "photoshape")
+    return false;
+  if (!Array.isArray(shape.points) || shape.points.length < 3)
+    return false;
+  const mmPerPixel = Number((_a = shape == null ? void 0 : shape._calibration) == null ? void 0 : _a.mmPerPixel);
+  if (!Number.isFinite(mmPerPixel) || mmPerPixel <= 0)
+    return false;
+  if (!shape._contourImageWidth || !shape._contourImageHeight)
+    return false;
+  const worldBefore = shape.points.map(([x, y]) => [x + shape.x, y + shape.y]);
+  const wb = getPointsBounds(worldBefore);
+  const worldCenterX = (wb.minX + wb.maxX) / 2;
+  const worldCenterY = (wb.minY + wb.maxY) / 2;
+  const imagePts = mapFoamLocalPointsToImagePixels(
+    shape.points,
+    foam,
+    shape._contourImageWidth,
+    shape._contourImageHeight
+  );
+  if (imagePts.length < 3)
+    return false;
+  const realLocal = imagePointsToRealMmLocal(imagePts, mmPerPixel);
+  const rb = getPointsBounds(realLocal);
+  shape.points = realLocal;
+  shape.x = worldCenterX;
+  shape.y = worldCenterY;
+  shape.sizeX = Math.max(1, rb.maxX - rb.minX);
+  shape.sizeY = Math.max(1, rb.maxY - rb.minY);
+  shape._pointsDirty = true;
+  shape._realScaleApplied = true;
+  return true;
+};
 const beginPhotoshapeEditSession = (session, shapesArray, selected) => {
   const sortedOrder = buildSessionOrder(session, shapesArray);
   session.order = rotateOrderToSelectedFirst(sortedOrder, selected == null ? void 0 : selected.id);
@@ -52715,7 +52925,14 @@ const createPhotoshapeShapesFromContours = ({
       photoshapeFitAccuracy: acc,
       _rawContourImage: rawContour.map(([x, y]) => [x, y]),
       _contourImageWidth: imageWidth,
-      _contourImageHeight: imageHeight
+      _contourImageHeight: imageHeight,
+      _calibration: {
+        pointIndices: [],
+        realDistanceMm: null,
+        pixelDistance: null,
+        mmPerPixel: null
+      },
+      _realScaleApplied: false
     };
   }).filter(Boolean);
 };
@@ -52779,6 +52996,20 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
     input: document.querySelector("#photoshape-fit-input"),
     value: document.querySelector("#photoshape-fit-value")
   };
+  const calibrationUI = {
+    group: document.querySelector("#photoshape-calibration-group"),
+    start: document.querySelector("#photoshape-calibration-start"),
+    reset: document.querySelector("#photoshape-calibration-reset"),
+    mm: document.querySelector("#photoshape-calibration-mm"),
+    apply: document.querySelector("#photoshape-calibration-apply"),
+    status: document.querySelector("#photoshape-calibration-status"),
+    picked: document.querySelector("#photoshape-calibration-picked"),
+    help: document.querySelector("#photoshape-calibration-help"),
+    px: document.querySelector("#photoshape-calibration-px"),
+    scale: document.querySelector("#photoshape-calibration-scale"),
+    error: document.querySelector("#photoshape-calibration-error"),
+    deferred: document.querySelector("#photoshape-calibration-deferred")
+  };
   const flowInfo = document.querySelector("#photoshape-flow-info");
   const uploadPreview = document.querySelector("#upload-photo-img");
   if (uploadPreview)
@@ -52786,6 +53017,13 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
   let photoshapeFlowActive = false;
   let photoshapeFlowReady = false;
   let photoshapeStep = 1;
+  if (!window.__photoshapeCalibration) {
+    window.__photoshapeCalibration = {
+      active: false,
+      lockEditing: false,
+      onPointPicked: null
+    };
+  }
   const setPhotoshapeFlowActive = (active) => {
     photoshapeFlowActive = active;
     setPhotoshapeFlowVisibility(stepUI, active);
@@ -52793,6 +53031,7 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
   const setPhotoshapeStep = (step, options = {}) => {
     photoshapeStep = step;
     renderPhotoshapeStep(stepUI, photoshapeStep, options);
+    syncCalibrationUiFromSelected();
     syncFitUiFromSelected();
   };
   const setEditing = (on, restore = false) => setPhotoshapeEditingMode({
@@ -52822,6 +53061,26 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
       clearFoamPhotoOverlay2();
     }
   };
+  const ensureCalibration = (shape) => {
+    if (!shape)
+      return null;
+    if (!shape._calibration) {
+      shape._calibration = {
+        pointIndices: [],
+        realDistanceMm: null,
+        pixelDistance: null,
+        mmPerPixel: null
+      };
+    }
+    return shape._calibration;
+  };
+  const isCurrentShapeCalibrated = () => {
+    const current = getSelected();
+    if (!current)
+      return false;
+    const c2 = ensureCalibration(current);
+    return Number.isFinite(c2.mmPerPixel) && c2.mmPerPixel > 0;
+  };
   const readImageDimensions = (src) => new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => resolve({
@@ -52831,6 +53090,184 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
     img.onerror = reject;
     img.src = src;
   });
+  const showCalibrationError = (msg2) => {
+    if (!calibrationUI.error)
+      return;
+    calibrationUI.error.style.display = "block";
+    calibrationUI.error.textContent = msg2;
+  };
+  const clearCalibrationError = () => {
+    if (!calibrationUI.error)
+      return;
+    calibrationUI.error.style.display = "none";
+    calibrationUI.error.textContent = "";
+  };
+  const syncCalibrationUiFromSelected = () => {
+    var _a, _b;
+    const current = getSelected();
+    const visible = photoshapeFlowActive && photoshapeStep === 3 && current && current.source === "photoshape" && current._draft;
+    if (calibrationUI.group)
+      calibrationUI.group.style.display = visible ? "block" : "none";
+    if (!visible) {
+      window.__photoshapeCalibration.active = false;
+      window.__photoshapeCalibration.lockEditing = false;
+      window.__photoshapeCalibration.onPointPicked = null;
+      return;
+    }
+    const c2 = ensureCalibration(current);
+    const pickedCount = Array.isArray(c2.pointIndices) ? c2.pointIndices.length : 0;
+    const mmValue = Number((_a = calibrationUI.mm) == null ? void 0 : _a.value);
+    const mmValid = Number.isFinite(mmValue) && mmValue > 0;
+    const calibrated = Number.isFinite(c2.mmPerPixel) && c2.mmPerPixel > 0;
+    const canApply = pickedCount === 2 && mmValid && !calibrated;
+    if (calibrationUI.picked) {
+      calibrationUI.picked.textContent = `Picked: ${pickedCount} / 2 points`;
+    }
+    if (calibrationUI.status) {
+      if (calibrated)
+        calibrationUI.status.textContent = "Calibrated";
+      else if (pickedCount < 2)
+        calibrationUI.status.textContent = "Pick 2 points";
+      else if (!mmValid)
+        calibrationUI.status.textContent = "Enter distance (mm)";
+      else
+        calibrationUI.status.textContent = "Ready";
+    }
+    if (calibrationUI.help) {
+      if (calibrated)
+        calibrationUI.help.textContent = "Scale saved. Final size is applied after all shapes are finished.";
+      else if (pickedCount < 2)
+        calibrationUI.help.textContent = "Click two points on the selected shape outline.";
+      else if (!mmValid)
+        calibrationUI.help.textContent = "Two points selected. Enter known real distance in mm.";
+      else
+        calibrationUI.help.textContent = "Press Apply to save scale for this shape.";
+    }
+    if (calibrationUI.px) {
+      calibrationUI.px.textContent = Number.isFinite(c2.pixelDistance) ? `Pixel distance: ${c2.pixelDistance.toFixed(1)} px` : "Pixel distance: -";
+    }
+    if (calibrationUI.scale) {
+      calibrationUI.scale.textContent = Number.isFinite(c2.mmPerPixel) ? `Scale: ${c2.mmPerPixel.toFixed(4)} mm/px` : "Scale: -";
+    }
+    if (calibrationUI.deferred) {
+      calibrationUI.deferred.style.display = calibrated ? "block" : "none";
+    }
+    if (calibrationUI.apply) {
+      calibrationUI.apply.disabled = !canApply;
+      calibrationUI.apply.textContent = calibrated ? "Calibrated" : "Apply Scale";
+    }
+    if (stepUI.next && photoshapeStep === 3) {
+      stepUI.next.disabled = !calibrated;
+    }
+    current._selectedPointIndices = [...c2.pointIndices || []];
+    current._selectedPointIndex = (_b = c2.pointIndices) == null ? void 0 : _b[0];
+    window.__photoshapeCalibration.lockEditing = !calibrated;
+  };
+  const startCalibrationSelection = () => {
+    const current = getSelected();
+    if (!current || current.source !== "photoshape" || photoshapeStep !== 3)
+      return;
+    const c2 = ensureCalibration(current);
+    c2.pointIndices = [];
+    c2.realDistanceMm = null;
+    c2.pixelDistance = null;
+    c2.mmPerPixel = null;
+    current._selectedPointIndices = [];
+    delete current._selectedPointIndex;
+    if (calibrationUI.mm)
+      calibrationUI.mm.value = "";
+    clearCalibrationError();
+    window.__photoshapeCalibration.active = true;
+    window.__photoshapeCalibration.lockEditing = true;
+    window.__photoshapeCalibration.onPointPicked = ({ shape, idx }) => {
+      const selected2 = getSelected();
+      if (!selected2 || shape !== selected2)
+        return;
+      const cal = ensureCalibration(selected2);
+      if (cal.pointIndices.includes(idx))
+        return;
+      if (cal.pointIndices.length >= 2)
+        cal.pointIndices.shift();
+      cal.pointIndices.push(idx);
+      selected2._selectedPointIndices = [...cal.pointIndices];
+      selected2._selectedPointIndex = cal.pointIndices[0];
+      syncCalibrationUiFromSelected();
+    };
+    syncCalibrationUiFromSelected();
+    syncFitUiFromSelected();
+  };
+  const applyCalibrationForCurrent = () => {
+    var _a;
+    const shape = getSelected();
+    if (!shape)
+      return;
+    const c2 = ensureCalibration(shape);
+    if (!Array.isArray(shape.points) || shape.points.length < 3)
+      return;
+    if (!Array.isArray(c2.pointIndices) || c2.pointIndices.length !== 2) {
+      showCalibrationError("Select 2 points and enter a valid mm value.");
+      return;
+    }
+    const realDistanceMm = Number((_a = calibrationUI.mm) == null ? void 0 : _a.value);
+    if (!Number.isFinite(realDistanceMm) || realDistanceMm <= 0) {
+      showCalibrationError("Select 2 points and enter a valid mm value.");
+      return;
+    }
+    const p1 = shape.points[c2.pointIndices[0]];
+    const p2 = shape.points[c2.pointIndices[1]];
+    if (!p1 || !p2) {
+      showCalibrationError("Invalid selected points.");
+      return;
+    }
+    const [p1x, p1y] = mapFoamLocalPointToImagePixel(
+      p1[0],
+      p1[1],
+      state.foam,
+      shape._contourImageWidth,
+      shape._contourImageHeight
+    );
+    const [p2x, p2y] = mapFoamLocalPointToImagePixel(
+      p2[0],
+      p2[1],
+      state.foam,
+      shape._contourImageWidth,
+      shape._contourImageHeight
+    );
+    const pixelDistance = Math.hypot(p2x - p1x, p2y - p1y);
+    if (!Number.isFinite(pixelDistance) || pixelDistance <= 0) {
+      showCalibrationError("Could not calculate pixel distance.");
+      return;
+    }
+    c2.realDistanceMm = realDistanceMm;
+    c2.pixelDistance = pixelDistance;
+    c2.mmPerPixel = realDistanceMm / pixelDistance;
+    clearCalibrationError();
+    window.__photoshapeCalibration.active = false;
+    window.__photoshapeCalibration.lockEditing = false;
+    window.__photoshapeCalibration.onPointPicked = null;
+    syncCalibrationUiFromSelected();
+    syncFitUiFromSelected();
+  };
+  const resetCalibrationForCurrent = () => {
+    const shape = getSelected();
+    if (!shape)
+      return;
+    const c2 = ensureCalibration(shape);
+    c2.pointIndices = [];
+    c2.realDistanceMm = null;
+    c2.pixelDistance = null;
+    c2.mmPerPixel = null;
+    shape._selectedPointIndices = [];
+    delete shape._selectedPointIndex;
+    if (calibrationUI.mm)
+      calibrationUI.mm.value = "";
+    clearCalibrationError();
+    window.__photoshapeCalibration.active = false;
+    window.__photoshapeCalibration.lockEditing = true;
+    window.__photoshapeCalibration.onPointPicked = null;
+    syncCalibrationUiFromSelected();
+    syncFitUiFromSelected();
+  };
   const setFitUiVisible = (visible) => {
     if (fitUI.group)
       fitUI.group.style.display = visible ? "block" : "none";
@@ -52849,6 +53286,11 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
     setFitUiVisible(!!visible);
     if (!visible)
       return;
+    const calibrated = isCurrentShapeCalibrated();
+    if (fitUI.slider)
+      fitUI.slider.disabled = !calibrated;
+    if (fitUI.input)
+      fitUI.input.disabled = !calibrated;
     const v = clampPhotoshapeFitAccuracy(current.photoshapeFitAccuracy);
     if (fitUI.slider)
       fitUI.slider.value = String(v);
@@ -52895,6 +53337,11 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
     photoshapeFlowReady = false;
     setFitUiVisible(false);
     setFlowInfoVisible(false);
+    if (calibrationUI.group)
+      calibrationUI.group.style.display = "none";
+    window.__photoshapeCalibration.active = false;
+    window.__photoshapeCalibration.lockEditing = false;
+    window.__photoshapeCalibration.onPointPicked = null;
   };
   const rollbackCurrentUploadDrafts = () => {
     const ids = new Set(photoshapeSession.ids || []);
@@ -52927,6 +53374,11 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
     if (typeof setFlowInfoVisible === "function") {
       setFlowInfoVisible(false);
     }
+    if (calibrationUI.group)
+      calibrationUI.group.style.display = "none";
+    window.__photoshapeCalibration.active = false;
+    window.__photoshapeCalibration.lockEditing = false;
+    window.__photoshapeCalibration.onPointPicked = null;
     const uploadInput = document.querySelector("#upload-photo-input");
     if (uploadInput)
       uploadInput.value = "";
@@ -52961,6 +53413,8 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
     beginSession();
     setEditing(true);
     goStepEdit();
+    syncCalibrationUiFromSelected();
+    syncFitUiFromSelected();
     openEditPanel();
   };
   setPhotoshapeFlowActive(false);
@@ -52994,6 +53448,8 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
       if (photoshapeStep === 4) {
         setEditing(true);
         goStepEdit();
+        syncCalibrationUiFromSelected();
+        syncFitUiFromSelected();
         if (!state.display2D)
           restoreCameraView();
         openEditPanel();
@@ -53019,10 +53475,17 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
         beginSession();
         setEditing(true);
         goStepEdit();
+        syncCalibrationUiFromSelected();
+        syncFitUiFromSelected();
         openEditPanel();
         return;
       }
       if (photoshapeStep === 3) {
+        if (!isCurrentShapeCalibrated()) {
+          showCalibrationError("Select 2 points and apply calibration before continuing.");
+          syncCalibrationUiFromSelected();
+          return;
+        }
         setEditing(false);
         syncDepthInputs();
         goStepDepth();
@@ -53040,8 +53503,16 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
           if (current2 == null ? void 0 : current2.photoshapeImageSrc) {
             applyFoamPhotoOverlay(current2.photoshapeImageSrc);
           }
+          syncCalibrationUiFromSelected();
+          const calibrated = isCurrentShapeCalibrated();
+          if (!window.__photoshapeCalibration)
+            window.__photoshapeCalibration = {};
+          window.__photoshapeCalibration.lockEditing = !calibrated;
+          window.__photoshapeCalibration.active = false;
           setEditing(true);
           goStepEdit();
+          syncCalibrationUiFromSelected();
+          syncFitUiFromSelected();
           openEditPanel();
           return;
         }
@@ -53054,6 +53525,11 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
         setFitUiVisible(false);
         setFlowInfoVisible(false);
         shapesArray.forEach((s) => {
+          if ((s == null ? void 0 : s.source) === "photoshape" && (s == null ? void 0 : s._draft)) {
+            applyDeferredCalibrationScaleToShape(s, state.foam);
+          }
+        });
+        shapesArray.forEach((s) => {
           if ((s == null ? void 0 : s.source) === "photoshape") {
             s._draft = false;
             s.photoshapeImageSrc = null;
@@ -53061,6 +53537,8 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
             delete s._contourImageWidth;
             delete s._contourImageHeight;
             delete s.photoshapeFitAccuracy;
+            delete s._calibration;
+            delete s._realScaleApplied;
           }
         });
         doCsg2();
@@ -53069,6 +53547,18 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
         if (current)
           showPanelFromRight2(current.kind + "-panel");
       }
+    });
+  }
+  if (calibrationUI.start)
+    calibrationUI.start.onclick = startCalibrationSelection;
+  if (calibrationUI.apply)
+    calibrationUI.apply.onclick = applyCalibrationForCurrent;
+  if (calibrationUI.reset)
+    calibrationUI.reset.onclick = resetCalibrationForCurrent;
+  if (calibrationUI.mm) {
+    calibrationUI.mm.addEventListener("input", () => {
+      clearCalibrationError();
+      syncCalibrationUiFromSelected();
     });
   }
   const editShapeButton = document.querySelector("#edit-shape");
@@ -53132,6 +53622,9 @@ const createShapePhotoShape = (millimeters, selected, shapesArray, commit2, show
       }
       appendPhotoshapeShapes(shapesArray, photoshapeSession, createdShapes);
       setSelected(createdShapes[0]);
+      window.__photoshapeCalibration.active = false;
+      window.__photoshapeCalibration.lockEditing = false;
+      window.__photoshapeCalibration.onPointPicked = null;
       setFlowInfoVisible(true);
       syncFitValueBadge(((_b = getSelected()) == null ? void 0 : _b.photoshapeFitAccuracy) ?? 75);
       const current = getSelected();
@@ -53322,6 +53815,16 @@ function initUI() {
     state.display2D = false;
     restoreCameraView();
   };
+  const caseSelect = document.getElementById("case-select");
+  if (caseSelect) {
+    caseSelect.innerHTML = `<option value="" disabled selected hidden>Select Case</option>` + CASES.map((c2) => `<option value="${c2.id}">${c2.label}</option>`).join("");
+    caseSelect.onchange = async () => {
+      if (!caseSelect.value)
+        return;
+      await applyCaseConfig(caseSelect.value, { refitCamera: false });
+      commit();
+    };
+  }
   document.querySelectorAll("button").forEach((button) => {
     const { icon } = button.dataset;
     if (icon) {
@@ -53349,8 +53852,9 @@ function initUI() {
   const copySpacingSlider = document.getElementById("copy-spacing-slider");
   const copySpacingInput = document.getElementById("copy-spacing-input");
   const copySpacingValue = document.getElementById("copy-spacing-value");
+  const MIN_COPY_SPACING_MM = 10;
   const syncCopySpacingUi = (value) => {
-    const spacing = Math.max(0, Number(value) || 0);
+    const spacing = Math.max(MIN_COPY_SPACING_MM, Number(value) || MIN_COPY_SPACING_MM);
     if (copySpacingSlider)
       copySpacingSlider.value = spacing;
     if (copySpacingInput)
@@ -53363,17 +53867,25 @@ function initUI() {
       sourceShape: state.selected,
       foam: state.foam
     }) : 0;
+    const effectiveMaxSpacing = Math.max(MIN_COPY_SPACING_MM, maxSpacing);
     if (copySpacingSlider)
-      copySpacingSlider.max = maxSpacing;
+      copySpacingSlider.max = effectiveMaxSpacing;
     if (copySpacingInput)
-      copySpacingInput.max = maxSpacing;
-    const nextSpacing = Math.min(state.copySpacingMm, maxSpacing);
+      copySpacingInput.max = effectiveMaxSpacing;
+    const nextSpacing = Math.min(
+      Math.max(state.copySpacingMm, MIN_COPY_SPACING_MM),
+      effectiveMaxSpacing
+    );
     updateCopyPlacementSpacing(nextSpacing);
     syncCopySpacingUi(nextSpacing);
   };
   const applyCopySpacing = (value) => {
     const maxSpacing = Number((copySpacingSlider == null ? void 0 : copySpacingSlider.max) || (copySpacingInput == null ? void 0 : copySpacingInput.max) || 200);
-    const spacing = Math.min(maxSpacing, Math.max(0, Number(value) || 0));
+    const effectiveMaxSpacing = Math.max(MIN_COPY_SPACING_MM, maxSpacing);
+    const spacing = Math.min(
+      effectiveMaxSpacing,
+      Math.max(MIN_COPY_SPACING_MM, Number(value) || MIN_COPY_SPACING_MM)
+    );
     updateCopyPlacementSpacing(spacing);
     syncCopySpacingUi(spacing);
   };
@@ -54241,4 +54753,4 @@ if (typeof window === "object") {
   initUI();
   commit();
 }
-//# sourceMappingURL=index-36f5fed2.js.map
+//# sourceMappingURL=index-d05cbca9.js.map
